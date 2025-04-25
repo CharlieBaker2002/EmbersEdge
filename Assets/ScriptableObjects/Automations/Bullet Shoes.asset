@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Bullet Shoes
+  m_EditorClassIdentifier: 
+  s: {fileID: -5942078871638270368, guid: 4568b4cc5f2214c698653350cd90c22d, type: 3}
+  g: {fileID: 1478595464494809022, guid: 072ec4dcb650c488697bb2947fb0cb6b, type: 3}
+  cost: 19000000000000000000000000000000
+  shopCost: 142.53993
+  description: Emits weak projectiles behind you when you dash for long enough
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 1342841055428994384, guid: 072ec4dcb650c488697bb2947fb0cb6b, type: 3}
+  powerRequired: 2
+  continual: 0
+  level: 0

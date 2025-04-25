@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Medium Shield
+  m_EditorClassIdentifier: 
+  s: {fileID: -7947067082740497745, guid: 457a69b5b697241b3a669e711b795d65, type: 3}
+  g: {fileID: 5046350859648800433, guid: 832ba5001296f4276a2f444c4bd8b53f, type: 3}
+  cost: 00000000010000000200000000000000
+  shopCost: 133.42082
+  description: Grants a moderate temporary shield.
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 476388244093031445, guid: 832ba5001296f4276a2f444c4bd8b53f, type: 3}
+  powerRequired: 4
+  continual: 0
+  level: 0

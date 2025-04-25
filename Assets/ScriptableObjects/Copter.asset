@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Copter
+  m_EditorClassIdentifier: 
+  s: {fileID: 1006384453, guid: 6aa165c66e09d43f78930b41a4c0dd0e, type: 3}
+  g: {fileID: 3348279752161182000, guid: 6a5098010b7724d2faa635d7609b5cb1, type: 3}
+  cost: 00000000050000000000000000000000
+  shopCost: 11
+  description: Dodge and move slowly for up to two seconds when pressing dash.
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 3713365551335154358, guid: 6a5098010b7724d2faa635d7609b5cb1, type: 3}
+  powerRequired: 1
+  continual: 0
+  level: 0

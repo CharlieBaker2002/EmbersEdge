@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Bomb
+  m_EditorClassIdentifier: 
+  s: {fileID: 982772114, guid: 4c6ab999298eb4954b017dbc9a16c562, type: 3}
+  g: {fileID: 970221550033248739, guid: bb66ae6e342b74e2ebea0a7d3a72693c, type: 3}
+  cost: 03000000000000000000000000000000
+  shopCost: 138.97343
+  description: Shoots a single bomb.
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 4309856178372349957, guid: bb66ae6e342b74e2ebea0a7d3a72693c, type: 3}
+  powerRequired: 1
+  continual: 0
+  level: 0

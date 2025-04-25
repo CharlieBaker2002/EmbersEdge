@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Propeller
+  m_EditorClassIdentifier: 
+  s: {fileID: 1122037265, guid: e656de9c674d049ca8200e75cded6c0e, type: 3}
+  g: {fileID: 8272565594015881063, guid: 9bf4b258f0f4e4b4b8255faf209a447b, type: 3}
+  cost: 1e000000000000000000000000000000
+  shopCost: 3
+  description: Propells the player forwards
+  unique: 0
+  relevents:
+  - {fileID: 11400000}
+  - {fileID: 11400000, guid: 36bf1d4ce5929437a90e2c376c8a44a4, type: 2}
+  - {fileID: 11400000, guid: 24c24b200521c437fa60685c59797ec7, type: 2}
+  classifier: 0
+  p: {fileID: 5087345805621940739, guid: 9bf4b258f0f4e4b4b8255faf209a447b, type: 3}
+  powerRequired: 2
+  continual: 0
+  level: 0

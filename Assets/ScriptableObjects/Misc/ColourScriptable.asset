@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d2fc4d9bf6b7640fe99a96db9fe1164d, type: 3}
+  m_Name: ColourScriptable
+  m_EditorClassIdentifier: 
+  StandardWhite: {r: 0.67058825, g: 0.87843144, b: 0.82745105, a: 1}
+  StandardGreen: {r: 0.30588236, g: 0.89411765, b: 0.21568628, a: 1}
+  StandardBlue: {r: 0.050980393, g: 0.31714687, b: 1, a: 1}
+  StandardRed: {r: 0.89411765, g: 0.07058824, b: 0.02745098, a: 1}
+  Level1: {r: 0.6132076, g: 0.38559097, b: 0.16487184, a: 1}
+  Level2: {r: 0.7607843, g: 0.7607843, b: 0.7607843, a: 1}
+  Level3: {r: 1, g: 0.7254902, b: 0, a: 1}
+  cols:
+  - {r: 0.67058825, g: 0.87843144, b: 0.82745105, a: 1}
+  - {r: 0.30588236, g: 0.89411765, b: 0.21568628, a: 1}
+  - {r: 0.050980393, g: 0.31714687, b: 1, a: 1}
+  - {r: 0.89411765, g: 0.07058824, b: 0.02745098, a: 1}
+  - {r: 0.6132076, g: 0.38559097, b: 0.16487184, a: 1}
+  - {r: 0.7607843, g: 0.7607843, b: 0.7607843, a: 1}
+  - {r: 1, g: 0.7254902, b: 0, a: 1}
+  levels:
+  - {r: 0.6132076, g: 0.38559097, b: 0.16487184, a: 1}
+  - {r: 0.7607843, g: 0.7607843, b: 0.7607843, a: 1}
+  - {r: 1, g: 0.7254902, b: 0, a: 1}
+  w:
+  - {fileID: 8329714380412973210, guid: a34bdb11067e24d978641260e678e3a1, type: 3}
+  g:
+  - {fileID: 9193107739749979625, guid: a6a8d0b5058244ec0aba6ed3c30fb915, type: 3}
+  b:
+  - {fileID: 1591200908278131994, guid: 88c20a5bb0e2947a8bf9e01c3e58eb1d, type: 3}
+  r:
+  - {fileID: 5397904569395374567, guid: d778dd102f0fa4c038f031a75bd309b0, type: 3}
+  one: []
+  two: []
+  three: []
+  wU: []
+  gU: []
+  bU: []
+  rU: []
+  oneU: []
+  twoU: []
+  threeU: []

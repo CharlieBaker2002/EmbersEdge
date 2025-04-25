@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Sparks
+  m_EditorClassIdentifier: 
+  s: {fileID: 5515648523538570194, guid: 207b0eec7f50e4904b1deae16e06709f, type: 3}
+  g: {fileID: 7842637732141843983, guid: 0685f33b11c1143bc8e8a8fb4a6cd7ff, type: 3}
+  cost: 00000000000000000100000001000000
+  shopCost: 140.22937
+  description: Shoot out multiple seeking projectiles around you. Upgrade to massively
+    increase the number emitted.
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 3852926579630392609, guid: 0685f33b11c1143bc8e8a8fb4a6cd7ff, type: 3}
+  powerRequired: 3
+  continual: 0
+  level: 0

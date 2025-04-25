@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Energy Pod
+  m_EditorClassIdentifier: 
+  s: {fileID: -1614696109, guid: b1717b8fc6ce34fa49b562d26cbd4cfb, type: 3}
+  g: {fileID: 9144816692070326994, guid: 39b3621e5194f4282b48afc2ad4d6edf, type: 3}
+  cost: 00000000000000000000000001000000
+  shopCost: 141.91098
+  description: Provides one fuel to the Mecha Suit. Chains vertically.
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: -6162787008322551886, guid: 39b3621e5194f4282b48afc2ad4d6edf, type: 3}
+  powerRequired: 3
+  continual: 0
+  level: 0

@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Cluster Bomber
+  m_EditorClassIdentifier: 
+  s: {fileID: -7986525456743316589, guid: 07f3c06d679d4440fbd641389e1253b5, type: 3}
+  g: {fileID: 2221176014561597425, guid: 8fff4dbab5ab1475185935596cf78ef7, type: 3}
+  cost: 96000000000000000000000000000000
+  shopCost: 18
+  description: Shoots a cluster of bombs at a time
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 2221176014561597436, guid: 8fff4dbab5ab1475185935596cf78ef7, type: 3}
+  powerRequired: 1
+  continual: 0
+  level: 2

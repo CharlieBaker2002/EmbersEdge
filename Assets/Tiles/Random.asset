@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 13b75c95f34a00d4e8c04f76b73312e6, type: 3}
+  m_Name: Random
+  m_EditorClassIdentifier: 
+  m_AnimatedSprites:
+  - {fileID: 1152763094, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: 700711932, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: -1106933446, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: -1430011642, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: -676354392, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: 546598894, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: 821558090, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: 915164294, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: 457888200, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: -1480133116, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: -1167138445, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: 1516408123, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: -1296216338, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: 115735800, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: -439958012, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: -1792320400, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: 1777935611, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: -1533403759, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: 1780113896, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: -2118251594, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: 875683868, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  - {fileID: -1219890739, guid: 4873c13ae1a0f47a3879cfb75224390d, type: 3}
+  m_MinSpeed: 16
+  m_MaxSpeed: 16
+  m_AnimationStartTime: 3
+  m_AnimationStartFrame: 0
+  m_TileColliderType: 0
+  m_TileAnimationFlags: 0

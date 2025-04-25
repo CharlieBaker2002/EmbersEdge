@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Plague Skewer
+  m_EditorClassIdentifier: 
+  s: {fileID: -1255419945, guid: cf5bfab27eabe472f93bdd99b570d822, type: 3}
+  g: {fileID: 2850022076229723192, guid: c0ad4f619d78c446f84a5e7a8621c097, type: 3}
+  cost: 01000000010000000000000000000000
+  shopCost: 3
+  description: Skewers and poisons nearby enemies on proxmity
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 4991065198463611970, guid: c0ad4f619d78c446f84a5e7a8621c097, type: 3}
+  powerRequired: 7
+  continual: 0
+  level: 1

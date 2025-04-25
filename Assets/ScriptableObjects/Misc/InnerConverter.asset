@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: InnerConverter
+  m_EditorClassIdentifier: 
+  s: {fileID: 0}
+  g: {fileID: 7463704217557764337, guid: fba48a7961a44471ebc3ff49ebff96e4, type: 3}
+  cost: 00000000000000000000000000000000
+  shopCost: 0
+  description: 
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 4109277976745064493, guid: fba48a7961a44471ebc3ff49ebff96e4, type: 3}
+  powerRequired: 1
+  continual: 0

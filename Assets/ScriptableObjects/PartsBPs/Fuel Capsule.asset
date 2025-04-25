@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Fuel Capsule
+  m_EditorClassIdentifier: 
+  s: {fileID: 181567960, guid: 93e1e6a0d162d48ecb4904ed18525439, type: 3}
+  g: {fileID: 9144816692070326994, guid: 374ae295245ab439aad5b853a3eb6cd2, type: 3}
+  cost: 00000000050000000000000000000000
+  shopCost: 142.85852
+  description: Provides 4 fuel to the Mecha Suit. Chains vertically with other fuel
+    cells.
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: -6162787008322551886, guid: 374ae295245ab439aad5b853a3eb6cd2, type: 3}
+  powerRequired: 4
+  continual: 0
+  level: 0

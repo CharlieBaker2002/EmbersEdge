@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Expeller
+  m_EditorClassIdentifier: 
+  s: {fileID: -899219144, guid: 9a62d3e346c5c46f2bc480f4756072e3, type: 3}
+  g: {fileID: 5030737761229577493, guid: 1af72d1fa9b894c138c7e53e2b5b21b4, type: 3}
+  cost: 01000000000000000000000000000000
+  shopCost: 274.19482
+  description: Emits a wave of damaging repulsive energy on hit.
+  unique: 0
+  relevents:
+  - {fileID: 11400000, guid: d7b7e5bf6ee954bbb9920390b52c63d7, type: 2}
+  classifier: 0
+  p: {fileID: 3743789650487898686, guid: 1af72d1fa9b894c138c7e53e2b5b21b4, type: 3}
+  powerRequired: 4
+  continual: 0
+  level: 0

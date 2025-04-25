@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Mitigator
+  m_EditorClassIdentifier: 
+  s: {fileID: -1186659109, guid: 2071f3a3a997646bc9683cbe03a72660, type: 3}
+  g: {fileID: 7337633904488070908, guid: 6230cf2527b82403a9e5b33860a34230, type: 3}
+  cost: 1e000000000000000200000000000000
+  shopCost: 19
+  description: On dash, become reflective and invulnerable temporarily
+  unique: 0
+  relevents:
+  - {fileID: 11400000, guid: e11ac0d836bfb477e95fa180f3a86dcd, type: 2}
+  - {fileID: 11400000}
+  classifier: 0
+  p: {fileID: 478835482555337763, guid: 6230cf2527b82403a9e5b33860a34230, type: 3}
+  powerRequired: 5
+  continual: 0
+  level: 2

@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Blip
+  m_EditorClassIdentifier: 
+  s: {fileID: -5580486173512637688, guid: a54e35975199f4c688e17c1e441b9d2f, type: 3}
+  g: {fileID: 6527322157227316389, guid: ca3034b629f1947858c8c3b4824d4814, type: 3}
+  cost: 00000000050000000100000000000000
+  shopCost: 145.66988
+  description: Teleport toward the mouse and deal green splash damage around you
+    before returning and dealing more damage. Hold to delay the return. Upgrade to
+    improve range, max duration, damage, size of attack and gain shield.
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 7606030931210682688, guid: ca3034b629f1947858c8c3b4824d4814, type: 3}
+  powerRequired: 3
+  continual: 0
+  level: 0

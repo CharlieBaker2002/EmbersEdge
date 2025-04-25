@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: InnerEnergy
+  m_EditorClassIdentifier: 
+  s: {fileID: 0}
+  g: {fileID: 9144816692070326994, guid: b5c6059a1f97044b2b47b6591d0f1941, type: 3}
+  cost: 00000000000000000000000000000000
+  shopCost: 0
+  description: 
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: -6162787008322551886, guid: b5c6059a1f97044b2b47b6591d0f1941, type: 3}
+  powerRequired: 1
+  continual: 0

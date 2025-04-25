@@ -1,0 +1,497 @@
+fileFormatVersion: 2
+guid: 4390f408e01124b1695b078bcd1723c1
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -727062311041726538
+    second: Spinners_0
+  - first:
+      213: 1365186792656127953
+    second: Spinners_1
+  - first:
+      213: 5601954607630660486
+    second: Spinners_2
+  - first:
+      213: -5996482229961870977
+    second: Spinners_3
+  - first:
+      213: 8091798857687104398
+    second: Spinners_4
+  - first:
+      213: 6542684650361468241
+    second: Spinners_5
+  - first:
+      213: -3458215375995425721
+    second: Spinners_6
+  - first:
+      213: 6464288571148908475
+    second: Spinners_7
+  - first:
+      213: -5819562157402368909
+    second: Spinners_8
+  - first:
+      213: 3112446908924916288
+    second: Spinners_9
+  - first:
+      213: 7432598531970503468
+    second: Spinners_10
+  - first:
+      213: 4847118162618284766
+    second: Spinners_11
+  - first:
+      213: 7332904942566600170
+    second: Spinners_12
+  - first:
+      213: -2640456098374361021
+    second: Spinners_13
+  - first:
+      213: -6724385678056456584
+    second: Spinners_14
+  externalObjects: {}
+  serializedVersion: 11
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMasterTextureLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 32
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  platformSettings:
+  - serializedVersion: 3
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 1024
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: Standalone
+    maxTextureSize: 1024
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: iPhone
+    maxTextureSize: 1024
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Spinners_0
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 1
+        width: 63
+        height: 63
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 6b788c42ea4f8e5f0800000000000000
+      internalID: -727062311041726538
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Spinners_1
+      rect:
+        serializedVersion: 2
+        x: 65
+        y: 1
+        width: 63
+        height: 63
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 1d7c254a72e12f210800000000000000
+      internalID: 1365186792656127953
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Spinners_2
+      rect:
+        serializedVersion: 2
+        x: 129
+        y: 1
+        width: 63
+        height: 63
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 68330b309042ebd40800000000000000
+      internalID: 5601954607630660486
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Spinners_3
+      rect:
+        serializedVersion: 2
+        x: 193
+        y: 1
+        width: 63
+        height: 63
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: f713e2dbe2738cca0800000000000000
+      internalID: -5996482229961870977
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Spinners_4
+      rect:
+        serializedVersion: 2
+        x: 257
+        y: 1
+        width: 63
+        height: 63
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: e8bf95a5038db4070800000000000000
+      internalID: 8091798857687104398
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Spinners_5
+      rect:
+        serializedVersion: 2
+        x: 321
+        y: 1
+        width: 63
+        height: 63
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 155323e56094cca50800000000000000
+      internalID: 6542684650361468241
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Spinners_6
+      rect:
+        serializedVersion: 2
+        x: 385
+        y: 1
+        width: 63
+        height: 63
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 74caffc1073f100d0800000000000000
+      internalID: -3458215375995425721
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Spinners_7
+      rect:
+        serializedVersion: 2
+        x: 449
+        y: 1
+        width: 63
+        height: 63
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: bb7b2f8c434c5b950800000000000000
+      internalID: 6464288571148908475
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Spinners_8
+      rect:
+        serializedVersion: 2
+        x: 513
+        y: 1
+        width: 63
+        height: 63
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 374d9bb1d03cc3fa0800000000000000
+      internalID: -5819562157402368909
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Spinners_9
+      rect:
+        serializedVersion: 2
+        x: 577
+        y: 1
+        width: 63
+        height: 63
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 0427bb429f1a13b20800000000000000
+      internalID: 3112446908924916288
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Spinners_10
+      rect:
+        serializedVersion: 2
+        x: 641
+        y: 1
+        width: 63
+        height: 63
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: c2311383cf4e52760800000000000000
+      internalID: 7432598531970503468
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Spinners_11
+      rect:
+        serializedVersion: 2
+        x: 705
+        y: 1
+        width: 63
+        height: 63
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: edaf43ba94c644340800000000000000
+      internalID: 4847118162618284766
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Spinners_12
+      rect:
+        serializedVersion: 2
+        x: 769
+        y: 1
+        width: 63
+        height: 63
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: aed6361a136b3c560800000000000000
+      internalID: 7332904942566600170
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Spinners_13
+      rect:
+        serializedVersion: 2
+        x: 833
+        y: 1
+        width: 63
+        height: 63
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 340e1631b273b5bd0800000000000000
+      internalID: -2640456098374361021
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Spinners_14
+      rect:
+        serializedVersion: 2
+        x: 924
+        y: 56
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 87e78b66ade2ea2a0800000000000000
+      internalID: -6724385678056456584
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    nameFileIdTable:
+      Spinners_0: -727062311041726538
+      Spinners_13: -2640456098374361021
+      Spinners_5: 6542684650361468241
+      Spinners_8: -5819562157402368909
+      Spinners_2: 5601954607630660486
+      Spinners_9: 3112446908924916288
+      Spinners_10: 7432598531970503468
+      Spinners_14: -6724385678056456584
+      Spinners_1: 1365186792656127953
+      Spinners_3: -5996482229961870977
+      Spinners_7: 6464288571148908475
+      Spinners_11: 4847118162618284766
+      Spinners_12: 7332904942566600170
+      Spinners_4: 8091798857687104398
+      Spinners_6: -3458215375995425721
+  spritePackingTag: 
+  pSDRemoveMatte: 0
+  pSDShowRemoveMatteOption: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

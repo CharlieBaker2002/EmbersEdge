@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f27e5a506dcfa45a095d5cd77866d647, type: 3}
+  m_Name: Mine Sprayer
+  m_EditorClassIdentifier: 
+  s: {fileID: -64255269, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  g: {fileID: 4816399736014682658, guid: 0a47e1787406249bc926c46a87f266e9, type: 3}
+  cost: 64000000000000000000000000000000
+  shopCost: 15
+  description: Charges to produce a field of short-lived mines.
+  unique: 0
+  relevents: []
+  classifier: 2
+  Upgrades: []
+  upgrade: 0

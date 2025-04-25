@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f27e5a506dcfa45a095d5cd77866d647, type: 3}
+  m_Name: Green Harvester
+  m_EditorClassIdentifier: 
+  s: {fileID: -1602949701, guid: 0ec480d5d147a4452a29b5e451002294, type: 3}
+  g: {fileID: 2467364739664431249, guid: 3e90472c5a08149c3b9375d291e8a7e8, type: 3}
+  cost: 000000000c0000000000000000000000
+  shopCost: 5
+  description: Harvests green resources from green type enemies. Upgrade to become
+    a wall.
+  unique: 0
+  relevents: []
+  classifier: 2
+  Upgrades: []
+  upgrade: 0

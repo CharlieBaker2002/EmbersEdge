@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Sprint Pump
+  m_EditorClassIdentifier: 
+  s: {fileID: -622317044, guid: 37439c832ebab4030a3dae19587685ff, type: 3}
+  g: {fileID: 4326741939650290672, guid: 12968e5d419f7445d8eba00806ea4bb4, type: 3}
+  cost: 0a000000000000000000000000000000
+  shopCost: 145.65005
+  description: Provides a huge burst of thrust for a half second in the direction
+    of the mouse when DASHING.
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 4638814693275106660, guid: 12968e5d419f7445d8eba00806ea4bb4, type: 3}
+  powerRequired: 4
+  continual: 0
+  level: 0

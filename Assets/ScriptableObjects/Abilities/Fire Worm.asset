@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Fire Worm
+  m_EditorClassIdentifier: 
+  s: {fileID: 21300000, guid: 10465049dd1b34fb0b42bec569efd55c, type: 3}
+  g: {fileID: 3395072471331866004, guid: 9a9c939020f2047548a1ef6c3d605919, type: 3}
+  cost: 00000000000000000100000001000000
+  shopCost: 154.38904
+  description: Emit snake-like entities that follow the mouse. When they reach the
+    mouse or time out, they shrink until they explode. Release to explode early.
+    Upgrade for faster and more plentiful attacks.
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 4340134060986278009, guid: 9a9c939020f2047548a1ef6c3d605919, type: 3}
+  powerRequired: 3
+  continual: 0
+  level: 0

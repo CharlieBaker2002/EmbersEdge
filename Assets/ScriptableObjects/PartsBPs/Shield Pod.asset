@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Shield Pod
+  m_EditorClassIdentifier: 
+  s: {fileID: -1524293903, guid: 131e2afb2a54248b2893e33da1c5f27b, type: 3}
+  g: {fileID: 6711591034604637611, guid: 8b65bac3299f749ae8eb711425811136, type: 3}
+  cost: 000000000a0000000000000000000000
+  shopCost: 134.59222
+  description: Grants +1 max shield to the Mecha Suit
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: -2452948063218403120, guid: 8b65bac3299f749ae8eb711425811136, type: 3}
+  powerRequired: 4
+  continual: 0
+  level: 0

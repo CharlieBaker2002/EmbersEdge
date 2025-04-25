@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: The Disperser
+  m_EditorClassIdentifier: 
+  s: {fileID: -5753476250743359336, guid: 5cee1d2f62b554ba5a179c7c8739e312, type: 3}
+  g: {fileID: 8154912065706122719, guid: 80f87cb55ff0b44fba19d30915649c8f, type: 3}
+  cost: 64000000000000000000000003000000
+  shopCost: 23
+  description: Fully automatic shotgun mayhem
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 8154912065706122713, guid: 80f87cb55ff0b44fba19d30915649c8f, type: 3}
+  powerRequired: 10
+  continual: 0
+  level: 3

@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Big Converter
+  m_EditorClassIdentifier: 
+  s: {fileID: 362997368, guid: 83a980496fb1049ba9f55caa41f5afa9, type: 3}
+  g: {fileID: 7463704217557764337, guid: 75fada25140b7408a859f07d8f39e101, type: 3}
+  cost: 00000000190000000000000000000000
+  shopCost: 134.352
+  description: Converts up to 4 fuel capsules below to 4 fuel pods above. The higher
+    fuel capsule to energy pod ratio, the faster the conversion rate.
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 4109277976745064493, guid: 75fada25140b7408a859f07d8f39e101, type: 3}
+  powerRequired: 7
+  continual: 0
+  level: 0

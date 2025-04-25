@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Weak Shield
+  m_EditorClassIdentifier: 
+  s: {fileID: -6717884257390833292, guid: 457a69b5b697241b3a669e711b795d65, type: 3}
+  g: {fileID: 3041349445407520789, guid: a8ac521e65e8c4ddbad06c3b5f66dbdd, type: 3}
+  cost: 00000000010000000100000000000000
+  shopCost: 137.0314
+  description: Grants a small temporary shield
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 7683509299386284721, guid: a8ac521e65e8c4ddbad06c3b5f66dbdd, type: 3}
+  powerRequired: 3
+  continual: 0
+  level: 0

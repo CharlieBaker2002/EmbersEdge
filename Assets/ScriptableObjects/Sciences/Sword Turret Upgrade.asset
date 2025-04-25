@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 182a01b1da6704c719e0487fbd5cbf41, type: 3}
+  m_Name: Sword Turret Upgrade
+  m_EditorClassIdentifier: 
+  s: {fileID: 21300000, guid: e767a31bb47cc4e85a1a91d30e41cb9c, type: 3}
+  g: {fileID: 0}
+  cost: 00000000000000000000000000000000
+  shopCost: 0
+  description: Doubles the number of swords the turret can produce as well as the
+    production rate of the building
+  unique: 1
+  relevents: []
+  classifier: 3

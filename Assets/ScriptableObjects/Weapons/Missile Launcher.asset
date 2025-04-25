@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Missile Launcher
+  m_EditorClassIdentifier: 
+  s: {fileID: 6032450378801378821, guid: a72950d7b75684b15bcf22df8a1916d4, type: 3}
+  g: {fileID: 2553702493310330115, guid: 97996e0f9f41942ddbafaa38fbeba6f4, type: 3}
+  cost: 05000000000000000000000001000000
+  shopCost: 166.58826
+  description: Shoots red damage accelerating missiles that fragment on impact. Upgrade
+    to cause a chain of fragmentation.
+  unique: 0
+  relevents:
+  - {fileID: 11400000, guid: 624c45e0f95814ebe8092f8287b6baa5, type: 2}
+  - {fileID: 11400000, guid: b0d7a62d4f9044b1d9458e2e8a7931ee, type: 2}
+  - {fileID: 11400000, guid: 07b25d84686bd45efbde9f834b7d0468, type: 2}
+  classifier: 0
+  p: {fileID: 2553702493310330124, guid: 97996e0f9f41942ddbafaa38fbeba6f4, type: 3}
+  powerRequired: 2
+  continual: 0
+  level: 0

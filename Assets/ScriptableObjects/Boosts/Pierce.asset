@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Pierce
+  m_EditorClassIdentifier: 
+  s: {fileID: -496060346, guid: 4c6ab999298eb4954b017dbc9a16c562, type: 3}
+  g: {fileID: 8203890873267340437, guid: fefc8530618a140de991234f6e5a060b, type: 3}
+  cost: 02000000000000000000000000000000
+  shopCost: 125.38065
+  description: Emits a single piercing projectile
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 5144051198733219187, guid: fefc8530618a140de991234f6e5a060b, type: 3}
+  powerRequired: 1
+  continual: 0
+  level: 0

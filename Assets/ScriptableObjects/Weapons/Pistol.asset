@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Pistol
+  m_EditorClassIdentifier: 
+  s: {fileID: 4319395737909131107, guid: 9e3fec2feff7f46d8abc5b07e29545c8, type: 3}
+  g: {fileID: 531428935023052893, guid: f2e0281bfd4764b948b8cf4b931b161b, type: 3}
+  cost: 19000000000000000000000000000000
+  shopCost: 137.09561
+  description: Shoots as fast as you can press the trigger. Cheap upgrades and fast
+    reload times.
+  unique: 0
+  relevents:
+  - {fileID: 11400000, guid: c6c98e0100b6d4d1785bd0eb530aa0a9, type: 2}
+  - {fileID: 11400000, guid: e363134c67bc849789f7837786b6dbe1, type: 2}
+  - {fileID: 11400000, guid: b1cccaa37b0384b1aac0d0525f7267bd, type: 2}
+  classifier: 0
+  p: {fileID: 531428935023052882, guid: f2e0281bfd4764b948b8cf4b931b161b, type: 3}
+  powerRequired: 1
+  continual: 0
+  level: 0

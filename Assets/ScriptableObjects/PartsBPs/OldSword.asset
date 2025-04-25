@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: OldSword
+  m_EditorClassIdentifier: 
+  s: {fileID: 656337807, guid: ee38c5ac1ef9f4e3eb9134453494875b, type: 3}
+  g: {fileID: 2419536810886920507, guid: 7844d63b0384d4f728cd2073b972f998, type: 3}
+  cost: 00000000000000000000000000000000
+  shopCost: 10
+  description: Stabs towards the mouse on dash press.
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 8976838222505484485, guid: 7844d63b0384d4f728cd2073b972f998, type: 3}
+  powerRequired: 1
+  continual: 0
+  level: 0

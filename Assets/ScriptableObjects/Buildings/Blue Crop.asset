@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f27e5a506dcfa45a095d5cd77866d647, type: 3}
+  m_Name: Blue Crop
+  m_EditorClassIdentifier: 
+  s: {fileID: 95760957, guid: 2c5bd996725e2405e99935821f0d809e, type: 3}
+  g: {fileID: 8383209456638499508, guid: e027a9490c5ef495ba39f591854e0497, type: 3}
+  cost: c8000000000000000000000000000000
+  shopCost: 20
+  description: Converts white to blue resources
+  unique: 0
+  relevents: []
+  classifier: 2
+  Upgrades: []
+  upgrade: 0

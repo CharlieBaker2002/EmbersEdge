@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Blue Circle
+  m_EditorClassIdentifier: 
+  s: {fileID: 3586806219747846027, guid: 6591edb32aba14050b62cc153b2b245f, type: 3}
+  g: {fileID: 6366165461175285061, guid: 408523080460e4203a42b8da6f0642bf, type: 3}
+  cost: 00000000000000000300000000000000
+  shopCost: 161.45439
+  description: 'Protect yourself with a rotating ring of high damage blue projectiles.
+    Upgrade for more rings with more projectiles. '
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 2809218692274989305, guid: 408523080460e4203a42b8da6f0642bf, type: 3}
+  powerRequired: 3
+  continual: 0
+  level: 0

@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Wheel
+  m_EditorClassIdentifier: 
+  s: {fileID: -1529538521, guid: b2bef8c4da9f643f7aa8621855261c3f, type: 3}
+  g: {fileID: 679893028516119769, guid: be8870c6a2d854d42921d85ccff6d3b5, type: 3}
+  cost: 01000000000000000000000000000000
+  shopCost: 140.51028
+  description: Provides a low thrust in any direction, given power from a motor.
+    Powered by up to 3 motors.
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 3649422931960717203, guid: be8870c6a2d854d42921d85ccff6d3b5, type: 3}
+  powerRequired: 2
+  continual: 0
+  level: 0

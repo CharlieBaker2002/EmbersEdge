@@ -1,0 +1,84 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!78 &1
+TagManager:
+  serializedVersion: 2
+  tags:
+  - Manager
+  - Allies
+  - Portal
+  - Misc
+  - Enemies
+  - Walls
+  - Test
+  - UI
+  layers:
+  - Default
+  - TransparentFX
+  - Ignore Raycast
+  - 
+  - Water
+  - UI
+  - Ally Units
+  - Ally Buildings
+  - Ally Projectiles
+  - Enemy Units
+  - Enemy Buildings
+  - Enemy Projectiles
+  - CharOnly
+  - Character
+  - Walls
+  - Dungeon
+  - Allies Interact
+  - AllUnits
+  - MapOnly
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  m_SortingLayers:
+  - name: Default
+    uniqueID: 0
+    locked: 0
+  - name: Corruption
+    uniqueID: 2993370241
+    locked: 0
+  - name: Buildings
+    uniqueID: 3203987139
+    locked: 0
+  - name: EmbersEdge
+    uniqueID: 787743519
+    locked: 0
+  - name: Units
+    uniqueID: 1663965395
+    locked: 0
+  - name: Units Higher
+    uniqueID: 964385873
+    locked: 0
+  - name: Units Highest
+    uniqueID: 3815475449
+    locked: 0
+  - name: Character
+    uniqueID: 955266357
+    locked: 0
+  - name: Projectiles
+    uniqueID: 899417529
+    locked: 0
+  - name: Orbs
+    uniqueID: 87838393
+    locked: 0
+  - name: Power Ups
+    uniqueID: 291649817
+    locked: 0
+  - name: UI
+    uniqueID: 3880090303
+    locked: 0

@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Time Recombobulator
+  m_EditorClassIdentifier: 
+  s: {fileID: 899845038393842578, guid: b4a140664bc86424191c68f9a69e5cf4, type: 3}
+  g: {fileID: 5683166196669105914, guid: 88bcf4267d19f46c19c03a5b0bb781a6, type: 3}
+  cost: 00000000000000000200000000000000
+  shopCost: 155.10402
+  description: Enables you to slow time dramatically while not moving for a short
+    while.
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 2050664467635654373, guid: 88bcf4267d19f46c19c03a5b0bb781a6, type: 3}
+  powerRequired: 4
+  continual: 0
+  level: 0

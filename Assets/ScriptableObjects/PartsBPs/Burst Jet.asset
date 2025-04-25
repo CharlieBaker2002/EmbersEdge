@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Burst Jet
+  m_EditorClassIdentifier: 
+  s: {fileID: 1389615900, guid: bae8abdda0cc94773a29903786f7de82, type: 3}
+  g: {fileID: 8285825329595479512, guid: f14a2158b4ed640e59a49f0968a70787, type: 3}
+  cost: 00000000000000000100000000000000
+  shopCost: 142.99861
+  description: Provides a low-cap high thrust only when moving forwards, relative
+    to the jet's rotation.
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 495133798118717334, guid: f14a2158b4ed640e59a49f0968a70787, type: 3}
+  powerRequired: 5
+  continual: 0
+  level: 0
