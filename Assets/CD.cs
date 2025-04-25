@@ -24,7 +24,6 @@ public class CD : MonoBehaviour
         sr.material = Instantiate(rad);
         mat = sr.material;
         transform.rotation = rot;
-        Debug.Log("This is a test!");
     }
     
     public void SetValue(float t)
