@@ -62,7 +62,17 @@ public class Unit : MonoBehaviour, IClickable
 
         if (enemyID != -1)
         {
-            EnemyTracker.enemies[enemyID].Add(transform);
+            // Ensure the sub‑list exists
+            while (enemyID >= EnemyTracker.enemies.Count)
+            {
+                EnemyTracker.enemies.Add(new List<Transform>());
+            }
+            // Add only once
+            var list = EnemyTracker.enemies[enemyID];
+            if (!list.Contains(transform))
+            {
+                list.Add(transform);
+            }
         }
     }
     
@@ -575,9 +585,9 @@ public class Unit : MonoBehaviour, IClickable
             s.Dissapear();
             StatusComplete(s.ind);
         }
-        if (enemyID != -1)
+        if (enemyID != -1 && enemyID < EnemyTracker.enemies.Count)
         {
-            EnemyTracker.enemies[enemyID].Add(transform);
+            EnemyTracker.enemies[enemyID].Remove(transform);
         }
     }
 
@@ -656,10 +666,5 @@ public class Unit : MonoBehaviour, IClickable
         float newStrength = ls.ModifyShieldStrength(shieldID, amount);
         updateShields = true;
         return newStrength;
-    }
-
-    public void OnBecameInvisible()
-    {
-        Debug.Log("sup");
     }
 }

@@ -4008,6 +4008,7 @@ GameObject:
   - component: {fileID: 269883318}
   - component: {fileID: 269883319}
   - component: {fileID: 269883320}
+  - component: {fileID: 269883321}
   m_Layer: 0
   m_Name: Manager
   m_TagString: Manager
@@ -5228,6 +5229,30 @@ MonoBehaviour:
   - {r: 0.36862746, g: 0.33333334, b: 0.33333334, a: 1}
   - {r: 0.5019608, g: 0.4627451, b: 0.4627451, a: 1}
   - {r: 0.61960787, g: 0.59607846, b: 0.59607846, a: 1}
+--- !u!114 &269883321
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 269883297}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bcc3a0385a8a9402e970a235679140e7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  dir: {fileID: 2852018598874415560, guid: da24cc5c8208f4c2eaea92d5572ee1e8, type: 3}
+  sprs1:
+  - {fileID: 7847349424350885056, guid: 7ec050198bafa40c29f4cf81a06adc8d, type: 3}
+  - {fileID: -3195088612847471051, guid: 4d1f7d14a5e0f4ea8ae983518988ab86, type: 3}
+  - {fileID: -4647166553735543983, guid: bdd0abf6da5904a8ea58bcfc6a6c4572, type: 3}
+  - {fileID: 8596333383325764368, guid: 71f339258bca7426599e40ae118672d0, type: 3}
+  - {fileID: 2076815489, guid: 6a1c5071a8a3b4e89b558b4d0699911a, type: 3}
+  - {fileID: 97359266, guid: 57dbc5ef0efab484a9d8272ea7d171ea, type: 3}
+  - {fileID: 5626488752678901472, guid: bcb7f80b0137b48e7957fb5ad942b013, type: 3}
+  sprs2: []
+  sprs3: []
+  cam: {fileID: 519420031}
 --- !u!1 &287709322
 GameObject:
   m_ObjectHideFlags: 0
@@ -5498,7 +5523,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 000000003535f038
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 81
+  m_LightOrder: 393
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -10601,7 +10626,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e781346bb21f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 82
+  m_LightOrder: 394
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -80391,6 +80416,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 742f80f1ab74c4382ae091fb01634af8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  enemyID: -1
   ls: {fileID: 1033488695}
   AS: {fileID: 1033488693}
   anim: {fileID: 0}
@@ -80419,6 +80445,10 @@ MonoBehaviour:
   miniMarker: {fileID: 1033488691}
   boostBools: 000000
   spellCDs:
+  - 0
+  - 0
+  - 0
+  spellmaxCDs:
   - 0
   - 0
   - 0
@@ -85139,7 +85169,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e633535f038b9059c35b94e3c0519396211bf7a45e71f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 83
+  m_LightOrder: 395
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3

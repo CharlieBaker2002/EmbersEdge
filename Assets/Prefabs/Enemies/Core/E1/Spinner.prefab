@@ -530,6 +530,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a6b8e54bc6ac41c9afdef58f472fb5f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  enemyID: 4
   ls: {fileID: 1101980826691604966}
   AS: {fileID: 7980688282547374970}
   anim: {fileID: 245322557102578559}
@@ -544,6 +545,7 @@ MonoBehaviour:
   converted: 0
   leechTime: -1
   description: 
+  isCharacter: 0
   col: {fileID: 1927791505250838114}
   rots:
   - {fileID: 4427977248109149218}

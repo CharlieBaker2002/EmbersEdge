@@ -325,6 +325,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f6d91686f04884d5497e9920e9a06c0f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  enemyID: 3
   ls: {fileID: 6048577236590137728}
   AS: {fileID: 6048577236590137729}
   anim: {fileID: 6048577236590137730}
@@ -339,6 +340,7 @@ MonoBehaviour:
   converted: 0
   leechTime: -1
   description: 
+  isCharacter: 0
   proj: {fileID: 9126984509086520989, guid: be780903257384ea3b37b4f2b0c5f9c7, type: 3}
   shootP: {fileID: 6048577236305714361}
   shooting: 0

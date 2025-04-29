@@ -189,6 +189,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 79a5fb832330d4e84b39f52531e5dba7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  enemyID: 0
   ls: {fileID: 4024567797472388915}
   AS: {fileID: 4024567797472388920}
   anim: {fileID: 4024567797472388927}
@@ -203,6 +204,7 @@ MonoBehaviour:
   converted: 0
   leechTime: -1
   description: 
+  isCharacter: 0
   proj: {fileID: 4135529601109824900, guid: 5e061e557d14a4f669c5ba03a2ae945f, type: 3}
   sp: {fileID: 4024567797940900107}
 --- !u!114 &4024567797472388920

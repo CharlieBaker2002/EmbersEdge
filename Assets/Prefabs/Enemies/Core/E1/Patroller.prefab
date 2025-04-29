@@ -53,6 +53,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95e7be183dd9f4810bc35a9c8921e45c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  enemyID: 1
   ls: {fileID: 415728676742227379}
   AS: {fileID: 5664962195153553901}
   anim: {fileID: 6815468765633851216}
@@ -67,6 +68,7 @@ MonoBehaviour:
   converted: 0
   leechTime: -1
   description: 
+  isCharacter: 0
   vulnerablePoint: {fileID: 2821006393660505845, guid: 113dd9c6f53fb48298bf2ae6be1008b1, type: 3}
 --- !u!95 &6815468765633851216
 Animator:

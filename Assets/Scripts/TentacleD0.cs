@@ -1,10 +1,14 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 public class TentacleD0 : Tentacle
 {
     private Transform enemy = null;
+    [SerializeField] private Room r;
+    private bool added = false;
 
     private void OnEnable()
     {
@@ -17,9 +21,19 @@ public class TentacleD0 : Tentacle
         fluidness = 1;
         hastiness = 0.12f;
     }
+    
+    private void OnDestroy()
+    {
+        EnemyTracker.enemies[7].Remove(transform);
+    }
 
     private void Update()
     {
+        if (!added && DM.i.activeRoom == r)
+        {
+            EnemyTracker.enemies[7].Add(transform);
+            added = true;
+        }
         if (busy)
         {
             return;

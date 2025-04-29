@@ -33,6 +33,7 @@ public class E1_0 : Unit, IOnCollide, IOnDeath
     protected override void Start()
     {
         rb.angularVelocity = 50f * GS.PlusMinus();
+        base.Start();
     }
 
     protected override void Update()

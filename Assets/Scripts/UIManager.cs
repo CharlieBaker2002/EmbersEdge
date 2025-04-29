@@ -6,7 +6,6 @@ using TMPro;
 using System;
 using System.Linq;
 using UnityEngine.InputSystem;
-using UnityEngine.UIElements;
 using Image = UnityEngine.UI.Image;
 
 public class UIManager : MonoBehaviour
@@ -14,6 +13,7 @@ public class UIManager : MonoBehaviour
     public static UIManager i;
     public Image background;
     public RectTransform canvas;
+    public RectTransform directors;
     public Transform dmgTextParent;
     public float scaler;
     public float lifeTime = 1.5f;
