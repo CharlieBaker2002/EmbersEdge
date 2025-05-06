@@ -1414,8 +1414,12 @@ public static class GS
     /// <summary>
     /// era 0 = 0
     /// </summary>
-    public static Material MatByEra(int era, bool bright = false)
+    public static Material MatByEra(int era, bool bright = false, bool lit = false)
     {
+        if (lit)
+        {
+            return SpawnManager.instance.eraMats[era + 6];
+        }
         if (!bright)
         {
             return SpawnManager.instance.eraMats[era];
