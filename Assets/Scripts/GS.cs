@@ -1701,11 +1701,11 @@ public static class GS
         }
     }
     
-    public static void LeanAnimate(this SpriteRenderer sr, Sprite[] sprs, float t, bool fullCycle = false, bool flipped = false)
+    public static LTDescr LeanAnimate(this SpriteRenderer sr, Sprite[] sprs, float t, bool fullCycle = false, bool flipped = false)
     {
         if (flipped)
         {
-            LeanTween.value(1, 0, t).setOnUpdate((float x) => sr.sprite = PercentParameter(sprs, x)).setOnComplete(() =>
+            return LeanTween.value(1, 0, t).setOnUpdate((float x) => sr.sprite = PercentParameter(sprs, x)).setOnComplete(() =>
             {
                 if (fullCycle)
                 {
@@ -1715,7 +1715,7 @@ public static class GS
         }
         else
         {
-            LeanTween.value(0, 1, t).setOnUpdate((float x) => sr.sprite = PercentParameter(sprs, x)).setOnComplete(() =>
+            return LeanTween.value(0, 1, t).setOnUpdate((float x) => sr.sprite = PercentParameter(sprs, x)).setOnComplete(() =>
             {
                 if (fullCycle)
                 {
@@ -1726,11 +1726,11 @@ public static class GS
      
     }
     
-    public static void LeanAnimateFPS(this SpriteRenderer sr, Sprite[] sprs, int FPS, bool fullCycle = false, bool flipped = false)
+    public static LTDescr LeanAnimateFPS(this SpriteRenderer sr, Sprite[] sprs, int FPS, bool fullCycle = false, bool flipped = false)
     {
         if (flipped)
         {
-            LeanTween.value(1f, 0f,  (float)sprs.Length / FPS).setOnUpdate((float x) => sr.sprite = PercentParameter(sprs, x)).setOnComplete(() =>
+            return LeanTween.value(sr.gameObject,1f, 0f,  (float)sprs.Length / FPS).setOnUpdate((float x) => sr.sprite = PercentParameter(sprs, x)).setOnComplete(() =>
             {
                 if (fullCycle)
                 {
@@ -1740,7 +1740,7 @@ public static class GS
         }
         else
         {
-            LeanTween.value(0f, 1f, (float)sprs.Length / FPS).setOnUpdate((float x) => sr.sprite = PercentParameter(sprs, x)).setOnComplete(() =>
+            return LeanTween.value(sr.gameObject,0f, 1f, (float)sprs.Length / FPS).setOnUpdate((float x) => sr.sprite = PercentParameter(sprs, x)).setOnComplete(() =>
             {
                 if (fullCycle)
                 {

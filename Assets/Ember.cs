@@ -47,37 +47,41 @@ public class Ember : MonoBehaviour
     // ──────────────────────────  MAIN SEQUENCE  ──────────────────────────
     void PlaySequence()
     {
-        var seq = LeanTween.sequence();
+        //     var seq = LeanTween.sequence();
+        //     
+        //     // — 1. Charge-up animation ————————————————————————————
+        //     seq.append(LeanTween.delayedCall(gameObject, loadTime, () => sr.LeanAnimateFPS(loadSprites, (int)loadFPS)).setEase(loadEase));
+        //
+        //     // — 2. Random flicker ("on" state) ——————————————————————
+        //     seq.append(() =>
+        //         seq.append(LeanTween.delayedCall(gameObject, flickerDuration,
+        //             () => flickerRoutine = StartCoroutine(RandomFlicker()))));
+        //
+        //     // — 3. Arc flight ——————————————————————————————————————
+        //     Vector3 start = transform.position;
+        //     Vector3 mid1 = Vector3.Lerp(spawnPos, to, 0.2f) + Vector3.right * arcHeight;
+        //     Vector3 mid2 = Vector3.Lerp(spawnPos, to, 0.8f) + Vector3.left * arcHeight;
+        //     Vector3[] path = { start, mid1, mid2, to };
+        //
+        //     seq.append(
+        //         LeanTween.move(gameObject, path, flightTime)
+        //                  .setEase(flightEase)
+        //                  .setOnUpdate((Vector3 v) => FaceHeading(v))
+        //     );
+        //
+        //     // — 4. Power-down animation ————————————————————————————
+        //     seq.append(LeanTween.delayedCall(gameObject, offTime, () =>
+        //     {
+        //         if (flickerRoutine != null) StopCoroutine(flickerRoutine);
+        //         sr.LeanAnimateFPS(offSprites, (int)offFPS);
+        //     }
+        //
+        //     // — 5. Destroy when finished ————————————————————————————
+        //     seq.append(() => Destroy(gameObject));
+        // }
         
-        // — 1. Charge-up animation ————————————————————————————
-        seq.append(LeanTween.delayedCall(gameObject, loadTime, () => sr.LeanAnimateFPS(loadSprites, (int)loadFPS)).setEase(loadEase));
-
-        // — 2. Random flicker ("on" state) ——————————————————————
-        seq.append(() =>
-            seq.append(LeanTween.delayedCall(gameObject, flickerDuration,
-                () => flickerRoutine = StartCoroutine(RandomFlicker()))));
-
-        // — 3. Arc flight ——————————————————————————————————————
-        Vector3 start = transform.position;
-        Vector3 mid1 = Vector3.Lerp(spawnPos, to, 0.2f) + Vector3.right * arcHeight;
-        Vector3 mid2 = Vector3.Lerp(spawnPos, to, 0.8f) + Vector3.left * arcHeight;
-        Vector3[] path = { start, mid1, mid2, to };
-
-        seq.append(
-            LeanTween.move(gameObject, path, flightTime)
-                     .setEase(flightEase)
-                     .setOnUpdate((Vector3 v) => FaceHeading(v))
-        );
-
-        // — 4. Power-down animation ————————————————————————————
-        seq.append(LeanTween.delayedCall(gameObject, offTime, () =>
-        {
-            if (flickerRoutine != null) StopCoroutine(flickerRoutine);
-            sr.LeanAnimateFPS(offSprites, (int)offFPS);
-        }).setEase(offEase));
-
-        // — 5. Destroy when finished ————————————————————————————
-        seq.append(() => Destroy(gameObject));
+        var seq = LeanTween.sequence();
+        seq.append(sr.LeanAnimate(loadSprites, loadTime));
     }
 
     // ──────────────────────────  HELPERS  ──────────────────────────
