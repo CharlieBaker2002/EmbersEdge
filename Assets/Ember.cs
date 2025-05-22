@@ -10,6 +10,8 @@ public class Ember : MonoBehaviour
     [SerializeField] private Sprite[] loadSprites;   // charge-up frames
     [SerializeField] private Sprite[] onSprites;     // random flicker frames
     [SerializeField] private Sprite[] offSprites;    // power-down frames
+    [SerializeField] private ParticleSystem ps;
+    [SerializeField] private GameObject ps2;
 
     [Header("Flight")]
     [SerializeField] private Vector3 to;          // world destination
@@ -32,9 +34,8 @@ public class Ember : MonoBehaviour
 
     // ──────────────────────────  RUNTIME  ──────────────────────────
     Vector3 spawnPos;
-    Vector3 prevPos;                 // for heading
-    Coroutine flickerRoutine;
-
+    Vector2 prevPos;                 // for heading
+    private Vector2 current;
     void Awake()
     {
         if (!sr) sr = GetComponent<SpriteRenderer>();
@@ -47,41 +48,22 @@ public class Ember : MonoBehaviour
     // ──────────────────────────  MAIN SEQUENCE  ──────────────────────────
     void PlaySequence()
     {
-        //     var seq = LeanTween.sequence();
-        //     
-        //     // — 1. Charge-up animation ————————————————————————————
-        //     seq.append(LeanTween.delayedCall(gameObject, loadTime, () => sr.LeanAnimateFPS(loadSprites, (int)loadFPS)).setEase(loadEase));
-        //
-        //     // — 2. Random flicker ("on" state) ——————————————————————
-        //     seq.append(() =>
-        //         seq.append(LeanTween.delayedCall(gameObject, flickerDuration,
-        //             () => flickerRoutine = StartCoroutine(RandomFlicker()))));
-        //
-        //     // — 3. Arc flight ——————————————————————————————————————
-        //     Vector3 start = transform.position;
-        //     Vector3 mid1 = Vector3.Lerp(spawnPos, to, 0.2f) + Vector3.right * arcHeight;
-        //     Vector3 mid2 = Vector3.Lerp(spawnPos, to, 0.8f) + Vector3.left * arcHeight;
-        //     Vector3[] path = { start, mid1, mid2, to };
-        //
-        //     seq.append(
-        //         LeanTween.move(gameObject, path, flightTime)
-        //                  .setEase(flightEase)
-        //                  .setOnUpdate((Vector3 v) => FaceHeading(v))
-        //     );
-        //
-        //     // — 4. Power-down animation ————————————————————————————
-        //     seq.append(LeanTween.delayedCall(gameObject, offTime, () =>
-        //     {
-        //         if (flickerRoutine != null) StopCoroutine(flickerRoutine);
-        //         sr.LeanAnimateFPS(offSprites, (int)offFPS);
-        //     }
-        //
-        //     // — 5. Destroy when finished ————————————————————————————
-        //     seq.append(() => Destroy(gameObject));
-        // }
-        
-        var seq = LeanTween.sequence();
+        var em = ps.emission;
+        float speed = 1f + Random.Range(-0.3f,0.3f);
+        var seq = LeanTween.sequence().insert(LeanTween.value(gameObject, 0f, 30f, loadTime).setOnUpdate(t => em.rateOverTime = t));
         seq.append(sr.LeanAnimate(loadSprites, loadTime));
+        seq.append(() => StartCoroutine(RandomFlicker()));
+        Vector3 start = transform.position;
+        Vector3 dirSide = ((Vector2)(to - start)).Rotated(90f);
+        Vector3 mid1 = Vector3.Lerp(spawnPos, to, 0.35f) + Random.Range(-0.6f,0.6f)*dirSide * arcHeight;
+        Vector3 mid2 = Vector3.Lerp(spawnPos, to, 0.7f) + Random.Range(-0.3f,0.3f)*dirSide * arcHeight;
+        Vector3[] path = { start, mid1, mid2, to };
+        seq.append(LeanTween.delayedCall(0.4f * speed, () => { }));
+        seq.append(LeanTween.move(gameObject, path, flightTime * speed).setEase(flightEase).setOnUpdate((Vector3 v) => FaceHeading()));
+        seq.append(LeanTween.delayedCall(gameObject,0f, StopAllCoroutines)).insert(LeanTween.value(gameObject, 30f, 0f, offTime).setOnUpdate(t => em.rateOverTime = t));
+        seq.append(()=> ps2.SetActive(true));
+        seq.append(sr.LeanAnimate(offSprites, offTime));
+        seq.append(LeanTween.delayedCall(gameObject, 1f, () => Destroy(gameObject)));
     }
 
     // ──────────────────────────  HELPERS  ──────────────────────────
@@ -94,14 +76,13 @@ public class Ember : MonoBehaviour
         }
     }
 
-    void FaceHeading(Vector3 current)
+    void FaceHeading()
     {
-        Vector2 dir = current - prevPos;
-        if (dir.sqrMagnitude > 0.0001f)
-        {
-            float z = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
-            transform.rotation = Quaternion.Euler(0, 0, z);
-            prevPos = current;
-        }
+        current = transform.position;
+        var dir = current - prevPos;
+        if (!(dir.sqrMagnitude > 0.0000001f)) return;
+        float z = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
+        transform.rotation = Quaternion.Euler(0, 0, z - 90);
+        prevPos = current;
     }
 }
