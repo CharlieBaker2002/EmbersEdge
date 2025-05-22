@@ -13,8 +13,7 @@ public class BM : MonoBehaviour //Building Manager
     public List<Building> buildings; //active
     public GameObject UIPrefab;
     public Transform[] UIspots;
-    [HideInInspector]
-    public int[] cost = new int[4];
+    [HideInInspector] public int[] cost = new int[4];
     private GameObject redbuildingPrefab;
     private Action<InputAction.CallbackContext> clickAction;
     private Action<InputAction.CallbackContext> escape;
@@ -23,12 +22,15 @@ public class BM : MonoBehaviour //Building Manager
     [SerializeField] DaddyBuildingTile[] daddies;
     [SerializeField] Transform[] daddyTs;
     private BuildingTile recent;
-    private Vector2 size;
-    [HideInInspector]
-    public bool planting = false;
+    // Stores the original colour for each building sprite so it can be restored later
+    private readonly Dictionary<SpriteRenderer, Color> originalColors = new Dictionary<SpriteRenderer, Color>();
+    [HideInInspector] public bool planting = false;
     public bool added = false;
     public Action<InputAction.CallbackContext> goToDaddy;
 
+    [SerializeField] Vector2Int gridSize = new Vector2Int(1,1); // size in cells
+    Vector2Int anchorCell;                                      // where we’re hovering
+    
     private void Awake()
     {
         i = this;
@@ -45,6 +47,40 @@ public class BM : MonoBehaviour //Building Manager
     {
         IM.i.pi.Player.Escape.performed -= goToDaddy;
         added = false;
+    }
+
+    void ChangeBuildingColour(bool on)
+    {
+        foreach (SpriteRenderer s in GS.FindParent(GS.Parent.buildings).GetComponentsInChildren<SpriteRenderer>())
+        {
+            if (!on)
+            {
+                // Remember the sprite's existing colour the first time we dim it
+                if (!originalColors.ContainsKey(s))
+                {
+                    originalColors.Add(s, s.color);
+                }
+                s.color = new Color(1f, 1f, 1f, 0.2f);
+            }
+            else
+            {
+                // Revert to the stored colour, or white if we somehow never stored it
+                if (originalColors.TryGetValue(s, out var original))
+                {
+                    s.color = original;
+                }
+                else
+                {
+                    s.color = new Color(1f, 1f, 1f, 1f);
+                }
+            }
+        }
+
+        // Once colours are restored we can clear the cache
+        if (on)
+        {
+            originalColors.Clear();
+        }
     }
 
     private void Start()
@@ -68,6 +104,7 @@ public class BM : MonoBehaviour //Building Manager
         {
             return;
         }
+
         bool wasActive = UI.activeInHierarchy;
         UIManager.CloseAllUIs();
         if (!wasActive)
@@ -76,6 +113,7 @@ public class BM : MonoBehaviour //Building Manager
             {
                 IM.i.OpenCursor();
             }
+
             UI.SetActive(true);
             IM.i.pi.Player.Interact.Enable();
             DetermineFitDaddies();
@@ -91,10 +129,11 @@ public class BM : MonoBehaviour //Building Manager
         UI.SetActive(false);
         Escape(false);
         DestroyChildren();
-        foreach(DaddyBuildingTile d in daddies)
+        foreach (DaddyBuildingTile d in daddies)
         {
             d.gameObject.SetActive(false);
         }
+
         foreach (OrbPylon p in ResourceManager.instance.pylons)
         {
             p.lr.enabled = false;
@@ -117,9 +156,18 @@ public class BM : MonoBehaviour //Building Manager
         recent = r;
         redbuildingPrefab = g;
         redBuilding = Instantiate(g);
-        redbuildingPrefab.transform.position = new Vector3(redbuildingPrefab.transform.position.x, redbuildingPrefab.transform.position.y, 0f);
-        redBuilding.GetComponent<SpriteRenderer>().color = Color.red;
-        size = redBuilding.GetComponentInChildren<Building>(true).size;
+        redbuildingPrefab.transform.position = new Vector3(redbuildingPrefab.transform.position.x,
+            redbuildingPrefab.transform.position.y, 0f);
+        foreach(SpriteRenderer s in redBuilding.GetComponentsInChildren<SpriteRenderer>(true))
+        {
+            s.color = new Color(0f, 0f, 0f, 0.5f);
+        }
+
+        ChangeBuildingColour(false);
+        Vector2 bSize = redBuilding.GetComponentInChildren<Building>(true).size;
+        gridSize = new Vector2Int(
+            Mathf.Max(1, Mathf.RoundToInt(bSize.x / GridManager.I.cellSize)),
+            Mathf.Max(1, Mathf.RoundToInt(bSize.y / GridManager.I.cellSize)));
         IM.i.pi.Player.Interact.performed += clickAction;
         IM.i.pi.Player.Escape.performed += escape;
         IM.i.pi.Player.Escape.performed -= UIManager.i.escapeDel;
@@ -127,74 +175,52 @@ public class BM : MonoBehaviour //Building Manager
         planting = true;
         StartCoroutine(BuildingFollowMouse());
     }
-    
+
     private IEnumerator BuildingFollowMouse()
     {
         yield return null;
         IM.i.pi.Player.Interact.Enable();
-        Collider2D col = redBuilding.GetComponentInChildren<Collider2D>(true);
-        SpriteRenderer sr = redBuilding.GetComponent<SpriteRenderer>();
-        Position(redBuilding.transform);
-        int[] orbs = new int[] { 0, 0, 0, 0 };
-        GS.CopyArray(ref orbs, cost);
+        GridManager.I.ActivateGrid();
         while (redBuilding != null)
         {
             yield return new WaitForFixedUpdate();
-            if (redBuilding == null)
-            {
-                yield break;
-            }
+            if (redBuilding == null) yield break;
+
+            // Snap to grid and preview footprint
             Position(redBuilding.transform);
-            sr.color = Color.red;
-            bool red = false;
+
+            // ----- pylons / orb‑cost range check (preserves old behaviour) -----
+            int[] orbs = new int[4];
             GS.CopyArray(ref orbs, cost);
-            foreach (OrbPylon m in ResourceManager.instance.pylons) //update for both pylons
+
+            foreach (OrbPylon m in ResourceManager.instance.pylons)
             {
                 if (orbs[m.orbType] > 0)
                 {
-                    if (m.mag.initialMag)
-                    {
-                        if (Vector2.Distance(Vector3.zero, redBuilding.transform.position) < m.radius)                                  //check in range of magnets
-                        {
-                            orbs[m.orbType] = 0;
-                        }
-                    }
-                    else if (Vector2.Distance(m.transform.position, redBuilding.transform.position) < m.radius)                                  //check in range of magnets
-                    {
-                        orbs[m.orbType] = 0;
-                    }
-                }
-            }
-            if (Mathf.Max(orbs) > 0)
-            {
-                continue;
-            }
-            if (!MapManager.InsideBounds(redBuilding.transform.position))
-            {
-                continue;
-            }
+                    bool inRange = m.mag.initialMag
+                        ? Vector2.Distance(Vector3.zero, redBuilding.transform.position) < m.radius
+                        : Vector2.Distance(m.transform.position, redBuilding.transform.position) < m.radius;
 
-            Bounds two = new Bounds(col.transform.position, col is BoxCollider2D b? b.size : ((CircleCollider2D)col).radius * 2f * Vector2.one);
-            foreach (Building x in buildings)                                                                                             //check for collisions
-            {
-                if(x ==null) continue;
-                if (x.col == null) continue;
-                if (two.Intersects(new Bounds(x.transform.position, x.col is BoxCollider2D z? z.size : ((CircleCollider2D)x.col).radius * 2f * Vector2.one)))
-                {
-                    red = true;
-                    break;
+                    if (inRange) orbs[m.orbType] = 0;
                 }
             }
-            if (!red)
-            {
-                sr.color = Color.green;
-            }
+            bool pylonsClear = Mathf.Max(orbs) == 0;
+            // ---------------------------------------------------------------
+
+            bool gridClear   = GridManager.I.AreaClear(anchorCell, gridSize);
+            bool boundsClear = MapManager.InsideBounds(redBuilding.transform.position);
+            bool canPlace    = pylonsClear && gridClear && boundsClear;
+
+            // colour overlay & sprite tint
+            GridManager.I.PreviewArea(anchorCell, gridSize, canPlace);
         }
     }
 
     public void Escape(bool activateGoToDaddy = true)
     {
         StopAllCoroutines();
+        GridManager.I.DeactivateGrid();
+        ChangeBuildingColour(true);
         if (redBuilding != null)
         {
             ResourceManager.instance.CanAfford(cost, true);
@@ -203,17 +229,20 @@ public class BM : MonoBehaviour //Building Manager
             {
                 p.lr.enabled = false;
             }
+
             redBuilding = null;
         }
+
         IM.i.pi.Player.Interact.performed -= clickAction;
         IM.i.pi.Player.Escape.performed -= escape;
         if (activateGoToDaddy)
         {
             AddDaddyDel();
         }
+
         planting = false;
     }
-   
+
     private void TryPlace()
     {
         if (redBuilding == null)
@@ -221,187 +250,183 @@ public class BM : MonoBehaviour //Building Manager
             return;
         }
 
-        if (redBuilding.GetComponent<SpriteRenderer>().color == Color.green)
+        if (!GridManager.I.AreaClear(anchorCell, gridSize))
+            return;
+
+        GridManager.I.SetArea(anchorCell, gridSize, true);
+        GridManager.I.DeactivateGrid();
+        ChangeBuildingColour(true);
+        
+        foreach(SpriteRenderer s in redBuilding.GetComponentsInChildren<SpriteRenderer>(true))
         {
-            var ground = redBuilding.GetComponentInChildren<Building>(true).groundEdit;
-            if (ground != null) ground.SetActive((true));
-            foreach (FastSpriteDecompressor fsd in redBuilding.GetComponentsInChildren<FastSpriteDecompressor>(true))
-            {
-                fsd.enabled = true;
-            }
-
-            var bros = redBuilding.GetComponents<OrbMagnet>().Where(x=> x.typ == OrbMagnet.OrbType.Task).ToArray();
-            
-            redBuilding.transform.parent = GS.FindParent(GS.Parent.buildings);
-            buildings.Add(redBuilding.GetComponentInChildren<Building>(true));
-            redBuilding.GetComponent<SpriteRenderer>().color = new Color(1f, 1f, 1f);
-            var SD = redBuilding.GetComponentsInChildren<SpriteDecompressor>(true);
-            foreach (OrbMagnet om in bros)
-            {
-                if (om.typ == OrbMagnet.OrbType.Task)
-                {
-                    foreach (var o in bros)
-                    {
-                        if (o != om)
-                        {
-                            om.siblingTs.Add(o);
-                        }
-                    }
-                    var building = redBuilding.GetComponentInChildren<Building>(true);
-                    om.action = delegate
-                    {
-                        Destroy(building.GetComponent<Collider2D>());
-                        building.physic.gameObject.SetActive(true);
-                    };
-                    foreach (var spriteDecompressor in SD)
-                    {
-                        spriteDecompressor.oms.Add(om);
-                    }
-                }
-            }
-
-            foreach (OrbMagnet om in bros)
-            {
-                om.enabled = true;
-            }
-            
-            foreach (var sd in SD)
-            {
-                sd.enabled = true;
-            }
-            planting = false;
-            redBuilding = null;
-            IM.i.pi.Player.Interact.performed -= clickAction;
-            IM.i.pi.Player.Escape.performed -= escape;
-            IM.i.pi.Player.Escape.performed += UIManager.i.escapeDel;
-            GS.QA(() =>
-            {
-                if (ResourceManager.instance.CanAfford(recent.cost, false, false))
-                {
-                    recent.OnClick();
-                }
-            }, 2);
+            s.color = new Color(1f,1f,1f,1f);
         }
+
+        var ground = redBuilding.GetComponentInChildren<Building>(true).groundEdit;
+        if (ground != null) ground.SetActive((true));
+        foreach (FastSpriteDecompressor fsd in redBuilding.GetComponentsInChildren<FastSpriteDecompressor>(true))
+        {
+            fsd.enabled = true;
+        }
+
+        var bros = redBuilding.GetComponents<OrbMagnet>().Where(x => x.typ == OrbMagnet.OrbType.Task).ToArray();
+
+        redBuilding.transform.parent = GS.FindParent(GS.Parent.buildings);
+        buildings.Add(redBuilding.GetComponentInChildren<Building>(true));
+        redBuilding.GetComponent<SpriteRenderer>().color = new Color(1f, 1f, 1f);
+        var SD = redBuilding.GetComponentsInChildren<SpriteDecompressor>(true);
+        foreach (OrbMagnet om in bros)
+        {
+            if (om.typ == OrbMagnet.OrbType.Task)
+            {
+                foreach (var o in bros)
+                {
+                    if (o != om)
+                    {
+                        om.siblingTs.Add(o);
+                    }
+                }
+
+                var building = redBuilding.GetComponentInChildren<Building>(true);
+                om.action = delegate
+                {
+                    Destroy(building.GetComponent<Collider2D>());
+                    building.physic.gameObject.SetActive(true);
+                };
+                foreach (var spriteDecompressor in SD)
+                {
+                    spriteDecompressor.oms.Add(om);
+                }
+            }
+        }
+
+        foreach (OrbMagnet om in bros)
+        {
+            om.enabled = true;
+        }
+
+        foreach (var sd in SD)
+        {
+            sd.enabled = true;
+        }
+
+        planting = false;
+        redBuilding = null;
+        IM.i.pi.Player.Interact.performed -= clickAction;
+        IM.i.pi.Player.Escape.performed -= escape;
+        IM.i.pi.Player.Escape.performed += UIManager.i.escapeDel;
+        GS.QA(() =>
+        {
+            if (ResourceManager.instance.CanAfford(recent.cost, false, false))
+            {
+                recent.OnClick();
+            }
+        }, 2);
     }
-    
+
+
     private void Position(Transform t)
-    {
-        Vector2 v2;
-        if (IM.controller)
         {
-            if (IM.i.CActive())
+            Vector2 worldMouse = IM.controller
+                ? IM.i.controllerCursor.position
+                : IM.i.MousePosition();
+            anchorCell = GridManager.I.WorldToGrid(worldMouse);
+            Vector3 snapped = GridManager.I.GridToWorld(anchorCell) + new Vector3(0.375f, 0.375f, 0f);
+            redBuilding.transform.position = snapped;
+            bool clear = GridManager.I.AreaClear(anchorCell, gridSize);
+            GridManager.I.PreviewArea(anchorCell, gridSize, clear);
+        }
+        
+        public void SetupDaddy(DaddyBuildingTile t)
+        {
+            t.transform.position = mainDaddyT.transform.position;
+            backButton.SetActive(true);
+            foreach (DaddyBuildingTile d in daddies)
             {
-                v2 = IM.i.controllerCursor.position;
-            }
-            else
-            {
-                throw new Exception("Wants controller cursor but c cursor gone!");
-            }
-        }
-        else
-        {
-            v2 = IM.i.MousePosition();
-        }
-        if (size == Vector2.one * 2)
-        {
-            t.position = new Vector3(Mathf.RoundToInt(2 * v2.x) / 2f, Mathf.RoundToInt(2 * v2.y) / 2f, 0);
-        }
-        else
-        {
-            t.position = new Vector3(Mathf.RoundToInt(2 * v2.x) / 2f, Mathf.RoundToInt(2 * v2.y) / 2f, 0);
-        }
-    }
-    
-    public void SetupDaddy(DaddyBuildingTile t)
-    {
-        t.transform.position = mainDaddyT.transform.position;
-        backButton.SetActive(true);
-        foreach (DaddyBuildingTile d in daddies)
-        {
-            if (d != t)
-            {
-                d.gameObject.SetActive(false);
-            }
-        }
-        int adjust = 0;
-        for (int i = 0; i < t.buildings.Length; i++)
-        {
-            bool has = false;
-            foreach (GameObject g in GetAllBuildings())
-            {
-                if (t.buildings[i] == g)
+                if (d != t)
                 {
-                    has = true;
-                    break;
+                    d.gameObject.SetActive(false);
                 }
             }
-            if (!has)
+            int adjust = 0;
+            for (int i = 0; i < t.buildings.Length; i++)
             {
-                adjust--;
-                continue;
-            }
-            var a = Instantiate(UIPrefab, UIspots[i+4 + adjust].position, Quaternion.identity, UI.transform);
-            BuildingTile tile = a.GetComponent<BuildingTile>();
-            Building build = t.buildings[i].GetComponentInChildren<Building>(true);
-            tile.img.sprite = build.icon == null ? build.sr.sprite : build.icon;
-            int[] costB = new int[4] { 0, 0, 0, 0 };
-            foreach (OrbMagnet om in t.buildings[i].GetComponents<OrbMagnet>())
-            {
-                if (om.typ == OrbMagnet.OrbType.Task)
+                bool has = false;
+                foreach (GameObject g in GetAllBuildings())
                 {
-                    costB[om.orbType] += om.capacity;
-                    om.init = true;
+                    if (t.buildings[i] == g)
+                    {
+                        has = true;
+                        break;
+                    }
+                }
+                if (!has)
+                {
+                    adjust--;
+                    continue;
+                }
+                var a = Instantiate(UIPrefab, UIspots[i+4 + adjust].position, Quaternion.identity, UI.transform);
+                BuildingTile tile = a.GetComponent<BuildingTile>();
+                Building build = t.buildings[i].GetComponentInChildren<Building>(true);
+                tile.img.sprite = build.icon == null ? build.sr.sprite : build.icon;
+                int[] costB = new int[4] { 0, 0, 0, 0 };
+                foreach (OrbMagnet om in t.buildings[i].GetComponents<OrbMagnet>())
+                {
+                    if (om.typ == OrbMagnet.OrbType.Task)
+                    {
+                        costB[om.orbType] += om.capacity;
+                        om.init = true;
+                    }
+                }
+                tile.cost = costB;
+                tile.txt.text = t.buildings[i].name;
+                tile.UpdateCost();
+                tile.ChangeBackground();
+                tile.buildingPrefab = t.buildings[i];
+            }
+        }
+        
+        void DetermineFitDaddies()
+        {
+            int pos = 0;
+            foreach (DaddyBuildingTile d in daddies)
+            {
+                if (d.buildings.Intersect(GetAllBuildings()).FirstOrDefault() != null)
+                {
+                    d.transform.position = daddyTs[pos].position;
+                    d.gameObject.SetActive(true);
+                    pos++;
+                }
+                else
+                {
+                    d.gameObject.SetActive(false);
                 }
             }
-            tile.cost = costB;
-            tile.txt.text = t.buildings[i].name;
-            tile.UpdateCost();
-            tile.ChangeBackground();
-            tile.buildingPrefab = t.buildings[i];
+            DaddyBuildingTile.current = null;
+            backButton.SetActive(false);
         }
-    }
-    
-    void DetermineFitDaddies()
-    {
-        int pos = 0;
-        foreach (DaddyBuildingTile d in daddies)
+        
+        void DestroyChildren()
         {
-            if (d.buildings.Intersect(GetAllBuildings()).FirstOrDefault() != null)
+            foreach (BuildingTile t in UI.GetComponentsInChildren<BuildingTile>(true))
             {
-                d.transform.position = daddyTs[pos].position;
-                d.gameObject.SetActive(true);
-                pos++;
-            }
-            else
-            {
-                d.gameObject.SetActive(false);
+                Destroy(t.gameObject);
             }
         }
-        DaddyBuildingTile.current = null;
-        backButton.SetActive(false);
-    }
-    
-    void DestroyChildren()
-    {
-        foreach (BuildingTile t in UI.GetComponentsInChildren<BuildingTile>(true))
+        
+        public void BackItUpOffDaddy(bool callEscape = true) // go back
         {
-            Destroy(t.gameObject);
+            DestroyChildren();
+            DetermineFitDaddies();
+            added = false;
+            if (callEscape)
+            {
+                Escape();
+            }
         }
-    }
-    
-    public void BackItUpOffDaddy(bool callEscape = true) // go back
-    {
-        DestroyChildren();
-        DetermineFitDaddies();
-        added = false;
-        if (callEscape)
+        
+        private List<GameObject> GetAllBuildings()
         {
-            Escape();
+            return BlueprintManager.GetBuildings(BlueprintManager.researched).Select((x => x.g)).Union(BlueprintManager.i.defaultBuildings).ToList();
         }
-    }
-    
-    private List<GameObject> GetAllBuildings()
-    {
-        return BlueprintManager.GetBuildings(BlueprintManager.researched).Select((x => x.g)).Union(BlueprintManager.i.defaultBuildings).ToList();
-    }
 }

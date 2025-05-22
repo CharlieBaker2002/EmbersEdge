@@ -78,6 +78,11 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
                 physic.GetComponent<IClickableCarrier>().clickable = this;
             }
         }
+        // Mark this building’s footprint on the grid if it already exists at game start.
+        if (builtYet)
+        {
+            RegisterGridOccupancy();
+        }
     }
 
     public void UpdateUI()
@@ -413,6 +418,24 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         upgradeAction = upgradeAct;
     }
     
+    /// <summary>
+    /// Marks the grid cells occupied by this building as filled in the GridManager.
+    /// </summary>
+    void RegisterGridOccupancy()
+    {
+        if (GridManager.I == null) return;
+
+        Vector2Int sizeCells = new Vector2Int(
+            Mathf.Max(1, Mathf.RoundToInt(size.x / GridManager.I.cellSize)),
+            Mathf.Max(1, Mathf.RoundToInt(size.y / GridManager.I.cellSize)));
+
+        // Anchor at the bottom‑left grid cell so the footprint matches the placement logic.
+        Vector2Int anchor = GridManager.I.WorldToGrid(transform.position)
+                             - new Vector2Int(sizeCells.x / 2, sizeCells.y / 2);
+
+        GridManager.I.SetArea(anchor, sizeCells, true);
+    }
+
     Vector2 PositionRegularly(int n, int max)
     {
         if (max == 1)
