@@ -10,6 +10,7 @@ public class BM : MonoBehaviour //Building Manager
     public static BM i;
     public GameObject UI;
     public GameObject redBuilding;
+    private Building rbb;
     public List<Building> buildings; //active
     public GameObject UIPrefab;
     public Transform[] UIspots;
@@ -24,6 +25,7 @@ public class BM : MonoBehaviour //Building Manager
     private BuildingTile recent;
     // Stores the original colour for each building sprite so it can be restored later
     private readonly Dictionary<SpriteRenderer, Color> originalColors = new Dictionary<SpriteRenderer, Color>();
+    private bool sampled = false;
     [HideInInspector] public bool planting = false;
     public bool added = false;
     public Action<InputAction.CallbackContext> goToDaddy;
@@ -49,9 +51,13 @@ public class BM : MonoBehaviour //Building Manager
         added = false;
     }
 
-    void ChangeBuildingColour(bool on)
+    public void ChangeBuildingColour(bool on)
     {
-        foreach (SpriteRenderer s in GS.FindParent(GS.Parent.buildings).GetComponentsInChildren<SpriteRenderer>())
+        if (!on && sampled) return;
+        sampled = !on;
+        if(!on && buildings[0].GetComponentInChildren<SpriteRenderer>().color == new Color(1f,1f,1f,0.1f)) return; //if already off return
+        if(on && buildings[0].GetComponentInChildren<SpriteRenderer>().color == new Color(1f,1f,1f,1f)) return; //if already on return
+        foreach (SpriteRenderer s in buildings.SelectMany(x => x.hasExtraParent ? x.transform.parent.GetComponentsInChildren<SpriteRenderer>()  : x.gameObject.GetComponentsInChildren<SpriteRenderer>()))
         {
             if (!on)
             {
@@ -68,10 +74,6 @@ public class BM : MonoBehaviour //Building Manager
                 if (originalColors.TryGetValue(s, out var original))
                 {
                     s.color = original;
-                }
-                else
-                {
-                    s.color = new Color(1f, 1f, 1f, 1f);
                 }
             }
         }
@@ -133,41 +135,26 @@ public class BM : MonoBehaviour //Building Manager
         {
             d.gameObject.SetActive(false);
         }
-
-        foreach (OrbPylon p in ResourceManager.instance.pylons)
-        {
-            p.lr.enabled = false;
-        }
     }
-
-    public void TurnOnPylonsByCost(int[] cost)
-    {
-        foreach (OrbPylon p in ResourceManager.instance.pylons)
-        {
-            if (cost[p.orbType] != 0)
-            {
-                p.lr.enabled = true;
-            }
-        }
-    }
-
+    
     public void BuildingFollowMouse(GameObject g, BuildingTile r)
     {
         recent = r;
         redbuildingPrefab = g;
         redBuilding = Instantiate(g);
+        rbb = redBuilding.GetComponentInChildren<Building>(true);
         redbuildingPrefab.transform.position = new Vector3(redbuildingPrefab.transform.position.x,
             redbuildingPrefab.transform.position.y, 0f);
         foreach(SpriteRenderer s in redBuilding.GetComponentsInChildren<SpriteRenderer>(true))
         {
             s.color = new Color(0f, 0f, 0f, 0.5f);
         }
-
+        GridManager.i.ActivateGrid();
         ChangeBuildingColour(false);
-        Vector2 bSize = redBuilding.GetComponentInChildren<Building>(true).size;
+        Vector2 bSize = rbb.size;
         gridSize = new Vector2Int(
-            Mathf.Max(1, Mathf.RoundToInt(bSize.x / GridManager.I.cellSize)),
-            Mathf.Max(1, Mathf.RoundToInt(bSize.y / GridManager.I.cellSize)));
+            Mathf.Max(1, Mathf.RoundToInt(bSize.x / GridManager.i.cellSize)),
+            Mathf.Max(1, Mathf.RoundToInt(bSize.y / GridManager.i.cellSize)));
         IM.i.pi.Player.Interact.performed += clickAction;
         IM.i.pi.Player.Escape.performed += escape;
         IM.i.pi.Player.Escape.performed -= UIManager.i.escapeDel;
@@ -180,7 +167,6 @@ public class BM : MonoBehaviour //Building Manager
     {
         yield return null;
         IM.i.pi.Player.Interact.Enable();
-        GridManager.I.ActivateGrid();
         while (redBuilding != null)
         {
             yield return new WaitForFixedUpdate();
@@ -189,47 +175,33 @@ public class BM : MonoBehaviour //Building Manager
             // Snap to grid and preview footprint
             Position(redBuilding.transform);
 
-            // ----- pylons / orb‑cost range check (preserves old behaviour) -----
-            int[] orbs = new int[4];
-            GS.CopyArray(ref orbs, cost);
+            // int[] orbs = new int[4];
+            // GS.CopyArray(ref orbs, cost);
 
-            foreach (OrbPylon m in ResourceManager.instance.pylons)
+            bool gridClear   = GridManager.i.AreaClear(anchorCell, gridSize);
+            bool boundClear = true;
+            for (int x = -1; x <= 1; x+=2)
             {
-                if (orbs[m.orbType] > 0)
+                for(int y = -1; y <= 1; y+=2)
                 {
-                    bool inRange = m.mag.initialMag
-                        ? Vector2.Distance(Vector3.zero, redBuilding.transform.position) < m.radius
-                        : Vector2.Distance(m.transform.position, redBuilding.transform.position) < m.radius;
-
-                    if (inRange) orbs[m.orbType] = 0;
+                    boundClear = MapManager.InsideBounds(redBuilding.transform.position + new Vector3(x*rbb.size.x,y*rbb.size.y) * 0.49f);
+                    if (boundClear == false) break;
                 }
+                if(boundClear == false) break;
             }
-            bool pylonsClear = Mathf.Max(orbs) == 0;
-            // ---------------------------------------------------------------
-
-            bool gridClear   = GridManager.I.AreaClear(anchorCell, gridSize);
-            bool boundsClear = MapManager.InsideBounds(redBuilding.transform.position);
-            bool canPlace    = pylonsClear && gridClear && boundsClear;
-
             // colour overlay & sprite tint
-            GridManager.I.PreviewArea(anchorCell, gridSize, canPlace);
+            GridManager.i.PreviewArea(anchorCell, gridSize, gridClear&&boundClear);
         }
     }
 
     public void Escape(bool activateGoToDaddy = true)
     {
         StopAllCoroutines();
-        GridManager.I.DeactivateGrid();
-        ChangeBuildingColour(true);
+        GridManager.i.DeactivateGrid();
         if (redBuilding != null)
         {
             ResourceManager.instance.CanAfford(cost, true);
             Destroy(redBuilding);
-            foreach (OrbPylon p in ResourceManager.instance.pylons)
-            {
-                p.lr.enabled = false;
-            }
-
             redBuilding = null;
         }
 
@@ -250,19 +222,18 @@ public class BM : MonoBehaviour //Building Manager
             return;
         }
 
-        if (!GridManager.I.AreaClear(anchorCell, gridSize))
+        if (!GridManager.i.AreaClear(anchorCell, gridSize))
             return;
 
-        GridManager.I.SetArea(anchorCell, gridSize, true);
-        GridManager.I.DeactivateGrid();
-        ChangeBuildingColour(true);
+        GridManager.i.SetArea(anchorCell, gridSize, true);
+        GridManager.i.DeactivateGrid();
         
         foreach(SpriteRenderer s in redBuilding.GetComponentsInChildren<SpriteRenderer>(true))
         {
             s.color = new Color(1f,1f,1f,1f);
         }
 
-        var ground = redBuilding.GetComponentInChildren<Building>(true).groundEdit;
+        var ground = rbb.groundEdit;
         if (ground != null) ground.SetActive((true));
         foreach (FastSpriteDecompressor fsd in redBuilding.GetComponentsInChildren<FastSpriteDecompressor>(true))
         {
@@ -272,7 +243,7 @@ public class BM : MonoBehaviour //Building Manager
         var bros = redBuilding.GetComponents<OrbMagnet>().Where(x => x.typ == OrbMagnet.OrbType.Task).ToArray();
 
         redBuilding.transform.parent = GS.FindParent(GS.Parent.buildings);
-        buildings.Add(redBuilding.GetComponentInChildren<Building>(true));
+        buildings.Add(rbb);
         redBuilding.GetComponent<SpriteRenderer>().color = new Color(1f, 1f, 1f);
         var SD = redBuilding.GetComponentsInChildren<SpriteDecompressor>(true);
         foreach (OrbMagnet om in bros)
@@ -286,12 +257,14 @@ public class BM : MonoBehaviour //Building Manager
                         om.siblingTs.Add(o);
                     }
                 }
-
-                var building = redBuilding.GetComponentInChildren<Building>(true);
                 om.action = delegate
                 {
-                    Destroy(building.GetComponent<Collider2D>());
-                    building.physic.gameObject.SetActive(true);
+                    if (rbb != null) return;
+                    if (rbb.TryGetComponent<Collider2D>(out var col))
+                    {
+                        Destroy(rbb.GetComponent<Collider2D>());
+                    }
+                    rbb.physic.gameObject.SetActive(true);
                 };
                 foreach (var spriteDecompressor in SD)
                 {
@@ -330,11 +303,11 @@ public class BM : MonoBehaviour //Building Manager
             Vector2 worldMouse = IM.controller
                 ? IM.i.controllerCursor.position
                 : IM.i.MousePosition();
-            anchorCell = GridManager.I.WorldToGrid(worldMouse);
-            Vector3 snapped = GridManager.I.GridToWorld(anchorCell) + new Vector3(0.375f, 0.375f, 0f);
+            anchorCell = GridManager.i.WorldToGrid(worldMouse);
+            Vector3 snapped = GridManager.i.GridToWorld(anchorCell) + new Vector3(0.375f, 0.375f, 0f);
             redBuilding.transform.position = snapped;
-            bool clear = GridManager.I.AreaClear(anchorCell, gridSize);
-            GridManager.I.PreviewArea(anchorCell, gridSize, clear);
+            bool clear = GridManager.i.AreaClear(anchorCell, gridSize);
+            GridManager.i.PreviewArea(anchorCell, gridSize, clear);
         }
         
         public void SetupDaddy(DaddyBuildingTile t)

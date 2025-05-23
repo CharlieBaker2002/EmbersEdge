@@ -356,17 +356,7 @@ public class ResourceManager : MonoBehaviour
                 }
                 if (om.orbType == op.mag.orbType)
                 {
-                    if (!op.mag.initialMag)
-                    {
-                        if (Vector2.Distance(om.transform.position,op.transform.position) < op.radius)
-                        {
-                            op.magnetsOfficial.Add(om);
-                        }
-                    }
-                    else if (Vector2.Distance(Vector3.zero, om.transform.position) < op.radius) //check in range of magnets
-                    {
-                        op.magnetsOfficial.Add(om);
-                    }
+                    op.magnetsOfficial.Add(om);
                 }
             }
         }

@@ -154,9 +154,10 @@ public class EnemyTracker : MonoBehaviour
             }
 
             d.inUse = true;
-            d.gameObject.SetActive(true);
             d.Set(cluster, spr);
             dirList[iteration].Add(d);
+            d.SetVisuals(false);
+            d.gameObject.SetActive(true);
         }
     }
 

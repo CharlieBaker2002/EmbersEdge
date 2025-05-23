@@ -11,7 +11,6 @@ public class OrbPylon : Building
     private List<OrbMagnet> magnets = new List<OrbMagnet>();
     public bool cloneNecessary = false;
     public int orbType;
-    public LineRenderer lr;
     public float refreshRate = 0.15f;
 
     float t = 1f;

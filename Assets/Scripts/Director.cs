@@ -3,11 +3,13 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.UIElements;
+using Image = UnityEngine.UI.Image;
 
 public class Director : MonoBehaviour
 {
    [SerializeField] Image img;
+   [SerializeField] private Image[] imgs;
    [SerializeField] private TextMeshProUGUI tmp;
    public RectTransform rt;
    public List<Transform> ts;
@@ -23,6 +25,15 @@ public class Director : MonoBehaviour
        cam = CameraScript.i.cam;
    }
 
+   public void SetVisuals(bool off)
+   {
+       if(img.enabled == off) return;
+       img.enabled = off;
+       tmp.enabled = off;
+       imgs[0].enabled = off;
+       imgs[1].enabled = off;
+   }
+
    public void Update()
    {
       if (ClusterOnScreen())
@@ -32,11 +43,8 @@ public class Director : MonoBehaviour
          return;
       }
       LookTowardsCentreOfEnemies();
+      SetVisuals(true);
       if (tmp) tmp.text = ts != null ? ts.Count.ToString() : "0";
-      if (!gameObject.activeSelf)
-      {
-         gameObject.SetActive(true);
-      }
    }
 
    //place on UIManager.i.canvas, scale by distance to nearest enemy (0.25 at 20+ units - 1)
@@ -90,13 +98,10 @@ public class Director : MonoBehaviour
        float scale = Mathf.Lerp(1.5f, 0.5f, Mathf.InverseLerp(0f,maxdistance, nearest));
        rt.localScale = Vector3.one * scale;
    }
-   
-   
 
    bool ClusterOnScreen()
    {
        if (ts == null || ts.Count == 0) return true;
-       Camera cam = Camera.main;
        foreach (var t in ts)
        {
            if (!t) continue;

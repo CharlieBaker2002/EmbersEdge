@@ -18,8 +18,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     public Action OnClose;
     public Action OnOpen;
     public bool canOpen = true;
-    [SerializeField]
-    protected bool hasExtraParent = false;
+    public bool hasExtraParent = false;
     public Sprite icon;
     [Header("Size.X for circle physic DIAMETER")]
     public Vector2 size = Vector2.one;
@@ -423,17 +422,17 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     /// </summary>
     void RegisterGridOccupancy()
     {
-        if (GridManager.I == null) return;
+        if (GridManager.i == null) return;
 
         Vector2Int sizeCells = new Vector2Int(
-            Mathf.Max(1, Mathf.RoundToInt(size.x / GridManager.I.cellSize)),
-            Mathf.Max(1, Mathf.RoundToInt(size.y / GridManager.I.cellSize)));
+            Mathf.Max(1, Mathf.RoundToInt(size.x / GridManager.i.cellSize)),
+            Mathf.Max(1, Mathf.RoundToInt(size.y / GridManager.i.cellSize)));
 
         // Anchor at the bottom‑left grid cell so the footprint matches the placement logic.
-        Vector2Int anchor = GridManager.I.WorldToGrid(transform.position)
+        Vector2Int anchor = GridManager.i.WorldToGrid(transform.position)
                              - new Vector2Int(sizeCells.x / 2, sizeCells.y / 2);
 
-        GridManager.I.SetArea(anchor, sizeCells, true);
+        GridManager.i.SetArea(anchor, sizeCells, true);
     }
 
     Vector2 PositionRegularly(int n, int max)

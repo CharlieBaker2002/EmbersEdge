@@ -1,9 +1,10 @@
+using System.Collections;
 using UnityEngine;
 
 /// <summary>Keeps track of the buildable grid and its visual overlay.</summary>
 public class GridManager : MonoBehaviour
 {
-    public static GridManager I { get; private set; }
+    public static GridManager i { get; private set; }
 
     [Header("Grid geometry")]
     public int width  = 64;
@@ -24,11 +25,13 @@ public class GridManager : MonoBehaviour
     
     bool[,] occupied;
     SpriteRenderer[,] overlay;           // one sprite per cell
+    private bool stopDeactivate = false;
+    private bool deactivating = false;
 
     void Awake()
     {
-        if (I != null) { Destroy(gameObject); return; }
-        I = this;
+        if (i != null) { Destroy(gameObject); return; }
+        i = this;
         DontDestroyOnLoad(gameObject);
 
         occupied = new bool[width, height];
@@ -36,7 +39,7 @@ public class GridManager : MonoBehaviour
 
         //MakeGridLines();
         MakeOverlaySquares();
-        DeactivateGrid();
+        buildingGrid.gameObject.SetActive(false);
     }
 
     #region Public API ––––––––––––––––––––––––––––––––––––––––––––––
@@ -124,12 +127,29 @@ public class GridManager : MonoBehaviour
 
     public void ActivateGrid()
     {
+        if(deactivating) stopDeactivate = true;
         buildingGrid.gameObject.SetActive(true);
     }
 
     public void DeactivateGrid()
     {
-        buildingGrid.gameObject.SetActive(false);
+        if (deactivating) return;
+        deactivating = true;
+        StartCoroutine(DoDeactivate());
+        IEnumerator DoDeactivate()
+        {
+            yield return null;
+            yield return null;
+            if (stopDeactivate)
+            {
+                deactivating = false;
+                stopDeactivate = false;
+                yield break;
+            }
+            BM.i.ChangeBuildingColour(true);
+            buildingGrid.gameObject.SetActive(false);
+            deactivating = false;
+        }
     }
     #endregion
 
@@ -144,7 +164,7 @@ public class GridManager : MonoBehaviour
         var lr = go.AddComponent<LineRenderer>();
         lr.material = new Material(Shader.Find("Sprites/Default"));
         lr.widthMultiplier = 0.02f;
-        lr.positionCount   = (width + height + 2) * 2;
+        lr.positionCount  = (width + height + 2) * 2;
         lr.startColor = lr.endColor = gridLineColour;
 
         int p = 0;

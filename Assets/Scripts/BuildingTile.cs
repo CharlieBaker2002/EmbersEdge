@@ -43,7 +43,6 @@ public class BuildingTile : MonoBehaviour, IClickable
                 BM.i.Escape();
             }
             BM.i.BuildingFollowMouse(buildingPrefab,this);
-            BM.i.TurnOnPylonsByCost(cost);
             BM.i.RemoveDaddyDel();
         }
         else
