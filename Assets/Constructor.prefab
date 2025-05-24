@@ -42,6 +42,7 @@ GameObject:
   - component: {fileID: 8917609195086233720}
   - component: {fileID: 5166234644349358970}
   - component: {fileID: 8414912427084186660}
+  - component: {fileID: 8176623512067456108}
   m_Layer: 0
   m_Name: Constructor
   m_TagString: Untagged
@@ -144,6 +145,7 @@ MonoBehaviour:
   rebuildCost: 00000000000000000000000000000000
   icons: []
   prevN: 0
+  numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
   sprs:
@@ -162,8 +164,26 @@ MonoBehaviour:
   - {fileID: 82669905, guid: efe66972c0c224fc1b275d7401252053, type: 3}
   stick: {fileID: 794104112300365898}
   nose: {fileID: 6970967832150936410}
+  store: {fileID: 8176623512067456108}
   ember: {fileID: 8268606142687473752, guid: e69aec15214354c26a54d7d8f9b8f5aa, type: 3}
-  b: {fileID: 0}
+  radius: 3
+  visual: 1
+  constructing: 0
+  tasks: []
+--- !u!114 &8176623512067456108
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5563797452642412940}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8fb3a85d62c5842929c739f740fe2101, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ember: 5
+  maxEmber: 5
 --- !u!1 &7350850176255025584
 GameObject:
   m_ObjectHideFlags: 0

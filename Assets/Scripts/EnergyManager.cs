@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -7,9 +8,9 @@ public class EnergyManager : MonoBehaviour
     public static EnergyManager i;
 
     #region Energy
-
     public List<Pylon> pylons;
     private List<List<Battery>> grids = new(); // batteries sorted in ascending max energy so update grid works
+    
 
     private void Awake()
     {
@@ -79,9 +80,12 @@ public class EnergyManager : MonoBehaviour
     #endregion
 
     #region Ember
-
+    
+    private List<Building> bs = new();
+    private readonly Dictionary<Building,int> emberCount = new();
     public List<EmberStore> emberStores;
     public List<Extractor> extractors;
+    public List<Constructor> constructors;
 
     public void UpdateEmberStores()
     {
@@ -90,14 +94,70 @@ public class EnergyManager : MonoBehaviour
 
     public void UpdateEmber()
     {
+        UpdateEmberStores();
         float sum = 0f;
         foreach (EmberStore e in emberStores)
         {
             sum += e.ember;
+            e.ember = 0;
         }
-        for (int i = 0; i < emberStores.Count; i++)
+        while (sum > 0) //add one evenly.
         {
-            sum -= emberStores[i].Set(sum / (emberStores.Count - i));
+            foreach (var t in emberStores)
+            {
+                if (t.ember >= t.maxEmber) continue;
+                t.ember += 1;
+                sum -= 1;
+            }
+        }
+    }
+    
+    public void AddBuilding(Building b)
+    {
+        if(bs.Contains(b)) return;
+        emberCount.Add(b,0);
+        bs.Add(b);
+        foreach(Constructor c in constructors)
+        {
+            if(Vector2.Distance(c.transform.position,b.transform.position) <= c.radius)
+            {
+                c.tasks.Add(b);
+            }
+        }
+    }
+    
+    public void RemoveBuilding(Building b)
+    {
+        if(!bs.Contains(b)) return;
+        emberCount.Remove(b);
+        bs.Remove(b);
+        foreach (Constructor c in constructors)
+        {
+            c.tasks.Remove(b);
+        }
+    }
+
+    private void Update()
+    {
+        for (int x = 0; x < bs.Count; x++)
+        {
+            foreach (Constructor c in constructors)
+            {
+                if (c.constructing || c.store.ember <= 0) continue;
+
+                // Pick the task with the fewest embers *that this constructor can reach*
+                var task = c.tasks
+                    .OrderBy(t => emberCount[t])
+                    .FirstOrDefault();
+
+                if (task == null) continue;           // nothing it can build right now
+
+                c.Construct(task);
+                emberCount[task]++;                   // track fairness
+
+                task.numIconsTrue--;
+                if (task.numIconsTrue == 0) RemoveBuilding(task);
+            }
         }
     }
 

@@ -5,21 +5,25 @@ using UnityEngine.Serialization;
 
 public class EmberStore : MonoBehaviour
 {
-    [FormerlySerializedAs("energy")] public float ember;
-    [FormerlySerializedAs("maxEnergy")] public float maxEmber;
+    public int ember;
+    public int maxEmber;
     
-    public bool Use(float cost)
+    public bool Use(int cost, bool decreaseMax = false)
     {
         if (ember >= cost)
         {
             ember -= cost;
+            if (decreaseMax)
+            {
+                maxEmber -= cost;
+            }
             EnergyManager.i.UpdateEmber();
             return true;
         }
         return false;
     }
 
-    public float Set(float newVal)
+    public int Set(int newVal)
     {
         if(newVal > maxEmber)
         {
@@ -27,6 +31,6 @@ public class EmberStore : MonoBehaviour
             return newVal - maxEmber;
         }
         ember = newVal;
-        return 0f;
+        return 0;
     }
 }

@@ -7,25 +7,37 @@ public class Constructor : Building
     [SerializeField] private Sprite[] sprs;
     [SerializeField] private SpriteRenderer stick;
     [SerializeField] private Transform nose;
+    [SerializeField] public EmberStore store;
     [SerializeField] private Ember ember;
-    [SerializeField] private Building b;
     public float radius = 3f;
     [SerializeField] bool visual = true;
+    public bool constructing = false;
+
+    public List<Building> tasks;
     
-    public void Construct()
+    public override void Start()
     {
-        if (visual)
+        base.Start();
+        EnergyManager.i.constructors.Add(this);
+    }
+    public void Construct(Building b)
+    {
+        store.Use(1, true);
+        Vector3 p = b.icons[b.icons.Count - b.numIconsTrue].transform.position;
+        constructing = true;
+        if (!visual)
         {
-            DoConstruct();
+            this.QA(() => DoConstruct(b,p),1.31f);
             return;
         }
-        stick.transform.LeanRotate(GS.TsTV(stick.transform.position,b.transform.position), 1f).setEaseInOutSine();
-        stick.LeanAnimateFPS(sprs, 6,true).setOnComplete(() => DoConstruct());
+        stick.transform.LeanRotate(GS.TsTV(stick.transform.position,b.transform.position), 1.3f).setEaseInOutSine();
+        stick.LeanAnimate(sprs, 1.3f,true).setOnComplete(() => DoConstruct(b,p));
     }
-    void DoConstruct()
+    void DoConstruct(Building b, Vector3 p)
     {
         var e = Instantiate(ember,nose.position,Quaternion.identity,GS.FindParent(GS.Parent.fx));
-        e.to = b.transform.position;
+        e.to = p;
         e.onComplete = b.RemoveIcon;
+        e.onComplete += () => constructing = false;
     }
 }

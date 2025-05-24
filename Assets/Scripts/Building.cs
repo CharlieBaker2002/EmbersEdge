@@ -31,6 +31,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     [SerializeField] public List<EEIcon> icons = new();
     private bool subscribed = false;
     public int prevN;
+    public int numIconsTrue = 0;
     private TextMeshPro numText;
     public float maxHealth = 10f;
     
@@ -255,6 +256,9 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
                 prevN = icons.Count;
             }
         }
+
+        numIconsTrue = n;
+        EnergyManager.i.AddBuilding(this);
     }
     
     public void RemoveIcon()

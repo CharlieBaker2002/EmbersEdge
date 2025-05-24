@@ -457,10 +457,11 @@ MonoBehaviour:
   size: {x: 1, y: 1}
   physic: {fileID: 2877277909168904401}
   col: {fileID: 2282854099306478639}
-  builtBlasts: 1
+  builtBlasts: 4
   rebuildCost: 05000000000000000000000000000000
   icons: []
   prevN: 0
+  numIconsTrue: 0
   maxHealth: 10
   builtYet: 0
   f: {fileID: 5797088041366126530}
