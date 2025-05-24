@@ -248,7 +248,6 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         if (!subscribed)
         {
             subscribed = true;
-            EmbersEdge.EEExplodeEvent += RemoveIcon;
             if (!hidden)
             {
                 numText.text = icons.Count.ToString();
@@ -258,7 +257,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         }
     }
     
-    void RemoveIcon()
+    public void RemoveIcon()
     {
         if (icons[0].gameObject.activeInHierarchy)
         {
@@ -288,7 +287,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             else if(repairing)
             {
                 repairing = false;
-                sr.LeanSRColor( new Color(1f, 0.5f, 0.5f, 0.5f),0.5f).setEaseOutCubic();
+                sr.LeanSRColor( new Color(1f, 0.5f, 0.5f, 0.5f),0.2f).setEaseOutCubic();
                 ResourceManager.instance.NewTask(gameObject, rebuildCost, () => SwitchMonos(true), false);
             }
             else
@@ -304,7 +303,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
                 }
                 SwitchMonos(true);
             }
-        }, 3f);
+        }, 0.8f);
     }
 
     protected void RemoveIcons()
@@ -324,21 +323,21 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
 
     IEnumerator CountDown()
     {
-        yield return new WaitForSeconds(0.5f);
+        yield return new WaitForSeconds(0.2f);
         for(int i = prevN - 1; i >= icons.Count; i--)
         {
-            for(float t = 0f; t < 1f; t += 2 * Time.deltaTime)
+            for(float t = 0f; t < 1f; t += 3 * Time.deltaTime)
             {
                 numText.color = new Color(numText.color.r,numText.color.g,numText.color.b,1f-t);
                 yield return null;
             }
             numText.text = i.ToString();
-            for(float t = 1f; t > 0f; t -=  2* Time.deltaTime)
+            for(float t = 1f; t > 0f; t -=  3* Time.deltaTime)
             {
                 numText.color = new Color(numText.color.r,numText.color.g,numText.color.b,1f-t);
                 yield return null;
             }
-            yield return new WaitForSeconds(0.25f);
+            yield return new WaitForSeconds(0.1f);
         }
         prevN = icons.Count;
         if (prevN == 0)

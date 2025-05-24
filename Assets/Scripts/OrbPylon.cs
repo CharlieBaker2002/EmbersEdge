@@ -19,7 +19,7 @@ public class OrbPylon : Building
     {
         if (RefreshManager.i.CASUALNOTREALTIME)
         {
-            refreshRate = 0.02f;
+            refreshRate = 0.001f;
         }
         base.Start();
         buildingBehaviours.Add(mag);

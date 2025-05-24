@@ -1,5 +1,7 @@
+using System;
 using System.Collections;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 [RequireComponent(typeof(SpriteRenderer))]
 public class Ember : MonoBehaviour
@@ -14,7 +16,7 @@ public class Ember : MonoBehaviour
     [SerializeField] private GameObject ps2;
 
     [Header("Flight")]
-    [SerializeField] private Vector3 to;          // world destination
+    [SerializeField] public Vector3 to;          // world destination
     [SerializeField] private float arcHeight = 1; // vertical lift of the arc
     [SerializeField] private float flightTime = 0.75f;
     [SerializeField] private LeanTweenType flightEase = LeanTweenType.easeInOutCubic;
@@ -31,6 +33,10 @@ public class Ember : MonoBehaviour
     [Header("Flicker-phase (between load and off)")]
     [SerializeField] private float flickerInterval = 0.05f;  // seconds between random sprite swaps
     [SerializeField] private float flickerDuration = 0.4f;   // how long to stay in the "on" state before powering down
+
+    public Action onComplete;
+
+    [SerializeField] bool quick = false;
 
     // ──────────────────────────  RUNTIME  ──────────────────────────
     Vector3 spawnPos;
@@ -50,20 +56,33 @@ public class Ember : MonoBehaviour
     {
         var em = ps.emission;
         float speed = 1f + Random.Range(-0.3f,0.3f);
-        var seq = LeanTween.sequence().insert(LeanTween.value(gameObject, 0f, 30f, loadTime).setOnUpdate(t => em.rateOverTime = t));
-        seq.append(sr.LeanAnimate(loadSprites, loadTime));
+        var seq = LeanTween.sequence();
+        if (!quick)
+        {
+            seq.insert(LeanTween.value(gameObject, 0f, 30f, loadTime).setOnUpdate(t => em.rateOverTime = t));
+            seq.append(sr.LeanAnimate(loadSprites, loadTime));
+        }
+        else
+        {
+            LeanTween.value(gameObject, 0f, 30f, loadTime).setOnUpdate(t => em.rateOverTime = t);
+            sr.LeanAnimate(loadSprites, loadTime);
+        }
         seq.append(() => StartCoroutine(RandomFlicker()));
         Vector3 start = transform.position;
         Vector3 dirSide = ((Vector2)(to - start)).Rotated(90f);
         Vector3 mid1 = Vector3.Lerp(spawnPos, to, 0.35f) + Random.Range(-0.6f,0.6f)*dirSide * arcHeight;
         Vector3 mid2 = Vector3.Lerp(spawnPos, to, 0.7f) + Random.Range(-0.3f,0.3f)*dirSide * arcHeight;
         Vector3[] path = { start, mid1, mid2, to };
-        seq.append(LeanTween.delayedCall(0.4f * speed, () => { }));
+        if(!quick)seq.append(LeanTween.delayedCall(0.4f * speed, () => { }));
         seq.append(LeanTween.move(gameObject, path, flightTime * speed).setEase(flightEase).setOnUpdate((Vector3 v) => FaceHeading()));
         seq.append(LeanTween.delayedCall(gameObject,0f, StopAllCoroutines)).insert(LeanTween.value(gameObject, 30f, 0f, offTime).setOnUpdate(t => em.rateOverTime = t));
-        seq.append(()=> ps2.SetActive(true));
+        seq.append(()=> ps2.SetActive(true)); 
+        seq.append(()=>onComplete?.Invoke());
         seq.append(sr.LeanAnimate(offSprites, offTime));
-        seq.append(LeanTween.delayedCall(gameObject, 1f, () => Destroy(gameObject)));
+        seq.append(LeanTween.delayedCall(gameObject, 1f, () =>
+        {
+            Destroy(gameObject);
+        }));
     }
 
     // ──────────────────────────  HELPERS  ──────────────────────────

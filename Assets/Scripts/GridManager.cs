@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>Keeps track of the buildable grid and its visual overlay.</summary>
 public class GridManager : MonoBehaviour
 {
-    public static GridManager i { get; private set; }
+    public static GridManager i;
 
     [Header("Grid geometry")]
     public int width  = 64;
@@ -13,24 +13,23 @@ public class GridManager : MonoBehaviour
     public Vector2 origin = Vector2.zero;
 
     [Header("Visuals")]
-    public Sprite squareSprite;          // a 1×1 white sprite
-    public Color gridLineColour  = new Color(1,1,1,0.08f); // faint white
-    public Color clearColour     = new Color(0,1,0,0.20f); // green
-    public Color filledColour    = new Color(0,0,0,0.35f); // black
+    public Color clearColour     = new Color(0, 1, 0, 0.35f); // green
+    public Color filledColour    = new Color(0, 0, 0, 0.35f); // black
 
     [Header("Preview highlight colours")]
-    public Color brightClearColour   = new Color(0f, 1f, 0f, 0.60f); // super‑bright green
-    public Color brightBlockedColour = new Color(1f, 0f, 0f, 0.60f); // super‑bright red
+    public Color brightClearColour   = new Color(0f, 1f, 0f, 0.65f); // super‑bright green
+    public Color brightBlockedColour = new Color(1f, 0f, 0f, 0.8f);  // super‑bright red
+
     [SerializeField] Transform buildingGrid;
-    
+
     bool[,] occupied;
     SpriteRenderer[,] overlay;           // one sprite per cell
     private bool stopDeactivate = false;
     private bool deactivating = false;
+    [SerializeField] GameObject block;
 
     void Awake()
     {
-        if (i != null) { Destroy(gameObject); return; }
         i = this;
         DontDestroyOnLoad(gameObject);
 
@@ -43,6 +42,7 @@ public class GridManager : MonoBehaviour
     }
 
     #region Public API ––––––––––––––––––––––––––––––––––––––––––––––
+
     public Vector2Int WorldToGrid(Vector3 worldPos)
     {
         var local = (Vector2)worldPos - origin;
@@ -97,7 +97,7 @@ public class GridManager : MonoBehaviour
             for (int x = 0; x < width; ++x)
                 overlay[x, y].color = occupied[x, y]
                     ? filledColour        // not buildable anywhere there’s something already
-                    : clearColour;               // default faint green
+                    : clearColour;        // default faint green
 
         // 2) Highlight the footprint
         for (int y = 0; y < size.y; ++y)
@@ -127,7 +127,7 @@ public class GridManager : MonoBehaviour
 
     public void ActivateGrid()
     {
-        if(deactivating) stopDeactivate = true;
+        if (deactivating) stopDeactivate = true;
         buildingGrid.gameObject.SetActive(true);
     }
 
@@ -151,41 +151,19 @@ public class GridManager : MonoBehaviour
             deactivating = false;
         }
     }
+
     #endregion
 
     #region Internals –––––––––––––––––––––––––––––––––––––––––––––––
+
     bool Inside(int x, int y) =>
         x >= 0 && y >= 0 && x < width && y < height;
 
-    void MakeGridLines()
-    {
-        var go = new GameObject("GridLines");
-        go.transform.SetParent(transform);
-        var lr = go.AddComponent<LineRenderer>();
-        lr.material = new Material(Shader.Find("Sprites/Default"));
-        lr.widthMultiplier = 0.02f;
-        lr.positionCount  = (width + height + 2) * 2;
-        lr.startColor = lr.endColor = gridLineColour;
-
-        int p = 0;
-        for (int x = 0; x <= width; x+=2)
-        {
-            lr.SetPosition(p++, new Vector3(origin.x + x * cellSize, origin.y));
-            lr.SetPosition(p++, new Vector3(origin.x + x * cellSize, origin.y + height * cellSize));
-        }
-        for (int y = 0; y <= height; y+=2)
-        {
-            lr.SetPosition(p++, new Vector3(origin.x               , origin.y + y * cellSize));
-            lr.SetPosition(p++, new Vector3(origin.x + width*cellSize, origin.y + y * cellSize));
-        }
-    }
+    // void MakeGridLines() { ... } // omitted
 
     void MakeOverlaySquares()
     {
-        var square = new GameObject("cell");
-        var sr     = square.AddComponent<SpriteRenderer>();
-        sr.sprite  = squareSprite;
-        sr.sortingOrder = 100; // above everything else
+        var square = Instantiate(block);
         square.SetActive(false);
 
         for (int x = 0; x < width; ++x)
@@ -198,5 +176,6 @@ public class GridManager : MonoBehaviour
                 overlay[x, y].color = clearColour;
             }
     }
+
     #endregion
 }

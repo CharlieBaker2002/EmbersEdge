@@ -1748,7 +1748,18 @@ public static class GS
                 }
             });
         }
-     
+    }
+
+    public static float TsTA(Vector3 A, Vector3 B)
+    {
+        Vector3 dir = B - A;
+        return Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg - 90f;
+    }
+    
+    
+    public static Vector3 TsTV(Vector3 A, Vector3 B)
+    {
+        return new Vector3(0f, 0f, TsTA(A, B));
     }
 
     /// <summary>

@@ -116,7 +116,7 @@ ParticleSystem:
   m_GameObject: {fileID: 1409376369432838990}
   serializedVersion: 8
   lengthInSec: 10
-  simulationSpeed: 2
+  simulationSpeed: 1.5
   stopAction: 0
   cullingMode: 0
   ringBufferMode: 0
@@ -2768,11 +2768,11 @@ ParticleSystem:
     inWorldSpace: 0
     multiplyDragByParticleSize: 0
     multiplyDragByParticleVelocity: 0
-    dampen: 1
+    dampen: 0.5
     drag:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 1
+      scalar: 0.5
       minScalar: 0
       maxCurve:
         serializedVersion: 2
@@ -4908,7 +4908,7 @@ GameObject:
   - component: {fileID: 8268606142687473752}
   - component: {fileID: 2334987805250713306}
   m_Layer: 0
-  m_Name: Ember
+  m_Name: BuildEmber
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -9768,18 +9768,19 @@ MonoBehaviour:
   - {fileID: 0}
   ps: {fileID: 6623742399979471622}
   ps2: {fileID: 1409376369432838990}
-  to: {x: -2.57, y: 0, z: 0}
-  arcHeight: 1
-  flightTime: 2
-  flightEase: 8
-  loadTime: 1.5
+  to: {x: 0, y: 0, z: 0}
+  arcHeight: 0.3
+  flightTime: 0.5
+  flightEase: 15
+  loadTime: 0.2
   loadFPS: 0
   loadEase: 9
-  offTime: 0.5
+  offTime: 0.25
   offFPS: 0
   offEase: 8
   flickerInterval: 0.05
   flickerDuration: 0.2
+  quick: 1
 --- !u!212 &2334987805250713306
 SpriteRenderer:
   m_ObjectHideFlags: 0

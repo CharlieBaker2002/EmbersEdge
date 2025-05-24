@@ -230,3 +230,16 @@ public class FinderEditor : Editor
 }
 
 
+
+[CustomEditor(typeof(Constructor))]
+public class ConstructorEditor : Editor
+{
+    public override void OnInspectorGUI()
+    {
+        base.OnInspectorGUI();
+        if (GUILayout.Button("SendFor"))
+        {
+            ((Constructor)target).Construct();
+        }
+    }
+}

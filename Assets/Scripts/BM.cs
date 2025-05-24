@@ -147,7 +147,7 @@ public class BM : MonoBehaviour //Building Manager
             redbuildingPrefab.transform.position.y, 0f);
         foreach(SpriteRenderer s in redBuilding.GetComponentsInChildren<SpriteRenderer>(true))
         {
-            s.color = new Color(0f, 0f, 0f, 0.5f);
+            s.color = new Color(0f, 0f, 0f, 0.2f);
         }
         GridManager.i.ActivateGrid();
         ChangeBuildingColour(false);
@@ -259,7 +259,7 @@ public class BM : MonoBehaviour //Building Manager
                 }
                 om.action = delegate
                 {
-                    if (rbb != null) return;
+                    if (rbb == null) return;
                     if (rbb.TryGetComponent<Collider2D>(out var col))
                     {
                         Destroy(rbb.GetComponent<Collider2D>());
@@ -303,8 +303,8 @@ public class BM : MonoBehaviour //Building Manager
             Vector2 worldMouse = IM.controller
                 ? IM.i.controllerCursor.position
                 : IM.i.MousePosition();
-            anchorCell = GridManager.i.WorldToGrid(worldMouse);
-            Vector3 snapped = GridManager.i.GridToWorld(anchorCell) + new Vector3(0.375f, 0.375f, 0f);
+            anchorCell = GridManager.i.WorldToGrid(worldMouse);                 
+            Vector3 snapped = GridManager.i.GridToWorld(anchorCell) + new Vector3(-0.125f + 0.5f*rbb.size.x, -0.125f + 0.5f * rbb.size.y, 0f); //0.375 for 1, 0.875 for 2
             redBuilding.transform.position = snapped;
             bool clear = GridManager.i.AreaClear(anchorCell, gridSize);
             GridManager.i.PreviewArea(anchorCell, gridSize, clear);

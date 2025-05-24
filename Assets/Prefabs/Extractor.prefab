@@ -121,7 +121,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2333740645850149394
 Transform:
   m_ObjectHideFlags: 0
@@ -220,7 +220,7 @@ MonoBehaviour:
   icons: []
   prevN: 0
   maxHealth: 10
-  builtYet: 0
+  builtYet: 1
   mesh: {fileID: 7997196564911849672}
   ring: {fileID: 3665649265256228611}
   meshSprites:
@@ -291,6 +291,8 @@ MonoBehaviour:
   - {fileID: -2006894297, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
   meshDefault: {fileID: 1334134610, guid: a2848ba73b41e4a80a5feac96b4dfae2, type: 3}
   ringDefault: {fileID: -1212368598, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
+  projFrom: {fileID: 0}
+  ps: {fileID: 0}
 --- !u!1 &6249519693045532371
 GameObject:
   m_ObjectHideFlags: 0

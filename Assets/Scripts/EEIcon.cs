@@ -21,14 +21,14 @@ public class EEIcon : MonoBehaviour
 
     public IEnumerator SetDone()
     {
-        for (float t = 0f; t < 1f; t += Time.deltaTime)
+        for (float t = 0f; t < 1f; t += 3f*Time.deltaTime)
         {
             m.SetColor(Color1, Color.Lerp(c,startCol, t * t));
             yield return null;
         }
         m.SetColor(Color1, startCol);
-        transform.LeanScale(Vector3.zero, 1f).setEaseInBack().setOnComplete(() => Instantiate(FXs[GS.era], transform.position,
-            Quaternion.Euler(0f, 0f, Random.Range(0f, 360f)), GS.FindParent(GS.Parent.fx))).delay = 1f;
+        transform.LeanScale(Vector3.zero, 0.25f).setEaseInBack().setOnComplete(() => Instantiate(FXs[GS.era], transform.position,
+            Quaternion.Euler(0f, 0f, Random.Range(0f, 360f)), GS.FindParent(GS.Parent.fx))).delay = 0.25f;
     }
     
 }
