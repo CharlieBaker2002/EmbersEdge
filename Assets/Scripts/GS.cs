@@ -1412,10 +1412,14 @@ public static class GS
     }
 
     /// <summary>
-    /// era 0 = 0
+    /// era 0 = 0. Superbright & bright cannot be lit
     /// </summary>
-    public static Material MatByEra(int era, bool bright = false, bool lit = false)
+    public static Material MatByEra(int era, bool bright = false, bool lit = false, bool superBright = false)
     {
+        if (superBright)
+        {
+            return SpawnManager.instance.eraMats[era + 9];
+        }
         if (lit)
         {
             return SpawnManager.instance.eraMats[era + 6];
@@ -1425,7 +1429,6 @@ public static class GS
             return SpawnManager.instance.eraMats[era];
         }
         return SpawnManager.instance.eraMats[era + 3];
-        
     }
 
     /// <summary>

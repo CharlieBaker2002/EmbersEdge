@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,7 +8,17 @@ public class EmberStore : MonoBehaviour
 {
     public int ember;
     public int maxEmber;
-    
+
+    private void Start()
+    {
+        EnergyManager.i.emberStores.Add(this);
+    }
+
+    public void OnDestroy()
+    {
+        EnergyManager.i.emberStores.Remove(this);
+    }
+
     public bool Use(int cost, bool decreaseMax = false)
     {
         if (ember >= cost)

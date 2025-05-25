@@ -20,7 +20,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Orange 1
+  m_Name: Special Yellow
   m_Shader: {fileID: -6465566751694194690, guid: 162e17cda7b2f479785757284ca519e2, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -59,5 +59,5 @@ Material:
     m_Ints: []
     m_Floats: []
     m_Colors:
-    - thecolor: {r: 1.4980394, g: 0.23653881, b: 0.10599334, a: 1}
+    - thecolor: {r: 7.532613, g: 8.474189, b: 0, a: 1}
   m_BuildTextureStacks: []

@@ -21,7 +21,12 @@ public class EnemyTracker : MonoBehaviour
     private int delta;
     [SerializeField] private Camera cam;
     List<Director>[] dirList = new List<Director>[6];
-    
+
+    private void Start()
+    {
+        GS.OnNewEra += _ =>  delta = Mathf.FloorToInt(sprs[GS.era].Count / 6f);
+    }
+
     private void Awake()
     {
         for(int i = 0; i < 6; i++)
@@ -33,7 +38,7 @@ public class EnemyTracker : MonoBehaviour
             cam = CameraScript.i.cam;
         sprs = new List<List<Sprite>> { sprs1, sprs2, sprs3 };
         enemies = new List<List<Transform>>();
-        for (int i = 0; i < 15; i++)
+        for (int i = 0; i < 20; i++)
         {
             enemies.Add(new());
         }
@@ -67,9 +72,17 @@ public class EnemyTracker : MonoBehaviour
         dirList[iteration].Clear();
         if (iteration == 5)
         {
-            for(int i = iteration * delta; i < sprs[GS.era].Count; i++)
+            for (int i = iteration * delta; i < sprs[GS.era].Count; i++)
             {
-               Batch(enemies[i], sprs[GS.era][i], i,iteration);
+                try
+                {
+                    Batch(enemies[i], sprs[GS.era][i], i, iteration);
+                }
+                catch
+                {
+                    Debug.Log(i);
+                }
+
             }
         }
         else
