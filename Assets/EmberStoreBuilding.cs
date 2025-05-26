@@ -24,12 +24,37 @@ public class EmberStoreBuilding : MonoBehaviour
 
     IEnumerator Test()
     {
-        for (int x = 0; x < 30; x++)
+        if (rad == 0.08f)
         {
-            store.Set(x);
-            Refresh();
             yield return new WaitForSeconds(1f);
+            for (int x = 0; x <= store.maxEmber; x++)
+            {
+                store.Set(x);
+                Refresh();
+                yield return new WaitForSeconds(3f/store.maxEmber);
+            }
         }
+        else if (rad == 0.14f)
+        {
+            yield return new WaitForSeconds(4f);
+            for (int x = 0; x <= store.maxEmber; x++)
+            {
+                store.Set(x);
+                Refresh();
+                yield return new WaitForSeconds(10f/store.maxEmber);
+            }
+        }
+        else
+        {
+            yield return new WaitForSeconds(14f);
+            for (int x = 0; x <= store.maxEmber; x++)
+            {
+                store.Set(x);
+                Refresh();
+                yield return new WaitForSeconds(20f/store.maxEmber);
+            }
+        }
+       
     }
 
     void UpdateEmberColours(int era)
@@ -68,12 +93,12 @@ public class EmberStoreBuilding : MonoBehaviour
         }
 
         var e = ps.emission;
-        e.rateOverTime = store.ember * 5f;
+        e.rateOverTime = store.ember * 7.5f;
     }
 
     public void Hit(Vector2 v)
     {
         float ang = GS.VTA(v);
-        statics[Mathf.FloorToInt(statics.Length * ang / 360f)].Light();
+        statics[Mathf.FloorToInt(statics.Length * ang / 359.9f)].Light();
     }
 }

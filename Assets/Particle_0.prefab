@@ -113,3 +113,5 @@ MonoBehaviour:
   - {fileID: 66097289, guid: eddc961ef17a54d05b60710ce6f1b31d, type: 3}
   speed: 0.2
   rad: 0.15
+  isStatic: 0
+  eb: {fileID: 0}
