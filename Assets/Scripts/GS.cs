@@ -560,7 +560,7 @@ public static class GS
 
     public static float VTA(Vector2 a)
     {
-        return Mathf.Abs(Vector2.SignedAngle(-Vector2.up, a) - 180f);
+        return PutInRange(Mathf.Abs(Vector2.SignedAngle(-Vector2.up, a) - 180f),0f,360f);
     }
 
     public static Vector2 QTV(Quaternion q)

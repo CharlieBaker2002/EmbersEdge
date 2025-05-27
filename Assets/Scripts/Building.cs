@@ -30,7 +30,9 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     public int[] rebuildCost = new int[4];
     [SerializeField] public List<EEIcon> icons = new();
     private bool subscribed = false;
+    [HideInInspector]
     public int prevN;
+    [HideInInspector]
     public int numIconsTrue = 0;
     private TextMeshPro numText;
     public float maxHealth = 10f;
