@@ -21,7 +21,6 @@ public static class AutomationBPConverter
             {
                 if (b.physic != null)
                 {
-                    b.col = b.physic.GetComponent<BoxCollider2D>();
                 }
             }
             EditorUtility.SetDirty(obj);

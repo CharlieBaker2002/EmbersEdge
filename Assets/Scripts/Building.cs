@@ -23,7 +23,6 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     [Header("Size.X for circle physic DIAMETER")]
     public Vector2 size = Vector2.one;
     public LifeScript physic;
-    public Collider2D col;
     private bool box = true;
     [Header("Times & Costs")] 
     public int builtBlasts = 2;
@@ -62,7 +61,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         
         if (physic != null)
         {
-            box = col is BoxCollider2D;
+            box = physic.GetComponent<BoxCollider2D>()!=null;
         }
         if (!builtYet)
         {
@@ -140,15 +139,6 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             physic.maxHp = maxHealth;
             physic.hp = maxHealth;
             physic.onDeaths.Add(this);
-            col = physic.GetComponent<Collider2D>();
-            if (box)
-            {
-                ((BoxCollider2D)col).size = size;
-            }
-            else
-            {
-                ((CircleCollider2D)col).radius = size.x * 0.5f;
-            }
             physic.GetComponent<IClickableCarrier>().clickable = this;
             physic.gameObject.SetActive(true);
         }

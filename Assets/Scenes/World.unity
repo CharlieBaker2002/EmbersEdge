@@ -2306,7 +2306,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.25}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -3780,7 +3779,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.75}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -4253,7 +4251,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e71f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 27
+  m_LightOrder: 94
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -6825,7 +6823,7 @@ MonoBehaviour:
   IGNOREEFFICIENCY: 0
   DIFFICULTY: 3
   ARENAMODE: 0
-  QuickTeleport: 0
+  QuickTeleport: 1
   manager: {fileID: 269883297}
   sp: {fileID: 269883300}
   portal: {fileID: 2045896381}
@@ -7775,7 +7773,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 2, y: 1}
   physic: {fileID: 1664369627}
-  col: {fileID: 1664369626}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -7821,7 +7818,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 28
+  m_LightOrder: 95
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -10706,7 +10703,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.25}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -12102,7 +12098,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 000000001f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 29
+  m_LightOrder: 96
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -19801,7 +19797,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e781346bb21f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 30
+  m_LightOrder: 97
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -21250,7 +21246,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.75}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -21482,7 +21477,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 1, y: 1}
   physic: {fileID: 0}
-  col: {fileID: 1314593561}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000001000000
   icons: []
@@ -21571,7 +21565,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 31
+  m_LightOrder: 98
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -22061,7 +22055,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.25}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -93535,7 +93528,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e71f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 32
+  m_LightOrder: 99
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -93669,7 +93662,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.75}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -93924,7 +93916,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.25}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -94184,7 +94175,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.5}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -95748,7 +95738,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 1, y: 1}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -99764,7 +99753,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 1, y: 1}
   physic: {fileID: 0}
-  col: {fileID: 1514891230}
   builtBlasts: 2
   rebuildCost: 00000000000000000200000000000000
   icons: []
@@ -99853,7 +99841,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 33
+  m_LightOrder: 100
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -100116,7 +100104,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e71f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 34
+  m_LightOrder: 101
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -100514,7 +100502,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.25}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -101615,7 +101602,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.25}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -102897,7 +102883,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e633535f038b9059c35b94e3c0519396211bf7a45e71f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 35
+  m_LightOrder: 102
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -105547,7 +105533,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 1, y: 1}
   physic: {fileID: 0}
-  col: {fileID: 214946937}
   builtBlasts: 2
   rebuildCost: 05000000000000000000000000000000
   icons: []
@@ -105636,7 +105621,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 36
+  m_LightOrder: 103
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -105904,7 +105889,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.5}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -106645,7 +106629,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.5}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -113116,7 +113099,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.25}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -114502,11 +114484,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1555476899931933564, guid: b931c9b8b2bad4948bfb8c8efebdc6c3, type: 3}
   m_PrefabInstance: {fileID: 1664369624}
   m_PrefabAsset: {fileID: 0}
---- !u!58 &1664369626 stripped
-CircleCollider2D:
-  m_CorrespondingSourceObject: {fileID: 3501345045125963842, guid: b931c9b8b2bad4948bfb8c8efebdc6c3, type: 3}
-  m_PrefabInstance: {fileID: 1664369624}
-  m_PrefabAsset: {fileID: 0}
 --- !u!114 &1664369627 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 2717105812471324821, guid: b931c9b8b2bad4948bfb8c8efebdc6c3, type: 3}
@@ -114625,7 +114602,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 1, y: 1}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -115408,7 +115384,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 1, y: 1}
   physic: {fileID: 0}
-  col: {fileID: 1753130436}
   builtBlasts: 2
   rebuildCost: 00000000040000000000000000000000
   icons: []
@@ -115497,7 +115472,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 37
+  m_LightOrder: 104
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -116824,7 +116799,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.5}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -117652,7 +117626,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 2, y: 2.5}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -118283,7 +118256,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.5}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -118743,7 +118715,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.5}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -118858,7 +118829,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.5}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -119229,7 +119199,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.5}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -119237,6 +119206,67 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+--- !u!1001 &1907262268
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.98
+      objectReference: {fileID: 0}
+    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -5.7
+      objectReference: {fileID: 0}
+    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5015000612375107076, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
+      propertyPath: m_Name
+      value: Extractor (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 5015000612375107076, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
 --- !u!1 &1913144815
 GameObject:
   m_ObjectHideFlags: 0
@@ -119426,7 +119456,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e71f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 38
+  m_LightOrder: 105
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -120454,7 +120484,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.25}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -121815,7 +121844,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 0.25, y: 0.75}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -123550,63 +123578,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!1001 &149838690157836703
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -2.5782933
-      objectReference: {fileID: 0}
-    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: -0.03291121
-      objectReference: {fileID: 0}
-    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2333740645850149394, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5015000612375107076, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
-      propertyPath: m_Name
-      value: Extractor
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
 --- !u!114 &564735148073256030
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -123703,7 +123674,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 1, y: 1}
   physic: {fileID: 0}
-  col: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -123999,7 +123969,6 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 1, y: 1}
   physic: {fileID: 0}
-  col: {fileID: 1108550240}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
   icons: []
@@ -128863,7 +128832,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 000000003535f038
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 39
+  m_LightOrder: 106
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -134216,7 +134185,6 @@ SceneRoots:
   - {fileID: 1068199022}
   - {fileID: 1101310442}
   - {fileID: 479188539}
-  - {fileID: 149838690157836703}
   - {fileID: 8590877106608636171}
   - {fileID: 9066049036221985394}
   - {fileID: 1014442048}
@@ -134224,3 +134192,4 @@ SceneRoots:
   - {fileID: 1211323503}
   - {fileID: 1428374238}
   - {fileID: 91749019}
+  - {fileID: 1907262268}

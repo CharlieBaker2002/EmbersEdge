@@ -99,6 +99,6 @@ public class EmberStoreBuilding : MonoBehaviour
     public void Hit(Vector2 v)
     {
         float ang = GS.VTA(v);
-        statics[Mathf.FloorToInt(statics.Length * ang / 359.99f)].Light();
+        statics[Mathf.RoundToInt((statics.Length-1) * ang / 360f)].Light();
     }
 }

@@ -50,6 +50,195 @@ public class MapManager : MonoBehaviour
     public static System.Action OnUpdateMap;
 
     private Texture2D tex;
+    
+    // NEW FIELDS for segmentation system
+    private const int SEGMENT_SIZE = 50; // 50x50 pixel segments
+    private MapSegment[,] mapSegments;
+
+    // NEW CLASS for segmentation
+    private class MapSegment
+    {
+        public int startX, startY, endX, endY;
+        public bool isDirty;
+        
+        public MapSegment(int sx, int sy, int ex, int ey)
+        {
+            startX = sx;
+            startY = sy;
+            endX = ex;
+            endY = ey;
+            isDirty = true; // Start as dirty to ensure initial render
+        }
+    }
+
+    // NEW FUNCTION - Initialize segmentation system
+    private void InitializeSegmentation()
+    {
+        int segmentsX = Mathf.CeilToInt((float)textureSize / SEGMENT_SIZE);
+        int segmentsY = Mathf.CeilToInt((float)textureSize / SEGMENT_SIZE);
+        mapSegments = new MapSegment[segmentsX, segmentsY];
+        
+        for (int x = 0; x < segmentsX; x++)
+        {
+            for (int y = 0; y < segmentsY; y++)
+            {
+                int startX = x * SEGMENT_SIZE;
+                int startY = y * SEGMENT_SIZE;
+                int endX = Mathf.Min(startX + SEGMENT_SIZE, textureSize);
+                int endY = Mathf.Min(startY + SEGMENT_SIZE, textureSize);
+                
+                mapSegments[x, y] = new MapSegment(startX, startY, endX, endY);
+            }
+        }
+    }
+
+    // NEW FUNCTION - Mark segments as dirty based on changed position
+    private void MarkDirtySegments(Vector3 changedPosition)
+    {
+        float coef = scale / textureSize;
+        float halfSize = 0.5f * textureSize * coef;
+        
+        // Calculate affected area (with some padding)
+        float padding = 5f;
+        Vector2 minBounds = (Vector2)changedPosition - Vector2.one * padding;
+        Vector2 maxBounds = (Vector2)changedPosition + Vector2.one * padding;
+        
+        for (int x = 0; x < mapSegments.GetLength(0); x++)
+        {
+            for (int y = 0; y < mapSegments.GetLength(1); y++)
+            {
+                var segment = mapSegments[x, y];
+                
+                // Check if segment overlaps with changed area
+                Vector2 segmentMin = new Vector2(segment.startX * coef - halfSize, 
+                                                segment.startY * coef - halfSize);
+                Vector2 segmentMax = new Vector2(segment.endX * coef - halfSize, 
+                                                segment.endY * coef - halfSize);
+                
+                if (!(segmentMax.x < minBounds.x || segmentMin.x > maxBounds.x ||
+                      segmentMax.y < minBounds.y || segmentMin.y > maxBounds.y))
+                {
+                    segment.isDirty = true;
+                }
+            }
+        }
+    }
+
+    // UPDATED FUNCTION - Replace existing GenerateSpriteFromPoly
+    public void GenerateSpriteFromPoly()
+    {
+        if (tex == null)
+        {
+            tex = new Texture2D(textureSize, textureSize);
+            InitializeSegmentation();
+        }
+        
+        UpdatePolyFromLR();
+        
+        // Mark all segments as dirty for full regeneration
+        for (int x = 0; x < mapSegments.GetLength(0); x++)
+        {
+            for (int y = 0; y < mapSegments.GetLength(1); y++)
+            {
+                mapSegments[x, y].isDirty = true;
+            }
+        }
+        
+        float coef = scale / textureSize;
+        float halfSize = 0.5f * textureSize * coef;
+        
+        // Only update dirty segments
+        for (int sx = 0; sx < mapSegments.GetLength(0); sx++)
+        {
+            for (int sy = 0; sy < mapSegments.GetLength(1); sy++)
+            {
+                if (!mapSegments[sx, sy].isDirty)
+                    continue;
+                
+                var segment = mapSegments[sx, sy];
+                
+                for (int x = segment.startX; x < segment.endX; x++)
+                {
+                    for (int y = segment.startY; y < segment.endY; y++)
+                    {
+                        Vector2 worldPos = new Vector2(x * coef - halfSize, y * coef - halfSize);
+                        
+                        if (poly.OverlapPoint(worldPos))
+                        {
+                            tex.SetPixel(x, y, Color.white);
+                        }
+                        else
+                        {
+                            tex.SetPixel(x, y, Color.clear);
+                        }
+                    }
+                }
+                
+                segment.isDirty = false;
+            }
+        }
+        
+        tex.Apply();
+        Sprite sprite = Sprite.Create(tex, new Rect(0, 0, textureSize, textureSize), 
+            new Vector2(0.5f, 0.5f), textureSize/scale);
+        sr.sprite = sprite;
+    }
+
+    // NEW FUNCTION - Optimized version for targeted updates
+    private void GenerateSpriteFromPoly(Vector3 changedPosition)
+    {
+        if (tex == null)
+        {
+            tex = new Texture2D(textureSize, textureSize);
+            InitializeSegmentation();
+        }
+        
+        UpdatePolyFromLR();
+        
+        // Mark affected segments as dirty
+        MarkDirtySegments(changedPosition);
+        
+        float coef = scale / textureSize;
+        float halfSize = 0.5f * textureSize * coef;
+        
+        // Only update dirty segments
+        for (int sx = 0; sx < mapSegments.GetLength(0); sx++)
+        {
+            for (int sy = 0; sy < mapSegments.GetLength(1); sy++)
+            {
+                if (!mapSegments[sx, sy].isDirty)
+                    continue;
+                
+                var segment = mapSegments[sx, sy];
+                
+                for (int x = segment.startX; x < segment.endX; x++)
+                {
+                    for (int y = segment.startY; y < segment.endY; y++)
+                    {
+                        Vector2 worldPos = new Vector2(x * coef - halfSize, y * coef - halfSize);
+                        
+                        if (poly.OverlapPoint(worldPos))
+                        {
+                            tex.SetPixel(x, y, Color.white);
+                        }
+                        else
+                        {
+                            tex.SetPixel(x, y, Color.clear);
+                        }
+                    }
+                }
+                
+                segment.isDirty = false;
+            }
+        }
+        
+        tex.Apply();
+        Sprite sprite = Sprite.Create(tex, new Rect(0, 0, textureSize, textureSize), 
+            new Vector2(0.5f, 0.5f), textureSize/scale);
+        sr.sprite = sprite;
+    }
+
+    
 
     #region MiniMap
 
@@ -257,6 +446,7 @@ public class MapManager : MonoBehaviour
         IM.i.pi.Player.Map.Enable();
         yield return null;
         UpdateLRFromSpline();
+        InitializeSegmentation(); // Add this line
         GenerateSpriteFromPoly();
         FadeBoundary(true);
         yield return new WaitForSeconds(1.5f);
@@ -463,7 +653,7 @@ public class MapManager : MonoBehaviour
         UpdateLRFromSpline();
         if (updateMask)
         {
-            GenerateSpriteFromPoly();
+            GenerateSpriteFromPoly(EEpos); // Pass position for targeted update
             PushBackEE();
             CheckExtras();
         }
@@ -535,35 +725,6 @@ public class MapManager : MonoBehaviour
             vs[i] = lr.GetPosition(i);
         }
         poly.points = vs;
-    }
-
-    public void GenerateSpriteFromPoly()
-    {
-        if (tex != null)
-        {
-            Destroy(tex);
-        }
-        tex = new Texture2D(textureSize, textureSize);
-        UpdatePolyFromLR();
-        float coef = scale / textureSize;
-        for (int x = 0; x < textureSize; x++)
-        {
-            for (int y = 0; y < textureSize; y++) // 40 wide, covering 400 positions
-            {
-                Vector2 worldPos = new(x * coef - 0.5f * textureSize * coef, y * coef - 0.5f * textureSize * coef);
-                if (poly.OverlapPoint(worldPos))
-                {
-                    tex.SetPixel(x, y, Color.white);
-                }
-                else
-                {
-                    tex.SetPixel(x, y, Color.clear);
-                }
-            }
-        }
-        tex.Apply();
-        Sprite sprite = Sprite.Create(tex, new Rect(0, 0, textureSize,textureSize), new Vector2(0.5f, 0.5f), textureSize/scale);
-        sr.sprite = sprite;
     }
 
     private void OnDestroy()

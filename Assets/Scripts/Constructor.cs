@@ -19,7 +19,15 @@ public class Constructor : Building
     {
         base.Start();
         EnergyManager.i.constructors.Add(this);
+        GS.OnNewEra += SetMat;
+        SetMat(0);
     }
+
+    private void SetMat(int i)
+    {
+        stick.material = GS.MatByEra(GS.era, false, false, true);
+    }
+    
     public void Construct(Building b)
     {
         store.Use(1, true);
