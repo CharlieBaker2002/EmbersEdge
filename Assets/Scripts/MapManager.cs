@@ -1023,4 +1023,269 @@ public class MapManager : MonoBehaviour
             shrinking = false;
         }
     }
+    
+        
+     // Add these fields to MapManager class at the top with other fields:
+private Dictionary<int, KnotAnimation> activeAnimations = new Dictionary<int, KnotAnimation>();
+private int animationIdCounter = 0;
+private Coroutine updateCoroutine;
+
+// Helper class for tracking knot animations
+private class KnotAnimation
+{
+    public int knotIndex;
+    public Vector3 startPosition;
+    public Vector3 targetPosition;
+    public float progress;
+    public bool isNewKnot;
+    public int insertIndex;
+    
+    public KnotAnimation(int index, Vector3 start, Vector3 target, bool isNew = false, int insertAt = -1)
+    {
+        knotIndex = index;
+        startPosition = start;
+        targetPosition = target;
+        progress = 0f;
+        isNewKnot = isNew;
+        insertIndex = insertAt;
+    }
+}
+
+// Main async function
+public void ChangeMapAsync(Vector3 pos, bool updateMask)
+{
+    
+    // Initialize if needed
+    if (activeAnimations == null)
+    {
+        activeAnimations = new Dictionary<int, KnotAnimation>();
+    }
+    
+    // Calculate what would happen with a normal MapChange
+    var changeData = CalculateMapChange(pos);
+    
+    if (changeData.isReplacement)
+    {
+        // Check if this knot is already being animated
+        KnotAnimation existingAnim = null;
+        foreach (var anim in activeAnimations.Values)
+        {
+            if (anim.knotIndex == changeData.knotIndex && !anim.isNewKnot)
+            {
+                existingAnim = anim;
+                break;
+            }
+        }
+        
+        if (existingAnim != null)
+        {
+            // Update the target position of existing animation
+            existingAnim.targetPosition = pos;
+            existingAnim.progress = 0f; // Reset progress to start new interpolation
+        }
+        else
+        {
+            // Create new animation for knot replacement
+            var knot = sc.Spline.Knots.ElementAt(changeData.knotIndex);
+            var newAnim = new KnotAnimation(changeData.knotIndex, knot.Position, pos);
+            activeAnimations[animationIdCounter++] = newAnim;
+        }
+    }
+    else
+    {
+        // Handle knot insertion - more complex due to index shifting
+        // First, update all animation indices that would be affected by insertion
+        foreach (var anim in activeAnimations.Values)
+        {
+            if (!anim.isNewKnot && anim.knotIndex >= changeData.insertIndex)
+            {
+                anim.knotIndex++;
+            }
+            if (anim.isNewKnot && anim.insertIndex >= changeData.insertIndex)
+            {
+                anim.insertIndex++;
+            }
+        }
+        
+        // Create animation for new knot
+        var nearestPoint = ProximityData(pos, 0f).Item1;
+        var newAnim = new KnotAnimation(-1, nearestPoint, pos, true, changeData.insertIndex);
+        activeAnimations[animationIdCounter++] = newAnim;
+    }
+    
+    // Start update coroutine if not already running
+    if (updateCoroutine == null)
+    {
+        updateCoroutine = StartCoroutine(UpdateAnimationsCoroutine(updateMask));
+    }
+}
+
+// Helper structure for change calculation
+private struct MapChangeData
+{
+    public bool isReplacement;
+    public int knotIndex;
+    public int insertIndex;
+}
+
+// Calculate what MapChange would do without actually changing anything
+private MapChangeData CalculateMapChange(Vector3 EEpos)
+{
+    MapChangeData result = new MapChangeData();
+    
+    // Find three closest knots (same logic as MapChange)
+    (Vector2, float)[] knots = new (Vector2, float)[sc.Spline.Count];
+    int i = 0;
+    float minDist = 99999f;
+    int minindex = -1;
+    
+    foreach (BezierKnot k in sc.Spline.Knots)
+    {
+        knots[i] = ((Vector2)(Vector3)k.Position, ((Vector2)(EEpos - (Vector3)k.Position)).sqrMagnitude);
+        if (knots[i].Item2 < minDist)
+        {
+            minDist = knots[i].Item2;
+            minindex = i;
+        }
+        i++;
+    }
+    
+    int[] indexs = new int[2] { GetNextIndex(minindex - 1), GetNextIndex(minindex + 1) };
+    
+    if (PointInTriangle(knots[minindex].Item1, knots[indexs[0]].Item1, EEpos, knots[indexs[1]].Item1))
+    {
+        result.isReplacement = true;
+        result.knotIndex = minindex;
+    }
+    else
+    {
+        result.isReplacement = false;
+        
+        // Calculate insertion index
+        SplineUtility.GetNearestPoint(sc.Spline, EEpos, out _, out float t);
+        SplineUtility.GetNearestPoint(sc.Spline, (Vector3)knots[minindex].Item1, out _, out float torg);
+        
+        int ind = minindex;
+        if (t > torg)
+        {
+            if (ind == 0)
+            {
+                ind = (t > 0.5f) ? 0 : 1;
+            }
+            else
+            {
+                ind = minindex + 1;
+            }
+        }
+        result.insertIndex = ind;
+    }
+    
+    return result;
+}
+
+// Coroutine that handles all active animations
+private IEnumerator UpdateAnimationsCoroutine(bool updateMask)
+{
+    float animationDuration = 5f;
+    
+    while (activeAnimations.Count > 0)
+    {
+        float deltaTime = Time.deltaTime;
+        List<int> completedAnimations = new List<int>();
+        
+        // First pass: insert any new knots that are ready
+        foreach (var kvp in activeAnimations)
+        {
+            var anim = kvp.Value;
+            if (anim.isNewKnot && anim.knotIndex == -1)
+            {
+                // Insert the knot at its start position
+                sc.Spline.Insert(anim.insertIndex, new BezierKnot(anim.startPosition), TangentMode.AutoSmooth);
+                anim.knotIndex = anim.insertIndex;
+                
+                // Update other animations' indices
+                foreach (var otherAnim in activeAnimations.Values)
+                {
+                    if (otherAnim != anim && !otherAnim.isNewKnot && otherAnim.knotIndex >= anim.insertIndex)
+                    {
+                        otherAnim.knotIndex++;
+                    }
+                }
+            }
+        }
+        
+        // Second pass: update positions
+        foreach (var kvp in activeAnimations)
+        {
+            var anim = kvp.Value;
+            anim.progress += deltaTime / animationDuration;
+            
+            if (anim.progress >= 1f)
+            {
+                // Set final position
+                sc.Spline.SetKnot(anim.knotIndex, new BezierKnot(anim.targetPosition));
+                completedAnimations.Add(kvp.Key);
+            }
+            else
+            {
+                // Interpolate position
+                Vector3 currentPos = Vector3.Lerp(anim.startPosition, anim.targetPosition, anim.progress);
+                sc.Spline.SetKnot(anim.knotIndex, new BezierKnot(currentPos));
+            }
+        }
+        
+        // Update tangent mode for smooth curves
+        sc.Spline.SetTangentMode(TangentMode.AutoSmooth);
+        
+        // Update visual representations - call the existing method via reflection or make it public
+        UpdateSplineVisuals();
+        
+        if (updateMask)
+        {
+            // Calculate center of all changing positions for optimized mask update
+            Vector3 centerPos = Vector3.zero;
+            int count = 0;
+            foreach (var anim in activeAnimations.Values)
+            {
+                centerPos += Vector3.Lerp(anim.startPosition, anim.targetPosition, anim.progress);
+                count++;
+            }
+            if (count > 0)
+            {
+                centerPos /= count;
+                GenerateSpriteFromPoly(centerPos);
+            }
+        }
+        
+        // Remove completed animations
+        foreach (int id in completedAnimations)
+        {
+            activeAnimations.Remove(id);
+        }
+        
+        yield return null;
+    }
+    
+    // Final updates
+    if (updateMask)
+    {
+        PushBackEE();
+        CheckExtras();
+        OnUpdateMap?.Invoke();
+    }
+    
+    updateCoroutine = null;
+}
+
+// Add this public method to update spline visuals
+private void UpdateSplineVisuals()
+{
+    // Since UpdateLRFromSpline is private, we need to duplicate its logic here
+    Vector3[] vs = new Vector3[999];
+    for (int i = 0; i < 999; i++)
+    {
+        vs[i] = sc.Spline.EvaluatePosition(i / 999f);
+    }
+    lr.SetPositions(vs);
+}
 }

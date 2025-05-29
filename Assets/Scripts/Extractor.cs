@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class Extractor : Building
@@ -9,13 +10,16 @@ public class Extractor : Building
     [SerializeField] private SpriteRenderer ring;
     private float omega = 0f;
     [SerializeField] private Sprite[] ringSprites;
-    [SerializeField] private Sprite meshDefault;
-    [SerializeField] private Sprite ringDefault;
-    [SerializeField] private EmberParticle[] statics;
+    [SerializeField] private List<EmberParticle> statics;
     [SerializeField] private Ember emb;
     public float maxDistance = 7.5f;
     [SerializeField] ParticleSystem ps;
     private ParticleSystem.EmissionModule em;
+    [SerializeField] private EmberStore store;
+    private float timer;
+
+    private int queue = 0;
+    private int ringind;
     
     public override void Start()
     {
@@ -23,6 +27,13 @@ public class Extractor : Building
         em = ps.emission;
         GS.OnNewEra += i => { ring.material = GS.MatByEra(i, true, false,true); };
         StartCoroutine(Animate());
+        int n = statics.Count;
+        while (statics.Count > n * 0.4f)
+        {
+            int r = Random.Range(0, statics.Count);
+            Destroy(statics[r].gameObject);
+            statics.RemoveAt(r);
+        }
     }
 
 
@@ -30,28 +41,40 @@ public class Extractor : Building
     {
         LeanTween.value(gameObject, 1f, 0f, 5f).setOnUpdate((float val) =>
         {
-            omega = val * 360f;
+            omega = 0.5f * val;
             em.rateOverTime = val * 40f;
-        }).setEaseInSine();
+        }).setEaseInSine().setOnComplete(() => omega = 0f);
     }
 
     // Update is called once per frame
     void Update()
     {
-        mesh.Rotate(0f, 0f, omega * Time.deltaTime);
+        mesh.Rotate(0f, 0f, omega * 360f * Time.deltaTime);
+        if (queue > 0)
+        {
+            if (timer > 0f)
+            {
+                timer -= Time.deltaTime;
+                return;
+            }
+            timer += 3 * Time.fixedDeltaTime;
+            ringind = ringind.Cycle(1, ringSprites.Length-1, 0);
+            ring.sprite = ringSprites[ringind];
+            if (ringind == 0) queue--;
+        }
     }
 
     public IEnumerator Animate() //1) Spin, 2) Get embers from the edge, 3) ember goes to random space, 4) activate ember particles, 5) Animate the correct part of the ring, 6) incremement map manager
     {
         LeanTween.value(gameObject, 0f, 1f, 5f).setOnUpdate(x =>
         {
-            omega = x;
+            omega = 0.5f*x;
             em.rateOverTime = x * 40f;
         }).setEaseOutSine();
         yield return new WaitForSeconds(2.5f);
         
-        Vector3 p = MapManager.i.ProximityData(transform.position + (Vector3)Random.insideUnitCircle, 0f, false).Item1;
-        Vector2 v = (p - transform.position).normalized;
+        Vector3 p = MapManager.i.ProximityData(transform.position , 0f, false).Item1;
+        Vector2 v = transform.position.normalized;
         float dist = Vector2.Distance(transform.position, p);
         if (dist > maxDistance)
         {
@@ -60,29 +83,39 @@ public class Extractor : Building
             sr.color = Color.gray;
             yield break;
         }
-
         int n = Mathf.FloorToInt(Random.Range(0f, 1f) + maxDistance - dist);
-        n *= 10;
+        MapManager.i.ChangeMapAsync((Vector2)p + v,true);
         for (int i = 0; i < n; i++)
         {
-            var e = Instantiate(emb, (Vector2)p +  v.Rotated(Random.Range(-20f,20f)) * Random.Range(0.5f,1f) + Random.insideUnitCircle * 0.15f, GS.RandRot(), GS.FindParent(GS.Parent.fx));
+            var e = Instantiate(emb, (Vector2)p, GS.RandRot(), GS.FindParent(GS.Parent.fx));
+            e.extract = this;
             e.to = transform.position + (Vector3)Random.insideUnitCircle * 0.25f;
-            e.onComplete += OnComplete;
-            Vector3 ep = e.transform.position;
             yield return new WaitForSeconds(1f);
-            Vector3 np = MapManager.i.ProximityData((ep-transform.position) * 0.5f + transform.position, 0f, false).Item1;
-            //MapManager.i.MapChange(np + (ep - transform.position).normalized * 0.3f, true);
-            yield return new WaitForSeconds(0.5f);
-            
             p = MapManager.i.ProximityData(transform.position + (Vector3)Random.insideUnitCircle, 0f, false).Item1;
-            v = (p - transform.position).normalized;
         }
         StopSpinning();
     }
-
-
-    private void OnComplete()
+    
+    public void SetParticle(Vector3 transformPosition, Vector2 dir)
     {
-        return;
+        store.Set(store.ember + 1);
+        queue++;
+        StartCoroutine(ActivateParticlesSequence(transformPosition,dir));
+    }
+    
+    private IEnumerator ActivateParticlesSequence(Vector3 hitPos, Vector2 v)
+    {
+        for(int i = 0; i < 8; i++)
+        {
+            Vector3 m = Random.insideUnitCircle * 0.05f + (Vector2)hitPos;
+            var l = statics.OrderBy(x => Vector2.SqrMagnitude(x.transform.position - m)).Take(2).ToArray();
+            for (int x = 0; x < 2; x++)
+            {
+                l[x].Light();
+                l[x].gameObject.SetActive(true);
+                yield return new WaitForFixedUpdate();
+                hitPos += (Vector3)v;
+            }
+        }
     }
 }

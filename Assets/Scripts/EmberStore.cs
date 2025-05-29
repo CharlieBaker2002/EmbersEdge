@@ -36,12 +36,19 @@ public class EmberStore : MonoBehaviour
 
     public int Set(int newVal)
     {
+        Debug.Log("set:" +newVal);
         if(newVal > maxEmber)
         {
             ember = maxEmber;
+            //EnergyManager.i.UpdateEmber();
             return newVal - maxEmber;
         }
-        ember = newVal;
+
+        if (ember != newVal)
+        {
+            ember = newVal;
+            //EnergyManager.i.UpdateEmber();
+        }
         return 0;
     }
 }

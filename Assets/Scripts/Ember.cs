@@ -23,20 +23,16 @@ public class Ember : MonoBehaviour
 
     [Header("Timings")]
     [SerializeField] private float loadTime = 0.4f;
-    [SerializeField] private float loadFPS  = 18f;
-    [SerializeField] private LeanTweenType loadEase = LeanTweenType.easeOutQuart;
 
     [SerializeField] private float offTime  = 0.35f;
-    [SerializeField] private float offFPS   = 18f;
-    [SerializeField] private LeanTweenType offEase  = LeanTweenType.easeInQuart;
 
     [Header("Flicker-phase (between load and off)")]
     [SerializeField] private float flickerInterval = 0.05f;  // seconds between random sprite swaps
-    [SerializeField] private float flickerDuration = 0.4f;   // how long to stay in the "on" state before powering down
 
     public Action onComplete;
 
     [SerializeField] bool quick = false;
+    public Extractor extract = null;
 
     // ──────────────────────────  RUNTIME  ──────────────────────────
     Vector3 spawnPos;
@@ -47,9 +43,22 @@ public class Ember : MonoBehaviour
         if (!sr) sr = GetComponent<SpriteRenderer>();
         spawnPos = transform.position;
         prevPos  = spawnPos;
+      
     }
 
-    void Start() => PlaySequence();
+    void SetParticle()
+    {
+        if (extract != null)
+        {
+            extract.SetParticle(transform.position, transform.up * 0.02f);
+        }
+    }
+
+    void Start()
+    {
+        onComplete += SetParticle;
+        PlaySequence();
+    }
 
     // ──────────────────────────  MAIN SEQUENCE  ──────────────────────────
     void PlaySequence()

@@ -19,7 +19,7 @@ public class EmberStoreBuilding : MonoBehaviour
         GS.OnNewEra += UpdateEmberColours;
         r.material = GS.MatByEra(GS.era, false, false, true);
         Refresh();
-        StartCoroutine(Test());
+        //StartCoroutine(Test());
     }
 
     IEnumerator Test()

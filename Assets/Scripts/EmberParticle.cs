@@ -10,12 +10,14 @@ public class EmberParticle : MonoBehaviour
     [SerializeField] private Sprite[] sprs;
     private Vector2 vel;
     public float speed = 0.2f;
+    public float fadeSpeed = 1f;
     public float rad = 1f;
     private float colorT;
     private bool isFading;
     public bool isStatic = false;
     [SerializeField] public EmberStoreBuilding eb;
-
+    public bool fader = false;
+    
     public void Start()
     {
         sr.material = GS.MatByEra(GS.era, true, false,true);
@@ -36,17 +38,17 @@ public class EmberParticle : MonoBehaviour
         // handle color fade when bouncing
         if (isFading)
         {
-            int delta = Mathf.FloorToInt(colorT * 4f);
+            int delta = Mathf.FloorToInt(colorT * 3.99f);
             sr.sprite = sprs[GS.era*4 + delta];
             sr.sortingOrder = 100 - delta;
-            colorT += Time.deltaTime;
+            colorT += fadeSpeed * Time.deltaTime;
+            if(fader) sr.color = new Color(1f,1f,1f,1f - colorT);
             if (colorT >= 1f)
             {
                 colorT = 1f;
                 isFading = false;
             }
         }
-        
         if(isStatic) return;
 
         // move

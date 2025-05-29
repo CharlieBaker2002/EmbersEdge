@@ -9772,14 +9772,11 @@ MonoBehaviour:
   arcHeight: 1
   flightTime: 2
   flightEase: 8
-  loadTime: 1.5
-  loadFPS: 0
-  loadEase: 9
+  loadTime: 0.5
   offTime: 0.5
-  offFPS: 0
-  offEase: 8
   flickerInterval: 0.05
-  flickerDuration: 0.2
+  quick: 0
+  extract: {fileID: 0}
 --- !u!212 &2334987805250713306
 SpriteRenderer:
   m_ObjectHideFlags: 0

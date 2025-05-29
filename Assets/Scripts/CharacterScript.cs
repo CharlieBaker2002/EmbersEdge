@@ -13,7 +13,6 @@ public class CharacterScript : Unit
 {
     #region init
     public List<float> attributes = new List<float> { 0f, 0f, 0f }; //strength intellect agility
-    private float tcoef = 4.5f;
 
     [HideInInspector]
     public Vector2 mousePos;
