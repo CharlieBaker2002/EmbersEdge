@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -84,12 +85,32 @@ public class EnergyManager : MonoBehaviour
     private List<Building> bs = new();
     private readonly Dictionary<Building,int> emberCount = new();
     public List<EmberStore> emberStores;
-    public List<Extractor> extractors;
     public List<Constructor> constructors;
+
+    private bool extracting = false;
+
+    private void Start()
+    {
+        SpawnManager.instance.onWaveComplete += () => StartCoroutine(DoExtractors());
+        SpawnManager.instance.onWaveComplete += () => GS.QA(UpdateEmber, 3);
+    }
 
     public void UpdateEmberStores()
     {
+        constructors = constructors.OrderBy(x => x.tasks.Sum(z => z.numIconsTrue)).ToList();
         emberStores = emberStores.OrderBy(x => x.maxEmber).ToList();
+    }
+
+    public IEnumerator DoExtractors()
+    {
+        if(extracting) yield break;
+        extracting = true;
+        yield return null;
+        foreach (Extractor e in Extractor.extractors)
+        {
+            yield return StartCoroutine(e.Animate());
+        }
+        extracting = false;
     }
 
     public void UpdateEmber()
@@ -101,6 +122,22 @@ public class EnergyManager : MonoBehaviour
             sum += e.ember;
             e.ember = 0;
         }
+        foreach(EmberStore c in constructors.Select(x=> x.store))
+        {
+            sum += c.ember;
+            c.ember = 0;
+        }
+        while (sum > 0 && constructors.Any(c=>c.store.ember != c.store.maxEmber)) //add one evenly to each constructor until they are all full.
+        {
+            foreach(Constructor c in constructors)
+            {
+                if (c.store.ember >= c.store.maxEmber) continue;
+                c.store.ember += 1;
+                sum -= 1;
+                if (sum <= 0) break;
+            }
+            
+        }
         while (sum > 0) //add one evenly.
         {
             foreach (var t in emberStores)
@@ -108,7 +145,13 @@ public class EnergyManager : MonoBehaviour
                 if (t.ember >= t.maxEmber) continue;
                 t.ember += 1;
                 sum -= 1;
+                if (sum <= 0) break;
             }
+        }
+
+        foreach(EmberStore e in emberStores)
+        {
+            e.b?.Refresh();
         }
     }
     

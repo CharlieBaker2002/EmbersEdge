@@ -1,10 +1,13 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 public class Extractor : Building
 {
+    public static List<Extractor> extractors;
     // Start is called before the first frame update
     [SerializeField] private Transform mesh;
     [SerializeField] private SpriteRenderer ring;
@@ -25,14 +28,25 @@ public class Extractor : Building
     {
         base.Start();
         em = ps.emission;
-        GS.OnNewEra += i => { ring.material = GS.MatByEra(i, true, false,true); };
-        StartCoroutine(Animate());
+        GS.OnNewEra += UpdateColours;
         int n = statics.Count;
+        extractors.Add(this);
         while (statics.Count > n * 0.4f)
         {
             int r = Random.Range(0, statics.Count);
             Destroy(statics[r].gameObject);
             statics.RemoveAt(r);
+        }
+
+        StartCoroutine(Animate());
+    }
+    
+    void UpdateColours(int era)
+    {
+        ring.material = GS.MatByEra(era, true, true,true);
+        foreach(EmberParticle p in statics)
+        {
+            p.sr.material = GS.MatByEra(GS.era, true, false, true);
         }
     }
 
@@ -57,7 +71,7 @@ public class Extractor : Building
                 timer -= Time.deltaTime;
                 return;
             }
-            timer += 3 * Time.fixedDeltaTime;
+            timer += 2 * Time.fixedDeltaTime;
             ringind = ringind.Cycle(1, ringSprites.Length-1, 0);
             ring.sprite = ringSprites[ringind];
             if (ringind == 0) queue--;
@@ -117,5 +131,10 @@ public class Extractor : Building
                 hitPos += (Vector3)v;
             }
         }
+    }
+
+    private void OnDestroy()
+    {
+        extractors.Remove(this);
     }
 }

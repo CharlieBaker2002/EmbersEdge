@@ -8,15 +8,19 @@ public class EmberStore : MonoBehaviour
 {
     public int ember;
     public int maxEmber;
+    public EmberStoreBuilding b;
+    public bool isConstructor = false;
 
     private void Start()
     {
-        EnergyManager.i.emberStores.Add(this);
+        if(!isConstructor) EnergyManager.i.emberStores.Add(this);
+        EnergyManager.i.UpdateEmber();
     }
 
     public void OnDestroy()
     {
-        EnergyManager.i.emberStores.Remove(this);
+        if(!isConstructor) EnergyManager.i.emberStores.Remove(this);
+        EnergyManager.i.UpdateEmber();
     }
 
     public bool Use(int cost, bool decreaseMax = false)
@@ -29,6 +33,7 @@ public class EmberStore : MonoBehaviour
                 maxEmber -= cost;
             }
             EnergyManager.i.UpdateEmber();
+            if(b!=null) b.Refresh();
             return true;
         }
         return false;
@@ -36,18 +41,19 @@ public class EmberStore : MonoBehaviour
 
     public int Set(int newVal)
     {
-        Debug.Log("set:" +newVal);
         if(newVal > maxEmber)
         {
             ember = maxEmber;
-            //EnergyManager.i.UpdateEmber();
+            EnergyManager.i.UpdateEmber();
+            if(b!=null) b.Refresh();
             return newVal - maxEmber;
         }
 
         if (ember != newVal)
         {
             ember = newVal;
-            //EnergyManager.i.UpdateEmber();
+            EnergyManager.i.UpdateEmber();
+            if(b!=null) b.Refresh();
         }
         return 0;
     }

@@ -108,6 +108,7 @@ public class RefreshManager : MonoBehaviour
         Phasor.mitigators = new List<Phasor>();
         Copter.copters = new List<Copter>();
         Copter.coptersAvailable = 0;
+        Extractor.extractors = new List<Extractor>();
         //Set the bloom to white
 
         v.sharedProfile.TryGet(out Bloom bl);

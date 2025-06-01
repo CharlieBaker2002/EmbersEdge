@@ -53,6 +53,7 @@ public class BM : MonoBehaviour //Building Manager
 
     public void ChangeBuildingColour(bool on)
     {
+        return;
         if (!on && sampled) return;
         sampled = !on;
         if(!on && buildings[0].GetComponentInChildren<SpriteRenderer>().color == new Color(1f,1f,1f,0.1f)) return; //if already off return

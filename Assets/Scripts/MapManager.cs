@@ -6,6 +6,8 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.Splines;
+using Unity.Collections;
+using UnityEngine.Rendering;
 using UnityEngine.Tilemaps;
 using UnityEngine.UI;
 
@@ -41,7 +43,13 @@ public class MapManager : MonoBehaviour
 
     (int, BezierKnot) mapchangedata;
     readonly int textureSize = 400;
-    readonly float scale = 40;
+private const int splineSampleCount = 100;   // higher‑res sampling for tighter mask fit
+private bool awaitingReadback = false;       // guard to avoid overlapping GPU readbacks
+readonly float scale = 40;
+  // --- Area‑safety & smoothing constants ---
+  private const float areaEpsilon        = 0.01f;  // Minimum extra area required for an expansion
+  private const float minSmoothAngle     = 120f;   // Interior‑angle threshold (deg) – sharper angles will be softened
+  private const float smoothDisplacement = 0.5f;   // Outward nudge (world units) for neighbour knots
     bool fff = false; //finish follow flag
 
     public List<ActionScript> asses = new List<ActionScript>();
@@ -50,195 +58,191 @@ public class MapManager : MonoBehaviour
     public static System.Action OnUpdateMap;
 
     private Texture2D tex;
+    // === GPU mask & buffer ===
+    private NativeArray<Color32> pixelBuffer;
+    private RenderTexture maskRT;
+    private Mesh maskMesh;
+    [SerializeField] private Material gpuMaskMat;   // unlit white pass‑through
+    private bool meshDirty = true;
+
     
-    // NEW FIELDS for segmentation system
-    private const int SEGMENT_SIZE = 50; // 50x50 pixel segments
-    private MapSegment[,] mapSegments;
-
-    // NEW CLASS for segmentation
-    private class MapSegment
+    // Ensure the CPU texture & buffer exist
+    private void EnsureTextureAndBuffer()
     {
-        public int startX, startY, endX, endY;
-        public bool isDirty;
-        
-        public MapSegment(int sx, int sy, int ex, int ey)
-        {
-            startX = sx;
-            startY = sy;
-            endX = ex;
-            endY = ey;
-            isDirty = true; // Start as dirty to ensure initial render
-        }
+        if (tex == null)
+            tex = new Texture2D(textureSize, textureSize, TextureFormat.Alpha8, false);
+
+        if (!pixelBuffer.IsCreated)
+            pixelBuffer = new NativeArray<Color32>(textureSize * textureSize, Allocator.Persistent,
+                                                   NativeArrayOptions.ClearMemory);
     }
 
-    // NEW FUNCTION - Initialize segmentation system
-    private void InitializeSegmentation()
+    // Build / rebuild the mesh outlining the polygon – runs only when the spline changes.
+    // Build / rebuild the mesh outlining the polygon – handles concave shapes via ear‑clipping.
+    private void TriangulateMaskMesh()
     {
-        int segmentsX = Mathf.CeilToInt((float)textureSize / SEGMENT_SIZE);
-        int segmentsY = Mathf.CeilToInt((float)textureSize / SEGMENT_SIZE);
-        mapSegments = new MapSegment[segmentsX, segmentsY];
-        
-        for (int x = 0; x < segmentsX; x++)
-        {
-            for (int y = 0; y < segmentsY; y++)
-            {
-                int startX = x * SEGMENT_SIZE;
-                int startY = y * SEGMENT_SIZE;
-                int endX = Mathf.Min(startX + SEGMENT_SIZE, textureSize);
-                int endY = Mathf.Min(startY + SEGMENT_SIZE, textureSize);
-                
-                mapSegments[x, y] = new MapSegment(startX, startY, endX, endY);
-            }
-        }
-    }
+        Vector2[] pts = poly.points;
+        if (pts.Length < 3) return;
 
-    // NEW FUNCTION - Mark segments as dirty based on changed position
-    private void MarkDirtySegments(Vector3 changedPosition)
-    {
-        float coef = scale / textureSize;
-        float halfSize = 0.5f * textureSize * coef;
-        
-        // Calculate affected area (with some padding)
-        float padding = 5f;
-        Vector2 minBounds = (Vector2)changedPosition - Vector2.one * padding;
-        Vector2 maxBounds = (Vector2)changedPosition + Vector2.one * padding;
-        
-        for (int x = 0; x < mapSegments.GetLength(0); x++)
+        if (maskMesh == null)
+            maskMesh = new Mesh();
+        else
+            maskMesh.Clear();
+
+        // Ear‑clipping triangulation
+        List<int> indices = new List<int>();
+        List<int> verts = Enumerable.Range(0, pts.Length).ToList();
+
+        // Determine winding (positive = CCW)
+        float area = 0f;
+        for (int i = 0, j = pts.Length - 1; i < pts.Length; j = i++)
+            area += (pts[j].x * pts[i].y) - (pts[i].x * pts[j].y);
+        bool isCCW = area > 0f;
+
+        int guard = 0;
+        while (verts.Count > 3 && guard < 5000)
         {
-            for (int y = 0; y < mapSegments.GetLength(1); y++)
+            guard++;
+            bool earFound = false;
+
+            for (int vi = 0; vi < verts.Count; vi++)
             {
-                var segment = mapSegments[x, y];
-                
-                // Check if segment overlaps with changed area
-                Vector2 segmentMin = new Vector2(segment.startX * coef - halfSize, 
-                                                segment.startY * coef - halfSize);
-                Vector2 segmentMax = new Vector2(segment.endX * coef - halfSize, 
-                                                segment.endY * coef - halfSize);
-                
-                if (!(segmentMax.x < minBounds.x || segmentMin.x > maxBounds.x ||
-                      segmentMax.y < minBounds.y || segmentMin.y > maxBounds.y))
+                int a = verts[(vi + verts.Count - 1) % verts.Count];
+                int b = verts[vi];
+                int c = verts[(vi + 1) % verts.Count];
+
+                Vector2 pa = pts[a];
+                Vector2 pb = pts[b];
+                Vector2 pc = pts[c];
+
+                // Check orientation
+                float cross = (pb.x - pa.x) * (pc.y - pa.y) - (pb.y - pa.y) * (pc.x - pa.x);
+                if (isCCW ? cross <= 0f : cross >= 0f) continue; // reflex, not an ear
+
+                // Check no other point inside the ear
+                bool hasPointInside = false;
+                for (int k = 0; k < verts.Count && !hasPointInside; k++)
                 {
-                    segment.isDirty = true;
+                    int v = verts[k];
+                    if (v == a || v == b || v == c) continue;
+                    if (PointInTriangle(pts[v], pa, pb, pc)) hasPointInside = true;
                 }
+                if (hasPointInside) continue;
+
+                // It's an ear – add triangle
+                if (isCCW)
+                {
+                    indices.Add(a);
+                    indices.Add(b);
+                    indices.Add(c);
+                }
+                else
+                {
+                    indices.Add(a);
+                    indices.Add(c);
+                    indices.Add(b);
+                }
+
+                verts.RemoveAt(vi);
+                earFound = true;
+                break;
+            }
+
+            if (!earFound) break; // fallback to avoid infinite loop
+        }
+
+        // Last triangle
+        if (verts.Count == 3)
+        {
+            if (isCCW)
+            {
+                indices.Add(verts[0]);
+                indices.Add(verts[1]);
+                indices.Add(verts[2]);
+            }
+            else
+            {
+                indices.Add(verts[0]);
+                indices.Add(verts[2]);
+                indices.Add(verts[1]);
             }
         }
+
+        // Assign to mesh
+        var meshVerts = pts.Select(v => (Vector3)v).ToArray();
+        maskMesh.vertices  = meshVerts;
+        maskMesh.triangles = indices.ToArray();
     }
 
-    // UPDATED FUNCTION - Replace existing GenerateSpriteFromPoly
     public void GenerateSpriteFromPoly()
     {
-        if (tex == null)
-        {
-            tex = new Texture2D(textureSize, textureSize);
-            InitializeSegmentation();
-        }
-        
+        if (awaitingReadback) return;   // Skip if a previous request hasn't returned yet
+        awaitingReadback = true;
+        // Combined GPU + NativeArray upload path
+        EnsureTextureAndBuffer();
         UpdatePolyFromLR();
-        
-        // Mark all segments as dirty for full regeneration
-        for (int x = 0; x < mapSegments.GetLength(0); x++)
+
+        // ---------- GPU render ----------
+        if (maskMesh == null || meshDirty)
         {
-            for (int y = 0; y < mapSegments.GetLength(1); y++)
-            {
-                mapSegments[x, y].isDirty = true;
-            }
+            TriangulateMaskMesh();
+            meshDirty = false;
         }
-        
-        float coef = scale / textureSize;
-        float halfSize = 0.5f * textureSize * coef;
-        
-        // Only update dirty segments
-        for (int sx = 0; sx < mapSegments.GetLength(0); sx++)
+
+        if (maskRT == null)
         {
-            for (int sy = 0; sy < mapSegments.GetLength(1); sy++)
-            {
-                if (!mapSegments[sx, sy].isDirty)
-                    continue;
-                
-                var segment = mapSegments[sx, sy];
-                
-                for (int x = segment.startX; x < segment.endX; x++)
-                {
-                    for (int y = segment.startY; y < segment.endY; y++)
-                    {
-                        Vector2 worldPos = new Vector2(x * coef - halfSize, y * coef - halfSize);
-                        
-                        if (poly.OverlapPoint(worldPos))
-                        {
-                            tex.SetPixel(x, y, Color.white);
-                        }
-                        else
-                        {
-                            tex.SetPixel(x, y, Color.clear);
-                        }
-                    }
-                }
-                
-                segment.isDirty = false;
-            }
+            maskRT = new RenderTexture(textureSize, textureSize, 0, RenderTextureFormat.R8);
+            maskRT.filterMode = FilterMode.Point;
+            maskRT.Create();
         }
-        
-        tex.Apply();
-        Sprite sprite = Sprite.Create(tex, new Rect(0, 0, textureSize, textureSize), 
-            new Vector2(0.5f, 0.5f), textureSize/scale);
-        sr.sprite = sprite;
+
+        var prevRT = RenderTexture.active;
+
+        // ----- Render spline mask into RT in pixel space -----
+        Graphics.SetRenderTarget(maskRT);
+        GL.PushMatrix();
+        GL.LoadPixelMatrix(0, textureSize, 0, textureSize);   // 1 unit == 1 pixel
+
+        GL.Clear(false, true, Color.clear);
+
+        // Matrix that maps world‑space spline (‑scale/2 … +scale/2) to pixel coords (0 … textureSize)
+        float pxPerWU = textureSize / scale;
+        var xform = Matrix4x4.TRS(
+                        new Vector3(textureSize * 0.5f, textureSize * 0.5f, 0f),  // move origin to centre
+                        Quaternion.identity,
+                        new Vector3(pxPerWU, pxPerWU, 1f));                       // scale world→pixel
+
+        gpuMaskMat.SetPass(0);      // material outputs solid white
+        Graphics.DrawMeshNow(maskMesh, xform);
+
+        GL.PopMatrix();
+        Graphics.SetRenderTarget(prevRT);
+
+        // ---------- CPU texture update using SetPixelData ----------
+        AsyncGPUReadback.Request(maskRT, 0, request =>
+        {
+            if (request.hasError) return;
+
+            var src = request.GetData<Color32>();
+            if (!pixelBuffer.IsCreated)
+                pixelBuffer = new NativeArray<Color32>(src.Length, Allocator.Persistent);
+            else if (pixelBuffer.Length != src.Length)
+            {
+                pixelBuffer.Dispose();
+                pixelBuffer = new NativeArray<Color32>(src.Length, Allocator.Persistent);
+            }
+
+            src.CopyTo(pixelBuffer);
+            tex.SetPixelData(pixelBuffer, 0);
+            tex.Apply(false, false);
+
+            var sprite = Sprite.Create(tex, new Rect(0, 0, textureSize, textureSize),
+                                       new Vector2(0.5f, 0.5f), textureSize / scale);
+            sr.sprite = sprite;
+            awaitingReadback = false;
+        });
     }
 
-    // NEW FUNCTION - Optimized version for targeted updates
-    private void GenerateSpriteFromPoly(Vector3 changedPosition)
-    {
-        if (tex == null)
-        {
-            tex = new Texture2D(textureSize, textureSize);
-            InitializeSegmentation();
-        }
-        
-        UpdatePolyFromLR();
-        
-        // Mark affected segments as dirty
-        MarkDirtySegments(changedPosition);
-        
-        float coef = scale / textureSize;
-        float halfSize = 0.5f * textureSize * coef;
-        
-        // Only update dirty segments
-        for (int sx = 0; sx < mapSegments.GetLength(0); sx++)
-        {
-            for (int sy = 0; sy < mapSegments.GetLength(1); sy++)
-            {
-                if (!mapSegments[sx, sy].isDirty)
-                    continue;
-                
-                var segment = mapSegments[sx, sy];
-                
-                for (int x = segment.startX; x < segment.endX; x++)
-                {
-                    for (int y = segment.startY; y < segment.endY; y++)
-                    {
-                        Vector2 worldPos = new Vector2(x * coef - halfSize, y * coef - halfSize);
-                        
-                        if (poly.OverlapPoint(worldPos))
-                        {
-                            tex.SetPixel(x, y, Color.white);
-                        }
-                        else
-                        {
-                            tex.SetPixel(x, y, Color.clear);
-                        }
-                    }
-                }
-                
-                segment.isDirty = false;
-            }
-        }
-        
-        tex.Apply();
-        Sprite sprite = Sprite.Create(tex, new Rect(0, 0, textureSize, textureSize), 
-            new Vector2(0.5f, 0.5f), textureSize/scale);
-        sr.sprite = sprite;
-    }
-
-    
 
     #region MiniMap
 
@@ -446,7 +450,7 @@ public class MapManager : MonoBehaviour
         IM.i.pi.Player.Map.Enable();
         yield return null;
         UpdateLRFromSpline();
-        InitializeSegmentation(); // Add this line
+        //InitializeSegmentation(); // Add this line
         GenerateSpriteFromPoly();
         FadeBoundary(true);
         yield return new WaitForSeconds(1.5f);
@@ -597,6 +601,10 @@ public class MapManager : MonoBehaviour
     /// </summary>
     public (int,BezierKnot) MapChange(Vector3 EEpos, bool updateMask)
     {
+        // Capture current area before we make any structural change
+        UpdatePolyFromLR();                // make sure poly is up‑to‑date
+        float originalArea = PolygonArea(poly.points);
+
         //Find three closest knots to the position. Determine the single closest knot.
         //Make vectors vA[1,2,3] from knots to the position
         //Make triangle from furthest two to the position and determine if the closest point is within.
@@ -650,14 +658,40 @@ public class MapManager : MonoBehaviour
             }
             sc.Spline.Insert(ind, new BezierKnot((Vector3)(Vector2)EEpos), TangentMode.AutoSmooth);
         }
+
+        // ----- apply & validate change -----
         UpdateLRFromSpline();
+        UpdatePolyFromLR();
+        float newArea = PolygonArea(poly.points);
+
+        // Expansion must never shrink the playable area
+        if (newArea <= originalArea + areaEpsilon)
+        {
+            // Undo the attempted change and exit
+            UndoChange((ind, returnV));
+            UpdateLRFromSpline();
+            UpdatePolyFromLR();
+            return (-1, returnV);   // ‑1 signals “no change was kept”
+        }
+
+        // Neighbour smoothing is only required for committed edits
         if (updateMask)
         {
-            GenerateSpriteFromPoly(EEpos); // Pass position for targeted update
+            SmoothLocalAngles(ind);
+            sc.Spline.SetTangentMode(TangentMode.AutoSmooth);
+        }
+
+        // Refresh visuals after smoothing
+        UpdateLRFromSpline();
+        UpdatePolyFromLR();
+
+        if (updateMask)
+        {
+            GenerateSpriteFromPoly();
             PushBackEE();
             CheckExtras();
         }
-        return (ind,returnV);
+        return (ind, returnV);
     }
 
     void CheckExtras()
@@ -709,22 +743,85 @@ public class MapManager : MonoBehaviour
 
     private void UpdateLRFromSpline()
     {
-        Vector3[] vs = new Vector3[999];
-        for (int i = 0; i < 999; i++)
+        Vector3[] vs = new Vector3[splineSampleCount];
+        for (int i = 0; i < splineSampleCount; i++)
         {
-            vs[i] = sc.Spline.EvaluatePosition(i / 999f);
+            vs[i] = sc.Spline.EvaluatePosition(i / (float)splineSampleCount);
         }
         lr.SetPositions(vs);
+        meshDirty = true;   // spline changed – rebuild GPU mesh next update
     }
 
     private void UpdatePolyFromLR()
     {
-        Vector2[] vs = new Vector2[999];
-        for (int i = 0; i < 999; i++)
+        // Sample the spline directly so polygon updates immediately,
+        // even before the LineRenderer has refreshed.
+        Vector2[] vs = new Vector2[splineSampleCount];
+        for (int i = 0; i < splineSampleCount; i++)
         {
-            vs[i] = lr.GetPosition(i);
+            vs[i] = (Vector2)(Vector3)sc.Spline.EvaluatePosition(i / (float)splineSampleCount);
         }
         poly.points = vs;
+    }
+
+    // === Geometry helpers =====================================================
+
+    // Signed polygon area (positive = CCW winding, negative = CW)
+    private float PolygonSignedArea(Vector2[] pts)
+    {
+        float a = 0f;
+        for (int i = 0, j = pts.Length - 1; i < pts.Length; j = i++)
+            a += (pts[j].x * pts[i].y) - (pts[i].x * pts[j].y);
+        return 0.5f * a;
+    }
+
+    // Absolute polygon area
+    private float PolygonArea(Vector2[] pts) => Mathf.Abs(PolygonSignedArea(pts));
+
+    // Centroid (centre of mass) of a simple polygon
+    private Vector2 PolygonCentroid(Vector2[] pts)
+    {
+        float signedA = PolygonSignedArea(pts);
+        float cx = 0f, cy = 0f;
+
+        for (int i = 0, j = pts.Length - 1; i < pts.Length; j = i++)
+        {
+            float cross = (pts[j].x * pts[i].y) - (pts[i].x * pts[j].y);
+            cx += (pts[j].x + pts[i].x) * cross;
+            cy += (pts[j].y + pts[i].y) * cross;
+        }
+        float k = 1f / (6f * signedA);
+        return new Vector2(cx * k, cy * k);
+    }
+
+    /// <summary>
+    /// Softens very sharp corners by pushing the two neighbouring knots
+    /// slightly outward along the centroid direction, creating a gentler curve.
+    /// </summary>
+    private void SmoothLocalAngles(int centreIndex)
+    {
+        if (sc.Spline.Count < 3) return;
+
+        int prev = GetNextIndex(centreIndex - 1);
+        int next = GetNextIndex(centreIndex + 1);
+
+        Vector2 pPrev = (Vector3)sc.Spline.Knots.ElementAt(prev).Position;
+        Vector2 pCurr = (Vector3)sc.Spline.Knots.ElementAt(centreIndex).Position;
+        Vector2 pNext = (Vector3)sc.Spline.Knots.ElementAt(next).Position;
+
+        float interior = Vector2.Angle(pPrev - pCurr, pNext - pCurr);
+        if (interior > minSmoothAngle) return;   // Already smooth enough
+
+        Vector2 centroid = PolygonCentroid(poly.points);
+
+        Vector2 dirPrev = (pPrev - centroid).normalized;
+        Vector2 dirNext = (pNext - centroid).normalized;
+
+        pPrev += dirPrev * smoothDisplacement;
+        pNext += dirNext * smoothDisplacement;
+
+        sc.Spline.SetKnot(prev,  new BezierKnot((Vector3)pPrev));
+        sc.Spline.SetKnot(next,  new BezierKnot((Vector3)pNext));
     }
 
     private void OnDestroy()
@@ -733,6 +830,9 @@ public class MapManager : MonoBehaviour
         {
             Destroy(tex);
         }
+        if (pixelBuffer.IsCreated) pixelBuffer.Dispose();
+        if (maskRT != null)        maskRT.Release();
+        awaitingReadback = false;
     }
 
     public void StopFollowMouse(UnityEngine.InputSystem.InputAction.CallbackContext ctx)
@@ -765,6 +865,11 @@ public class MapManager : MonoBehaviour
                 continue;
             }
             mapchangedata = MapChange(ProximityData(v, 3f).Item1, false); //spline is only changed and then unchanged, so unless multithreading is used, this is read-safe (no changes are kept until fff == true).
+            if (mapchangedata.Item1 != -1)   // skip preview+undo when MapChange was rejected
+            {
+                UpdateLRFromSpline();
+                UndoChange(mapchangedata);
+            }
 
             vEE = ProximityData(v,2f,true).Item1;
             vprev = vEE - vprev;
@@ -774,8 +879,6 @@ public class MapManager : MonoBehaviour
             }
             vprev = vEE;
             EE.transform.position = vEE;
-            UpdateLRFromSpline();
-            UndoChange(mapchangedata);
             yield return null;
         }
         Vector2 pos = ProximityData(v, 3f).Item1;
@@ -1219,10 +1322,19 @@ private IEnumerator UpdateAnimationsCoroutine(bool updateMask)
         {
             var anim = kvp.Value;
             anim.progress += deltaTime / animationDuration;
-            
+
+            // Safety‑check – the spline may have changed unexpectedly
+            if (anim.knotIndex < 0 || anim.knotIndex >= sc.Spline.Count)
+            {
+                // Index became invalid – abort this animation gracefully
+                Debug.LogWarning($"[MapManager] Skipping animation id {kvp.Key}: invalid knot index {anim.knotIndex}");
+                completedAnimations.Add(kvp.Key);
+                continue;
+            }
+
             if (anim.progress >= 1f)
             {
-                // Set final position
+                // Snap to final position
                 sc.Spline.SetKnot(anim.knotIndex, new BezierKnot(anim.targetPosition));
                 completedAnimations.Add(kvp.Key);
             }
@@ -1253,7 +1365,7 @@ private IEnumerator UpdateAnimationsCoroutine(bool updateMask)
             if (count > 0)
             {
                 centerPos /= count;
-                GenerateSpriteFromPoly(centerPos);
+                GenerateSpriteFromPoly();
             }
         }
         
@@ -1280,12 +1392,12 @@ private IEnumerator UpdateAnimationsCoroutine(bool updateMask)
 // Add this public method to update spline visuals
 private void UpdateSplineVisuals()
 {
-    // Since UpdateLRFromSpline is private, we need to duplicate its logic here
-    Vector3[] vs = new Vector3[999];
-    for (int i = 0; i < 999; i++)
+    Vector3[] vs = new Vector3[splineSampleCount];
+    for (int i = 0; i < splineSampleCount; i++)
     {
-        vs[i] = sc.Spline.EvaluatePosition(i / 999f);
+        vs[i] = sc.Spline.EvaluatePosition(i / (float)splineSampleCount);
     }
     lr.SetPositions(vs);
+    meshDirty = true;   // spline changed – force mask mesh rebuild
 }
 }

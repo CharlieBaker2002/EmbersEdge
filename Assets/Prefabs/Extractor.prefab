@@ -5159,7 +5159,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: afb1d9fc1e33343a6bd23797e9ae4cc4, type: 2}
+  - {fileID: 2100000, guid: 896cfe6ca3acd46daaa7fd7d86d5ad42, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -5203,6 +5203,7 @@ GameObject:
   - component: {fileID: 3616851657089736479}
   - component: {fileID: 7647196280259046068}
   - component: {fileID: 4276586276534395388}
+  - component: {fileID: 1353708107226767663}
   m_Layer: 0
   m_Name: Extractor
   m_TagString: Untagged
@@ -5288,12 +5289,13 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5015000612375107076}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b734c4c74996a4eb49bce8d8b0765c74, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  buildingBehaviours: []
+  buildingBehaviours:
+  - {fileID: 4276586276534395388}
   sr: {fileID: 3616851657089736479}
   groundEdit: {fileID: 0}
   tiles: []
@@ -5301,7 +5303,7 @@ MonoBehaviour:
   canOpen: 0
   hasExtraParent: 0
   icon: {fileID: 0}
-  size: {x: 1, y: 1}
+  size: {x: 2, y: 2}
   physic: {fileID: 1051026833502830468}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
@@ -5309,10 +5311,11 @@ MonoBehaviour:
   prevN: 0
   numIconsTrue: 0
   maxHealth: 10
-  builtYet: 1
+  builtYet: 0
   mesh: {fileID: 9216445988969538377}
   ring: {fileID: 3665649265256228611}
   ringSprites:
+  - {fileID: 21300000, guid: 544ba3bc550154273a96165be55adb58, type: 3}
   - {fileID: -1212368598, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
   - {fileID: -1368430150, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
   - {fileID: -340708501, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
@@ -5331,23 +5334,6 @@ MonoBehaviour:
   - {fileID: 136777055, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
   - {fileID: -1800716358, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
   - {fileID: -1781718899, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
-  - {fileID: 874150377, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
-  - {fileID: -1351664152, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
-  - {fileID: -1369282375, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
-  - {fileID: -647790358, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
-  - {fileID: -498589293, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
-  - {fileID: 384209781, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
-  - {fileID: 763785783, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
-  - {fileID: 413851911, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
-  - {fileID: 1183125485, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
-  - {fileID: -1698335535, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
-  - {fileID: 1114113878, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
-  - {fileID: -1201348195, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
-  - {fileID: -148000672, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
-  - {fileID: -242398698, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
-  - {fileID: -2006894297, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
-  meshDefault: {fileID: 1334134610, guid: a2848ba73b41e4a80a5feac96b4dfae2, type: 3}
-  ringDefault: {fileID: -1212368598, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
   statics:
   - {fileID: 5534946535553248438}
   - {fileID: 3455964258945120480}
@@ -5623,13 +5609,38 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5015000612375107076}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8fb3a85d62c5842929c739f740fe2101, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   ember: 0
   maxEmber: 10
+  b: {fileID: 0}
+  isConstructor: 0
+--- !u!114 &1353708107226767663
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5015000612375107076}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 213b29fb0ad684122a297fef29858033, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  typ: 0
+  orbs: []
+  transientOrbs: 0
+  n: 0
+  orbType: 0
+  capacity: 10
+  siblingTs: []
+  anim: {fileID: 0}
+  demand: 0
+  init: 0
+  initialMag: 0
 --- !u!1 &6249519693045532371
 GameObject:
   m_ObjectHideFlags: 0
@@ -5682,7 +5693,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: afb1d9fc1e33343a6bd23797e9ae4cc4, type: 2}
+  - {fileID: 2100000, guid: 896cfe6ca3acd46daaa7fd7d86d5ad42, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -5703,7 +5714,7 @@ SpriteRenderer:
   m_SortingLayerID: -1090980157
   m_SortingLayer: 2
   m_SortingOrder: 1
-  m_Sprite: {fileID: -1212368598, guid: 648cb5656779040e5ade82a4116d231d, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 544ba3bc550154273a96165be55adb58, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0

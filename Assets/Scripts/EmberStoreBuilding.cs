@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class EmberStoreBuilding : MonoBehaviour
+public class EmberStoreBuilding : Building
 {
     [SerializeField] private EmberStore store;
     [SerializeField] Renderer r;
@@ -14,8 +14,9 @@ public class EmberStoreBuilding : MonoBehaviour
     [SerializeField] private float speed;
     [SerializeField] private EmberParticle[] statics;
 
-    private void Start()
+    public override void Start()
     {
+        base.Start();
         GS.OnNewEra += UpdateEmberColours;
         r.material = GS.MatByEra(GS.era, false, false, true);
         Refresh();

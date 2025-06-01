@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -12,6 +13,9 @@ public class Constructor : Building
     public float radius = 3f;
     [SerializeField] bool visual = true;
     public bool constructing = false;
+    public int max = 5;
+    [SerializeField] private ParticleSystem ps;
+    private ParticleSystem.VelocityOverLifetimeModule mod;
 
     public List<Building> tasks;
     
@@ -20,17 +24,31 @@ public class Constructor : Building
         base.Start();
         EnergyManager.i.constructors.Add(this);
         GS.OnNewEra += SetMat;
+        SpawnManager.instance.onWaveComplete += () =>
+        {
+            store.maxEmber = max;
+        };
         SetMat(0);
+        EnergyManager.i.UpdateEmber();
+        mod = ps.velocityOverLifetime;
     }
 
     private void SetMat(int i)
     {
         stick.material = GS.MatByEra(GS.era, false, false, true);
+        Debug.Log("setting");
     }
-    
+
+    private void OnDestroy()
+    {
+        EnergyManager.i.constructors.Remove(this);
+        EnergyManager.i.UpdateEmber();
+    }
+
     public void Construct(Building b)
     {
         store.Use(1, true);
+        EnergyManager.i.UpdateEmber();
         Vector3 p = b.icons[b.icons.Count - b.numIconsTrue].transform.position;
         constructing = true;
         if (!visual)
@@ -47,5 +65,7 @@ public class Constructor : Building
         e.to = p;
         e.onComplete = b.RemoveIcon;
         e.onComplete += () => constructing = false;
+        mod.yMultiplier = (p - transform.position).magnitude;
+        ps.Play();
     }
 }
