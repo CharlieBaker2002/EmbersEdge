@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 6658450094715460783}
   - component: {fileID: 3056693650946840568}
   - component: {fileID: 120175918492327005}
+  - component: {fileID: 8754679185747270200}
   m_Layer: 7
   m_Name: Ember Store
   m_TagString: Allies
@@ -146,7 +147,7 @@ MonoBehaviour:
   canOpen: 1
   hasExtraParent: 0
   icon: {fileID: 0}
-  size: {x: 0.5, y: 0.5}
+  size: {x: 1, y: 1}
   physic: {fileID: 5904032370240466647}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
@@ -203,8 +204,22 @@ MonoBehaviour:
   siblingTs: []
   anim: {fileID: 0}
   demand: 0
-  init: 0
+  init: 1
   initialMag: 0
+--- !u!114 &8754679185747270200
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1517340900197829438}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20a672b454ca349d48a09732303ac85f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  oms:
+  - {fileID: 120175918492327005}
 --- !u!1 &6012032447504245326
 GameObject:
   m_ObjectHideFlags: 0
@@ -1076,7 +1091,7 @@ ParticleSystem:
     rateOverTime:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 100
+      scalar: 0
       minScalar: 30
       maxCurve:
         serializedVersion: 2

@@ -43,14 +43,14 @@ public class MapManager : MonoBehaviour
 
     (int, BezierKnot) mapchangedata;
     readonly int textureSize = 400;
-private const int splineSampleCount = 100;   // higher‑res sampling for tighter mask fit
-private bool awaitingReadback = false;       // guard to avoid overlapping GPU readbacks
-readonly float scale = 40;
+    private const int splineSampleCount = 100;   // higher‑res sampling for tighter mask fit
+    private bool awaitingReadback = false;       // guard to avoid overlapping GPU readbacks
+    readonly float scale = 40;
   // --- Area‑safety & smoothing constants ---
   private const float areaEpsilon        = 0.01f;  // Minimum extra area required for an expansion
-  private const float minSmoothAngle     = 120f;   // Interior‑angle threshold (deg) – sharper angles will be softened
+  private const float minSmoothAngle     = 10f;   // Interior‑angle threshold (deg) – sharper angles will be softened
   private const float smoothDisplacement = 0.5f;   // Outward nudge (world units) for neighbour knots
-    bool fff = false; //finish follow flag
+  bool fff = false; //finish follow flag
 
     public List<ActionScript> asses = new List<ActionScript>();
     

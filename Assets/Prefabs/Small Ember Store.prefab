@@ -4857,6 +4857,7 @@ GameObject:
   - component: {fileID: 3049150440693786033}
   - component: {fileID: 5312121608967075303}
   - component: {fileID: 659881615243145618}
+  - component: {fileID: 6973573216076437640}
   m_Layer: 7
   m_Name: Small Ember Store
   m_TagString: Allies
@@ -5025,6 +5026,20 @@ MonoBehaviour:
   demand: 0
   init: 0
   initialMag: 0
+--- !u!114 &6973573216076437640
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7926129472078753466}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20a672b454ca349d48a09732303ac85f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  oms:
+  - {fileID: 659881615243145618}
 --- !u!1001 &1346092552348275415
 PrefabInstance:
   m_ObjectHideFlags: 0

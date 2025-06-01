@@ -37,8 +37,6 @@ public class Extractor : Building
             Destroy(statics[r].gameObject);
             statics.RemoveAt(r);
         }
-
-        StartCoroutine(Animate());
     }
     
     void UpdateColours(int era)

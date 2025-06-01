@@ -11,16 +11,21 @@ public class FastSpriteDecompressor : MonoBehaviour
     private Color[] targetPixels;
     private float maxColorValue;
 
-    [SerializeField] float decompressionTime = 2.0f;
+    [SerializeField] float decompressionTime = 10f;
     private float timer = 0.0f;
+    private Material mat;
 
     private void Start()
     {
         if (RefreshManager.i.CASUALNOTREALTIME)
         {
-            decompressionTime *= 0.1f;
+            decompressionTime *= 0.25f;
         }
+
+       
         spriteRenderer = GetComponent<SpriteRenderer>();
+        mat = spriteRenderer.material;
+        spriteRenderer.material = Resources.Load<Material>("Sprite-Lit-Default");
         originalSprite = spriteRenderer.sprite;
 
         // Create a texture from the original sprite
@@ -70,6 +75,7 @@ public class FastSpriteDecompressor : MonoBehaviour
         }
         // Restore the original settings
         spriteRenderer.sprite = originalSprite;
+        spriteRenderer.material = mat;
         Destroy(this);
     }
 

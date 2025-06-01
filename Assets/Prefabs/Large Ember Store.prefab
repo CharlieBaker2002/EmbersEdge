@@ -4857,6 +4857,7 @@ GameObject:
   - component: {fileID: 7930736736349505586}
   - component: {fileID: 8165241569078256614}
   - component: {fileID: 3382136715928008786}
+  - component: {fileID: 1685730138017318026}
   m_Layer: 7
   m_Name: Large Ember Store
   m_TagString: Allies
@@ -5089,6 +5090,20 @@ MonoBehaviour:
   demand: 0
   init: 1
   initialMag: 0
+--- !u!114 &1685730138017318026
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8703573291081529796}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20a672b454ca349d48a09732303ac85f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  oms:
+  - {fileID: 3382136715928008786}
 --- !u!1001 &28746384387945954
 PrefabInstance:
   m_ObjectHideFlags: 0
