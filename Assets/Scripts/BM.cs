@@ -148,7 +148,7 @@ public class BM : MonoBehaviour //Building Manager
             redbuildingPrefab.transform.position.y, 0f);
         foreach(SpriteRenderer s in redBuilding.GetComponentsInChildren<SpriteRenderer>(true))
         {
-            s.color = new Color(0f, 0f, 0f, 1f);
+            s.color = new Color(0.4f, 0.4f, 0.4f, 1f);
         }
         GridManager.i.ActivateGrid();
         ChangeBuildingColour(false);

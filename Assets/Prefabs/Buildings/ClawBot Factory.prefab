@@ -333,11 +333,11 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 2, y: 1}
   physic: {fileID: 9103008366795145949}
-  col: {fileID: 0}
   builtBlasts: 14
   rebuildCost: 00000000000000000100000000000000
   icons: []
   prevN: 0
+  numIconsTrue: 0
   maxHealth: 10
   builtYet: 0
   unit: {fileID: 3747459085583654085, guid: 851f0859257bb4f3c920816918ba6b61, type: 3}
@@ -874,7 +874,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: -876546973899608171, guid: 0d688a8df58ce436cb7682cd68177508, type: 3}
+  - {fileID: 2100000, guid: d1b3bb1945d234b25addbf9670302d48, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
