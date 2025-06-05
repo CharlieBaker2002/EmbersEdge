@@ -109,6 +109,8 @@ public class RefreshManager : MonoBehaviour
         Copter.copters = new List<Copter>();
         Copter.coptersAvailable = 0;
         Extractor.extractors = new List<Extractor>();
+        GS.qutting = false;
+        Application.quitting += () => GS.qutting = true;
         //Set the bloom to white
 
         v.sharedProfile.TryGet(out Bloom bl);

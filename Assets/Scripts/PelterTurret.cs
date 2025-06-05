@@ -59,16 +59,23 @@ public class PelterTurret : Building
         MapManager.OnUpdateMap += () => lookRot = GS.VTQ(GetNearestEE(transform)-(Vector2)transform.position);
     }
     
-    private void OnEnable()
+    protected override void BEnable()
     {
+        f.engaged = true;
         if (Finder.turretsOn)
         {
             f.enabled = true;
+        
         }
         else
         {
             StartCoroutine(TurnOffInASec());
         }
+    }
+
+    protected override void BDisable()
+    {
+        f.engaged = false;
     }
 
     IEnumerator TurnOffInASec()

@@ -19,9 +19,8 @@ public class Constructor : Building
 
     public List<Building> tasks;
     
-    public override void Start()
+    protected override void BEnable()
     {
-        base.Start();
         EnergyManager.i.constructors.Add(this);
         GS.OnNewEra += SetMat;
         SpawnManager.instance.onWaveComplete += () =>
@@ -36,10 +35,9 @@ public class Constructor : Building
     private void SetMat(int i)
     {
         stick.material = GS.MatByEra(GS.era, false, false, true);
-        Debug.Log("setting");
     }
 
-    private void OnDestroy()
+    protected override void BDisable()
     {
         EnergyManager.i.constructors.Remove(this);
         EnergyManager.i.UpdateEmber();

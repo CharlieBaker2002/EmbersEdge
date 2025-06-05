@@ -148,7 +148,7 @@ public class BM : MonoBehaviour //Building Manager
             redbuildingPrefab.transform.position.y, 0f);
         foreach(SpriteRenderer s in redBuilding.GetComponentsInChildren<SpriteRenderer>(true))
         {
-            s.color = new Color(0.4f, 0.4f, 0.4f, 1f);
+            s.color = new Color(0.35f, 0.35f, 0.35f, 0.75f);
         }
         GridManager.i.ActivateGrid();
         ChangeBuildingColour(false);
@@ -227,11 +227,23 @@ public class BM : MonoBehaviour //Building Manager
             return;
 
         GridManager.i.SetArea(anchorCell, gridSize, true);
+        rbb.anchorCell = anchorCell;
+        rbb.gridSize = gridSize;
         GridManager.i.DeactivateGrid();
-        
-        foreach(SpriteRenderer s in redBuilding.GetComponentsInChildren<SpriteRenderer>(true))
+
+        if (rbb.hasExtraParent)
         {
-            s.color = new Color(1f,1f,1f,1f);
+            foreach (SpriteRenderer s in rbb.transform.parent.GetComponentsInChildren<SpriteRenderer>(true))
+            {
+                s.color = GS.ColFromEra();
+            }
+        }
+        else
+        {
+            foreach (SpriteRenderer s in rbb.GetComponentsInChildren<SpriteRenderer>(true))
+            {
+                s.color = GS.ColFromEra();
+            }
         }
 
         var ground = rbb.groundEdit;
@@ -245,7 +257,6 @@ public class BM : MonoBehaviour //Building Manager
 
         redBuilding.transform.parent = GS.FindParent(GS.Parent.buildings);
         buildings.Add(rbb);
-        redBuilding.GetComponent<SpriteRenderer>().color = new Color(1f, 1f, 1f);
         var SD = redBuilding.GetComponentsInChildren<SpriteDecompressor>(true);
         foreach (OrbMagnet om in bros)
         {
@@ -301,11 +312,13 @@ public class BM : MonoBehaviour //Building Manager
 
     private void Position(Transform t)
         {
+            Vector2 vAdjust = new Vector2(-0.125f + 0.5f * rbb.size.x, -0.125f + 0.5f * rbb.size.y);
             Vector2 worldMouse = IM.controller
                 ? IM.i.controllerCursor.position
                 : IM.i.MousePosition();
-            anchorCell = GridManager.i.WorldToGrid(worldMouse);                 
-            Vector3 snapped = GridManager.i.GridToWorld(anchorCell) + new Vector3(-0.125f + 0.5f*rbb.size.x, -0.125f + 0.5f * rbb.size.y, 0f); //0.375 for 1, 0.875 for 2
+            worldMouse -= vAdjust;
+            anchorCell = GridManager.i.WorldToGrid(worldMouse);
+            Vector3 snapped = GridManager.i.GridToWorld(anchorCell) + (Vector3)vAdjust; //0.375 for 1, 0.875 for 2
             redBuilding.transform.position = snapped;
             bool clear = GridManager.i.AreaClear(anchorCell, gridSize);
             GridManager.i.PreviewArea(anchorCell, gridSize, clear);

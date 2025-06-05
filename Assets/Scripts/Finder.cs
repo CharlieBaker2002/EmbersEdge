@@ -37,34 +37,31 @@ public class Finder : MonoBehaviour
     private int distCheck;
     private float sqrDistance;
     bool had = false;
+
+    [HideInInspector] //used for dead turret distinction
+    public bool engaged = false;
+
     
     private void Start()
     {
         if(!PROXIMAL) cols = new Collider2D[maxSearch];
         sqrDistance = radius * radius;
-        if (turret)
-        {
-            turrets.Add(this);
-            if (!turretsOn)
-            {
-                enabled = false;
-            }
-        }
+        turrets.Add(this);
     }
-
+    
     private void OnDestroy()
     {
-        if (turret)
-        {
-            turrets.Remove(this);
-        }
+        turrets.Remove(this);
     }
 
     public static void TurnOnTurrets()
     {
         foreach (Finder f in turrets)
         {
-            f.enabled = true;
+            if (f.engaged)
+            {
+                f.enabled = true;
+            }
         }
         turretsOn = true;
     }

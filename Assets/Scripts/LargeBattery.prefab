@@ -289,7 +289,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5930459321446844039}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d1c410497b8a647eb9b4ccd17e78066f, type: 3}
   m_Name: 
@@ -311,6 +311,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   buildingBehaviours:
   - {fileID: 7169224450512790134}
+  - {fileID: 8058225690047792346}
   sr: {fileID: 6363163257109188788}
   groundEdit: {fileID: 0}
   tiles: []

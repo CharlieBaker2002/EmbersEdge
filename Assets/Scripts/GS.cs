@@ -18,8 +18,10 @@ public static class GS
     public static Action<int> OnNewEra;
     public static Collider2D bounds;
     public static readonly int[] daysforeraComplete = new int[] { 6, 10, 14 };
+    public static int season = 0;
 
-    public static ActionScript AS; 
+    public static ActionScript AS;
+    public static bool qutting = false;
 
     public static bool CanAct()
     {

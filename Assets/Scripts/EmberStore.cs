@@ -11,13 +11,22 @@ public class EmberStore : MonoBehaviour
     public EmberStoreBuilding b;
     public bool isConstructor = false;
 
+    private bool init = false;
+
     private void Start()
     {
+        init = true;
+        OnEnable();
+    }
+
+    private void OnEnable()
+    {
+        if(!init) return;
         if(!isConstructor) EnergyManager.i.emberStores.Add(this);
         EnergyManager.i.UpdateEmber();
     }
 
-    public void OnDestroy()
+    public void OnDisable()
     {
         if(!isConstructor) EnergyManager.i.emberStores.Remove(this);
         EnergyManager.i.UpdateEmber();

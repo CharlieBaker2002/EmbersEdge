@@ -20,7 +20,6 @@ public class EmberStoreBuilding : Building
         GS.OnNewEra += UpdateEmberColours;
         r.material = GS.MatByEra(GS.era, false, false, true);
         Refresh();
-        //StartCoroutine(Test());
     }
 
     IEnumerator Test()
@@ -69,11 +68,6 @@ public class EmberStoreBuilding : Building
         {
             p.sr.material = GS.MatByEra(GS.era, true, false, true);
         }
-    }
-
-    private void OnDestroy()
-    {
-        GS.OnNewEra -= UpdateEmberColours;
     }
 
     public void Refresh()

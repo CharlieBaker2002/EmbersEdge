@@ -46,10 +46,13 @@ public class Crop : Building
             ResourceManager.instance.NewTask(gameObject, GS.TimesArray(cost, multiplier), null, false);
             mag = GetComponent<OrbMagnet>();
         };
-        SpawnManager.instance.OnNewDay += act;
 
         Invoke(nameof(WaitForFirstMag), 1f);
         DecreaseShift();
+    }
+    protected override void BEnable()
+    {
+        SpawnManager.instance.OnNewDay += act;
     }
 
     private void WaitForFirstMag()
@@ -104,7 +107,7 @@ public class Crop : Building
         }
     }
 
-    private void OnDestroy()
+    protected override void BDisable()
     {
         SpawnManager.instance.OnNewDay -= act;
     }

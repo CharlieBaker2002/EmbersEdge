@@ -12,16 +12,42 @@ public class Battery : MonoBehaviour
 
     public Action<float> act  = f => { };
 
+    private bool init = false;
+    private bool added = false;
+
     private void Awake()
     {
         act = _ => { };
     }
 
+    void Start()
+    {
+        init = true;
+        OnEnable();
+    }
+
+    private void OnEnable()
+    {
+        if(!init) return;
+        if(added) return;
+        energy = 0;
+        if (!EnergyManager.i.NewBattery(this))
+        {
+            //icon.SetActive(true);
+        }
+        added = true;
+    }
+
+    private void OnDisable()
+    {
+        if (!added) return;
+        added = false;
+        EnergyManager.i.RemoveBattery(this);
+    }
 
     /// <summary>
     /// COST IS +VE. Returns if has enough energy.
     /// </summary>
-    
     public bool Use(float cost)
     {
         if (energy >= cost)
@@ -34,6 +60,9 @@ public class Battery : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// HELPER FOR ENERGYMANAGERONLY!
+    /// </summary>
     public float Set(float newVal)
     {
         if(newVal > maxEnergy)
@@ -45,5 +74,11 @@ public class Battery : MonoBehaviour
         energy = newVal;
         act.Invoke(energy);
         return 0f;
+    }
+
+    public void Add(float amount)
+    {
+        energy += amount;
+        EnergyManager.i.UpdateGrid(gridID);
     }
 }

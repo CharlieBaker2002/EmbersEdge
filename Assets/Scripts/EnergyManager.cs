@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class EnergyManager : MonoBehaviour
 {
@@ -11,13 +12,72 @@ public class EnergyManager : MonoBehaviour
     #region Energy
     public List<Pylon> pylons;
     private List<List<Battery>> grids = new(); // batteries sorted in ascending max energy so update grid works
+    public List<Battery> allBatteries;
     
-
     private void Awake()
     {
         i = this;
     }
 
+    public bool NewBattery(Battery b)
+    {
+        foreach (Pylon p in pylons)
+        {
+            if (Vector2.Distance(b.transform.position, p.transform.position) < p.reachDistance)
+            {
+                p.batteries.Add(b);
+            }
+        }
+        CreateGrids();
+        allBatteries.Add(b);
+        Debug.Log("new battery!");
+        return pylons.Any(x => x.batteries.Contains(b));
+    }
+
+    public void RemoveBattery(Battery b)
+    {
+        foreach (Pylon p in pylons)
+        {
+            p.batteries.Remove(b);
+        }
+        allBatteries.Remove(b);
+        CreateGrids();
+        Debug.Log("rem battery");
+    }
+
+    public void NewPylon(Pylon p)
+    {
+        foreach (Pylon x in pylons)
+        {
+            if (Vector2.Distance(x.transform.position, p.transform.position) < Mathf.Max(p.reachDistance,x.reachDistance))
+            {
+                x.connections.Add(p);
+                p.connections.Add(x);
+            }
+        }
+        pylons.Add(p);
+        foreach (Battery b in allBatteries)
+        {
+            if(Vector2.Distance(b.transform.position, p.transform.position) < p.reachDistance)
+            {
+                p.batteries.Add(b);
+            }
+        }
+        CreateGrids();
+        Debug.Log("new pylon!");
+    }
+
+    public void RemovePylon(Pylon p)
+    {
+        pylons.Remove(p);
+        foreach (Pylon x in pylons)
+        {
+            x.connections.Remove(p);
+        }
+        CreateGrids();
+        Debug.Log("rem pylon");
+    }
+    
     void CreateGrids()
     {
         grids = new List<List<Battery>>();
@@ -63,6 +123,7 @@ public class EnergyManager : MonoBehaviour
 
             grids.Add(batteriesInGrid);
         }
+        Debug.Log(grids.Count);
     }
 
     public void UpdateGrid(int gridID)

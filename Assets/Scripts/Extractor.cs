@@ -131,7 +131,7 @@ public class Extractor : Building
         }
     }
 
-    private void OnDestroy()
+    private void OnDisable()
     {
         extractors.Remove(this);
     }

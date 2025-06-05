@@ -41,35 +41,50 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     
     private bool repairing;
     Action upgradeAction;
+    
+    [HideInInspector]public Vector2Int anchorCell;
+    [HideInInspector] public Vector2Int gridSize = Vector2Int.one;
 
     private Action<int> numTextAction;
+
+    private SpriteRenderer[] spriterenderers;
     
+
     public virtual void Start()
     {
         UIParent = Instantiate(UIManager.i.empty, transform.position, Quaternion.identity, UIManager.i.buildingsUI);
-        numText = Instantiate(UIManager.i.numText, transform.position , Quaternion.identity, transform);
+        numText = Instantiate(UIManager.i.numText, transform.position, Quaternion.identity, transform);
         numTextAction = _ => numText.color = GS.ColFromEra() * 1.25f;
         GS.OnNewEra += numTextAction;
         numTextAction.Invoke(0);
         numText.gameObject.SetActive(false);
-        
         buildings.Add(this);
         UIParent.SetActive(false);
         if (!buildingBehaviours.Contains(this)) buildingBehaviours.Add(this);
-        OnOpen += delegate { UIManager.CloseAllUIs(); UpdateUI(); UIParent.SetActive(true);};
-        OnClose += delegate { UIParent.SetActive(false);  };
-        
+        OnOpen += delegate
+        {
+            UIManager.CloseAllUIs();
+            UpdateUI();
+            UIParent.SetActive(true);
+        };
+        OnClose += delegate { UIParent.SetActive(false); };
+
+        spriterenderers = hasExtraParent ? transform.parent.GetComponentsInChildren<SpriteRenderer>(true) : GetComponentsInChildren<SpriteRenderer>(true);
+    
+
         if (physic != null)
         {
-            box = physic.GetComponent<BoxCollider2D>()!=null;
+            box = physic.GetComponent<BoxCollider2D>() != null;
         }
+
         if (!builtYet)
         {
             if (physic != null)
             {
                 Destroy(physic.gameObject);
             }
-            OnDeath();
+
+            BuildFirst();
         }
         else
         {
@@ -79,10 +94,12 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
                 physic.GetComponent<IClickableCarrier>().clickable = this;
             }
         }
+
         // Mark this building’s footprint on the grid if it already exists at game start.
         if (builtYet)
         {
             RegisterGridOccupancy();
+            BEnable();
         }
     }
 
@@ -123,7 +140,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         }
     }
 
-    protected void SwitchMonos(bool mode)
+    protected void SwitchMonos(bool mode, bool init = false)
     {
         foreach(Behaviour beh in buildingBehaviours)
         {
@@ -132,7 +149,15 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
                 beh.enabled = mode;
             }
         }
-        sr.color = mode ? Color.white : GS.ColFromEra();
+        if(mode == false && !init) BDisable();
+        else if(!init) BEnable();
+        foreach (SpriteRenderer s in spriterenderers)
+        {
+            if (s != null)
+            {
+                s.color = mode ? Color.white : GS.ColFromEra();
+            }
+        }
         if (mode)
         {
             physic = Instantiate(Resources.Load<GameObject>(box?"Physic":"PhysicCircle"), transform.position, Quaternion.Euler(0f,0f,Random.Range(0f,360f)), transform).GetComponent<LifeScript>();
@@ -147,6 +172,12 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             UIParent.gameObject.SetActive(false);
             repairing = true;
         }
+    }
+
+    public virtual void OnDestroy()
+    {
+        if(GS.qutting) return;
+        GridManager.i.SetArea(anchorCell, gridSize, false);
     }
 
     public void AddSlot(int[] cost, string nam, Sprite spr, bool destroyOnUseP, Action act, bool science = false, Action instantAction = null, Func<bool> optionalParameter = null, Func<bool> showParameter = null, GameObject g = null)
@@ -209,14 +240,13 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             OnClose.Invoke();
         }
         SwitchMonos(false);
-        if (builtYet)
-        {
-            LoadWithEEs(1, true);
-        }
-        else
-        {
-            LoadWithEEs(builtBlasts);
-        }
+        LoadWithEEs(1, true);
+    }
+
+    void BuildFirst()
+    {
+        SwitchMonos(false,true);
+        LoadWithEEs(builtBlasts);
     }
 
     protected virtual void Refund()
@@ -315,6 +345,16 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
                 i--;
             }
         }
+    }
+
+    protected virtual void BEnable()
+    {
+        
+    }
+    
+    protected virtual void BDisable()
+    {
+        
     }
 
     IEnumerator CountDown()

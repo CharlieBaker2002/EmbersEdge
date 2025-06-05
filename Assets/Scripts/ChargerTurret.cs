@@ -39,6 +39,16 @@ public class ChargerTurret : Building
             canActivate = true;
         }
     }
+    
+    protected override void BEnable()
+    {
+        find.engaged = true;
+    }
+
+    protected override void BDisable()
+    {
+        find.engaged = false;
+    }
 
     public override void OnDeath()
     {

@@ -43,6 +43,16 @@ public class SpreadTower : Building
         transform.parent.GetComponent<SpriteRenderer>().sprite = baseUpgradeSprite;
         
     }
+    
+    protected override void BEnable()
+    {
+        find.engaged = true;
+    }
+
+    protected override void BDisable()
+    {
+        find.engaged = false;
+    }
 
     public override void Start()
     {

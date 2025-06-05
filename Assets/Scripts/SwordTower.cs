@@ -32,7 +32,7 @@ public class SwordTower : Building
         AddSlot(new int[] {100, 0, 2,0}, "Sword Turret Upgrade", tileSprite, true, LevelUp, true, Morph);
     }
 
-    private void OnEnable()
+    protected override void BEnable()
     {
         StartCoroutine(AttackLoop());
         StartCoroutine(BuildLoop());

@@ -1919,7 +1919,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 126135190}
-  - component: {fileID: 126135191}
   m_Layer: 0
   m_Name: Barons
   m_TagString: Untagged
@@ -1950,18 +1949,6 @@ Transform:
   - {fileID: 1349926519}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &126135191
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 126135189}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0ae18bc397d53bd4e884c6afb9a633a9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &127306960
 GameObject:
   m_ObjectHideFlags: 0
@@ -2406,6 +2393,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1 &140351467
 GameObject:
   m_ObjectHideFlags: 0
@@ -3876,6 +3865,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1 &214017265
 GameObject:
   m_ObjectHideFlags: 0
@@ -4338,7 +4329,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e71f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 131
+  m_LightOrder: 159
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -6385,6 +6376,12 @@ MonoBehaviour:
   - {fileID: 8703573291081529796, guid: d34e5631dbe8d4504a93975a078eb1c0, type: 3}
   - {fileID: 2307775052015017985, guid: abfe8ae49574941d4b4097d531c28c9c, type: 3}
   - {fileID: 5930459321446844039, guid: e86b09003b52f4d0595db07a0724cf6e, type: 3}
+  - {fileID: 9010514658136673332, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+  - {fileID: 4464479778263070814, guid: ffe893d2c949d4b83a265550d4f6d0d4, type: 3}
+  - {fileID: 4309717612728443263, guid: 4ad98b295555746fb951c722b82db47d, type: 3}
+  - {fileID: 2000541545583142029, guid: 22813059b8262459ea73bf3d73148974, type: 3}
+  - {fileID: 8949586911344664711, guid: 72c08a139899e4ade8cff549617bc608, type: 3}
+  - {fileID: 5580220471824109513, guid: 7623ba60574d1474cab851c5d472766f, type: 3}
   baseBuildingSciences: []
   barons:
   - {fileID: 1402483098}
@@ -6813,6 +6810,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   pylons: []
+  allBatteries: []
   emberStores: []
   constructors: []
 --- !u!1 &273691170
@@ -6956,6 +6954,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!114 &282472131
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6991,7 +6991,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 132
+  m_LightOrder: 160
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -8105,6 +8105,7 @@ Transform:
   - {fileID: 706684399}
   - {fileID: 1444438248}
   - {fileID: 516724795}
+  - {fileID: 1247796939}
   m_Father: {fileID: 1339873080}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &345978633
@@ -9878,6 +9879,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1001 &447332203
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -11263,7 +11266,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 000000001f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 133
+  m_LightOrder: 161
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -18963,7 +18966,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e781346bb21f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 134
+  m_LightOrder: 162
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -19433,6 +19436,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   buildings:
+  - {fileID: 9010514658136673332, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
   - {fileID: 5563797452642412940, guid: c2c09c735ba5740e0b4419de3b553ba6, type: 3}
   - {fileID: 5015000612375107076, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
   - {fileID: 4116005223152699529, guid: 58d0c298cbdb14859abfe9d04f02fd52, type: 3}
@@ -20273,6 +20277,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1001 &706684398
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -20504,6 +20510,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
   radius: 6.1
   mag: {fileID: 707194745}
   magnetsOfficial: []
@@ -20585,7 +20593,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 135
+  m_LightOrder: 163
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -21082,6 +21090,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1 &755201238
 GameObject:
   m_ObjectHideFlags: 0
@@ -22090,11 +22100,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8176623512067456108, guid: c2c09c735ba5740e0b4419de3b553ba6, type: 3}
       propertyPath: ember
-      value: 10
+      value: 40
       objectReference: {fileID: 0}
     - target: {fileID: 8176623512067456108, guid: c2c09c735ba5740e0b4419de3b553ba6, type: 3}
       propertyPath: maxEmber
-      value: 10
+      value: 40
       objectReference: {fileID: 0}
     - target: {fileID: 8176623512067456108, guid: c2c09c735ba5740e0b4419de3b553ba6, type: 3}
       propertyPath: m_Enabled
@@ -22110,7 +22120,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8414912427084186660, guid: c2c09c735ba5740e0b4419de3b553ba6, type: 3}
       propertyPath: max
-      value: 10
+      value: 40
       objectReference: {fileID: 0}
     - target: {fileID: 8414912427084186660, guid: c2c09c735ba5740e0b4419de3b553ba6, type: 3}
       propertyPath: radius
@@ -92670,7 +92680,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e71f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 136
+  m_LightOrder: 164
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -92811,6 +92821,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1 &892542368
 GameObject:
   m_ObjectHideFlags: 0
@@ -93062,6 +93074,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1 &942203391
 GameObject:
   m_ObjectHideFlags: 0
@@ -93321,6 +93335,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1 &962654116
 GameObject:
   m_ObjectHideFlags: 0
@@ -98698,6 +98714,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
   radius: 5.1
   mag: {fileID: 1236251141}
   magnetsOfficial: []
@@ -98779,7 +98797,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 137
+  m_LightOrder: 165
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -98987,6 +99005,89 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!1001 &1247796938
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 345978632}
+    m_Modifications:
+    - target: {fileID: 912933022490997485, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 912933022490997485, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+      propertyPath: m_WasSpriteAssigned
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1311188358348928707, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+      propertyPath: builtYet
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1311188358348928707, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1311188358348928707, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+      propertyPath: reachDistance
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189617424200109761, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189617424200109761, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189617424200109761, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189617424200109761, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189617424200109761, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189617424200109761, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189617424200109761, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189617424200109761, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189617424200109761, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5189617424200109761, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9010514658136673332, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+      propertyPath: m_Name
+      value: Pylon
+      objectReference: {fileID: 0}
+    m_RemovedComponents:
+    - {fileID: 4415813757055222707, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+--- !u!4 &1247796939 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5189617424200109761, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
+  m_PrefabInstance: {fileID: 1247796938}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1249293822
 GameObject:
   m_ObjectHideFlags: 0
@@ -99042,7 +99143,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e71f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 138
+  m_LightOrder: 166
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -99447,6 +99548,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1 &1260109363
 GameObject:
   m_ObjectHideFlags: 0
@@ -100541,6 +100644,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1 &1311015483
 GameObject:
   m_ObjectHideFlags: 0
@@ -101812,7 +101917,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e633535f038b9059c35b94e3c0519396211bf7a45e71f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 139
+  m_LightOrder: 167
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -104522,6 +104627,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
   radius: 5.1
   mag: {fileID: 1525868735}
   magnetsOfficial: []
@@ -104603,7 +104710,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 140
+  m_LightOrder: 168
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -104878,6 +104985,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1 &1537658749
 GameObject:
   m_ObjectHideFlags: 0
@@ -105615,6 +105724,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1 &1554261999
 GameObject:
   m_ObjectHideFlags: 0
@@ -112079,6 +112190,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1 &1608073747
 GameObject:
   m_ObjectHideFlags: 0
@@ -114254,6 +114367,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
   radius: 7.1
   mag: {fileID: 1695346677}
   magnetsOfficial: []
@@ -114335,7 +114450,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 141
+  m_LightOrder: 169
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -115663,6 +115778,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1 &1775534700
 GameObject:
   m_ObjectHideFlags: 0
@@ -116490,6 +116607,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!4 &1807219043
 Transform:
   m_ObjectHideFlags: 0
@@ -117117,6 +117236,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1 &1860916262
 GameObject:
   m_ObjectHideFlags: 0
@@ -117570,6 +117691,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1 &1883962453
 GameObject:
   m_ObjectHideFlags: 0
@@ -117684,6 +117807,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1 &1887166915
 GameObject:
   m_ObjectHideFlags: 0
@@ -118054,6 +118179,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1 &1913144815
 GameObject:
   m_ObjectHideFlags: 0
@@ -118243,7 +118370,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e71f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 142
+  m_LightOrder: 170
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -119278,6 +119405,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1 &1976788368
 GameObject:
   m_ObjectHideFlags: 0
@@ -119585,6 +119714,11 @@ MonoBehaviour:
   buildings:
   - {fileID: 3997989416841428125, guid: b7d50516c3efa4caab7548e9779f0e96, type: 3}
   - {fileID: 2467364739664431249, guid: a45cbdfeaf6e048e8ae0557be469f59c, type: 3}
+  - {fileID: 8949586911344664711, guid: 72c08a139899e4ade8cff549617bc608, type: 3}
+  - {fileID: 2000541545583142029, guid: 22813059b8262459ea73bf3d73148974, type: 3}
+  - {fileID: 4309717612728443263, guid: 4ad98b295555746fb951c722b82db47d, type: 3}
+  - {fileID: 4464479778263070814, guid: ffe893d2c949d4b83a265550d4f6d0d4, type: 3}
+  - {fileID: 5580220471824109513, guid: 7623ba60574d1474cab851c5d472766f, type: 3}
 --- !u!114 &1990433203
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -120632,6 +120766,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
 --- !u!1 &2071089185 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 638300034171051953, guid: 3cf0e19100af64a2e95c6c598cd46d03, type: 3}
@@ -122453,6 +122589,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 1
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
   defaults:
   - {fileID: 11400000, guid: f71a62f95877f4fb2a9a645980589e66, type: 2}
   - {fileID: 11400000, guid: 050092785df38472f993d04a65d2a734, type: 2}
@@ -122748,6 +122886,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 0
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
   healingOrbPrefab: {fileID: 0}
   platformCollider: {fileID: 0}
   txt: {fileID: 479228266}
@@ -127604,7 +127744,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 000000003535f038
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 143
+  m_LightOrder: 171
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
