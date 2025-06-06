@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Linq;
+using UnityEditor.Experimental.GraphView;
 
 public class BM : MonoBehaviour //Building Manager
 {
@@ -29,7 +30,7 @@ public class BM : MonoBehaviour //Building Manager
     [HideInInspector] public bool planting = false;
     public bool added = false;
     public Action<InputAction.CallbackContext> goToDaddy;
-
+    [SerializeField] GameObject map;
     [SerializeField] Vector2Int gridSize = new Vector2Int(1,1); // size in cells
     Vector2Int anchorCell;                                      // where we’re hovering
     
@@ -140,6 +141,7 @@ public class BM : MonoBehaviour //Building Manager
     
     public void BuildingFollowMouse(GameObject g, BuildingTile r)
     {
+        map.SetActive(false);
         recent = r;
         redbuildingPrefab = g;
         redBuilding = Instantiate(g);
@@ -213,6 +215,7 @@ public class BM : MonoBehaviour //Building Manager
             AddDaddyDel();
         }
 
+        map.SetActive(true);
         planting = false;
     }
 

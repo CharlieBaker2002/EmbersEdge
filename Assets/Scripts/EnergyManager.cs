@@ -1,9 +1,7 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 public class EnergyManager : MonoBehaviour
 {
@@ -17,6 +15,7 @@ public class EnergyManager : MonoBehaviour
     private void Awake()
     {
         i = this;
+        GridManager.i?.RefreshEnergyCells();   // initial energy overlay
     }
 
     public bool NewBattery(Battery b)
@@ -65,6 +64,7 @@ public class EnergyManager : MonoBehaviour
         }
         CreateGrids();
         Debug.Log("new pylon!");
+        GridManager.i.OnPylonChanged();   // update energy overlay
     }
 
     public void RemovePylon(Pylon p)
@@ -76,6 +76,7 @@ public class EnergyManager : MonoBehaviour
         }
         CreateGrids();
         Debug.Log("rem pylon");
+        GridManager.i.OnPylonChanged();   // update energy overlay
     }
     
     void CreateGrids()

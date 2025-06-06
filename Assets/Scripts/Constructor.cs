@@ -21,6 +21,7 @@ public class Constructor : Building
     
     protected override void BEnable()
     {
+        Debug.Log("yo");
         EnergyManager.i.constructors.Add(this);
         GS.OnNewEra += SetMat;
         SpawnManager.instance.onWaveComplete += () =>
@@ -29,6 +30,8 @@ public class Constructor : Building
         };
         SetMat(0);
         EnergyManager.i.UpdateEmber();
+        GridManager.i.RebuildRangeCache();
+        GridManager.i.RefreshEnergyCells();
         mod = ps.velocityOverLifetime;
     }
 

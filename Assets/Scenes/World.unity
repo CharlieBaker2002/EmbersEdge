@@ -4329,7 +4329,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e71f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 159
+  m_LightOrder: 327
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -6508,6 +6508,7 @@ MonoBehaviour:
   - {fileID: 629719596}
   planting: 0
   added: 0
+  map: {fileID: 749067360}
   gridSize: {x: 1, y: 1}
 --- !u!114 &269883317
 MonoBehaviour:
@@ -6796,7 +6797,8 @@ MonoBehaviour:
   cellSize: 0.25
   origin: {x: -10, y: -10}
   buildingGrid: {fileID: 1789819616}
-  block: {fileID: 1165971439725722189, guid: 3146235af92c34daeb8ab5ee553e3842, type: 3}
+  block: {fileID: 4439992536765601820, guid: 3146235af92c34daeb8ab5ee553e3842, type: 3}
+  energyBlock: {fileID: 4439992536765601820, guid: 0a284e50ed8754e2d8f0b841f0135210, type: 3}
 --- !u!114 &269883324
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6991,7 +6993,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 160
+  m_LightOrder: 328
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -11266,7 +11268,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 000000001f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 161
+  m_LightOrder: 329
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -18966,7 +18968,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e781346bb21f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 162
+  m_LightOrder: 330
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -20593,7 +20595,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 163
+  m_LightOrder: 331
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -92680,7 +92682,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e71f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 164
+  m_LightOrder: 332
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -96653,13 +96655,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1114115106}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: 0.0033296421, w: 0.9999945}
   m_LocalPosition: {x: -1, y: -1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 845321518}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0.382}
 --- !u!212 &1114115108
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -98797,7 +98799,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 165
+  m_LightOrder: 333
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -99031,7 +99033,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1311188358348928707, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
       propertyPath: reachDistance
-      value: 5
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 5189617424200109761, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
       propertyPath: m_LocalPosition.x
@@ -99143,7 +99145,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e71f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 166
+  m_LightOrder: 334
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -101917,7 +101919,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e633535f038b9059c35b94e3c0519396211bf7a45e71f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 167
+  m_LightOrder: 335
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -104710,7 +104712,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 168
+  m_LightOrder: 336
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -114450,7 +114452,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 169
+  m_LightOrder: 337
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -118370,7 +118372,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e71f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 170
+  m_LightOrder: 338
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -127744,7 +127746,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 000000003535f038
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 171
+  m_LightOrder: 339
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3

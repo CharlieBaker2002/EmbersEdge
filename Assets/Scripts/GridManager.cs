@@ -18,11 +18,13 @@ public class GridManager : MonoBehaviour
     private Color clearColour     = new Color(0f, 0.4f, 0f, 1f); // green – inside constructor range
     private Color filledColour    = new Color(0.4f, 0f, 0f, 1f); // red – occupied
     private Color outColour    = new Color(0.05f, 0.05f, 0.05f, 1f); // black – out of range
-    private Color brightClearColour   = new Color(0f, 0.8f, 0f, 1f); // super‑bright green
+    private Color brightClearColour   = new Color(0f, 1f, 0f, 1f); // super‑bright green
     private Color brightBlockedColour = new Color(0.8f, 0f, 0f, 1f);  // super‑bright red
+    private Color energyFreeColour   = new Color(0f, 0.4f, 0f, 1f); // yellow – energy & buildable
 
     [SerializeField] Transform buildingGrid;
-    [SerializeField] GameObject block;
+    [SerializeField] SpriteRenderer block;
+    [SerializeField] SpriteRenderer energyBlock;
 
     #endregion
 
@@ -32,6 +34,7 @@ public class GridManager : MonoBehaviour
     bool[,] inRange;               // within range of a constructor this frame
     Color[,] baseColour;           // cache of the colour each tile should have when *not* highlighted
     SpriteRenderer[,] overlay;     // sprite for each cell
+    SpriteRenderer[,] energyOverlay; // sprite for each energy cell
 
     Vector2Int lastAnchor = new(int.MinValue, int.MinValue);
     Vector2Int lastSize   = Vector2Int.one;
@@ -51,6 +54,7 @@ public class GridManager : MonoBehaviour
         inRange    = new bool[width, height];
         baseColour = new Color[width, height];
         overlay    = new SpriteRenderer[width, height];
+        energyOverlay = new SpriteRenderer[width, height];
 
         MakeOverlaySquares();
         buildingGrid.gameObject.SetActive(false);
@@ -59,18 +63,25 @@ public class GridManager : MonoBehaviour
     void MakeOverlaySquares()
     {
         var square = Instantiate(block);
-        square.SetActive(false);
+        square.gameObject.SetActive(false);
+        var energySquare = Instantiate(energyBlock);
+        energySquare.gameObject.SetActive(false);
 
         for (int x = 0; x < width; ++x)
             for (int y = 0; y < height; ++y)
             {
                 var inst = Instantiate(square, GridToWorld(new Vector2Int(x, y)), Quaternion.identity, buildingGrid);
                 inst.transform.localScale = Vector3.one * cellSize * 0.99f;
-                inst.SetActive(true);
-                overlay[x, y] = inst.GetComponent<SpriteRenderer>();
+                inst.gameObject.SetActive(true);
+                overlay[x, y] = inst;
+                var eInst = Instantiate(energySquare, GridToWorld(new Vector2Int(x, y)), Quaternion.identity, buildingGrid);
+                eInst.transform.localScale = Vector3.one * cellSize * 0.99f;
+                eInst.gameObject.SetActive(false);                               // hidden until there is energy
+                energyOverlay[x, y] = eInst;
             }
 
         Destroy(square);
+        Destroy(energySquare);
     }
 
     #endregion
@@ -117,6 +128,9 @@ public class GridManager : MonoBehaviour
                     ? filledColour
                     : clearColour;
             }
+        
+        // Refresh energy cells when buildings are placed/removed
+        RefreshEnergyCells();
     }
 
     /// <summary>
@@ -172,6 +186,7 @@ public class GridManager : MonoBehaviour
         if (deactivating) stopDeactivate = true;
         RebuildRangeCache();    // expensive work done once on entry
         buildingGrid.gameObject.SetActive(true);
+        RefreshEnergyCells();   // Also refresh energy cells when grid is activated
     }
 
     public void DeactivateGrid()
@@ -199,6 +214,15 @@ public class GridManager : MonoBehaviour
         }
     }
 
+    /// <summary>Called when pylons are added or removed to update energy display.</summary>
+    public void OnPylonChanged()
+    {
+        if (buildingGrid.gameObject.activeSelf)
+        {
+            RefreshEnergyCells();
+        }
+    }
+
     #endregion
 
     #region Internals –––––––––––––––––––––––––––––––––––––––––––––––
@@ -206,10 +230,10 @@ public class GridManager : MonoBehaviour
     bool Inside(int x, int y) => x >= 0 && y >= 0 && x < width && y < height;
 
     /// <summary>
-    /// Re‑computes which tiles are inside any constructor’s radius and caches the base grid colours.
+    /// Re‑computes which tiles are inside any constructor's radius and caches the base grid colours.
     /// This runs *once* on entering build mode, so the grid can be repainted very cheaply each frame.
     /// </summary>
-    void RebuildRangeCache()
+    public void RebuildRangeCache()
     {
         var constructors = EnergyManager.i?.constructors; // assumed to exist per brief
 
@@ -239,4 +263,73 @@ public class GridManager : MonoBehaviour
     }
 
     #endregion
+    
+    /// <summary>Show or hide the energy overlay on a single cell.</summary>
+    public void SetEnergy(int gx, int gy, bool hasEnergy)
+    {
+        if (!Inside(gx, gy)) return;
+        if (energyOverlay[gx, gy] != null)
+            energyOverlay[gx, gy].gameObject.SetActive(hasEnergy);
+    }
+    
+    /// <summary>Re‑computes which cells are inside any pylon's reach and toggles the energy overlay colours.</summary>
+    public void RefreshEnergyCells()
+    {
+        var pylons = EnergyManager.i?.pylons;
+
+        for (int gx = 0; gx < width; ++gx)
+            for (int gy = 0; gy < height; ++gy)
+            {
+                bool powered = false;
+
+                if (pylons != null && pylons.Count > 0)
+                {
+                    Vector3 cellWorld = GridToWorld(new Vector2Int(gx, gy));
+                    foreach (var p in pylons)
+                    {
+                        if (p == null) continue;
+                        float r = p.reachDistance;
+                        if ((p.transform.position - cellWorld).sqrMagnitude <= r * r)
+                        {
+                            powered = true;
+                            break;
+                        }
+                    }
+                }
+
+                bool freeAccess = inRange[gx, gy] && !occupied[gx, gy];
+
+                // Show / hide the energy sprite
+                SetEnergy(gx, gy, powered);
+
+                // Decide the color
+                Color targetColour;
+                if (powered && freeAccess)
+                {
+                    targetColour = energyFreeColour; // yellow - energy & buildable
+                }
+                else if (occupied[gx, gy])
+                {
+                    targetColour = filledColour; // red - occupied
+                }
+                else if (!inRange[gx, gy])
+                {
+                    targetColour = outColour; // black - out of range
+                }
+                else
+                {
+                    targetColour = clearColour; // green - in range but no energy
+                }
+
+                // Apply color to both blocks
+                overlay[gx, gy].color = targetColour;
+                if (energyOverlay[gx, gy] != null && powered)
+                {
+                    energyOverlay[gx, gy].color = targetColour;
+                }
+                
+                // Update base color cache
+                baseColour[gx, gy] = targetColour;
+            }
+    }
 }

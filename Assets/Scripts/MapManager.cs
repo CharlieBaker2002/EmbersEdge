@@ -221,25 +221,38 @@ public class MapManager : MonoBehaviour
         // ---------- CPU texture update using SetPixelData ----------
         AsyncGPUReadback.Request(maskRT, 0, request =>
         {
-            if (request.hasError) return;
-
-            var src = request.GetData<Color32>();
-            if (!pixelBuffer.IsCreated)
-                pixelBuffer = new NativeArray<Color32>(src.Length, Allocator.Persistent);
-            else if (pixelBuffer.Length != src.Length)
+            // Always release the latch when the callback fires
+            try
             {
-                pixelBuffer.Dispose();
-                pixelBuffer = new NativeArray<Color32>(src.Length, Allocator.Persistent);
+                if (request.hasError)
+                {
+                    Debug.LogWarning("[MapManager] GPU read-back failed – will retry next frame");
+                    return;   // keep sprite as-is, but we’re free to try again
+                }
+
+                var src = request.GetData<Color32>();
+                if (!pixelBuffer.IsCreated || pixelBuffer.Length != src.Length)
+                {
+                    if (pixelBuffer.IsCreated) pixelBuffer.Dispose();
+                    pixelBuffer = new NativeArray<Color32>(src.Length, Allocator.Persistent);
+                }
+
+                src.CopyTo(pixelBuffer);
+                tex.SetPixelData(pixelBuffer, 0);
+                tex.Apply(false, false);
+
+                var sprite = Sprite.Create(
+                    tex, new Rect(0, 0, textureSize, textureSize),
+                    new Vector2(0.5f, 0.5f),
+                    textureSize / scale);
+
+                sr.sprite = sprite;
             }
-
-            src.CopyTo(pixelBuffer);
-            tex.SetPixelData(pixelBuffer, 0);
-            tex.Apply(false, false);
-
-            var sprite = Sprite.Create(tex, new Rect(0, 0, textureSize, textureSize),
-                                       new Vector2(0.5f, 0.5f), textureSize / scale);
-            sr.sprite = sprite;
-            awaitingReadback = false;
+            finally
+            {
+                // Whether it succeeded or not, we’re no longer “waiting”
+                awaitingReadback = false;
+            }
         });
     }
 
