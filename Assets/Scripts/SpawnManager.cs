@@ -199,9 +199,14 @@ public class SpawnManager : MonoBehaviour
         {
             sinceLastBigAttack += 0.01f * GS.Era1();
         }
+
+        foreach (EmberCannon ec in EmberCannon.ecs)
+        {
+            ec.Activate();
+        }
         foreach (EmbersEdge EE in EEs)
         {
-            EE.StartCoroutine(EE.Acco(activityLevel));
+            EE.StartCoroutine(EE.Acco(activityLevel + EE.bias));
         }
         dayState = DayState.PreAttack;
         timer = EmbersEdge.warmUpTime;

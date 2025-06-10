@@ -32,7 +32,7 @@ public class EnergyManager : MonoBehaviour
         Debug.Log("new battery!");
         return pylons.Any(x => x.batteries.Contains(b));
     }
-
+    
     public void RemoveBattery(Battery b)
     {
         foreach (Pylon p in pylons)
@@ -43,7 +43,7 @@ public class EnergyManager : MonoBehaviour
         CreateGrids();
         Debug.Log("rem battery");
     }
-
+    
     public void NewPylon(Pylon p)
     {
         foreach (Pylon x in pylons)
@@ -63,7 +63,6 @@ public class EnergyManager : MonoBehaviour
             }
         }
         CreateGrids();
-        Debug.Log("new pylon!");
         GridManager.i.OnPylonChanged();   // update energy overlay
     }
 
@@ -124,7 +123,6 @@ public class EnergyManager : MonoBehaviour
 
             grids.Add(batteriesInGrid);
         }
-        Debug.Log(grids.Count);
     }
 
     public void UpdateGrid(int gridID)

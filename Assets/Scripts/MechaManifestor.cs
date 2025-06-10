@@ -46,11 +46,11 @@ public class MechaManifestor : Building, IClickable
             hit = true;
             if (PortalScript.CanPortal())
             {
-                this.QA(() =>UIManager.MakeKey("V", new Vector2(-2f, 0f), "Teleport To Dungeon"),0.1f);
+                this.QA(() =>UIManager.MakeKey("V", new Vector2(-3.5f, 0f), "Teleport To Dungeon"),0.1f);
             }
             if (FullCheckCanBuild())
             {
-                this.QA(() =>UIManager.MakeKey("B", new Vector2(2f, 0f),"Build Defences & Infrastructure"),0.1f);
+                this.QA(() =>UIManager.MakeKey("B", new Vector2(3.5f, 0f),"Build Defences & Infrastructure"),0.1f);
             }
         }
     }

@@ -52,6 +52,7 @@ MonoBehaviour:
   permanent: 0
   stubborn: 0
   temporary: 0
+  cd: {fileID: 0}
   description: 
   ring: 0
   engagement: 0
@@ -72,7 +73,7 @@ MonoBehaviour:
   - {fileID: 1513993215, guid: daf9b5537a2fb4c1fba19168636f5928, type: 3}
   - {fileID: -302805991, guid: daf9b5537a2fb4c1fba19168636f5928, type: 3}
   col: {fileID: 6123382269787873410}
-  attackRange: 0.56
+  attackRange: 3
   returnTime: 3
   attackType: 1
   accelerateOmega: 0

@@ -139,7 +139,7 @@ public class DashPump : Part
         {
             ps.Stop(false, ParticleSystemStopBehavior.StopEmitting);
             engagement = 0f;
-            cd.SetValue(CharacterScript.CS.dashTimer);
+            cd.SetValue(Mathf.Max(0.01f,CharacterScript.CS.dashTimer));
         },dashTime + 0.1f);
         return true;
     }

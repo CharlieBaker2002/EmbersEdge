@@ -77,7 +77,7 @@ public class GridManager : MonoBehaviour
                 var eInst = Instantiate(energySquare, GridToWorld(new Vector2Int(x, y)), Quaternion.identity, buildingGrid);
                 eInst.transform.localScale = Vector3.one * cellSize * 0.99f;
                 eInst.gameObject.SetActive(false);                               // hidden until there is energy
-                energyOverlay[x, y] = eInst;
+                //energyOverlay[x, y] = eInst;
             }
 
         Destroy(square);
@@ -267,9 +267,9 @@ public class GridManager : MonoBehaviour
     /// <summary>Show or hide the energy overlay on a single cell.</summary>
     public void SetEnergy(int gx, int gy, bool hasEnergy)
     {
-        if (!Inside(gx, gy)) return;
-        if (energyOverlay[gx, gy] != null)
-            energyOverlay[gx, gy].gameObject.SetActive(hasEnergy);
+        // if (!Inside(gx, gy)) return;
+        // if (energyOverlay[gx, gy] != null)
+        //     energyOverlay[gx, gy].gameObject.SetActive(hasEnergy);
     }
     
     /// <summary>Re‑computes which cells are inside any pylon's reach and toggles the energy overlay colours.</summary>

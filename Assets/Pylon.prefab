@@ -64,7 +64,9 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 0
-  reachDistance: 5
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
+  reachDistance: 3
   batteries: []
   connections: []
 --- !u!212 &912933022490997485

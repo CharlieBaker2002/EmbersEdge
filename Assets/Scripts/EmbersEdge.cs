@@ -61,6 +61,9 @@ public class EmbersEdge : MonoBehaviour
     public static bool fullCheck = true;
     public static Action EEExplodeEvent = () => { };
     public GameObject eeWaveCompleteFX;
+
+    public float bias;
+    
     public static bool CheckFinished()
     {
         foreach(EmbersEdge EE in SpawnManager.instance.EEs)
@@ -286,6 +289,7 @@ public class EmbersEdge : MonoBehaviour
 
     public IEnumerator Acco(float activity = 0.45f) //grow and spawn enemies if not in dungeon
     {
+        bias = 0f;
         hastiness = 0.145f - 0.1f * activity;
         sinOnOneSide = false;
         fluidness = activity * 0.9f;

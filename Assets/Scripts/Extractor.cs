@@ -11,13 +11,13 @@ public class Extractor : Building
     // Start is called before the first frame update
     [SerializeField] private Transform mesh;
     [SerializeField] private SpriteRenderer ring;
-    private float omega = 0f;
+    protected float omega = 0f;
     [SerializeField] private Sprite[] ringSprites;
     [SerializeField] private List<EmberParticle> statics;
-    [SerializeField] private Ember emb;
+    [SerializeField] protected Ember emb;
     public float maxDistance = 7.5f;
     [SerializeField] ParticleSystem ps;
-    private ParticleSystem.EmissionModule em;
+    protected ParticleSystem.EmissionModule em;
     [SerializeField] private EmberStore store;
     private float timer;
 
@@ -30,13 +30,22 @@ public class Extractor : Building
         em = ps.emission;
         GS.OnNewEra += UpdateColours;
         int n = statics.Count;
-        extractors.Add(this);
         while (statics.Count > n * 0.4f)
         {
             int r = Random.Range(0, statics.Count);
             Destroy(statics[r].gameObject);
             statics.RemoveAt(r);
         }
+    }
+
+    protected override void BEnable()
+    {
+        extractors.Add(this);
+    }
+    
+    protected override void BDisable()
+    {
+        extractors.Remove(this);
     }
     
     void UpdateColours(int era)
