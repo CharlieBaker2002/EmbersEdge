@@ -65,6 +65,7 @@ public class E1_2 : Unit, IOnCollide
 
     public void MoveBack()
     {
+        GS.VP(1, shootP, shootP.position, 50f);
         AS.sharpness = 2.25f;
         AS.AddPush(0.5f, false, -transform.up * 2f * actRate);
     }
@@ -73,7 +74,7 @@ public class E1_2 : Unit, IOnCollide
     {
         var p = Instantiate(proj, shootP.position, Quaternion.identity, GS.FindParent(GS.Parent.enemyprojectiles)).GetComponent<ProjectileScript>();
         p.SetValues(transform.up,tag, ActRateProjectileStrength());
-        GetComponent<LifeScript>().race = 3;
+        ls.race = 3;
     }
 
     public void OnCollide(Collision2D c)

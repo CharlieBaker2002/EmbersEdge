@@ -17,11 +17,42 @@ public class Constructor : Building
     [SerializeField] private ParticleSystem ps;
     private ParticleSystem.VelocityOverLifetimeModule mod;
 
+    [SerializeField] private Sprite[] upgradeSpritesBeam; 
+    [SerializeField] private Sprite[] upgradeSpritesLarge; 
+    [SerializeField] private Sprite[] upgradeicons;
+    [SerializeField] private Sprite[] baseSprites;
     public List<Building> tasks;
+    
+    bool isBeam = false;
+    private bool isLarge = false;
+
+    public override void Start()
+    {
+        base.Start();
+        AddUpgradeSlot(new int[] {0,0,0,1},"Long-Range Constructor",upgradeicons[0],true, UpgradeToBeam,5,false,null,() => !isLarge);
+        AddUpgradeSlot(new int[] {0,10,0,0},"Heavy Constructor",upgradeicons[1],true, UpgradeToLargeConstructor,5,false,null,() => !isBeam);
+    }
+
+    void UpgradeToBeam()
+    {
+        radius = 6f;
+        isBeam = true;
+        sprs = upgradeSpritesBeam;
+        stick.sprite = sprs[0];
+        sr.sprite = baseSprites[0];
+    }
+
+    void UpgradeToLargeConstructor()
+    {
+        store.maxEmber = 15;
+        isLarge = true;
+        sprs = upgradeSpritesLarge;
+        stick.sprite = sprs[0];
+        sr.sprite = baseSprites[1];
+    }
     
     protected override void BEnable()
     {
-        Debug.Log("yo");
         EnergyManager.i.constructors.Add(this);
         GS.OnNewEra += SetMat;
         SpawnManager.instance.onWaveComplete += () =>

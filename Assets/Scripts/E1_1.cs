@@ -104,7 +104,6 @@ public class E1_1 : Unit
             p.GetComponent<ProjectileScript>().SetValues(sp.position + (Vector3) Random.insideUnitCircle * 0.1f - transform.position, tag);
             yield return new WaitForSeconds(0.25f);
         }
-        GS.VP(0, transform, transform.position, 40);
     }
 
     public void SharpUp()

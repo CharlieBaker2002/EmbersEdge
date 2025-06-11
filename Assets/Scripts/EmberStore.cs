@@ -11,6 +11,8 @@ public class EmberStore : MonoBehaviour
     public EmberStoreBuilding b;
     public bool isConstructor = false;
 
+    public int desiredEmber;
+
     private bool init = false;
 
     private void Start()
