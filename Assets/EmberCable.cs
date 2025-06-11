@@ -2,34 +2,54 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 public class EmberCable : MonoBehaviour
 {
     [SerializeField] private SpriteRenderer sr;
     [SerializeField] private Sprite[] sprs;
     [SerializeField] EmberCable nextCable;
+    [SerializeField] private EmberCable prevCable;
+    [SerializeField] public bool storeInfront;
     [SerializeField] private EmberStore store;
     public bool first = false;
     
-    public IEnumerator Animate()
+    public IEnumerator Animate(bool forwards)
     {
-        sr.sprite = sprs[0];
-        yield return new WaitForFixedUpdate();
-        sr.sprite = sprs[1];
-        yield return new WaitForFixedUpdate();
-        sr.sprite = sprs[2];
-        yield return new WaitForFixedUpdate();
-        sr.sprite = sprs[3];
-        NextAnim();
+        if (forwards)
+        {
+            sr.sprite = sprs[0];
+            yield return new WaitForFixedUpdate();
+            sr.sprite = sprs[1];
+            yield return new WaitForFixedUpdate();
+            sr.sprite = sprs[2];
+            yield return new WaitForFixedUpdate();
+            sr.sprite = sprs[3];
+        }
+        else
+        {
+            sr.sprite = sprs[2];
+            yield return new WaitForFixedUpdate();
+            sr.sprite = sprs[1];
+            yield return new WaitForFixedUpdate();
+            sr.sprite = sprs[0];
+            yield return new WaitForFixedUpdate();
+            sr.sprite = sprs[3];
+        }
+        NextAnim(forwards);
     }
 
-    void NextAnim()
+    void NextAnim(bool forwards)
     {
-        if (nextCable != null)
+        if (nextCable != null && forwards)
         {
-            nextCable.StartCoroutine(nextCable.Animate());
+            nextCable.StartCoroutine(nextCable.Animate(true));
         }
-        else if (store != null)
+        else if (prevCable != null && !forwards)
+        {
+            prevCable.StartCoroutine(prevCable.Animate(false));
+        }
+        else if (store != null && forwards == storeInfront)
         {
             store.Set(store.ember + 1);
         }
@@ -41,7 +61,7 @@ public class EmberCable : MonoBehaviour
         while (true)
         {
             yield return new WaitForSeconds(0.5f);
-            StartCoroutine(Animate());
+            StartCoroutine(Animate(GS.Chance(10)));
         }
     }
 }

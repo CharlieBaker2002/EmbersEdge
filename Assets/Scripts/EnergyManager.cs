@@ -187,11 +187,11 @@ public class EnergyManager : MonoBehaviour
             sum += c.ember;
             c.desiredEmber = 0;
         }
-        while (sum > 0 && constructors.Any(c=>c.store.ember != c.store.maxEmber)) //add one evenly to each constructor until they are all full.
+        while (sum > 0 && constructors.Any(c=>c.store.desiredEmber != c.store.maxEmber)) //add one evenly to each constructor until they are all full.
         {
             foreach(Constructor c in constructors)
             {
-                if (c.store.ember >= c.store.maxEmber) continue;
+                if (c.store.desiredEmber >= c.store.maxEmber) continue;
                 c.store.desiredEmber += 1;
                 sum -= 1;
                 if (sum <= 0) break;
@@ -202,7 +202,7 @@ public class EnergyManager : MonoBehaviour
         {
             foreach (var t in emberStores)
             {
-                if (t.ember >= t.maxEmber) continue;
+                if (t.desiredEmber >= t.maxEmber) continue;
                 t.desiredEmber += 1;
                 sum -= 1;
                 if (sum <= 0) break;
@@ -210,7 +210,7 @@ public class EnergyManager : MonoBehaviour
         }
         
         //DO CONNECTIONS
-
+        
         foreach(EmberStore e in emberStores)
         {
             e.b?.Refresh();
