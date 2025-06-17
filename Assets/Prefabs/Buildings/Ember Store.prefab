@@ -10,10 +10,10 @@ GameObject:
   m_Component:
   - component: {fileID: 4344669351208739247}
   - component: {fileID: 7012155997198509781}
-  - component: {fileID: 6658450094715460783}
   - component: {fileID: 3056693650946840568}
   - component: {fileID: 120175918492327005}
   - component: {fileID: 8754679185747270200}
+  - component: {fileID: 7624935858163279364}
   m_Layer: 7
   m_Name: Ember Store
   m_TagString: Allies
@@ -110,22 +110,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &6658450094715460783
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1517340900197829438}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8fb3a85d62c5842929c739f740fe2101, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ember: 0
-  maxEmber: 20
-  b: {fileID: 3056693650946840568}
-  isConstructor: 0
 --- !u!114 &3056693650946840568
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -139,7 +123,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   buildingBehaviours:
-  - {fileID: 6658450094715460783}
+  - {fileID: 0}
   sr: {fileID: 7012155997198509781}
   groundEdit: {fileID: 0}
   tiles: []
@@ -156,7 +140,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 0
-  store: {fileID: 6658450094715460783}
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
   r: {fileID: 3663592083596422228}
   ps: {fileID: 281286687758567520}
   particle: {fileID: 1825924090718363134, guid: 0b3133a6a536246139fab79b6a6bd2fa, type: 3}
@@ -183,6 +168,11 @@ MonoBehaviour:
   - {fileID: 8204317635684779839}
   - {fileID: 19254688625547157}
   - {fileID: 6868132099535213093}
+  fractureFX: []
+  fracsprs: []
+  boomFx: {fileID: 0}
+  isTiny: 0
+  connect: {fileID: 7624935858163279364}
 --- !u!114 &120175918492327005
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -220,6 +210,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   oms:
   - {fileID: 120175918492327005}
+--- !u!114 &7624935858163279364
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1517340900197829438}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f90e18be6b5942dd9554a75508eed3a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Taip: 0
+  cables: []
+  connections: []
+  ember: 0
+  maxEmber: 35
+  desiredEmber: 0
 --- !u!1 &6012032447504245326
 GameObject:
   m_ObjectHideFlags: 0

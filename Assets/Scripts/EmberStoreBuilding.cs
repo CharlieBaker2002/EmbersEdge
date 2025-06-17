@@ -2,10 +2,10 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 public class EmberStoreBuilding : Building
 {
-    [SerializeField] private EmberStore store;
     [SerializeField] Renderer r;
     [SerializeField] ParticleSystem ps;
     private List<EmberParticle> particles = new();
@@ -13,49 +13,50 @@ public class EmberStoreBuilding : Building
     [SerializeField] private float rad;
     [SerializeField] private float speed;
     [SerializeField] private EmberParticle[] statics;
+    [SerializeField] private SpriteRenderer[] fractureFX;
+    [SerializeField] private Sprite[] fracsprs;
+    [SerializeField] private GameObject boomFx;
+    
+    [SerializeField] bool isTiny = false;
+    public EmberConnector connect;
 
     public override void Start()
     {
-        base.Start();
+        if (!isTiny)
+        {
+            base.Start();
+            connect.onRefresh += () =>
+            {
+                connect.ember++;
+                if (connect.ember > connect.maxEmber)
+                {
+                    connect.ember = connect.maxEmber;
+                }
+                Refresh();
+            };
+        }
+        else
+        {
+            transform.localScale = Vector3.zero;
+            LeanTween.scale(gameObject,Vector3.one,1f).setEase(LeanTweenType.easeInOutQuad);
+        }
         GS.OnNewEra += UpdateEmberColours;
         r.material = GS.MatByEra(GS.era, false, false, true);
         Refresh();
     }
-
-    IEnumerator Test()
+    
+    protected override void BEnable()
     {
-        if (rad == 0.08f)
-        {
-            yield return new WaitForSeconds(1f);
-            for (int x = 0; x <= store.maxEmber; x++)
-            {
-                store.Set(x);
-                Refresh();
-                yield return new WaitForSeconds(3f/store.maxEmber);
-            }
-        }
-        else if (rad == 0.14f)
-        {
-            yield return new WaitForSeconds(4f);
-            for (int x = 0; x <= store.maxEmber; x++)
-            {
-                store.Set(x);
-                Refresh();
-                yield return new WaitForSeconds(10f/store.maxEmber);
-            }
-        }
-        else
-        {
-            yield return new WaitForSeconds(14f);
-            for (int x = 0; x <= store.maxEmber; x++)
-            {
-                store.Set(x);
-                Refresh();
-                yield return new WaitForSeconds(20f/store.maxEmber);
-            }
-        }
-       
+        EnergyManager.i.emberStores.Add(this);
+        EnergyManager.i.CreateCableConnections();
     }
+    
+    protected override void BDisable()
+    {
+        EnergyManager.i.emberStores.Remove(this);
+        EnergyManager.i.CreateCableConnections();
+    }
+
 
     void UpdateEmberColours(int era)
     {
@@ -72,13 +73,13 @@ public class EmberStoreBuilding : Building
 
     public void Refresh()
     {
-        while (store.ember < particles.Count)
+        while (connect.ember < particles.Count)
         {
             Destroy(particles[0].gameObject);
             particles.RemoveAt(0);
         }
 
-        while (store.ember > particles.Count)
+        while (connect.ember > particles.Count)
         {
             var p = Instantiate(particle, transform.position, Quaternion.identity, transform);
             p.rad = rad;
@@ -88,12 +89,35 @@ public class EmberStoreBuilding : Building
         }
 
         var e = ps.emission;
-        e.rateOverTime = store.ember * 7.5f;
+        e.rateOverTime = connect.ember * 7.5f;
     }
 
     public void Hit(Vector2 v)
     {
         float ang = GS.VTA(v);
         statics[Mathf.RoundToInt((statics.Length-1) * ang / 360f)].Light();
+    }
+
+    public void Fracture(Vector3 p)
+    {
+        particles[0].enabled = false;
+        sr.enabled = false;
+        foreach (EmberParticle z in statics)
+        {
+            z.gameObject.SetActive(false);
+        }
+        LeanTween.move(particles[0].gameObject, p, 0.5f).setEaseInBack();
+        boomFx.SetActive(true);
+        for (int i = 0; i < 4; i++)
+        {
+            var g = fractureFX[i];
+            g.material = GS.MatByEra(GS.era, true, false, true);
+            g.gameObject.SetActive(true);
+            g.gameObject.LeanMove(transform.position + GS.ATV3(45f + i * 90f * Random.Range(-10f,10f)), 1f).setEaseOutSine();
+            g.gameObject.LeanScale(Vector3.zero, 1f).setEaseInSine();
+            g.gameObject.LeanDelayedCall(1f, () => Destroy(g));
+            g.LeanAnimate(fracsprs, 1f);
+        }
+        LeanTween.delayedCall(1.4f,() => Destroy(gameObject));
     }
 }

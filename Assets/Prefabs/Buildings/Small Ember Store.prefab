@@ -4854,10 +4854,10 @@ GameObject:
   m_Component:
   - component: {fileID: 6759450819970921467}
   - component: {fileID: 4528505006769698256}
-  - component: {fileID: 3049150440693786033}
   - component: {fileID: 5312121608967075303}
   - component: {fileID: 659881615243145618}
   - component: {fileID: 6973573216076437640}
+  - component: {fileID: 947755394679135071}
   m_Layer: 7
   m_Name: Small Ember Store
   m_TagString: Allies
@@ -4942,22 +4942,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &3049150440693786033
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7926129472078753466}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8fb3a85d62c5842929c739f740fe2101, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ember: 0
-  maxEmber: 4
-  b: {fileID: 5312121608967075303}
-  isConstructor: 0
 --- !u!114 &5312121608967075303
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4971,7 +4955,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   buildingBehaviours:
-  - {fileID: 3049150440693786033}
+  - {fileID: 0}
   sr: {fileID: 4528505006769698256}
   groundEdit: {fileID: 0}
   tiles: []
@@ -4988,7 +4972,8 @@ MonoBehaviour:
   numIconsTrue: 0
   maxHealth: 10
   builtYet: 0
-  store: {fileID: 3049150440693786033}
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
   r: {fileID: 935025312784991790}
   ps: {fileID: 653343464260609434}
   particle: {fileID: 1825924090718363134, guid: 0b3133a6a536246139fab79b6a6bd2fa, type: 3}
@@ -5003,6 +4988,11 @@ MonoBehaviour:
   - {fileID: 8057970768145481250}
   - {fileID: 2448104159728024763}
   - {fileID: 3928867671371943750}
+  fractureFX: []
+  fracsprs: []
+  boomFx: {fileID: 0}
+  isTiny: 0
+  connect: {fileID: 947755394679135071}
 --- !u!114 &659881615243145618
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5040,6 +5030,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   oms:
   - {fileID: 659881615243145618}
+--- !u!114 &947755394679135071
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7926129472078753466}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f90e18be6b5942dd9554a75508eed3a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Taip: 0
+  cables: []
+  connections: []
+  ember: 0
+  maxEmber: 8
+  desiredEmber: 0
 --- !u!1001 &1346092552348275415
 PrefabInstance:
   m_ObjectHideFlags: 0

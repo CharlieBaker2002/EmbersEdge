@@ -26,7 +26,7 @@ public class BM : MonoBehaviour //Building Manager
     private BuildingTile recent;
     // Stores the original colour for each building sprite so it can be restored later
     private readonly Dictionary<SpriteRenderer, Color> originalColors = new Dictionary<SpriteRenderer, Color>();
-    private bool sampled = false;
+    //private bool sampled = false;
     [HideInInspector] public bool planting = false;
     public bool added = false;
     public Action<InputAction.CallbackContext> goToDaddy;
@@ -54,37 +54,36 @@ public class BM : MonoBehaviour //Building Manager
 
     public void ChangeBuildingColour(bool on)
     {
-        return;
-        if (!on && sampled) return;
-        sampled = !on;
-        if(!on && buildings[0].GetComponentInChildren<SpriteRenderer>().color == new Color(1f,1f,1f,0.1f)) return; //if already off return
-        if(on && buildings[0].GetComponentInChildren<SpriteRenderer>().color == new Color(1f,1f,1f,1f)) return; //if already on return
-        foreach (SpriteRenderer s in buildings.SelectMany(x => x.hasExtraParent ? x.transform.parent.GetComponentsInChildren<SpriteRenderer>()  : x.gameObject.GetComponentsInChildren<SpriteRenderer>()))
-        {
-            if (!on)
-            {
-                // Remember the sprite's existing colour the first time we dim it
-                if (!originalColors.ContainsKey(s))
-                {
-                    originalColors.Add(s, s.color);
-                }
-                s.color = new Color(1f, 1f, 1f, 0.2f);
-            }
-            else
-            {
-                // Revert to the stored colour, or white if we somehow never stored it
-                if (originalColors.TryGetValue(s, out var original))
-                {
-                    s.color = original;
-                }
-            }
-        }
-
-        // Once colours are restored we can clear the cache
-        if (on)
-        {
-            originalColors.Clear();
-        }
+        // if (!on && sampled) return;
+        // sampled = !on;
+        // if(!on && buildings[0].GetComponentInChildren<SpriteRenderer>().color == new Color(1f,1f,1f,0.1f)) return; //if already off return
+        // if(on && buildings[0].GetComponentInChildren<SpriteRenderer>().color == new Color(1f,1f,1f,1f)) return; //if already on return
+        // foreach (SpriteRenderer s in buildings.SelectMany(x => x.hasExtraParent ? x.transform.parent.GetComponentsInChildren<SpriteRenderer>()  : x.gameObject.GetComponentsInChildren<SpriteRenderer>()))
+        // {
+        //     if (!on)
+        //     {
+        //         // Remember the sprite's existing colour the first time we dim it
+        //         if (!originalColors.ContainsKey(s))
+        //         {
+        //             originalColors.Add(s, s.color);
+        //         }
+        //         s.color = new Color(1f, 1f, 1f, 0.2f);
+        //     }
+        //     else
+        //     {
+        //         // Revert to the stored colour, or white if we somehow never stored it
+        //         if (originalColors.TryGetValue(s, out var original))
+        //         {
+        //             s.color = original;
+        //         }
+        //     }
+        // }
+        //
+        // // Once colours are restored we can clear the cache
+        // if (on)
+        // {
+        //     originalColors.Clear();
+        // }
     }
 
     private void Start()

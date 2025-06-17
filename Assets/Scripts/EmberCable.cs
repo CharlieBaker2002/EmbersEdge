@@ -2,66 +2,73 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 using Random = UnityEngine.Random;
 
 public class EmberCable : MonoBehaviour
 {
     [SerializeField] private SpriteRenderer sr;
     [SerializeField] private Sprite[] sprs;
-    [SerializeField] EmberCable nextCable;
-    [SerializeField] private EmberCable prevCable;
-    [SerializeField] public bool storeInfront;
-    [SerializeField] private EmberStore store;
-    public bool first = false;
-    
-    public IEnumerator Animate(bool forwards)
+    [SerializeField] public EmberCable nextCable;
+    [SerializeField] public EmberCable prevCable;
+    [SerializeField] public bool endInFront;
+    [SerializeField] public EmberConnector end;
+
+    public IEnumerator Animate(bool forwards, List<EmberConnector> chain = null)
     {
         if (forwards)
         {
             sr.sprite = sprs[0];
+            sr.sortingOrder = 0;
             yield return new WaitForFixedUpdate();
             sr.sprite = sprs[1];
+            sr.sortingOrder = 1;
             yield return new WaitForFixedUpdate();
             sr.sprite = sprs[2];
+            sr.sortingOrder = 2;
             yield return new WaitForFixedUpdate();
             sr.sprite = sprs[3];
+            sr.sortingOrder = 3;
         }
         else
         {
             sr.sprite = sprs[2];
+            sr.sortingOrder = 2;
             yield return new WaitForFixedUpdate();
             sr.sprite = sprs[1];
+            sr.sortingOrder = 1;
             yield return new WaitForFixedUpdate();
             sr.sprite = sprs[0];
+            sr.sortingOrder = 0;
             yield return new WaitForFixedUpdate();
             sr.sprite = sprs[3];
+            sr.sortingOrder = 3;
         }
-        NextAnim(forwards);
+
+        NextAnim(forwards, chain);
     }
 
-    void NextAnim(bool forwards)
+    void NextAnim(bool forwards, List<EmberConnector> chain)
     {
         if (nextCable != null && forwards)
         {
-            nextCable.StartCoroutine(nextCable.Animate(true));
+            nextCable.StartCoroutine(nextCable.Animate(true, null));
         }
         else if (prevCable != null && !forwards)
         {
-            prevCable.StartCoroutine(prevCable.Animate(false));
+            prevCable.StartCoroutine(prevCable.Animate(false, null));
         }
-        else if (store != null && forwards == storeInfront)
+        else if (end != null && forwards == endInFront)
         {
-            store.Set(store.ember + 1);
-        }
-    }
-
-    public IEnumerator Start()
-    {
-        if(!first) yield break; 
-        while (true)
-        {
-            yield return new WaitForSeconds(0.5f);
-            StartCoroutine(Animate(GS.Chance(10)));
+            if (chain != null)
+            {
+                end.Chain(chain);
+            }
+            else
+            {
+                end.ember++;
+                end.onRefresh.Invoke();
+            }
         }
     }
 }

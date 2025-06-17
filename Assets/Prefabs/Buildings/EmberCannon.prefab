@@ -5300,10 +5300,10 @@ GameObject:
   m_Component:
   - component: {fileID: 2333740645850149394}
   - component: {fileID: 3616851657089736479}
-  - component: {fileID: 4276586276534395388}
   - component: {fileID: 1353708107226767663}
   - component: {fileID: 8541971672429629284}
   - component: {fileID: 5258406632457018738}
+  - component: {fileID: 5560227342897587615}
   m_Layer: 0
   m_Name: EmberCannon
   m_TagString: Untagged
@@ -5383,22 +5383,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &4276586276534395388
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5015000612375107076}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8fb3a85d62c5842929c739f740fe2101, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ember: 0
-  maxEmber: 10
-  b: {fileID: 0}
-  isConstructor: 0
 --- !u!114 &1353708107226767663
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5448,7 +5432,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   buildingBehaviours:
-  - {fileID: 4276586276534395388}
+  - {fileID: 0}
   sr: {fileID: 3616851657089736479}
   groundEdit: {fileID: 0}
   tiles: []
@@ -5756,10 +5740,29 @@ MonoBehaviour:
   emb: {fileID: 8268606142687473752, guid: 324bcba750a1842b68d4338460894181, type: 3}
   maxDistance: 7.5
   ps: {fileID: 5364620086496392925}
-  store: {fileID: 4276586276534395388}
+  connector: {fileID: 0}
+  connect: {fileID: 5560227342897587615}
   ee: {fileID: 0}
   stick: {fileID: 528076314579645136}
   severity: 0.1
+--- !u!114 &5560227342897587615
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5015000612375107076}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f90e18be6b5942dd9554a75508eed3a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Taip: 2
+  cables: []
+  connections: []
+  ember: 0
+  maxEmber: 0
+  desiredEmber: 0
 --- !u!1 &6249519693045532371
 GameObject:
   m_ObjectHideFlags: 0

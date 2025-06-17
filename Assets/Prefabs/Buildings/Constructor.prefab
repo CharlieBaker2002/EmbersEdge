@@ -43,10 +43,10 @@ GameObject:
   - component: {fileID: 8917609195086233720}
   - component: {fileID: 5166234644349358970}
   - component: {fileID: 8414912427084186660}
-  - component: {fileID: 8176623512067456108}
   - component: {fileID: -4931701082251865390}
   - component: {fileID: -54314105645478170}
   - component: {fileID: 4523962548310367277}
+  - component: {fileID: 4562610802195791}
   m_Layer: 7
   m_Name: Constructor
   m_TagString: Allies
@@ -170,12 +170,12 @@ MonoBehaviour:
   - {fileID: 82669905, guid: efe66972c0c224fc1b275d7401252053, type: 3}
   stick: {fileID: 794104112300365898}
   nose: {fileID: 6970967832150936410}
-  store: {fileID: 8176623512067456108}
+  stores: []
+  tinyStore: {fileID: 6618242304977131242, guid: ff3b5df7769a3403985087599d7b486a, type: 3}
   ember: {fileID: 8268606142687473752, guid: e69aec15214354c26a54d7d8f9b8f5aa, type: 3}
   radius: 3
   visual: 1
   constructing: 0
-  max: 5
   ps: {fileID: 5830261398001786810}
   upgradeSpritesBeam:
   - {fileID: 580230061, guid: ca5df80f7fc7e48e8bcfe55a8c608c9c, type: 3}
@@ -212,22 +212,7 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 149d956ab69944694bca573351b1d8c0, type: 3}
   - {fileID: 21300000, guid: dde2441db71d94e36a2021fa7630ae80, type: 3}
   tasks: []
---- !u!114 &8176623512067456108
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5563797452642412940}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8fb3a85d62c5842929c739f740fe2101, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ember: 0
-  maxEmber: 5
-  b: {fileID: 0}
-  isConstructor: 1
+  connect: {fileID: 4562610802195791}
 --- !u!114 &-4931701082251865390
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -309,6 +294,26 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   decompressionTime: 10
+--- !u!114 &4562610802195791
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5563797452642412940}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f90e18be6b5942dd9554a75508eed3a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  taip: 1
+  cables: []
+  connections: []
+  cableConnectionDirections: 
+  ember: 0
+  maxEmber: 4
+  desiredEmber: 0
+  emberTravel: 0
 --- !u!1 &7350850176255025584
 GameObject:
   m_ObjectHideFlags: 0

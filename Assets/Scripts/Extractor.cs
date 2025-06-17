@@ -18,9 +18,9 @@ public class Extractor : Building
     public float maxDistance = 7.5f;
     [SerializeField] ParticleSystem ps;
     protected ParticleSystem.EmissionModule em;
-    [SerializeField] private EmberStore store;
+    [SerializeField] private EmberConnector connector;
     private float timer;
-
+    public EmberConnector connect;
     private int queue = 0;
     private int ringind;
     
@@ -41,11 +41,13 @@ public class Extractor : Building
     protected override void BEnable()
     {
         extractors.Add(this);
+        EnergyManager.i.CreateCableConnections();
     }
     
     protected override void BDisable()
     {
         extractors.Remove(this);
+        EnergyManager.i.CreateCableConnections();
     }
     
     void UpdateColours(int era)
@@ -119,7 +121,7 @@ public class Extractor : Building
     
     public void SetParticle(Vector3 transformPosition, Vector2 dir)
     {
-        store.Set(store.ember + 1);
+        connect.ember++;
         queue++;
         StartCoroutine(ActivateParticlesSequence(transformPosition,dir));
     }

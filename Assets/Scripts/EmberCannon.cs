@@ -41,10 +41,12 @@ public class EmberCannon : Extractor
         ee = SpawnManager.instance.EEs.OrderBy(x=>Vector2.Distance(transform.position, x.transform.position)).First();
         stick.transform.up = ee.transform.position - transform.position;
         ecs.Add(this);
+        EnergyManager.i.CreateCableConnections();
     }
 
     protected override void BDisable()
     {
         ecs.Remove(this);
+        EnergyManager.i.CreateCableConnections();
     }
 }
