@@ -55,8 +55,15 @@ public class Constructor : Building
         connect.maxEmber = maxStores;
         for (int i = 0; i < maxStores; i++)
         {
-            if(stores.Count > i) continue;
-            stores.Add(Instantiate(tinyStore,transform.position + storeRad*GS.ATV3(45f + 360f * i / maxStores),Quaternion.identity,GS.FindParent(GS.Parent.buildings)));
+            if(stores.Count > i && stores[i] != null) continue;
+            if (stores.Count > i)
+            {
+                stores[i] = Instantiate(tinyStore,transform.position + storeRad*GS.ATV3(45f + 360f * i / maxStores),Quaternion.identity,GS.FindParent(GS.Parent.buildings));
+            }
+            else
+            {
+                stores.Add(Instantiate(tinyStore,transform.position + storeRad*GS.ATV3(45f + 360f * i / maxStores),Quaternion.identity,GS.FindParent(GS.Parent.buildings)));
+            }
         }
         RefreshStores();
     }
@@ -104,11 +111,22 @@ public class Constructor : Building
     {
         int n = connect.ember - stores.Count(x => x.connect.ember > 0);
         if(n==0)return;
-        stores.Where(x=>x.connect.ember == 0).Take(Mathf.Abs(n)).ToList().ForEach(x =>
+        if (n > 0)
         {
-            x.connect.ember = GS.Sign(n);
-            x.Refresh();
-        });
+            stores.Where(x=>x.connect.ember == 0).Take(n).ToList().ForEach(x =>
+            {
+                x.connect.ember = 1;
+                x.Refresh();
+            });
+        }
+        else
+        {
+            stores.Where(x=>x.connect.ember == 1).Take(Mathf.Abs(n)).ToList().ForEach(x =>
+            {
+                x.connect.ember = 0;
+                x.Refresh();
+            });
+        }
     }
     
     private void SetMat(int i)
@@ -125,7 +143,7 @@ public class Constructor : Building
 
     public void Construct(Building b)
     {
-        for (int i = 0; i < stores.Count; i++)
+        for (int i = stores.Count - 1; i >= 0; i--)
         {
             if (stores[i].connect.ember > 0)
             {
@@ -137,8 +155,8 @@ public class Constructor : Building
         }
         connect.ember--;
         connect.maxEmber--;
-        EnergyManager.i.UpdateEmber();
         Vector3 p = b.icons[b.icons.Count - b.numIconsTrue].transform.position;
+        EnergyManager.i.UpdateEmber();
         constructing = true;
         if (!visual)
         {

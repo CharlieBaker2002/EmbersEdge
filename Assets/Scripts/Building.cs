@@ -31,7 +31,6 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     private bool subscribed = false;
     [HideInInspector]
     public int prevN;
-    [HideInInspector]
     public int numIconsTrue = 0;
     private TextMeshPro numText;
     public float maxHealth = 10f;

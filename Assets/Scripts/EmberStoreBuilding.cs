@@ -65,9 +65,12 @@ public class EmberStoreBuilding : Building
 
     public void Refresh()
     {
-        while (connect.ember < particles.Count)
+        while (Mathf.Max(0,connect.ember) < particles.Count)
         {
-            Destroy(particles[0].gameObject);
+            if (particles[0] != null)
+            {
+                Destroy(particles[0].gameObject);
+            }
             particles.RemoveAt(0);
         }
 

@@ -159,10 +159,10 @@ public class EnergyManager : MonoBehaviour
         SpawnManager.instance.onWaveComplete += () => StartCoroutine(DoExtractors());
         SpawnManager.instance.onWaveComplete += () => GS.QA(UpdateEmber, 3);
     }
-
+    
     public void UpdateEmberStores()
     {
-        constructors = constructors.OrderBy(x => x.tasks.Sum(z => z.numIconsTrue)).ToList();
+        constructors = constructors.OrderByDescending(x => x.tasks.Sum(z => z.numIconsTrue)).ThenBy(y=>y.connect.ember).ToList();
         emberStores = emberStores.OrderBy(x => x.connect.maxEmber).ToList();
     }
 
@@ -171,9 +171,9 @@ public class EnergyManager : MonoBehaviour
         if(extracting) yield break;
         extracting = true;
         yield return null;
-        foreach (Extractor e in Extractor.extractors)
+        for(int i = 0; i < Extractor.extractors.Count; i++)
         {
-            yield return StartCoroutine(e.Animate());
+            yield return StartCoroutine(Extractor.extractors[i].Animate());
         }
         extracting = false;
     }
@@ -198,11 +198,11 @@ public class EnergyManager : MonoBehaviour
             sum += c.ember;
             c.desiredEmber = 0;
         }
-        while (sum > 0 && constructors.Any(c=>c.connect.desiredEmber < c.stores.Count)) //add one evenly to each constructor until they are all full.
+        while (sum > 0 && constructors.Any(c=>c.connect.desiredEmber < c.connect.maxEmber)) //add one evenly to each constructor until they are all full.
         {
             foreach(Constructor c in constructors)
             {
-                if (c.connect.desiredEmber >= c.stores.Count) continue;
+                if (c.connect.desiredEmber >= c.connect.maxEmber) continue;
                 c.connect.desiredEmber++;
                 sum -= 1;
                 if (sum <= 0) break;
@@ -218,7 +218,6 @@ public class EnergyManager : MonoBehaviour
                 if (sum <= 0) break;
             }
         }
-        Debug.Log(sum);
   
         List<EmberConnector> starts = new List<EmberConnector>();
         List<EmberConnector> ends = new List<EmberConnector>();
@@ -460,7 +459,6 @@ public class EnergyManager : MonoBehaviour
 
                 c.Construct(task);
                 emberCount[task]++;                   // track fairness
-
                 task.numIconsTrue--;
                 if (task.numIconsTrue == 0) RemoveBuilding(task);
             }
@@ -568,16 +566,16 @@ public class EnergyManager : MonoBehaviour
             }
         }
         
-        // Connect to nearest other constructor
-        var otherConstructors = allConnectors.Where(c => c.taip == EmberConnector.typ.Constructor && c != constructor).ToList();
-        if (otherConstructors.Count > 0)
-        {
-            var nearestConstructor = otherConstructors.OrderBy(c => Vector2.Distance(constructor.transform.position, c.transform.position)).FirstOrDefault();
-            if (nearestConstructor != null && !constructor.connections.Contains(nearestConstructor))
-            {
-                CreateCableLine(constructor, nearestConstructor);
-            }
-        }
+        // // Connect to nearest other constructor
+        // var otherConstructors = allConnectors.Where(c => c.taip == EmberConnector.typ.Constructor && c != constructor).ToList();
+        // if (otherConstructors.Count > 0)
+        // {
+        //     var nearestConstructor = otherConstructors.OrderBy(c => Vector2.Distance(constructor.transform.position, c.transform.position)).FirstOrDefault();
+        //     if (nearestConstructor != null && !constructor.connections.Contains(nearestConstructor))
+        //     {
+        //         CreateCableLine(constructor, nearestConstructor);
+        //     }
+        // }
     }
     
     private void ConnectStoreToStore(EmberConnector store, List<EmberConnector> allConnectors)
