@@ -5310,8 +5310,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b734c4c74996a4eb49bce8d8b0765c74, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  buildingBehaviours:
-  - {fileID: 0}
+  buildingBehaviours: []
   sr: {fileID: 7997196564911849672}
   groundEdit: {fileID: 0}
   tiles: []
@@ -5619,7 +5618,6 @@ MonoBehaviour:
   emb: {fileID: 8268606142687473752, guid: 324bcba750a1842b68d4338460894181, type: 3}
   maxDistance: 6
   ps: {fileID: 5364620086496392925}
-  connector: {fileID: 0}
   connect: {fileID: 47269101370557512}
 --- !u!114 &1353708107226767663
 MonoBehaviour:
@@ -5669,12 +5667,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8f90e18be6b5942dd9554a75508eed3a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Taip: 2
+  taip: 2
   cables: []
   connections: []
+  cableConnectionDirections: 
   ember: 0
-  maxEmber: 0
+  maxEmber: 8
   desiredEmber: 0
+  emberTravel: 0
 --- !u!1 &6249519693045532371
 GameObject:
   m_ObjectHideFlags: 0

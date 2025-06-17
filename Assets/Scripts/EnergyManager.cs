@@ -192,6 +192,12 @@ public class EnergyManager : MonoBehaviour
             sum += c.connect.ember + c.connect.emberTravel;
             c.connect.desiredEmber = 0;
         }
+
+        foreach (EmberConnector c in Extractor.extractors.Select(x=>x.connect).Concat(EmberCannon.ecs.Select(x=>x.connect)))
+        {
+            sum += c.ember;
+            c.desiredEmber = 0;
+        }
         while (sum > 0 && constructors.Any(c=>c.connect.desiredEmber < c.stores.Count)) //add one evenly to each constructor until they are all full.
         {
             foreach(Constructor c in constructors)
@@ -202,7 +208,7 @@ public class EnergyManager : MonoBehaviour
                 if (sum <= 0) break;
             }
         }
-        while (sum > 0) //add one evenly.
+        while (sum > 0 && emberStores.Any(c=>c.connect.desiredEmber < c.connect.maxEmber)) //add one evenly.
         {
             foreach (var t in emberStores)
             {
@@ -212,18 +218,18 @@ public class EnergyManager : MonoBehaviour
                 if (sum <= 0) break;
             }
         }
-        
+        Debug.Log(sum);
   
         List<EmberConnector> starts = new List<EmberConnector>();
         List<EmberConnector> ends = new List<EmberConnector>();
-        IEnumerable<EmberConnector> ecs = constructors.Select(x => x.connect).Concat(emberStores.Select(x => x.connect));
+        IEnumerable<EmberConnector> ecs = constructors.Select(x => x.connect).Concat(emberStores.Select(x => x.connect)).Concat(Extractor.extractors.Select(x => x.connect)).Concat(EmberCannon.ecs.Select(x => x.connect));
         foreach(EmberConnector e in ecs)
         {
-            if (e.desiredEmber > e.ember)
+            if (e.desiredEmber > e.ember + e.emberTravel)
             {
                 ends.Add(e);
             }
-            else if (e.desiredEmber < e.ember)
+            else if (e.desiredEmber < e.ember + e.emberTravel)
             {
                 starts.Add(e);
             }
@@ -231,56 +237,85 @@ public class EnergyManager : MonoBehaviour
         
         if(ends.Count == 0 || starts.Count == 0)
         {
-            Debug.Log("No ember to transfer, ends: " + ends.Count + ", starts: " + starts.Count);
             return; // no ember to transfer
         }
-        Debug.Log("Ends: " + ends.Count + ", Starts: " + starts.Count);
         List<List<EmberConnector>> paths = CalculateShortestRoutes(starts,ends); //for each start, find the shortest path to each end, returns a list ordered by shortest distance (evaluating inter-connector distance sums)
-        
         int protecc = 0;
         while (starts.Count > 0)
         {
-            Debug.Log(protecc);
             protecc++;
-            if (protecc >= 100)
+            if (protecc >= 200)
             {
-                return;
+                Debug.LogWarning("protecc update ember");
+                break;
             }
             List<EmberConnector> path = paths[0];
-            // if (!ends.Contains(path[^1] ) || !starts.Contains(path[0]))
-            // {
-            //     paths.RemoveAt(0);
-            //     continue;
-            // }
+            if (!ends.Contains(path[^1] ) || !starts.Contains(path[0]))
+            {
+                paths.RemoveAt(0);
+                continue;
+            }
             
             path[0].emberTravel--;
             path[^1].emberTravel++;
             EmberConnector start = path[0];
-            path.RemoveAt(0);
-            start.jobs.Add(path);
+            List<EmberConnector> copy = new List<EmberConnector>();
+            GS.CopyList(ref copy,path);
+            copy.RemoveAt(0);
+            start.jobs.Add(copy);
             bool remPath = false;
             if (start.emberTravel == start.desiredEmber - start.ember)
             {
-                Debug.Log("remStart:" + start.gameObject,start.gameObject);
                 starts.Remove(start);
                 remPath = true;
             }
             if(path[^1].emberTravel == path[^1].desiredEmber - path[^1].ember)
             {
-                Debug.Log("remEnd:" + path[^1].gameObject,path[^1].gameObject);
                 ends.Remove(path[^1]);
                 remPath = true;
             }
             if (remPath)
             {
-                //paths.RemoveAt(0);
+                paths.RemoveAt(0);
             }
         }
+
+        StartCoroutine(WaitToDoLostJobs());
+
+        IEnumerator WaitToDoLostJobs()
+        {
+            yield return new WaitForSeconds(0.1f); // wait a bit
+            foreach (List<EmberConnector> path in EmberCable.lostjobs)
+            {
+                if (path.Count == 1)
+                {
+                    path[0].ember++;
+                    path[0].emberTravel--;
+                    path[0].onRefresh.Invoke();
+                }
+                else if(path.Count > 1)
+                {
+                    path[0].Chain(path);
+                }
+            }
+
+            EmberCable.lostjobs = new List<List<EmberConnector>>();
+        }
+        
     }
     
+    // Fixed CalculateShortestRoutes method
     List<List<EmberConnector>> CalculateShortestRoutes(List<EmberConnector> starts, List<EmberConnector> ends)
     {
         var allPaths = new List<(List<EmberConnector> path, float distance)>();
+        
+        // Get all connectors in the game
+        var allConnectors = emberStores.Select(x => x.connect)
+            .Concat(constructors.Select(x => x.connect))
+            .Concat(Extractor.extractors.Select(x => x.connect))
+            .Concat(EmberCannon.ecs.Select(x => x.connect))
+            .Distinct()
+            .ToList();
         
         // For each start connector
         foreach (var start in starts)
@@ -291,11 +326,6 @@ public class EnergyManager : MonoBehaviour
             var unvisited = new HashSet<EmberConnector>();
             
             // Initialize all connectors
-            var allConnectors = emberStores.Select(x => x.connect)
-                .Concat(constructors.Select(x => x.connect))
-                .Distinct()
-                .ToList();
-                
             foreach (var connector in allConnectors)
             {
                 distances[connector] = float.MaxValue;
@@ -357,13 +387,14 @@ public class EnergyManager : MonoBehaviour
                 while (current != null)
                 {
                     path.Add(current);
-                    previous.TryGetValue(current, out current);
+                    if (!previous.TryGetValue(current, out current))
+                        break;
                 }
                 
                 path.Reverse();
                 
-                // Verify the path starts with our start connector
-                if (path.Count > 0 && path[0] == start)
+                // Verify the path is valid (starts with start, ends with end, has at least 2 nodes)
+                if (path.Count >= 2 && path[0] == start && path[path.Count - 1] == end)
                 {
                     allPaths.Add((path, distances[end]));
                 }
@@ -376,6 +407,7 @@ public class EnergyManager : MonoBehaviour
             .Select(p => p.path)
             .ToList();
     }
+
 
 
     public void AddBuilding(Building b)
@@ -486,7 +518,7 @@ public class EnergyManager : MonoBehaviour
     private void ConnectGeneratorToNearestTarget(EmberConnector generator, List<EmberConnector> allConnectors)
     {
         // Find nearest store or constructor
-        var stores = allConnectors.Where(c => c.taip == EmberConnector.typ.Store && c != generator).ToList();
+        var stores = allConnectors.Where(c => c.taip == EmberConnector.typ.Store).ToList();
         var constructors = allConnectors.Where(c => c.taip == EmberConnector.typ.Constructor).ToList();
         
         EmberConnector nearestTarget = null;
@@ -600,6 +632,9 @@ public class EnergyManager : MonoBehaviour
             if (firstCable == null)
             {
                 firstCable = cable;
+                // Set the start connector as the end for the first cable
+                cable.end = start;
+                cable.endInFront = false; // This cable points back to start
             }
             
             // Link cables
@@ -636,6 +671,9 @@ public class EnergyManager : MonoBehaviour
             if (firstCable == null)
             {
                 firstCable = cable;
+                // Set the start connector as the end for the first cable
+                cable.end = start;
+                cable.endInFront = false; // This cable points back to start
             }
             
             // Link cables
@@ -653,7 +691,7 @@ public class EnergyManager : MonoBehaviour
         if (lastCable != null)
         {
             lastCable.end = end;
-            lastCable.endInFront = true;
+            lastCable.endInFront = true; // This cable points forward to end
         }
         
         // Set up connector references
@@ -667,7 +705,7 @@ public class EnergyManager : MonoBehaviour
             end.cables.Add(lastCable);
             end.cableConnectionDirections.Add(false); // Backward to start
         }
-    }   
+    }
     
     private void ClearExistingCables()
     {

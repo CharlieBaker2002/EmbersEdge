@@ -36,16 +36,16 @@ public class Constructor : Building
 
     public override void Start()
     {
-        base.Start();
         act = RefreshMax;
+        base.Start();
         AddUpgradeSlot(new int[] {0,0,0,1},"Long-Range Constructor",upgradeicons[0],true, UpgradeToBeam,5,false,null,() => !isLarge);
         AddUpgradeSlot(new int[] {0,10,0,0},"Heavy Constructor",upgradeicons[1],true, UpgradeToLargeConstructor,5,false,null,() => !isBeam);
         if (builtYet)
         {
             connect.ember = 4;
             connect.maxEmber = 4;
-           RefreshMax();
         }
+        RefreshMax();
 
         connect.onRefresh += RefreshStores;
     }
@@ -103,9 +103,10 @@ public class Constructor : Building
     private void RefreshStores()
     {
         int n = connect.ember - stores.Count(x => x.connect.ember > 0);
-        stores.Where(x=>x.connect.ember == 0).Take(n).ToList().ForEach(x =>
+        if(n==0)return;
+        stores.Where(x=>x.connect.ember == 0).Take(Mathf.Abs(n)).ToList().ForEach(x =>
         {
-            x.connect.ember = 1;
+            x.connect.ember = GS.Sign(n);
             x.Refresh();
         });
     }

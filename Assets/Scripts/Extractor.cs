@@ -18,7 +18,6 @@ public class Extractor : Building
     public float maxDistance = 7.5f;
     [SerializeField] ParticleSystem ps;
     protected ParticleSystem.EmissionModule em;
-    [SerializeField] private EmberConnector connector;
     private float timer;
     public EmberConnector connect;
     private int queue = 0;
@@ -122,8 +121,10 @@ public class Extractor : Building
     public void SetParticle(Vector3 transformPosition, Vector2 dir)
     {
         connect.ember++;
+        if (connect.ember > connect.maxEmber) connect.ember = connect.maxEmber;
         queue++;
         StartCoroutine(ActivateParticlesSequence(transformPosition,dir));
+        EnergyManager.i.UpdateEmber();
     }
     
     private IEnumerator ActivateParticlesSequence(Vector3 hitPos, Vector2 v)
@@ -140,6 +141,7 @@ public class Extractor : Building
                 hitPos += (Vector3)v;
             }
         }
+        
     }
 
     private void OnDisable()

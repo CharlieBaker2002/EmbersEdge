@@ -14,7 +14,10 @@ public class EmberCable : MonoBehaviour
     [SerializeField] public bool endInFront;
     [SerializeField] public EmberConnector end;
 
-    public IEnumerator Animate(bool forwards, List<EmberConnector> chain = null)
+    public List<EmberConnector> job = null;
+    public static List<List<EmberConnector>> lostjobs;
+
+    public IEnumerator Animate(bool forwards, List<EmberConnector> chain)
     {
         if (forwards)
         {
@@ -44,31 +47,41 @@ public class EmberCable : MonoBehaviour
             sr.sprite = sprs[3];
             sr.sortingOrder = 3;
         }
-
         NextAnim(forwards, chain);
     }
 
     void NextAnim(bool forwards, List<EmberConnector> chain)
     {
+        job = null;
         if (nextCable != null && forwards)
         {
-            nextCable.StartCoroutine(nextCable.Animate(true, null));
+            GS.CopyList(ref nextCable.job, chain);
+            nextCable.StartCoroutine(nextCable.Animate(true, chain));
         }
         else if (prevCable != null && !forwards)
         {
-            prevCable.StartCoroutine(prevCable.Animate(false, null));
+            GS.CopyList(ref prevCable.job, chain);
+            prevCable.StartCoroutine(prevCable.Animate(false, chain));
         }
         else if (end != null && forwards == endInFront)
         {
-            if (chain != null)
+            if (chain[^1] != end)
             {
+                end.ember++;
+                end.emberTravel--;
                 end.Chain(chain);
             }
             else
             {
                 end.ember++;
-                end.onRefresh.Invoke();
+                end.emberTravel--;
+                end.onRefresh?.Invoke();
             }
         }
+    }
+
+    public void OnDestroy()
+    {
+        if(job!=null && job.Count > 0) lostjobs.Add(job);
     }
 }

@@ -25,15 +25,7 @@ public class EmberStoreBuilding : Building
         if (!isTiny)
         {
             base.Start();
-            connect.onRefresh += () =>
-            {
-                connect.ember++;
-                if (connect.ember > connect.maxEmber)
-                {
-                    connect.ember = connect.maxEmber;
-                }
-                Refresh();
-            };
+            connect.onRefresh += Refresh;
         }
         else
         {

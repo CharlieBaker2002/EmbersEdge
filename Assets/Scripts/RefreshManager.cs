@@ -112,6 +112,7 @@ public class RefreshManager : MonoBehaviour
         EmberCannon.ecs = new List<EmberCannon>();
         GS.qutting = false;
         Application.quitting += () => GS.qutting = true;
+        EmberCable.lostjobs = new List<List<EmberConnector>>();
         //Set the bloom to white
 
         v.sharedProfile.TryGet(out Bloom bl);
