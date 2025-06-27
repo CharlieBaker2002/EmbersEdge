@@ -16,6 +16,7 @@ public class ClawBotFactory : UnitBuilding
     [SerializeField] Transform[] points;
     [SerializeField] Transform[] rotators;
     [SerializeField] SpriteRenderer[] arms;
+    [SerializeField] private Battery b;
 
     public override void Start()
     {

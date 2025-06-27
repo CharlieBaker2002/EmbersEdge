@@ -113,6 +113,8 @@ public class RefreshManager : MonoBehaviour
         GS.qutting = false;
         Application.quitting += () => GS.qutting = true;
         EmberCable.lostjobs = new List<List<EmberConnector>>();
+        EnergyManager.toBeBuilt = new List<Constructor>();
+        EnergyManager.constructors = new List<Constructor>();
         //Set the bloom to white
 
         v.sharedProfile.TryGet(out Bloom bl);

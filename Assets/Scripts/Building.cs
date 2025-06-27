@@ -176,6 +176,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     public virtual void OnDestroy()
     {
         if(GS.qutting) return;
+        BDisable();
         GridManager.i.SetArea(anchorCell, gridSize, false);
     }
 

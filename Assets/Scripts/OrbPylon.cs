@@ -12,7 +12,7 @@ public class OrbPylon : Building
     public bool cloneNecessary = false;
     public int orbType;
     public float refreshRate = 0.15f;
-
+    [SerializeField] private Sprite[] sprs;
     float t = 1f;
 
     public override void Start()
@@ -21,6 +21,7 @@ public class OrbPylon : Building
         {
             refreshRate = 0.001f;
         }
+
         base.Start();
         buildingBehaviours.Add(mag);
         ResourceManager.instance.ChangePylons(this, true);
@@ -30,7 +31,13 @@ public class OrbPylon : Building
             BM.i.AltUI();
             BM.i.AltUI();
         }
+
+        GS.OnNewEra += _ =>
+        {
+            sr.sprite = sprs[GS.era];
+        };
     }
+
 
     IEnumerator Pylon()
     {

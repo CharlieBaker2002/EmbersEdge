@@ -37,16 +37,19 @@ public class Constructor : Building
     public override void Start()
     {
         act = RefreshMax;
+        EnergyManager.toBeBuilt.Add(this);
         base.Start();
         AddUpgradeSlot(new int[] {0,0,0,1},"Long-Range Constructor",upgradeicons[0],true, UpgradeToBeam,5,false,null,() => !isLarge);
         AddUpgradeSlot(new int[] {0,10,0,0},"Heavy Constructor",upgradeicons[1],true, UpgradeToLargeConstructor,5,false,null,() => !isBeam);
         if (builtYet)
         {
-            connect.ember = 4;
-            connect.maxEmber = 4;
+            connect.ember = 12;
+            connect.maxEmber = 12;
+            UpgradeToLargeConstructor();
         }
         RefreshMax();
-
+        GridManager.i.RebuildRangeCache();
+        GridManager.i.RefreshEnergyCells();
         connect.onRefresh += RefreshStores;
     }
 
@@ -87,7 +90,7 @@ public class Constructor : Building
         }
         connect.maxEmber = 12;
         maxStores = 12;
-        storeRad = 0.75f;
+        storeRad = 0.6f;
         isLarge = true;
         sprs = upgradeSpritesLarge;
         stick.sprite = sprs[0];
@@ -97,14 +100,23 @@ public class Constructor : Building
     
     protected override void BEnable()
     {
-        EnergyManager.i.constructors.Add(this);
+        EnergyManager.constructors.Add(this);
         EnergyManager.i.CreateCableConnections();
         GS.OnNewEra += SetMat;
         SpawnManager.instance.onWaveComplete += act;
         SetMat(0);
+        EnergyManager.toBeBuilt.Remove(this);
         GridManager.i.RebuildRangeCache();
         GridManager.i.RefreshEnergyCells();
         mod = ps.velocityOverLifetime;
+    }
+
+    public override void OnDestroy()
+    {
+        if(GS.qutting)return;
+        base.Start();
+        GridManager.i.RebuildRangeCache();
+        GridManager.i.RefreshEnergyCells();
     }
     
     private void RefreshStores()
@@ -136,7 +148,7 @@ public class Constructor : Building
 
     protected override void BDisable()
     {
-        EnergyManager.i.constructors.Remove(this);
+        EnergyManager.constructors.Remove(this);
         EnergyManager.i.CreateCableConnections();
         SpawnManager.instance.onWaveComplete -= act;
     }

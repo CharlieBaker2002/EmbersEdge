@@ -12,6 +12,7 @@ public class Generator : Building
       Pulse,
       White,
       Blue,
+      Soul
    }
 
    [SerializeField] Battery b;
@@ -78,7 +79,7 @@ public class Generator : Building
          case Taip.Ember:
             act = Demand;
             break;
-         default: //white,blue,ember
+         default: //white,blue
             AddSlot(new int[4], "Reduce Cap", decreaseSprite, false,Reduce);
             AddSlot(new int[4], "Increase Cap", increaseSprite, false,Increase);
             act = Demand;

@@ -8,6 +8,7 @@ public class A0_1Building : UnitBuilding
     public SpriteRenderer[] slots;
     public Sprite[] slotSprites;
     private bool hasUpgradedMunitions = false;
+    [SerializeField] private Battery b;
 
     public override void Start()
     {

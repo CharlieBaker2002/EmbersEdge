@@ -14,7 +14,6 @@ public class ChargerTurret : Building
     [SerializeField]
     Animator anim;
     private int n = 13;
-    private int ammo = 36;
     private int level = 1;
     private Transform T;
     private bool shooting = false;
@@ -25,6 +24,8 @@ public class ChargerTurret : Building
     [SerializeField] Sprite tileSprite;
     [SerializeField] private Sprite morphSprite;
     [SerializeField] private Sprite upgradeBaseSprite;
+    [SerializeField] private Battery b;
+    private float energyCost = 0.2f;
 
     private void Update()
     {
@@ -65,7 +66,6 @@ public class ChargerTurret : Building
         find.refresh /= 2f;
         interPWait = 0.035f;
         waitRefresh = 2.8f;
-        ammo += 81;
         transform.parent.GetComponent<SpriteRenderer>().sprite = upgradeBaseSprite;
     }
 
@@ -74,37 +74,28 @@ public class ChargerTurret : Building
         int x = 0;
         for(float i = 0; i < Mathf.RoundToInt(Random.Range(n * 0.75f, n)); i++)
         {
-            if(ammo <= 0)
+            if (b.energy < energyCost)
             {
-                OrderMoreAmmo(x);
                 yield break;
             }
-            ammo--;
             x++;
             if(level == 1)
             {
-                GS.NewP(p, transform, tag, 1.8f * (1.2f - (i / n)), 7 * (1 - (i / n)), 3f);
+                GS.NewP(p, transform, tag, 1.8f * (1.2f - (i / n)), 7 * (1 - (i / n)), 3f).transform.localScale =
+                    Vector3.one * Random.Range(0.85f, 1.15f);
+                b.Use(0.01f);
                 yield return new WaitForSeconds(interPWait);
             }
             else
             {
-                GS.NewP(p, transform, tag, 2.4f * (1.2f - (i / n)), 24 * (1 - (i / n)), 6f);
+                GS.NewP(p, transform, tag, 2.4f * (1.2f - (i / n)), 24 * (1 - (i / n)), 6f).transform.localScale =
+                    Vector3.one * Random.Range(1f, 1.3334f);
+                b.Use(0.015f);
                 yield return new WaitForSeconds(interPWait);
             }
         }
-        OrderMoreAmmo(x);
-    }
-
-    private void OrderMoreAmmo(int x)
-    {
         find.enabled = false;
         wait = waitRefresh;
-        if(x <= 3)
-        {
-            return;
-        }
-        int y = Mathf.FloorToInt((float)x / 4f);
-        ResourceManager.instance.NewTask(transform.parent.gameObject, new int[] { y,0,0,0 }, delegate { ammo += x; },false);
     }
 
     public override void Start()
@@ -130,7 +121,7 @@ public class ChargerTurret : Building
         {
             T = x;
         }
-        if (T != null && ammo != 0 && canActivate)
+        if (T != null && b.energy > 0.015f && canActivate)
         {
             anim.SetBool(Charge, true);
             canActivate = false;

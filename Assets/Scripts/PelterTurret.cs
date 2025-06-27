@@ -15,8 +15,9 @@ public class PelterTurret : Building
     [SerializeField] private Transform shootPoint;
     [SerializeField] private Transform cannon;
     [SerializeField] private SpriteRenderer anchorSR;
-    
-    private int ammo = 10;
+
+    [SerializeField] private Battery b;
+     
     private Transform target;
     private Quaternion lookRot;
     
@@ -57,6 +58,10 @@ public class PelterTurret : Building
             anchorSR.material = ColourManager.AllyMat(2);
         }, 6,false, null, null,()=>fastUpgrade);
         MapManager.OnUpdateMap += () => lookRot = GS.VTQ(GetNearestEE(transform)-(Vector2)transform.position);
+        b.act += e =>
+        {
+            anim.SetBool(HasAmmo, e > 0.1f);
+        };
     }
     
     protected override void BEnable()
@@ -113,7 +118,7 @@ public class PelterTurret : Building
             cannon.transform.rotation = Quaternion.Lerp(cannon.transform.rotation,lookRot,0.25f*Time.deltaTime);
         }
     }
-        
+    
     public void ShootBig()
     {
         if (target != null)
@@ -151,13 +156,7 @@ public class PelterTurret : Building
                 g.GetComponent<Rigidbody2D>().velocity =
                     5f * (target.transform.position - g.transform.position);
             }
-    
-            ammo--;
-            anim.SetBool(HasAmmo, ammo > 0);
-            if (ammo is 0 or 5)
-            {
-                ResourceManager.instance.NewTask(gameObject, new int[] { 1, 0, 0, 0 }, () => ammo += 5, false);
-            }
+            b.Use(0.05f);
         }
     }
     
@@ -170,13 +169,7 @@ public class PelterTurret : Building
             g.GetComponent<Seeking>().target = target;
             g.GetComponent<Rigidbody2D>().velocity =
                 5f * (target.transform.position - g.transform.position);
-            
-            ammo--;
-            anim.SetBool(HasAmmo, ammo > 0);
-            if (ammo is 0 or 5)
-            {
-                ResourceManager.instance.NewTask(gameObject, new int[] { 1, 0, 0, 0 }, () => ammo += 5,false);
-            }
+            b.Use(0.025f);
         }
     }
 }

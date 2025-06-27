@@ -148,7 +148,8 @@ public class EnergyManager : MonoBehaviour
     private List<Building> bs = new();
     private readonly Dictionary<Building,int> emberCount = new();
     public List<EmberStoreBuilding> emberStores;
-    public List<Constructor> constructors;
+    public static List<Constructor> constructors;
+    public static List<Constructor> toBeBuilt;
 
     private bool extracting = false;
 

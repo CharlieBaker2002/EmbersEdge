@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 /// <summary>Keeps track of the buildable grid and its visual overlay.</summary>
@@ -235,13 +236,13 @@ public class GridManager : MonoBehaviour
     /// </summary>
     public void RebuildRangeCache()
     {
-        var constructors = EnergyManager.i?.constructors; // assumed to exist per brief
-
+        var constructors = EnergyManager.constructors.Concat(EnergyManager.toBeBuilt).ToList(); // assumed to exist per brief
+    
         for (int gx = 0; gx < width; ++gx)
             for (int gy = 0; gy < height; ++gy)
             {
                 bool range = false;
-                if (constructors != null && constructors.Count > 0)
+                if (constructors.Count > 0)
                 {
                     Vector3 cellWorld = GridToWorld(new Vector2Int(gx, gy));
                     foreach (var c in constructors)

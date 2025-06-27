@@ -58,4 +58,19 @@ public class ResourceStoreSpriteChanger : Building
             }
         }
     }
+
+    protected override void BEnable()
+    {
+        ResourceManager.instance.ChangeMagnets(om, true);
+        ResourceManager.instance.orbCaps[om.orbType] += om.capacity;
+        ResourceManager.instance.UpdateResourceUI();
+    }
+
+    protected override void BDisable()
+    {
+        ResourceManager.instance.ChangeMagnets(om, false);
+        ResourceManager.instance.orbCaps[om.orbType] -= om.capacity;
+        ResourceManager.instance.UpdateResourceUI();
+        //Delete orbs TO IMPLEMENT
+    }
 }

@@ -224,6 +224,8 @@ public class SpawnManager : MonoBehaviour
         }
         if(dayState == DayState.Day)
         {
+            PortalScript.i.Cancel();
+            PortalScript.i.NoPortal();
             if (RefreshManager.i.CASUALNOTREALTIME)
             {
                 SetPreAttack();

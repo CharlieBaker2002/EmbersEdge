@@ -18,7 +18,6 @@ public class OrbMagnet : MonoBehaviour
     public Action action;
     public List<OrbMagnet> siblingTs = new List<OrbMagnet>();
     [SerializeField]
-    private Animator anim;
     public float demand = 0f;
     [HideInInspector]
     public bool init = false;
@@ -31,8 +30,12 @@ public class OrbMagnet : MonoBehaviour
         transientOrbs = 0;
         orbs = new List<OrbScript>();
         demand = 0f;
-        ResourceManager.instance.ChangeMagnets(this, true);
-        if (typ != OrbType.Task)
+        if (typ != OrbType.Store)
+        {
+            ResourceManager.instance.ChangeMagnets(this, true);
+        }
+
+        if (typ == OrbType.Pylon)
         {
             ResourceManager.instance.orbCaps[orbType] += capacity;
             ResourceManager.instance.UpdateResourceUI();
@@ -43,10 +46,6 @@ public class OrbMagnet : MonoBehaviour
     {
         if (orbs.Count > 0)
         {
-            if (typ == OrbType.Pylon)
-            {
-                anim.SetTrigger(Send);
-            }
             OrbScript o = orbs[0];
             if (accelerate)
             {
@@ -84,11 +83,7 @@ public class OrbMagnet : MonoBehaviour
         {
             yield return null;
         }
-
-        if (typ == OrbType.Pylon)
-        {
-            anim.SetTrigger(Receive);
-        }
+        
         orbs.Add(orb);
         transientOrbs--;
         if (consume)
@@ -144,9 +139,5 @@ public class OrbMagnet : MonoBehaviour
         Destroy(this);
     }
 
-    public void ResetTriggers()
-    {
-        anim.ResetTrigger("Send");
-        anim.ResetTrigger("Receive");
-    }
+
 }

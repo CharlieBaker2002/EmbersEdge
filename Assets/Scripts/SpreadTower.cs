@@ -12,13 +12,15 @@ public class SpreadTower : Building
     float strength = 1;
   //  float inaccuracy;
     float spread;
-    int ammo = 10;
     [SerializeField] Transform[] sp;
     [SerializeField] Sprite[] spr;
     [SerializeField] Sprite[] tileSprites;
     [SerializeField] private SpriteRenderer bar;
     [SerializeField] Sprite morphSprite;
     [SerializeField] private Sprite baseUpgradeSprite;
+    float energyCost = 0.05f;
+    [SerializeField] private Battery b;
+    
     void SetMode(float x)
     {
         mode = x;
@@ -40,6 +42,7 @@ public class SpreadTower : Building
         sr.sprite = spr[(int)((level - 1) * 3 + mode - 1)];
         anim.speed = 1;
         find.refresh /= 2f;
+        energyCost = 0.1f;
         transform.parent.GetComponent<SpriteRenderer>().sprite = baseUpgradeSprite;
         
     }
@@ -79,7 +82,7 @@ public class SpreadTower : Building
     private void StartAttack(Transform t)
     {
         if(!enabled) return;
-        if(ammo == 0)
+        if(b.energy < energyCost)
         {
             return;
         }
@@ -105,10 +108,6 @@ public class SpreadTower : Building
             GS.NewP(proj, sp[i], tag, GS.Rotated(transform.up, -ang * spread), 0.05f, strength);
             i++;
         }
-        ammo--;
-        if(ammo%2 == 0)
-        {
-            ResourceManager.instance.NewTask(transform.parent.gameObject, new int[] { 1, 0, 0, 0 }, delegate { ammo += 2; }, false);
-        }
+        b.Use(energyCost);
     }
 }
