@@ -108,7 +108,7 @@ MonoBehaviour:
   UIParent: {fileID: 0}
   canOpen: 1
   hasExtraParent: 0
-  icon: {fileID: 97307601, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  icon: {fileID: -40674267, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
   size: {x: 1, y: 1}
   physic: {fileID: 3270485988879706592}
   builtBlasts: 2
@@ -122,8 +122,40 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   b: {fileID: 5424745834416745017}
   sprs:
-  - {fileID: 21300000, guid: fea5cf9d4d6634c03b9a71c676237369, type: 3}
-  - {fileID: 21300000, guid: fea5cf9d4d6634c03b9a71c676237369, type: 3}
+  - {fileID: -40674267, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: -1791213235, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: -1173013403, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: -791162094, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: -1480985996, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: -942296541, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: 1555058100, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: 1593111473, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: 273288368, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: -1909587275, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: -2061694279, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: 1450348948, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: 508822178, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: 153971963, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: 1106868696, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: 761000906, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: 97307601, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: -710480968, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: -268289937, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: 1386289535, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: -499878006, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: 903791006, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: -826101937, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: 288900255, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: -1526541902, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: 243855070, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: -2035604991, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: -225377472, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: -1917790822, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: 1319510505, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: 755654290, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: -1760547905, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: 1638304276, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
+  - {fileID: -1033889591, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
   typ: 2
   actionTimer: -1
   increaseSprite: {fileID: 0}

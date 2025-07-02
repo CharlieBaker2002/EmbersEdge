@@ -34,6 +34,8 @@ public class RefreshManager : MonoBehaviour
     public int DIFFICULTY = 3;
     [Space(5)]
     public bool ARENAMODE = false;
+
+    [Space(5)] public bool INSTASPAWN = false;
     
 
     [Space(5)] public bool QuickTeleport = false;
@@ -65,7 +67,7 @@ public class RefreshManager : MonoBehaviour
         GS.era = 0;
         GS.bounds = GS.Manager.GetComponent<Collider2D>();
         EmbersEdge.currentCores = 1;
-        EmbersEdge.warmUpTime = 20;
+        EmbersEdge.warmUpTime = 10;
         OrbScript.tot = 0;
         OrbManager.allOrbs = new List<OrbScript>();
         Jet.jets = new List<Jet>();
@@ -162,13 +164,15 @@ public class RefreshManager : MonoBehaviour
             LOSSPROTECTION = false;
             DAMAGEPROTECTION = false;
             DAILYORBBOUNTY = false;
-            STANDARDTIME = 0.9f;
+            STANDARDTIME = 1f;
+            INSTASPAWN = false;
         }
         else
         {
             STARTSEQUENCE = false;
             REVEALALLROOMS = true;
             LOSSPROTECTION = true;
+            INSTASPAWN = true;
             STANDARDTIME = 1f;
         }
         

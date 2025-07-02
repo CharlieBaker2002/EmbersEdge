@@ -44,7 +44,6 @@ public class SpreadTower : Building
         find.refresh /= 2f;
         energyCost = 0.1f;
         transform.parent.GetComponent<SpriteRenderer>().sprite = baseUpgradeSprite;
-        
     }
     
     protected override void BEnable()

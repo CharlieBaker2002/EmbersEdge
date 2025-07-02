@@ -293,12 +293,20 @@ public class EmbersEdge : MonoBehaviour
         hastiness = 0.145f - 0.1f * activity;
         sinOnOneSide = false;
         fluidness = activity * 0.9f;
-        
-        for (float t = 0f; t < warmUpTime; t += Time.fixedDeltaTime)
+
+        if (RefreshManager.i.INSTASPAWN)
         {
-            refresh = Mathf.Lerp(refresh, 0,  0.25f * t  / warmUpTime * Time.fixedDeltaTime);
-            yield return new WaitForFixedUpdate();
+            refresh = 0;
         }
+        else
+        {
+            for (float t = 0f; t < warmUpTime; t += Time.fixedDeltaTime)
+            {
+                refresh = Mathf.Lerp(refresh, 0,  0.25f * t  / warmUpTime * Time.fixedDeltaTime);
+                yield return new WaitForFixedUpdate();
+            }
+        }
+        
         //refresh = 0;dw
         if (InDungeon) //Base EEs Spawn Enemies On Each Day
         {

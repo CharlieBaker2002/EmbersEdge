@@ -122,8 +122,26 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   b: {fileID: 7148129430486893822}
   sprs:
-  - {fileID: 21300000, guid: fea5cf9d4d6634c03b9a71c676237369, type: 3}
-  - {fileID: 21300000, guid: fea5cf9d4d6634c03b9a71c676237369, type: 3}
+  - {fileID: -1727540593, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: 1212715018, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: 686195657, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: -2044060616, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: 801936755, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: 1049385404, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: 899800777, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: -233878577, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: 1053181130, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: 1656247683, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: 1393588140, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: -126582495, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: 1717648201, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: -164161522, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: -1946402490, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: 750071377, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: -1031523866, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: 1580197070, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: -1396449758, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
+  - {fileID: -1582494703, guid: 311dbeaf20d0a469fa14896add4599d6, type: 3}
   typ: 4
   actionTimer: -1
   increaseSprite: {fileID: 0}

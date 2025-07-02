@@ -282,6 +282,10 @@ public class SpawnManager : MonoBehaviour
                     }
                     break;
                 case DayState.PreAttack:
+                    if (RefreshManager.i.INSTASPAWN)
+                    {
+                        timer = 0f;
+                    }
                     if(timer <= 0f)
                     {
                         dayState = DayState.Attack;

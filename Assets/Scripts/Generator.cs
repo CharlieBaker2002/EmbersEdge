@@ -30,10 +30,36 @@ public class Generator : Building
    private Action act;
    [SerializeField] private GameObject FX;
    private bool finishedBurnFlag = true;
+   private int queue;
+   private bool coroutined = false;
    
    public void Animate()
    {
-      sr.LeanAnimateFPS(sprs, 3, true).setOnComplete(Generate);
+      if (typ is Taip.Pulse or Taip.Soul)
+      {
+         if (!coroutined)
+         {
+            coroutined = true;
+            StartCoroutine(AnimateI());
+         }
+      }
+      else
+      {
+         sr.LeanAnimateFPS(sprs, 12, true);
+         this.QA(Generate,sprs.Length*0.5f / 12f);
+      }
+   }
+
+   IEnumerator AnimateI()
+   {
+      while (queue > 0)
+      {
+         queue--;
+         sr.LeanAnimateFPS(sprs, 24, true).setOnComplete(Generate);
+         yield return new WaitForSeconds(sprs.Length / 24f);
+         yield return new WaitForSeconds(0.1f);
+      }
+      coroutined = false;
    }
 
    private void Generate()
@@ -61,7 +87,11 @@ public class Generator : Building
       switch (typ)
       {
          case Taip.Pulse:
-           act = () => SetTimer(1f, 1f);
+           act = () =>
+           {
+              queue++;
+              SetTimer(1f, 1f);
+           };
            break;
          case Taip.Solar:
             act = () =>
