@@ -12,7 +12,6 @@ public class Generator : Building
       Pulse,
       White,
       Blue,
-      Soul
    }
 
    [SerializeField] Battery b;
@@ -32,16 +31,20 @@ public class Generator : Building
    private bool finishedBurnFlag = true;
    private int queue;
    private bool coroutined = false;
-   
+
    public void Animate()
    {
-      if (typ is Taip.Pulse or Taip.Soul)
+      if (typ is Taip.Pulse)
       {
          if (!coroutined)
          {
             coroutined = true;
             StartCoroutine(AnimateI());
          }
+      }
+      else if (typ is Taip.Ember)
+      {
+         sr.LeanAnimateFPS(sprs, 6, true).setOnComplete(Generate);
       }
       else
       {
@@ -106,9 +109,6 @@ public class Generator : Building
                SetTimer(0.5f, amount);
             };
             break;
-         case Taip.Ember:
-            act = Demand;
-            break;
          default: //white,blue
             AddSlot(new int[4], "Reduce Cap", decreaseSprite, false,Reduce);
             AddSlot(new int[4], "Increase Cap", increaseSprite, false,Increase);
@@ -124,7 +124,14 @@ public class Generator : Building
       switch (typ)
       {
          case Taip.Ember:
-            Upgrade(() => SetTimer(0.1f,current*6f),current);
+            if (name.StartsWith("Small"))
+            {
+               Upgrade(() => SetTimer(0.1f,current*5f),current);
+            }
+            else
+            {
+               Upgrade(() => SetTimer(0.1f,current*7.5f),current);
+            }
             break;
          case Taip.White:
             ResourceManager.instance.NewTask(gameObject, new int[] { current, 0, 0, 0 },

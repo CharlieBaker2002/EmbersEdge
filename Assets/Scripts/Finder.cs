@@ -63,6 +63,11 @@ public class Finder : MonoBehaviour
                 f.enabled = true;
             }
         }
+
+        foreach (SoulGenerator s in SoulGenerator.gs)
+        {
+            s.Activate();
+        }
         turretsOn = true;
     }
 

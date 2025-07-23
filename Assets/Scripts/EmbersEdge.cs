@@ -512,14 +512,21 @@ public class EmbersEdge : MonoBehaviour
         {
             return Instantiate(enemy, pos, Quaternion.identity, GS.FindParent(GS.Parent.enemies));
         }
-        else
+        
+        var g = Instantiate(enemy, pos, Quaternion.identity, GS.FindParent(GS.Parent.enemies));
+        SpawnManager.instance.alives.Add(g);
+        MapManager.i.OnTriggerExit2D(g.GetComponentInChildren<Collider2D>());
+        if (SoulGenerator.gs.Count > 0)
         {
-            var g = Instantiate(enemy, pos, Quaternion.identity, GS.FindParent(GS.Parent.enemies));
-            SpawnManager.instance.alives.Add(g);
-            MapManager.i.OnTriggerExit2D(g.GetComponentInChildren<Collider2D>());
-            g.transform.up = -g.transform.position;
-            return g;
+            foreach (LifeScript l in g.GetComponentsInChildren<LifeScript>())
+            {
+                var s = l.gameObject.AddComponent<SoulCollectOnDeath>();
+                l.onDeaths.Add(s);
+            }
         }
+        g.transform.up = -g.transform.position;
+        return g;
+        
     }
 
     public IEnumerator MakeFX()

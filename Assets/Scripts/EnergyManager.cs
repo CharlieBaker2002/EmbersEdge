@@ -510,7 +510,7 @@ public class EnergyManager : MonoBehaviour
     
     // Add this method to create cable connections
     public void CreateCableConnections()
-    {
+    {   
         constructCableTimer = 0.25f;
     }
     

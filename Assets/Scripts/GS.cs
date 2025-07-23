@@ -213,6 +213,45 @@ public static class GS
         projSearch
     };
 
+    public static LifeScript ColToLS(Collider2D col)
+    {
+        LifeScript ls;
+        
+        ls = col.GetComponent<LifeScript>();
+        if (ls != null) return ls;
+        
+        if (col.attachedRigidbody != null)
+        {
+            ls = col.attachedRigidbody.GetComponent<LifeScript>();
+            if (ls != null) return ls;
+        }
+
+        ls = col.GetComponentInParent<LifeScript>();
+        if (ls != null) return ls;
+        
+        ls = col.GetComponentInChildren<LifeScript>();
+        return ls;
+    }
+    
+    public static ActionScript ColToAS(Collider2D col)
+    {
+        ActionScript acs;
+        acs = col.GetComponent<ActionScript>();
+        if (acs != null) return acs;
+        
+        if (col.attachedRigidbody != null)
+        {
+            acs = col.attachedRigidbody.GetComponent<ActionScript>();
+            if (acs != null) return acs;
+        }
+
+        acs = col.GetComponentInParent<ActionScript>();
+        if (acs != null) return acs;
+        
+        acs = col.GetComponentInChildren<ActionScript>();
+        return acs;
+    }
+
     public static ActionScript FindEnemyAS(Transform t, float searchDistance, searchType search)
     {
         string[] strs = new string[] { };
