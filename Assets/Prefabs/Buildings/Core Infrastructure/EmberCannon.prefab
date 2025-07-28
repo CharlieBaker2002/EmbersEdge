@@ -5402,7 +5402,6 @@ MonoBehaviour:
   orbType: 0
   capacity: 10
   siblingTs: []
-  anim: {fileID: 0}
   demand: 0
   init: 1
   initialMag: 0
@@ -5736,7 +5735,7 @@ MonoBehaviour:
   - {fileID: 5723121912247630106}
   - {fileID: 7487459901628475259}
   - {fileID: 6219960172252881447}
-  emb: {fileID: 8268606142687473752, guid: 324bcba750a1842b68d4338460894181, type: 3}
+  emb: {fileID: 8268606142687473752, guid: 7cc5f40bfbba2415ea338273c6a009b9, type: 3}
   maxDistance: 7.5
   ps: {fileID: 5364620086496392925}
   connect: {fileID: 5560227342897587615}
@@ -5763,6 +5762,7 @@ MonoBehaviour:
   maxEmber: 8
   desiredEmber: 0
   emberTravel: 0
+  jobCount: 0
 --- !u!1 &6249519693045532371
 GameObject:
   m_ObjectHideFlags: 0

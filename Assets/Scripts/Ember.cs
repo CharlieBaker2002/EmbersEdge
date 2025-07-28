@@ -33,6 +33,9 @@ public class Ember : MonoBehaviour
 
     [SerializeField] bool quick = false;
     public Extractor extract = null;
+    [SerializeField] private ParticleSystem[] trailPS;
+
+    [SerializeField] private ParticleSystemRenderer[] r;
 
     // ──────────────────────────  RUNTIME  ──────────────────────────
     Vector3 spawnPos;
@@ -44,14 +47,16 @@ public class Ember : MonoBehaviour
         UpdateColours(GS.era);
         spawnPos = transform.position;
         prevPos  = spawnPos;
-      
     }
     
     void UpdateColours(int era)
     {
-        sr.material = GS.MatByEra(era, true, false, true);
-        if (ps) ps.GetComponent<Renderer>().material = GS.MatByEra(era, true, false, true);
-        if (ps2) ps2.GetComponent<Renderer>().material = GS.MatByEra(era, true, false, true);
+        Material mat = GS.MatByEra(era, true, false, true);
+        sr.material = mat;
+        if (ps) r[0].material = mat;
+        if (ps2) r[1].material = mat;
+        if(trailPS[0]) {r[2].material = mat; r[2].trailMaterial = mat;}
+        if (trailPS[1]) {r[3].material = mat; r[3].trailMaterial = mat;}
     }
 
     void SetParticle()
@@ -72,6 +77,8 @@ public class Ember : MonoBehaviour
     void PlaySequence()
     {
         var em = ps.emission;
+        trailPS[0]?.gameObject.SetActive(true);
+        trailPS[1]?.gameObject.SetActive(true);
         float speed = 1f + Random.Range(-0.3f,0.3f);
         var seq = LeanTween.sequence();
         if (!quick)
@@ -120,5 +127,18 @@ public class Ember : MonoBehaviour
         float z = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
         transform.rotation = Quaternion.Euler(0, 0, z - 90);
         prevPos = current;
+    }
+
+    public void AdjustTrail(float magnitude)
+    {
+        if(magnitude<2f) magnitude = 2f;
+        //var em = trailPS[0].emission;
+        var vol = trailPS[0].velocityOverLifetime;
+        vol.orbitalXMultiplier /= 2f;
+        vol.orbitalZMultiplier /= magnitude;
+        //em = trailPS[1].emission;
+        vol = trailPS[1].velocityOverLifetime;
+        vol.orbitalXMultiplier /= 2f;
+        vol.orbitalZMultiplier /= magnitude;
     }
 }

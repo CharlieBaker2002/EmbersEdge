@@ -51,6 +51,7 @@ public class Constructor : Building
             // connect.ember = 12;
             // connect.maxEmber = 12;
             // UpgradeToLargeConstructor();
+            UpgradeToBeam();
         }
         RefreshMax();
         GridManager.i.RebuildRangeCache(); 
@@ -208,6 +209,7 @@ public class Constructor : Building
     {
         var e = Instantiate(ember,nose.position,Quaternion.identity,GS.FindParent(GS.Parent.fx));
         e.to = p;
+        e.AdjustTrail((p - transform.position).magnitude);
         e.onComplete = b.RemoveIcon;
         e.onComplete += () => constructing = false;
         mod.yMultiplier = (p - transform.position).magnitude;
