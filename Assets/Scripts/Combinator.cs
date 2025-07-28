@@ -78,7 +78,7 @@ public class Combinator : Building
       
       Vector3 endPos = img.transform.position.normalized * 1f;
       float d = Mathf.Pow(transform.position.sqrMagnitude,0.25f);
-      img.transform.LeanMove(endPos, d).setEaseInCubic().setOnComplete(() => PortalScript.i.outside.color = Color.Lerp(PortalScript.i.outside.color,Color.white,0.05f));
+      img.transform.LeanMove(endPos, d).setEaseInCubic();//.setOnComplete(() => PortalScript.i.outside.color = Color.Lerp(PortalScript.i.outside.color,Color.white,0.05f));
       float n = em.rateOverTime.constant;
       float multiplier = 3f / d;
       for(float t = 0f; t < d; t+=Time.deltaTime)
@@ -92,7 +92,7 @@ public class Combinator : Building
          yield return null;
       }
       img.transform.position = endPos;
-      PortalScript.i.outside.color = Color.Lerp(PortalScript.i.outside.color, Color.white, 0.1f);
+      // PortalScript.i.outside.color = Color.Lerp(PortalScript.i.outside.color, Color.white, 0.1f);
       this.QA(() => { em.rateOverTime = em2.rateOverTime = 0f; },0.1f);
       //StartCoroutine(StopSpinning());
       for (float t = 1f; t > 0f; t -= Time.deltaTime)

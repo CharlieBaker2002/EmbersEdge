@@ -69,11 +69,11 @@ public class Vessel : Building
         MechaSuit.m.AddParts(new MechanismSO[] { bp });
         p = MechaSuit.m.parts[^1];
 
-        PortalScript.i.outside.LeanSRColor(Color.clear, 2.5f)
-                   .setEaseInSine()
-                   .setOnComplete(() => 
-                     mat.SetColor(Thecolor, new Color(0.25f, 0.25f, 0.25f, 1f))
-                   );
+        // PortalScript.i.outside.LeanSRColor(Color.clear, 2.5f)
+        //            .setEaseInSine()
+        //            .setOnComplete(() => 
+        //              mat.SetColor(Thecolor, new Color(0.25f, 0.25f, 0.25f, 1f))
+        //            );
         
         RefreshManager.i.QA(() =>
         {
@@ -303,16 +303,16 @@ public class Vessel : Building
         yield return null;
     }
 
-    PortalScript.i.outside.color = Color.Lerp(
-        PortalScript.i.outside.color,
-        Color.white,
-        0.05f
-    );
-    PortalScript.i.outside.color = Color.Lerp(
-        PortalScript.i.outside.color,
-        Color.white,
-        0.1f
-    );
+    // PortalScript.i.outside.color = Color.Lerp(
+    //     PortalScript.i.outside.color,
+    //     Color.white,
+    //     0.05f
+    // );
+    // PortalScript.i.outside.color = Color.Lerp(
+    //     PortalScript.i.outside.color,
+    //     Color.white,
+    //     0.1f
+    // );
 
     this.QA(() =>
     {

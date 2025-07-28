@@ -44,6 +44,8 @@ public class EmberConnector : MonoBehaviour
                 if(ember ==0) return;
                 int ind = connections.IndexOf(jobs[0][0]);
                 GS.CopyList(ref cables[ind].job, jobs[0]);
+                cables[ind].waitForDeac = true;
+                cables[ind].enabled = true;
                 cables[ind].StartCoroutine(cables[ind].Animate(cableConnectionDirections[ind], jobs[0]));
                 jobs.RemoveAt(0);
                 ember--;

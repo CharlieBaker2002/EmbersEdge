@@ -118,6 +118,7 @@ public class RefreshManager : MonoBehaviour
         EnergyManager.toBeBuilt = new List<Constructor>();
         EnergyManager.constructors = new List<Constructor>();
         SoulGenerator.gs = new List<SoulGenerator>();
+        EEIcon.icons = new List<EEIcon>();
         //Set the bloom to white
 
         v.sharedProfile.TryGet(out Bloom bl);
@@ -138,6 +139,19 @@ public class RefreshManager : MonoBehaviour
         QualitySettings.vSyncCount = 1;  // VSync must be disabled
         Application.targetFrameRate = 60;
 #endif
+    }
+
+    private void Start()
+    {
+        GS.OnNewEra += OnNewEra;
+    }
+
+    private void OnNewEra(int era)
+    {
+        foreach (EEIcon e in EEIcon.icons)
+        {
+            e.SetColour();
+        }
     }
 
     public void FixedUpdate()

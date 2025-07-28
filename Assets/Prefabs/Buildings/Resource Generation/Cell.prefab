@@ -55,7 +55,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 188
+  m_LightOrder: 13
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -200,12 +200,15 @@ MonoBehaviour:
   icon: {fileID: 0}
   size: {x: 1, y: 1}
   physic: {fileID: 2553210006229359507}
-  col: {fileID: 1958683551413419885}
   builtBlasts: 4
   rebuildCost: 14000000000000000000000000000000
   icons: []
   prevN: 0
+  numIconsTrue: 0
+  maxHealth: 10
   builtYet: 0
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
   timePeriod: 60
   n: 4
   orbType: 0
@@ -274,7 +277,6 @@ MonoBehaviour:
   orbType: 0
   capacity: 35
   siblingTs: []
-  anim: {fileID: 0}
   demand: 0
   init: 1
   initialMag: 0
@@ -322,7 +324,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 189
+  m_LightOrder: 14
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -381,7 +383,6 @@ MonoBehaviour:
   orbType: 2
   capacity: 1
   siblingTs: []
-  anim: {fileID: 0}
   demand: 0
   init: 1
   initialMag: 0
@@ -438,7 +439,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: -876546973899608171, guid: 0d688a8df58ce436cb7682cd68177508, type: 3}
+  - {fileID: 2100000, guid: d1b3bb1945d234b25addbf9670302d48, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -543,11 +544,6 @@ PrefabInstance:
 --- !u!4 &1391016701189058682 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1555476899931933564, guid: 6983ac36324d94c788dbfa60cc00bc49, type: 3}
-  m_PrefabInstance: {fileID: 494212532643740422}
-  m_PrefabAsset: {fileID: 0}
---- !u!61 &1958683551413419885 stripped
-BoxCollider2D:
-  m_CorrespondingSourceObject: {fileID: 2158754612556006507, guid: 6983ac36324d94c788dbfa60cc00bc49, type: 3}
   m_PrefabInstance: {fileID: 494212532643740422}
   m_PrefabAsset: {fileID: 0}
 --- !u!114 &2553210006229359507 stripped

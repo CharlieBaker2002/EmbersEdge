@@ -244,7 +244,7 @@ ParticleSystem:
   m_GameObject: {fileID: 1531832200509644834}
   serializedVersion: 8
   lengthInSec: 1
-  simulationSpeed: 1
+  simulationSpeed: 0.5
   stopAction: 0
   cullingMode: 0
   ringBufferMode: 0
@@ -371,7 +371,7 @@ ParticleSystem:
     startSpeed:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 0.2
+      scalar: 0.1
       minScalar: 5
       maxCurve:
         serializedVersion: 2
@@ -489,7 +489,7 @@ ParticleSystem:
     startSize:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 0.01
+      scalar: 0.015
       minScalar: 1
       maxCurve:
         serializedVersion: 2
@@ -953,7 +953,7 @@ ParticleSystem:
     sphericalDirectionAmount: 0
     randomPositionAmount: 0.04
     radius:
-      value: 0.08
+      value: 0.04
       mode: 0
       spread: 0
       speed:
@@ -1182,7 +1182,7 @@ ParticleSystem:
       countCurve:
         serializedVersion: 2
         minMaxState: 0
-        scalar: 30
+        scalar: 25
         minScalar: 30
         maxCurve:
           serializedVersion: 2
@@ -10766,6 +10766,7 @@ MonoBehaviour:
   - {fileID: 572024353, guid: a46098706e7a643ffbbcb215adbf1c4e, type: 3}
   - {fileID: 1783342933, guid: a46098706e7a643ffbbcb215adbf1c4e, type: 3}
   boomFx: {fileID: 1531832200509644834}
+  psr: {fileID: 5826756599807043778}
   isTiny: 1
   connect: {fileID: 2028968318109691391}
 --- !u!114 &2028968318109691391
@@ -10780,12 +10781,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8f90e18be6b5942dd9554a75508eed3a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Taip: 0
+  taip: 0
   cables: []
   connections: []
+  cableConnectionDirections: 
   ember: 0
   maxEmber: 1
   desiredEmber: 0
+  emberTravel: 0
+  jobCount: 0
 --- !u!1 &9062357583905953999
 GameObject:
   m_ObjectHideFlags: 0

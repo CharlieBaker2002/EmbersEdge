@@ -75,7 +75,7 @@ SpriteRenderer:
   m_SortingLayer: 2
   m_SortingOrder: -1000
   m_Sprite: {fileID: -1504039680, guid: fa2cac2bc717344bb841cb7127f73deb, type: 3}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 0.14901961}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -105,6 +105,7 @@ MonoBehaviour:
   - {fileID: -1504039680, guid: fa2cac2bc717344bb841cb7127f73deb, type: 3}
   nextCable: {fileID: 0}
   prevCable: {fileID: 0}
-  storeInfront: 0
-  store: {fileID: 0}
-  first: 1
+  endInFront: 0
+  end: {fileID: 0}
+  job: []
+  waitForDeac: 0

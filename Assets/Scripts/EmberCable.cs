@@ -16,9 +16,25 @@ public class EmberCable : MonoBehaviour
 
     public List<EmberConnector> job = null;
     public static List<List<EmberConnector>> lostjobs;
+    private float timer;
+    public bool waitForDeac = false;
+
+    private void Awake()
+    {
+        if (GS.era != 0)
+        {
+            UpdateColour(GS.era);
+        }
+    }
+
+    void UpdateColour(int era)
+    {
+        sr.material = GS.MatByEra(era, true, false, true);
+    }
 
     public IEnumerator Animate(bool forwards, List<EmberConnector> chain)
     {
+        timer = 0.25f;
         if (forwards)
         {
             sr.sprite = sprs[0];
@@ -50,17 +66,36 @@ public class EmberCable : MonoBehaviour
         NextAnim(forwards, chain);
     }
 
+    private void Update()
+    {
+        timer -= Time.deltaTime;
+        sr.color = new Color(1f, 1f, 1f, timer * 3.4f + 0.15f);
+        if (timer < 0f)
+        {
+            timer = 0f;
+            if (!waitForDeac)
+            {
+                enabled = false;
+            }
+        }
+    }
+
     void NextAnim(bool forwards, List<EmberConnector> chain)
     {
         job = null;
+        waitForDeac = false;
         if (nextCable != null && forwards)
         {
             GS.CopyList(ref nextCable.job, chain);
+            nextCable.waitForDeac = true;
+            nextCable.enabled = true;
             nextCable.StartCoroutine(nextCable.Animate(true, chain));
         }
         else if (prevCable != null && !forwards)
         {
             GS.CopyList(ref prevCable.job, chain);
+            prevCable.waitForDeac = true;
+            prevCable.enabled = true;
             prevCable.StartCoroutine(prevCable.Animate(false, chain));
         }
         else if (end != null && forwards == endInFront)

@@ -159,6 +159,7 @@ public class EnergyManager : MonoBehaviour
     {
         SpawnManager.instance.onWaveComplete += () => StartCoroutine(DoExtractors());
         SpawnManager.instance.onWaveComplete += () => GS.QA(UpdateEmber, 3);
+        GS.OnNewEra += _ => RegenerateCables();
     }
     
     public void UpdateEmberStores()

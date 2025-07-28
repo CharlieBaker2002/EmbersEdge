@@ -16,6 +16,7 @@ public class EmberStoreBuilding : Building
     [SerializeField] private SpriteRenderer[] fractureFX;
     [SerializeField] private Sprite[] fracsprs;
     [SerializeField] private GameObject boomFx;
+    [SerializeField] private ParticleSystemRenderer psr;
     
     [SerializeField] bool isTiny = false;
     public EmberConnector connect;
@@ -95,6 +96,10 @@ public class EmberStoreBuilding : Building
 
     public void Fracture(Vector3 p)
     {
+        if (GS.era != 0)
+        {
+            psr.material = GS.MatByEra(GS.era, true, false, true);
+        }
         particles[0].enabled = false;
         sr.enabled = false;
         foreach (EmberParticle z in statics)

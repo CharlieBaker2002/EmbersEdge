@@ -54,10 +54,14 @@ public class PortalScript : MonoBehaviour
     public bool clickSkip = false; //Sets to teleport you automatically
 
     public bool goingHomeNow = false; //used in DistortLens (cameraScript) to assess whether to set next day.
-    public SpriteRenderer outside;
     [SerializeField] private SpriteRenderer[] quaterSRS;
 
     public static bool goingToDungeon = false;
+
+    [SerializeField] public SpriteRenderer[] rimSRs;
+    [SerializeField] public Sprite[] rimSprites;
+    [SerializeField] public Sprite[] rimLightSprites;
+    [SerializeField] public Sprite[] outerRimSprites;
     
     private void Awake()
     {
@@ -77,6 +81,13 @@ public class PortalScript : MonoBehaviour
                 sr.material = GS.MatByEra(i, true);
             }
         };
+        GS.OnNewEra += era =>
+        {
+            rimSRs[0].sprite = rimSprites[era];
+            rimSRs[1].sprite = rimLightSprites[era];
+            rimSRs[2].sprite = outerRimSprites[era];
+            rimSRs[1].material = GS.MatByEra(era, false, false);
+        };
         recall.Enable();
         OnDamageCancel = dmg => { if (dmg < 0f && timer > 0f) { Cancel(); } };
         CharacterScript.CS.ls.onDamageDelegate += OnDamageCancel;
@@ -93,7 +104,6 @@ public class PortalScript : MonoBehaviour
             LeanTween.moveLocalY(t.gameObject, t.localPosition.y + Random.Range(-0.08f, 0.08f), 0.6f).setLoopPingPong().setEaseInCubic();
             LeanTween.moveLocalX(t.gameObject, t.localPosition.x + Random.Range(-0.1f, 0.1f), 1f).setLoopPingPong().setEaseShake();
         }
-        outside.material = Vessel.mat;
     }
 
     private void UpdateSlider(float val, bool onoffcall = false)

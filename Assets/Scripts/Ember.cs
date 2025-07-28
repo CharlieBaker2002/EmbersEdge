@@ -41,9 +41,17 @@ public class Ember : MonoBehaviour
     void Awake()
     {
         if (!sr) sr = GetComponent<SpriteRenderer>();
+        UpdateColours(GS.era);
         spawnPos = transform.position;
         prevPos  = spawnPos;
       
+    }
+    
+    void UpdateColours(int era)
+    {
+        sr.material = GS.MatByEra(era, true, false, true);
+        if (ps) ps.GetComponent<Renderer>().material = GS.MatByEra(era, true, false, true);
+        if (ps2) ps2.GetComponent<Renderer>().material = GS.MatByEra(era, true, false, true);
     }
 
     void SetParticle()

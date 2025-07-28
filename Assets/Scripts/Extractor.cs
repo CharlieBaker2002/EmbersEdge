@@ -28,6 +28,7 @@ public class Extractor : Building
         base.Start();
         em = ps.emission;
         GS.OnNewEra += UpdateColours;
+        UpdateColours(GS.era);
         int n = statics.Count;
         while (statics.Count > n * 0.4f)
         {
@@ -56,6 +57,7 @@ public class Extractor : Building
         {
             p.sr.material = GS.MatByEra(GS.era, true, false, true);
         }
+        ps.GetComponent<ParticleSystemRenderer>().material = GS.MatByEra(GS.era, true, false, true);
     }
 
 
@@ -142,6 +144,12 @@ public class Extractor : Building
             }
         }
         
+    }
+
+    public override void OnDestroy()
+    {
+        base.OnDestroy();
+        GS.OnNewEra -= UpdateColours;
     }
 
     private void OnDisable()

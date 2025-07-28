@@ -26,6 +26,9 @@ public class TilemapCorruption : MonoBehaviour
 
     [SerializeField] GameObject[] poof;
 
+    [SerializeField] private Sprite[] floorsprs;
+    [SerializeField] private SpriteRenderer floorsr;
+
 
     private void Awake()
     {
@@ -43,6 +46,7 @@ public class TilemapCorruption : MonoBehaviour
 
     private IEnumerator SetBackground()
     {
+        floorsr.sprite = floorsprs[GS.era];
         map.ClearAllTiles();
         extras.ClearAllTiles();
         foreach (var keyValuePair in fx)

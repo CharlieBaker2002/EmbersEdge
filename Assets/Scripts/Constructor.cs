@@ -13,7 +13,7 @@ public class Constructor : Building
     [SerializeField] private Transform nose; 
     public List<EmberStoreBuilding> stores;
     [SerializeField] private EmberStoreBuilding tinyStore;
-    private float storeRad = 0.5f;
+    private float storeRad = 0.3f;
     [SerializeField] private Ember ember;
     public float radius = 3f;
     [SerializeField] bool visual = true;
@@ -27,15 +27,18 @@ public class Constructor : Building
     [SerializeField] private Sprite[] baseSprites;
     public List<Building> tasks;
     public EmberConnector connect;
-    private int maxStores = 4;
+    private int maxStores = 5;
 
     private Action act;
     
     bool isBeam = false;
     private bool isLarge = false;
 
+    [SerializeField] private ParticleSystemRenderer psr;
+
     public override void Start()
     {
+        maxStores = 5;
         act = RefreshMax;
         EnergyManager.toBeBuilt.Add(this);
         base.Start();
@@ -43,29 +46,50 @@ public class Constructor : Building
         AddUpgradeSlot(new int[] {0,10,0,0},"Heavy Constructor",upgradeicons[1],true, UpgradeToLargeConstructor,5,false,null,() => !isBeam);
         if (builtYet)
         {
-            connect.ember = 12;
-            connect.maxEmber = 12;
-            UpgradeToLargeConstructor();
+            connect.ember = 5;
+            connect.maxEmber = 5;
+            // connect.ember = 12;
+            // connect.maxEmber = 12;
+            // UpgradeToLargeConstructor();
         }
         RefreshMax();
-        GridManager.i.RebuildRangeCache();
+        GridManager.i.RebuildRangeCache(); 
         GridManager.i.RefreshEnergyCells();
         connect.onRefresh += RefreshStores;
+        GS.OnNewEra += SetMat;
     }
 
     private void RefreshMax()
     {
         connect.maxEmber = maxStores;
-        for (int i = 0; i < maxStores; i++)
+        if (maxStores == 12f) //adjusted angle
         {
-            if(stores.Count > i && stores[i] != null) continue;
-            if (stores.Count > i)
+            for (int i = 0; i < maxStores; i++)
             {
-                stores[i] = Instantiate(tinyStore,transform.position + storeRad*GS.ATV3(45f + 360f * i / maxStores),Quaternion.identity,GS.FindParent(GS.Parent.buildings));
+                if(stores.Count > i && stores[i] != null) continue;
+                if (stores.Count > i)
+                {
+                    stores[i] = Instantiate(tinyStore,transform.position + storeRad*GS.ATV3(45f + 360f * i / maxStores),Quaternion.identity,GS.FindParent(GS.Parent.buildings));
+                }
+                else
+                {
+                    stores.Add(Instantiate(tinyStore,transform.position + storeRad*GS.ATV3(45f + 360f * i / maxStores),Quaternion.identity,GS.FindParent(GS.Parent.buildings)));
+                }
             }
-            else
+        }
+        else
+        {
+            for (int i = 0; i < maxStores; i++)
             {
-                stores.Add(Instantiate(tinyStore,transform.position + storeRad*GS.ATV3(45f + 360f * i / maxStores),Quaternion.identity,GS.FindParent(GS.Parent.buildings)));
+                if(stores.Count > i && stores[i] != null) continue;
+                if (stores.Count > i)
+                {
+                    stores[i] = Instantiate(tinyStore,transform.position + storeRad*GS.ATV3(18f + 360f * i / maxStores),Quaternion.identity,GS.FindParent(GS.Parent.buildings));
+                }
+                else
+                {
+                    stores.Add(Instantiate(tinyStore,transform.position + storeRad*GS.ATV3(18f + 360f * i / maxStores),Quaternion.identity,GS.FindParent(GS.Parent.buildings)));
+                }
             }
         }
         RefreshStores();
@@ -90,7 +114,7 @@ public class Constructor : Building
         }
         connect.maxEmber = 12;
         maxStores = 12;
-        storeRad = 0.6f;
+        storeRad = 0.5f;
         isLarge = true;
         sprs = upgradeSpritesLarge;
         stick.sprite = sprs[0];
@@ -102,7 +126,6 @@ public class Constructor : Building
     {
         EnergyManager.constructors.Add(this);
         EnergyManager.i.CreateCableConnections();
-        GS.OnNewEra += SetMat;
         SpawnManager.instance.onWaveComplete += act;
         SetMat(0);
         EnergyManager.toBeBuilt.Remove(this);
@@ -117,6 +140,7 @@ public class Constructor : Building
         base.Start();
         GridManager.i.RebuildRangeCache();
         GridManager.i.RefreshEnergyCells();
+        GS.OnNewEra -= SetMat;
     }
     
     private void RefreshStores()
@@ -144,6 +168,8 @@ public class Constructor : Building
     private void SetMat(int i)
     {
         stick.material = GS.MatByEra(GS.era, false, false, true);
+        psr.material = GS.MatByEra(GS.era, false, false, true);
+        psr.trailMaterial = GS.MatByEra(GS.era, false, false, true);
     }
 
     protected override void BDisable()
