@@ -22,13 +22,17 @@ public class Extractor : Building
     public EmberConnector connect;
     private int queue = 0;
     private int ringind;
-    
+
+    private void Awake()
+    {
+        UpdateColours(GS.era);
+    }
+
     public override void Start()
     {
         base.Start();
         em = ps.emission;
         GS.OnNewEra += UpdateColours;
-        UpdateColours(GS.era);
         int n = statics.Count;
         while (statics.Count > n * 0.4f)
         {
@@ -52,6 +56,7 @@ public class Extractor : Building
     
     void UpdateColours(int era)
     {
+        Debug.Log(era);
         ring.material = GS.MatByEra(era, true, true,true);
         foreach(EmberParticle p in statics)
         {

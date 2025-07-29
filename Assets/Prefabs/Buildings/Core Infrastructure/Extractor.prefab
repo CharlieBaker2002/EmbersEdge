@@ -5638,7 +5638,6 @@ MonoBehaviour:
   orbType: 0
   capacity: 10
   siblingTs: []
-  anim: {fileID: 0}
   demand: 0
   init: 1
   initialMag: 0
@@ -5675,6 +5674,7 @@ MonoBehaviour:
   maxEmber: 8
   desiredEmber: 0
   emberTravel: 0
+  jobCount: 0
 --- !u!1 &6249519693045532371
 GameObject:
   m_ObjectHideFlags: 0

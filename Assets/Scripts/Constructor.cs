@@ -45,9 +45,9 @@ public class Constructor : Building
         {
             connect.ember = 5;
             connect.maxEmber = 5;
-            // connect.ember = 12;
-            // connect.maxEmber = 12;
-            // UpgradeToLargeConstructor();
+            connect.ember = 12;
+            connect.maxEmber = 12;
+            UpgradeToLargeConstructor();
             //UpgradeToBeam();
         }
         RefreshMax();
