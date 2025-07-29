@@ -18,8 +18,6 @@ public class Constructor : Building
     public float radius = 3f;
     [SerializeField] bool visual = true;
     public bool constructing = false;
-    [SerializeField] private ParticleSystem ps;
-    private ParticleSystem.VelocityOverLifetimeModule mod;
 
     [SerializeField] private Sprite[] upgradeSpritesBeam; 
     [SerializeField] private Sprite[] upgradeSpritesLarge; 
@@ -34,7 +32,6 @@ public class Constructor : Building
     bool isBeam = false;
     private bool isLarge = false;
 
-    [SerializeField] private ParticleSystemRenderer psr;
 
     public override void Start()
     {
@@ -51,7 +48,7 @@ public class Constructor : Building
             // connect.ember = 12;
             // connect.maxEmber = 12;
             // UpgradeToLargeConstructor();
-            UpgradeToBeam();
+            //UpgradeToBeam();
         }
         RefreshMax();
         GridManager.i.RebuildRangeCache(); 
@@ -132,7 +129,6 @@ public class Constructor : Building
         EnergyManager.toBeBuilt.Remove(this);
         GridManager.i.RebuildRangeCache();
         GridManager.i.RefreshEnergyCells();
-        mod = ps.velocityOverLifetime;
     }
 
     public override void OnDestroy()
@@ -169,8 +165,6 @@ public class Constructor : Building
     private void SetMat(int i)
     {
         stick.material = GS.MatByEra(GS.era, false, false, true);
-        psr.material = GS.MatByEra(GS.era, false, false, true);
-        psr.trailMaterial = GS.MatByEra(GS.era, false, false, true);
     }
 
     protected override void BDisable()
@@ -212,7 +206,5 @@ public class Constructor : Building
         e.AdjustTrail((p - transform.position).magnitude);
         e.onComplete = b.RemoveIcon;
         e.onComplete += () => constructing = false;
-        mod.yMultiplier = (p - transform.position).magnitude;
-        ps.Play();
     }
 }
