@@ -240,7 +240,19 @@ public class EnergyManager : MonoBehaviour
         {
             return; // no ember to transfer
         }
+        Debug.Log(starts.Count);
+        Debug.Log(ends.Count);
         List<List<EmberConnector>> paths = CalculateShortestRoutes(starts,ends); //for each start, find the shortest path to each end, returns a list ordered by shortest distance (evaluating inter-connector distance sums)
+        int i = 0;
+        foreach(List<EmberConnector> path in paths)
+        {
+            Debug.Log("i: " + i);
+            for(int m = 0; m < path.Count; m++)
+            {
+                Debug.Log("M: " + m);
+                Debug.Log(path[m].gameObject);
+            }
+        }
         int protecc = 0;
         while (starts.Count > 0)
         {
@@ -568,16 +580,16 @@ public class EnergyManager : MonoBehaviour
             }
         }
         
-        // // Connect to nearest other constructor
-        // var otherConstructors = allConnectors.Where(c => c.taip == EmberConnector.typ.Constructor && c != constructor).ToList();
-        // if (otherConstructors.Count > 0)
-        // {
-        //     var nearestConstructor = otherConstructors.OrderBy(c => Vector2.Distance(constructor.transform.position, c.transform.position)).FirstOrDefault();
-        //     if (nearestConstructor != null && !constructor.connections.Contains(nearestConstructor))
-        //     {
-        //         CreateCableLine(constructor, nearestConstructor);
-        //     }
-        // }
+        // Connect to nearest other constructor
+        var otherConstructors = allConnectors.Where(c => c.taip == EmberConnector.typ.Constructor && c != constructor).ToList();
+        if (otherConstructors.Count > 0)
+        {
+            var nearestConstructor = otherConstructors.OrderBy(c => Vector2.Distance(constructor.transform.position, c.transform.position)).FirstOrDefault();
+            if (nearestConstructor != null && !constructor.connections.Contains(nearestConstructor))
+            {
+                CreateCableLine(constructor, nearestConstructor);
+            }
+        }
     }
     
     private void ConnectStoreToStore(EmberConnector store, List<EmberConnector> allConnectors)

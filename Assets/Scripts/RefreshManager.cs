@@ -181,6 +181,7 @@ public class RefreshManager : MonoBehaviour
             DAILYORBBOUNTY = false;
             STANDARDTIME = 1f;
             INSTASPAWN = false;
+            QuickTeleport = false;
         }
         else
         {
@@ -189,6 +190,7 @@ public class RefreshManager : MonoBehaviour
             LOSSPROTECTION = true;
             INSTASPAWN = true;
             STANDARDTIME = 1f;
+            QuickTeleport = true;
         }
         
     }

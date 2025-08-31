@@ -36,6 +36,7 @@ public class Constructor : Building
     public override void Start()
     {
         maxStores = 5;
+        connect.maxEmber = 5;
         act = RefreshMax;
         EnergyManager.toBeBuilt.Add(this);
         base.Start();
@@ -44,11 +45,10 @@ public class Constructor : Building
         if (builtYet)
         {
             connect.ember = 5;
-            connect.maxEmber = 5;
-            connect.ember = 12;
-            connect.maxEmber = 12;
-            UpgradeToLargeConstructor();
-            //UpgradeToBeam();
+            // connect.ember = 12;
+            // connect.maxEmber = 12;
+            // UpgradeToLargeConstructor();
+            UpgradeToBeam();
         }
         RefreshMax();
         GridManager.i.RebuildRangeCache(); 

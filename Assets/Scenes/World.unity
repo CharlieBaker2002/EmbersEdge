@@ -5790,15 +5790,15 @@ MonoBehaviour:
   STARTSEQUENCE: 0
   STANDARDTIME: 1
   SPAWNTESTMODE: 0
-  STARTDUNGEON: 2
-  REVEALALLROOMS: 0
-  LOSSPROTECTION: 0
+  STARTDUNGEON: 1
+  REVEALALLROOMS: 1
+  LOSSPROTECTION: 1
   DAMAGEPROTECTION: 0
   DAILYORBBOUNTY: 0
   IGNOREEFFICIENCY: 0
-  DIFFICULTY: 3
+  DIFFICULTY: 2
   ARENAMODE: 0
-  INSTASPAWN: 0
+  INSTASPAWN: 1
   QuickTeleport: 0
   manager: {fileID: 269883297}
   sp: {fileID: 269883300}
@@ -6170,7 +6170,6 @@ MonoBehaviour:
   - {fileID: 2467364739664431249, guid: 3e90472c5a08149c3b9375d291e8a7e8, type: 3}
   - {fileID: 2467364739664431249, guid: e9707d90ca2fe40358c8d58ebf172de5, type: 3}
   - {fileID: 2467364739664431249, guid: a5e2f5f3c85b54b108f6df3f2def31e6, type: 3}
-  - {fileID: 5563797452642412940, guid: c2c09c735ba5740e0b4419de3b553ba6, type: 3}
   - {fileID: 5015000612375107076, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
   - {fileID: 7926129472078753466, guid: 9774a4455fdf8468493ba45345dad493, type: 3}
   - {fileID: 1517340900197829438, guid: 805f6552ad38f4e80b73f71addefa600, type: 3}
@@ -6187,6 +6186,7 @@ MonoBehaviour:
   - {fileID: 8949586911344664711, guid: 17161f9b0eaf04871b03601ab7673049, type: 3}
   - {fileID: 2000541545583142029, guid: 57b5ed99e5daf4d9c83744849227d3c3, type: 3}
   - {fileID: 2000541545583142029, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
+  - {fileID: 5563797452642412940, guid: c2c09c735ba5740e0b4419de3b553ba6, type: 3}
   baseBuildingSciences: []
   barons:
   - {fileID: 1402483098}
@@ -18825,7 +18825,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e781346bb21f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 315
+  m_LightOrder: 179
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -20235,6 +20235,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Vessel
       objectReference: {fileID: 0}
+    - target: {fileID: 4116005223152699529, guid: 58d0c298cbdb14859abfe9d04f02fd52, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 4116005223152699543, guid: 58d0c298cbdb14859abfe9d04f02fd52, type: 3}
       propertyPath: m_LocalPosition.x
       value: 2
@@ -20519,7 +20523,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 316
+  m_LightOrder: 180
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -21996,6 +22000,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 345978632}
     m_Modifications:
+    - target: {fileID: 4562610802195791, guid: c2c09c735ba5740e0b4419de3b553ba6, type: 3}
+      propertyPath: maxEmber
+      value: 5
+      objectReference: {fileID: 0}
     - target: {fileID: 4562610802195791, guid: c2c09c735ba5740e0b4419de3b553ba6, type: 3}
       propertyPath: m_Enabled
       value: 1
@@ -31784,6 +31792,10 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 5474576135425492290, guid: 2913575db97684212923989f97c3294f, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5797088041366126530, guid: 2913575db97684212923989f97c3294f, type: 3}
       propertyPath: m_Enabled
       value: 1
@@ -31810,7 +31822,11 @@ PrefabInstance:
       objectReference: {fileID: 1076867809}
     - target: {fileID: 8717592895239521666, guid: 2913575db97684212923989f97c3294f, type: 3}
       propertyPath: m_Name
-      value: PelterTurret
+      value: BasePelter
+      objectReference: {fileID: 0}
+    - target: {fileID: 8717592895239521666, guid: 2913575db97684212923989f97c3294f, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 8749235023709057292, guid: 2913575db97684212923989f97c3294f, type: 3}
@@ -34500,7 +34516,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 317
+  m_LightOrder: 181
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -37422,7 +37438,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e633535f038b9059c35b94e3c0519396211bf7a45e71f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 318
+  m_LightOrder: 182
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -38041,12 +38057,13 @@ MonoBehaviour:
   bar: 0
   inits:
   - {fileID: 11400000, guid: 879c3d0ae92cc4c7f9773b0d875c136a, type: 2}
-  - {fileID: 11400000, guid: d17acd9b7f0d64032a6f0f4bc4310f05, type: 2}
   - {fileID: 11400000, guid: 075cc61f2ec854fc88b3c8bc19a70522, type: 2}
   - {fileID: 11400000, guid: f4254697c739c44108c5c6be10cdefa1, type: 2}
-  - {fileID: 11400000, guid: 8f509c3edb56845c480c3c452ab5c94f, type: 2}
-  - {fileID: 11400000, guid: 73acf5ac1147b44dcb74413c2d1f56c2, type: 2}
   - {fileID: 11400000, guid: ed61f6ebd03f24a0580cbb4b6cd6a69a, type: 2}
+  - {fileID: 11400000, guid: f5efd766fd11b4c67a17e530b4c2c06d, type: 2}
+  - {fileID: 11400000, guid: 2999f85500575465b89a9d3636a09cb7, type: 2}
+  - {fileID: 11400000, guid: 4d8acc8c84a464b4381e4bd1205417a3, type: 2}
+  - {fileID: 11400000, guid: b0d7a62d4f9044b1d9458e2e8a7931ee, type: 2}
   seconds: []
   thirds: []
 --- !u!114 &1402483099
@@ -38226,6 +38243,10 @@ PrefabInstance:
     - target: {fileID: 4116005223152699529, guid: 58d0c298cbdb14859abfe9d04f02fd52, type: 3}
       propertyPath: m_Name
       value: Vessel (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 4116005223152699529, guid: 58d0c298cbdb14859abfe9d04f02fd52, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4116005223152699543, guid: 58d0c298cbdb14859abfe9d04f02fd52, type: 3}
       propertyPath: m_LocalPosition.x
@@ -40196,7 +40217,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 319
+  m_LightOrder: 183
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -47670,71 +47691,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!1001 &1600434022
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 541622690357497107, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -1.32537
-      objectReference: {fileID: 0}
-    - target: {fileID: 541622690357497107, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: -3.2273693
-      objectReference: {fileID: 0}
-    - target: {fileID: 541622690357497107, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 541622690357497107, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 541622690357497107, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 541622690357497107, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 541622690357497107, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 541622690357497107, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 541622690357497107, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 541622690357497107, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2000541545583142029, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
-      propertyPath: m_Name
-      value: Small Soui Generator
-      objectReference: {fileID: 0}
-    - target: {fileID: 2000541545583142029, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3145056401604892688, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
-      propertyPath: builtYet
-      value: 1
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
 --- !u!1 &1608073747
 GameObject:
   m_ObjectHideFlags: 0
@@ -49891,7 +49847,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 0000000081346bb2c3f6f8be1f03f42ed3182e63515c7b39f9886be33535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 320
+  m_LightOrder: 184
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -55977,11 +55933,6 @@ MonoBehaviour:
   - {fileID: -1541876664, guid: 57ce7c9a953324a0eb5e6d705625e2f7, type: 3}
   ankorSR: {fileID: 467948818}
   anim: {fileID: 2045896387}
-  PS: {fileID: 1563035030}
-  PSes:
-  - {fileID: 1563035030}
-  - {fileID: 469360690}
-  - {fileID: 813450576}
   quarterSprites:
   - {fileID: -1358310151, guid: 211d89c620f3246eaa1933647c2c9a24, type: 3}
   - {fileID: -226878836, guid: 211d89c620f3246eaa1933647c2c9a24, type: 3}
@@ -55994,7 +55945,6 @@ MonoBehaviour:
   - {fileID: 1985443359}
   - {fileID: 1114115108}
   - {fileID: 1115786295}
-  lights: []
   swapTeleIcon: 0
   clickSkip: 0
   goingHomeNow: 0
@@ -56019,6 +55969,7 @@ MonoBehaviour:
   - {fileID: 1798398867, guid: 767695a7b16c54508b928b0c82cbecda, type: 3}
   - {fileID: -1613971715, guid: 767695a7b16c54508b928b0c82cbecda, type: 3}
   - {fileID: -763167588, guid: 767695a7b16c54508b928b0c82cbecda, type: 3}
+  portalEmber: {fileID: 8268606142687473752, guid: 7e095d98efef04f60a625c5a130a8ed1, type: 3}
 --- !u!58 &2045896385
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -57173,7 +57124,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e633535f038b9059c35b94e3c0519396211bf7a45e71f03f42e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 321
+  m_LightOrder: 185
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -63288,7 +63239,7 @@ MonoBehaviour:
   m_ApplyToSortingLayers: 000000003535f038
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
-  m_LightOrder: 322
+  m_LightOrder: 186
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
   m_NormalMapDistance: 3
@@ -68464,4 +68415,3 @@ SceneRoots:
   - {fileID: 1101310442}
   - {fileID: 479188539}
   - {fileID: 1541140918}
-  - {fileID: 1600434022}

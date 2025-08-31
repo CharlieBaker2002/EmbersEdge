@@ -40,13 +40,10 @@ public class PortalScript : MonoBehaviour
     public Sprite[] ankorSprites;
     public SpriteRenderer ankorSR;
     public Animator anim;
-    public ParticleSystem PS;
-    public ParticleSystem[] PSes;
 
     public Sprite[] quarterSprites;
     public SpriteRenderer[] quarters;
     private int quarterInt = 0;
-    public List<Light2D> lights;
 
     private bool stopBool = false;
     public bool swapTeleIcon = false;
@@ -62,6 +59,11 @@ public class PortalScript : MonoBehaviour
     [SerializeField] public Sprite[] rimSprites;
     [SerializeField] public Sprite[] rimLightSprites;
     [SerializeField] public Sprite[] outerRimSprites;
+
+    [SerializeField] private Ember portalEmber;
+
+    private float emitRate = 0f;
+    private float emitTimer = 0f;
     
     private void Awake()
     {
@@ -121,11 +123,6 @@ public class PortalScript : MonoBehaviour
 
     private void IncrementAnim(int era)
     {
-        PS.Stop(true, ParticleSystemStopBehavior.StopEmitting);
-        //Destroy(PS.gameObject, 2f);
-        PS.gameObject.SetActive(false);
-        PS = PSes[era];
-        PS.GetComponent<ParticleSystemRenderer>().trailMaterial = GS.MatByEra(era);
         anim.SetFloat("Blend", era);
         ankorSR.sprite = ankorSprites[era];
         colGrad = new Color[] { Color.Lerp(GS.ColFromEra(), Color.white, 0.35f), Color.Lerp(GS.ColFromEra(), Color.black, 0.5f) };
@@ -133,6 +130,13 @@ public class PortalScript : MonoBehaviour
 
     private void Update()
     {
+        emitTimer -= Time.deltaTime * emitRate;
+        while (emitTimer <= 0f)
+        {
+            emitTimer += 1f;
+            var emb = Instantiate(portalEmber, Vector3.zero,Quaternion.identity, GS.FindParent(GS.Parent.fx));
+            emb.to = (Vector3)Random.insideUnitCircle.normalized * Random.Range(2f, 2f + 0.5f * emitRate);
+        }
         if (cd)
         {
             if (!waitMaxSlide && ri.color != offTPColour)
@@ -280,7 +284,6 @@ public class PortalScript : MonoBehaviour
         PortalFR();
         yield return null;
         StartCoroutine(IQuarters(false));
-        StartCoroutine(Enlighten(false));
         yield return new WaitForSeconds(0.25f);
         
         anim.SetBool("Morph", false);
@@ -296,6 +299,11 @@ public class PortalScript : MonoBehaviour
         CharacterScript.speedy = false;
     }
 
+    public void StopEmitting()
+    {
+        emitRate = 0f;
+    }
+
     private IEnumerator ToDungeonSequence()
     {
         int id = 0;
@@ -308,6 +316,10 @@ public class PortalScript : MonoBehaviour
         IM.i.pi.Player.Disable();
         UIManager.CloseAllUIs();
         t.LeanMove(Vector3.zero, 2f).setEaseInOutCirc();
+        LeanTween.value(gameObject,0f,20f,4f).setEaseInOutSine().setOnUpdate(x=>
+        {
+            emitRate = x;
+        });
         yield return new WaitForSeconds(1.5f);
         t.SetParent(ankorSR.transform);
         t.localScale = new Vector3(1f, 1f, 1f);
@@ -338,79 +350,16 @@ public class PortalScript : MonoBehaviour
     private void StartedSpinning()
     {
         CameraScript.i.DistortLens(true, false, true);
-        PS.gameObject.SetActive(true);
-        PS.Play();
         IM.i.StartCoroutine(IM.i.PS5InitColor(3));
         IM.i.BlockColourChangeForT(4.5f);
         IM.i.Rumble(4.28f, 4, true, false, 0.1f, 0.75f);
         StartCoroutine(IQuarters(true));
-        StartCoroutine(Enlighten(true));
     }
-
-    private IEnumerator Enlighten(bool increase)
-    {
-        if (!increase)
-        {
-            foreach (Light2D l in lights)
-            {
-                l.intensity = 2f;
-                l.pointLightOuterAngle = 135f;
-                l.pointLightOuterAngle = 30f;
-            }
-        }
-        for (float i = 4f; i > 0f; i -= Time.deltaTime)
-        {
-            if (increase)
-            {
-                foreach (Light2D l in lights)
-                {
-                    l.intensity += Time.deltaTime * (4f - i) * 0.2f;
-                    l.pointLightOuterAngle = Mathf.Lerp(l.pointLightOuterAngle, 90f, 0.75f * Time.deltaTime);
-                    l.pointLightInnerAngle = Mathf.Lerp(l.pointLightInnerAngle, 30f, 0.75f * Time.deltaTime);
-                }
-            }
-            else
-            {
-                foreach (Light2D l in lights)
-                {
-                    l.intensity -= Time.deltaTime * Mathf.Abs(i - 4f) * 0.2f;
-                    l.pointLightOuterAngle = Mathf.Lerp(l.pointLightOuterAngle, 210f, 0.75f * Time.deltaTime);
-                    l.pointLightInnerAngle = Mathf.Lerp(l.pointLightInnerAngle, 90f, 0.75f * Time.deltaTime);
-                }
-                if (lights[0].intensity <= 0.5f)
-                {
-                    break;
-                }
-            }
-            yield return null;
-        }
-        if (increase)
-        {
-            yield return new WaitForSeconds(1.5f);
-        }
-        foreach (Light2D l in lights)
-        {
-            l.intensity = 0.4f;
-            l.pointLightOuterAngle = 210f;
-            l.pointLightInnerAngle = 90f;
-        }
-    }
-
-    public void StopEmitting()
-    {
-        var em = PS.emission;
-        em.rateOverTime = 0;
-    }
-
     public void IncrementQuarters(bool increment)
     {
         if (increment)
         {
-            var emission = PS.emission;
-            emission.rateOverTime = 100f + 150f * quarterInt * quarterInt;
             quarterInt++;
-            var shape = PS.shape;
-            shape.arc = 90f - 15f * quarterInt;
             if (quarterInt >= quarterSprites.Length)
             {
                 quarterInt = 0;
@@ -418,8 +367,6 @@ public class PortalScript : MonoBehaviour
         }
         else
         {
-            var emission = PS.emission;
-            emission.rateOverTime = emission.rateOverTime.constant - 10 * quarterInt;
             quarterInt--;
             if (quarterInt < 0)
             {
@@ -434,15 +381,6 @@ public class PortalScript : MonoBehaviour
 
     private IEnumerator IQuarters(bool increment)
     {
-        var emission = PS.emission;
-        if (increment)
-        {
-            emission.rateOverTime = 35;
-        }
-        else
-        {
-            emission.rateOverTime = 600;
-        }
         if (increment)
         {
             quarterInt = -1;
@@ -481,8 +419,6 @@ public class PortalScript : MonoBehaviour
         GS.CS().localScale = new Vector3(1, 1, 1);
         stopBool = true;
         anim.SetBool("Spin", false);
-        PS.Stop(true, ParticleSystemStopBehavior.StopEmitting);
-        this.QA(() => PS.gameObject.SetActive(false), 2f);
         StopCoroutine(nameof(ToDungeonSequence));
         IM.i.pi.Player.Enable();
         inDungeon = !inDungeon;
