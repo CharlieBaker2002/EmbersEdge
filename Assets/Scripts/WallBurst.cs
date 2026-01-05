@@ -25,7 +25,7 @@ public class WallBurst : MonoBehaviour
         {
             if (rb != null)
             {
-                transform.position -= (Vector3)rb.velocity * Time.fixedDeltaTime;
+                transform.position -= (Vector3)rb.linearVelocity * Time.fixedDeltaTime;
             }
             foreach (WallShoot s in shoots)
             {

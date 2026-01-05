@@ -44,7 +44,7 @@ public class Seeking : MonoBehaviour
         if(rotSpeed == 0f)return;
         if (Time.time - tim > initWait)
         {
-            transform.up = Vector2.Lerp(transform.up,AS.rb.velocity.normalized.Rotated(degOffset),Time.fixedDeltaTime * rotSpeed);
+            transform.up = Vector2.Lerp(transform.up,AS.rb.linearVelocity.normalized.Rotated(degOffset),Time.fixedDeltaTime * rotSpeed);
         }
     }
     
@@ -62,7 +62,7 @@ public class Seeking : MonoBehaviour
                     float y = divertMagnitude * dist / seekDistance;
                     Vector2 newDir =  (transform.position.IP(target.position, 1, y, false) - (Vector2)transform.position).normalized;
                     Vector2 oNewDir = (transform.position.IP(target.position, 1,  -y, false) - (Vector2)transform.position).normalized;
-                    if(Vector2.Angle(AS.rb.velocity,newDir) > Vector2.Angle(AS.rb.velocity,oNewDir))
+                    if(Vector2.Angle(AS.rb.linearVelocity,newDir) > Vector2.Angle(AS.rb.linearVelocity,oNewDir))
                     {
                         dir = Vector2.Lerp(newDir, oNewDir, indirectness);
                     }

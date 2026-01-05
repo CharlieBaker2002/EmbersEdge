@@ -16,8 +16,8 @@ public class AnimateScript : MonoBehaviour
     
     void Update()
     {
-        anim.SetFloat("Horizontal",rb.velocity.normalized.x);
-        anim.SetFloat("Vertical",rb.velocity.normalized.y);
+        anim.SetFloat("Horizontal",rb.linearVelocity.normalized.x);
+        anim.SetFloat("Vertical",rb.linearVelocity.normalized.y);
     }
     
     public void Death()

@@ -24,7 +24,7 @@ public class Pusher : MonoBehaviour
             cols.Add(collision.GetInstanceID());
             if (collision.GetComponentInParent<ActionScript>() != null)
             {
-                collision.GetComponentInParent<ActionScript>().AddPush(duration, true, rb.velocity.normalized * force);
+                collision.GetComponentInParent<ActionScript>().AddPush(duration, true, rb.linearVelocity.normalized * force);
             }
             if (convert)
             {
@@ -48,7 +48,7 @@ public class Pusher : MonoBehaviour
             cols.Add(collision.GetInstanceID());
             if (collision.GetComponentInParent<ActionScript>() != null)
             {
-                collision.GetComponentInParent<ActionScript>().AddPush(duration, true, rb.velocity.normalized * force);
+                collision.GetComponentInParent<ActionScript>().AddPush(duration, true, rb.linearVelocity.normalized * force);
             }
             if (convert)
             {

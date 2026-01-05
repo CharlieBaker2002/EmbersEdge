@@ -31,7 +31,7 @@ public class DynamicSwordTrail : MonoBehaviour
 
     void Update()
     {
-        float speed = playerRigidbody.velocity.magnitude;
+        float speed = playerRigidbody.linearVelocity.magnitude;
 
         float t = Mathf.InverseLerp(minSpeed, maxSpeed, speed);
 

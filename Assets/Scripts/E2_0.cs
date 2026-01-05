@@ -121,9 +121,9 @@ public class E2_0 : Unit, IOnCollide
                 }
             }
         }
-        else if (AS.rb.velocity != Vector2.zero)
+        else if (AS.rb.linearVelocity != Vector2.zero)
         {
-            transform.up = AS.rb.velocity;
+            transform.up = AS.rb.linearVelocity;
         }
     }
 }

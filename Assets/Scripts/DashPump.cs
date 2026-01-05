@@ -63,7 +63,7 @@ public class DashPump : Part
             {
                 stick.rotation = Quaternion.RotateTowards(stick.rotation,CharacterScript.directionQ,rotSpeed * Time.deltaTime);
             }
-            psM.startSpeed = -0.5f + 0.3f * CharacterScript.CS.AS.rb.velocity.magnitude;
+            psM.startSpeed = -0.5f + 0.3f * CharacterScript.CS.AS.rb.linearVelocity.magnitude;
             if (timer <= 0f)
             {
                 acco = false;
@@ -133,7 +133,7 @@ public class DashPump : Part
         engagement = 1f;
         acco = true;
         timer = dashTime;
-        psM.startSpeed = -0.5f + 0.3f * CharacterScript.CS.AS.rb.velocity.magnitude;
+        psM.startSpeed = -0.5f + 0.3f * CharacterScript.CS.AS.rb.linearVelocity.magnitude;
         ps.Play();
         this.QA(() =>
         {

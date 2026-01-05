@@ -28,7 +28,7 @@ public class E2_7 : Unit
             {
                 while (e != null)
                 {
-                    pos = e.position + (Vector3)e.GetComponentInParent<Rigidbody2D>().velocity;
+                    pos = e.position + (Vector3)e.GetComponentInParent<Rigidbody2D>().linearVelocity;
                     if (Vector2.Distance(pos, transform.position) > 7f)
                     {
                         pos = (pos - (Vector2)transform.position).normalized * 8 + (Vector2)transform.position;

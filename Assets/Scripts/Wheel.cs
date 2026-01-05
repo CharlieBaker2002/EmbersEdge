@@ -37,7 +37,7 @@ public class Wheel : Part
     {
         if (CharacterScript.moving)
         {
-            ang = GS.VTA(rb.velocity.Rotated(-transform.rotation.eulerAngles.z));
+            ang = GS.VTA(rb.linearVelocity.Rotated(-transform.rotation.eulerAngles.z));
             sr.sprite = GS.PercentParameter(sprites, ang / 360f);
             engagement = 1f;
         }

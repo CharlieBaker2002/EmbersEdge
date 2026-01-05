@@ -155,7 +155,7 @@ public class Unit : MonoBehaviour, IClickable
                     StatusComplete(stati[i].ind);
                     i--;
                 }
-                AS.rb.velocity *= 0.4f;
+                AS.rb.linearVelocity *= 0.4f;
                 AS.canAct = false;
                 UpdateActRate();
                 break;
@@ -166,7 +166,7 @@ public class Unit : MonoBehaviour, IClickable
             case 2: //push
                 throw new NotImplementedException();
             case 3: //slow
-                AS.rb.velocity *= s.value2;
+                AS.rb.linearVelocity *= s.value2;
                 UpdateActRate();
                 break;
             case 4: //impenetrable
@@ -354,12 +354,12 @@ public class Unit : MonoBehaviour, IClickable
 
                     if (ind is 0) //if stunned
                     {
-                        AS.rb.velocity *= 0.4f;
+                        AS.rb.linearVelocity *= 0.4f;
                     }
                     else if (ind is 3 or 5) //if slowed or stimmed, update act rate
                     {
                         UpdateActRate();
-                        AS.rb.velocity *= s.value2;
+                        AS.rb.linearVelocity *= s.value2;
                     }
                 }
                 else //HEALS

@@ -94,7 +94,7 @@ public class ProjectileScript : MonoBehaviour, IOnCollide
             push *= 1 + absStrength * 0.1f;
             damage *= 1 + absStrength * 0.1f;
         }
-        rb.velocity = direction * speed;
+        rb.linearVelocity = direction * speed;
         startDirection = direction;
         transform.up = direction;
         if (angle != 0)
@@ -108,7 +108,7 @@ public class ProjectileScript : MonoBehaviour, IOnCollide
         if (!AS.rooted)
         {
             direction.Normalize();
-            rb.velocity = direction * rb.velocity.magnitude;
+            rb.linearVelocity = direction * rb.linearVelocity.magnitude;
             startDirection = direction;
             transform.up = direction;
             if (angle != 0)
@@ -176,7 +176,7 @@ public class ProjectileScript : MonoBehaviour, IOnCollide
                         {
                             if (!(AS.immaterial && !actionScript.immaterial))//as long as not the case where proj. is immaterial and other is not immaterial.
                             {
-                                ChangeDirection(Vector2.Lerp(AS.rb.velocity, AS.Reflect(coli.GetContact(0).normal,false), actionScript.mass / (AS.mass + actionScript.mass)));
+                                ChangeDirection(Vector2.Lerp(AS.rb.linearVelocity, AS.Reflect(coli.GetContact(0).normal,false), actionScript.mass / (AS.mass + actionScript.mass)));
                             }
                         }
                     }

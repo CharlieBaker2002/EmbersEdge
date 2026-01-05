@@ -28,12 +28,12 @@ public class E1_2 : Unit, IOnCollide
             }
             else
             {
-                transform.up = Vector2.Lerp(transform.up, -AS.rb.velocity, actRate *  Time.deltaTime * 3f);
+                transform.up = Vector2.Lerp(transform.up, -AS.rb.linearVelocity, actRate *  Time.deltaTime * 3f);
             }
         }
         else
         {
-            transform.up = Vector2.Lerp(transform.up, AS.rb.velocity, actRate * Time.deltaTime * 3f);
+            transform.up = Vector2.Lerp(transform.up, AS.rb.linearVelocity, actRate * Time.deltaTime * 3f);
         }
     }
 

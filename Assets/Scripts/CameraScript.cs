@@ -20,7 +20,7 @@ public class CameraScript : MonoBehaviour
     public static CameraScript i;
     private Coroutine initzoom;
     [SerializeField] Volume v;
-    LensDistortion ld;
+    [SerializeField] LensDistortion ld;
     
     public float shakeStrength;
     [SerializeField] int shakeInd = 0;
@@ -46,7 +46,6 @@ public class CameraScript : MonoBehaviour
     {
         i = this;
         cam = GetComponent<Camera>();
-        //correctScale = cam.orthographicSize;
         v.sharedProfile.TryGet(out ld);
         ld.intensity.Override(0f);
         ld.scale.Override(1f);

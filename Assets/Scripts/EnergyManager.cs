@@ -32,7 +32,7 @@ public class EnergyManager : MonoBehaviour
         }
         CreateGrids();
         allBatteries.Add(b);
-        Debug.Log("new battery!");
+        // Debug.Log("new battery!");
         return pylons.Any(x => x.batteries.Contains(b));
     }
     

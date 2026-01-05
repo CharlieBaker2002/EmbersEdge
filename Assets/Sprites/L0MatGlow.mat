@@ -114,6 +114,7 @@ Material:
     - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
     - thecolor: {r: 0.5048709, g: 0.2049205, b: 1.4980392, a: 1}
   m_BuildTextureStacks: []
+  m_AllowLocking: 1
 --- !u!114 &7704431931268487131
 MonoBehaviour:
   m_ObjectHideFlags: 11
@@ -126,4 +127,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  version: 7
+  version: 10

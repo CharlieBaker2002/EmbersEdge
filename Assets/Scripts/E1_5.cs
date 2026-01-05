@@ -21,7 +21,7 @@ public class E1_5 : Unit
         base.Update();
         if (dir != Vector2.zero)
         {
-            transform.up = Vector2.Lerp(transform.up, AS.rb.velocity, actRate * 4f * Time.deltaTime);
+            transform.up = Vector2.Lerp(transform.up, AS.rb.linearVelocity, actRate * 4f * Time.deltaTime);
             AS.TryAddForce(dir * (1.5f * actRate), true);
         }
     }

@@ -139,7 +139,7 @@ public class CharacterScript : Unit
         inputs.Player.Jump.started += _ =>
         {
             Vector2 mPos = IM.i.MousePosition();
-            Vector2 vel = AS.rb.velocity;
+            Vector2 vel = AS.rb.linearVelocity;
             Melee.TryAttack();
             Copter.Play();
         };
@@ -249,7 +249,7 @@ public class CharacterScript : Unit
         }
         shieldSlider.UpdateSlider(shieldStati[0] == null ? 0f : shieldStati[0].value1 + (shieldStati[1] == null ? 0f : shieldStati[1].value1 ));
         
-        rot.omega = Mathf.Lerp(rot.omega,AS.rb.velocity.magnitude * 10f + 10f, 2f * Time.deltaTime);
+        rot.omega = Mathf.Lerp(rot.omega,AS.rb.linearVelocity.magnitude * 10f + 10f, 2f * Time.deltaTime);
     }
 
     public void RefreshKinematics()
@@ -360,6 +360,7 @@ public class CharacterScript : Unit
         {
             foreach (Accelerator a in Accelerator.accels)
             {
+                Debug.Log(a.gameObject,a.gameObject);
                 a.on = false;
             }
         }

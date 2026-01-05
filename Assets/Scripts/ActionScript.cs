@@ -85,7 +85,7 @@ public class ActionScript : MonoBehaviour
         {
             return;
         }
-        Vector2 vel = rb.velocity + (Vector2)force * Time.fixedDeltaTime / mass;
+        Vector2 vel = rb.linearVelocity + (Vector2)force * Time.fixedDeltaTime / mass;
         if (!PS)
         {
             int id = -1;
@@ -121,24 +121,24 @@ public class ActionScript : MonoBehaviour
                 wallNormals[key] = (wallNormals[key].Item1, wallNormals[key].Item2,false);
             }
         }
-        rb.velocity = vel;
-        float sqrMag = rb.velocity.sqrMagnitude;
-        Vector2 velNorm = rb.velocity.normalized;
+        rb.linearVelocity = vel;
+        float sqrMag = rb.linearVelocity.sqrMagnitude;
+        Vector2 velNorm = rb.linearVelocity.normalized;
         if (sqrMag > 256f)
         {
-            rb.velocity = Vector2.Lerp(rb.velocity, maxVelocity * velNorm, 0.25f);
+            rb.linearVelocity = Vector2.Lerp(rb.linearVelocity, maxVelocity * velNorm, 0.25f);
         }
         else if (sqrMag > maxVelocity * maxVelocity)
         {
-            rb.velocity = Vector2.Lerp(rb.velocity, maxVelocity * velNorm, 0.075f);
+            rb.linearVelocity = Vector2.Lerp(rb.linearVelocity, maxVelocity * velNorm, 0.075f);
         }
         if (dragCoef != 1)
         {
-            rb.velocity *= dragCoef;
+            rb.linearVelocity *= dragCoef;
         }
         if (PS && force != Vector3.zero)
         {
-            PS.ChangeDirection(rb.velocity);
+            PS.ChangeDirection(rb.linearVelocity);
         }
         force = Vector3.zero;
     }
@@ -288,7 +288,7 @@ public class ActionScript : MonoBehaviour
                         }
                         else
                         {
-                            oAS.AddPush(0.5f, true, rb.velocity.normalized * PS.push);
+                            oAS.AddPush(0.5f, true, rb.linearVelocity.normalized * PS.push);
                         }
                     }
                     else
@@ -392,7 +392,7 @@ public class ActionScript : MonoBehaviour
                     wallNormals.Add(ID, (coli.GetContact(0).normal, Vector2.zero, true));
                 }
             }
-            TryAddForce(Reflect(mass * rb.velocity.magnitude * 1.5f * coli.GetContact(0).normal), false);
+            TryAddForce(Reflect(mass * rb.linearVelocity.magnitude * 1.5f * coli.GetContact(0).normal), false);
         }
     }
 
@@ -483,10 +483,10 @@ public class ActionScript : MonoBehaviour
                 forceP *= speedCoef;
                 if (turniness != 0 && self)
                 {
-                    float turn = forceP.x * rb.velocity.x + forceP.y * rb.velocity.y; //dot product
+                    float turn = forceP.x * rb.linearVelocity.x + forceP.y * rb.linearVelocity.y; //dot product
                     if (turn != 0)
                     {
-                        turn /= forceP.magnitude * rb.velocity.magnitude; //cos theta
+                        turn /= forceP.magnitude * rb.linearVelocity.magnitude; //cos theta
                         forceP *= (float)Math.Pow(2 - turn, turniness); // (2 - cos(theta))^turniness. For turniness == 1: gives 2 * multiplier for 90deg and 3* multi for 180 deg.
                     }
                 }
@@ -541,7 +541,7 @@ public class ActionScript : MonoBehaviour
     public Vector3 Reflect(Vector2 n, bool change = true, bool spring = false) //irrespective of pushable
     {
         n.Normalize();
-        Vector2 vel = rb.velocity;
+        Vector2 vel = rb.linearVelocity;
         float dot = vel.x * n.x + vel.y * n.y;
         float x = vel.x - 2 * dot * n.x;
         float y = vel.y - 2 * dot * n.y;
@@ -553,7 +553,7 @@ public class ActionScript : MonoBehaviour
         }
         if (change)
         {
-            rb.velocity = new Vector3(x, y, 0f);
+            rb.linearVelocity = new Vector3(x, y, 0f);
         }
         return new Vector3(x, y, 0f);
     }
@@ -591,7 +591,7 @@ public class ActionScript : MonoBehaviour
     public void Stop(int stopAll = 0)
     {
         force = Vector2.zero;
-        rb.velocity = Vector2.zero;
+        rb.linearVelocity = Vector2.zero;
         if (stopAll != 0)
         {
             StopAllCoroutines();
@@ -612,7 +612,7 @@ public class ActionScript : MonoBehaviour
         {
             if (CheckCCs(new string[] { "stun", "root" }) == false)
             {
-                rb.velocity *= x;
+                rb.linearVelocity *= x;
                 i++;
                 yield return new WaitForSeconds(0.1f);
             }
@@ -765,7 +765,7 @@ public class ActionScript : MonoBehaviour
                 ColourAll(Color.yellow, 0.5f * (1 - value));
             }
             speedCoef *= value;
-            rb.velocity *= speedCoef;
+            rb.linearVelocity *= speedCoef;
         }
         else if (ccName == "stun")
         {
@@ -776,7 +776,7 @@ public class ActionScript : MonoBehaviour
             }
             if (PS)
             {
-                PS.startDirection = rb.velocity;
+                PS.startDirection = rb.linearVelocity;
             }
             Stop();
         }
@@ -788,7 +788,7 @@ public class ActionScript : MonoBehaviour
             }
             if (PS)
             {
-                PS.startDirection = rb.velocity;
+                PS.startDirection = rb.linearVelocity;
             }
             rooted = true;
         }
@@ -799,7 +799,7 @@ public class ActionScript : MonoBehaviour
                 ColourAll(Color.green, Mathf.Min(1, 1 + Mathf.Log(value)));
             }
             speedCoef *= value;
-            rb.velocity *= speedCoef;
+            rb.linearVelocity *= speedCoef;
             maxVelocity *= speedCoef;
         }
         else if (ccName == "mass")
@@ -847,7 +847,7 @@ public class ActionScript : MonoBehaviour
             }
             if (PS)
             {
-                rb.velocity = PS.startDirection * speedCoef;
+                rb.linearVelocity = PS.startDirection * speedCoef;
             }
         }
         else if (c.name == "speed")
@@ -860,7 +860,7 @@ public class ActionScript : MonoBehaviour
             maxVelocity /= c.value;
             if (PS)
             {
-                rb.velocity = PS.startDirection * speedCoef;
+                rb.linearVelocity = PS.startDirection * speedCoef;
             }
         }
         else if (c.name == "stun" && !CheckCCs(new string[] { "stun", "restrict" }))
@@ -881,7 +881,7 @@ public class ActionScript : MonoBehaviour
         }
         else if (PS && c.name == "push")
         {
-            PS.ChangeDirection(rb.velocity);
+            PS.ChangeDirection(rb.linearVelocity);
         }
         if (c.colour)
         {

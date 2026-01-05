@@ -27,7 +27,7 @@ public class E1_3 : Unit
         base.Update();
         if (!morphed)
         {
-            transform.up = Vector2.Lerp(transform.up, AS.rb.velocity, 5f * Time.deltaTime * actRate);
+            transform.up = Vector2.Lerp(transform.up, AS.rb.linearVelocity, 5f * Time.deltaTime * actRate);
         }
     }
     
@@ -57,7 +57,7 @@ public class E1_3 : Unit
             }
             transform.up = (Vector2) (t.position - transform.position);
             morphed = true;
-            AS.rb.velocity *= 0.3f;
+            AS.rb.linearVelocity *= 0.3f;
             anim.SetBool("Morph", true);
             while(anim.GetBool("Morph") == true)
             {
@@ -102,7 +102,7 @@ public class E1_3 : Unit
         }
         for(int i = 0; i < 20; i++) //speed to 0.15 x before over 1.5 secs;
         {
-            AS.rb.velocity = AS.rb.velocity.normalized * 0.91f;
+            AS.rb.linearVelocity = AS.rb.linearVelocity.normalized * 0.91f;
             yield return new WaitForSeconds(0.075f);
         }
         AS.maxVelocity = 1.2f;
@@ -122,7 +122,7 @@ public class E1_3 : Unit
         yield return new WaitForEndOfFrame();
         if (launched)
         {
-            transform.up = AS.rb.velocity;
+            transform.up = AS.rb.linearVelocity;
         }
     }
 }

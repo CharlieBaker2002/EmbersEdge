@@ -15,7 +15,7 @@ public class Jelly0 : MonoBehaviour
     void Start()
     {
         ls = GetComponent<LifeScript>();
-        GetComponent<Rigidbody2D>().velocity = Random.insideUnitCircle.normalized * 1.5f;
+        GetComponent<Rigidbody2D>().linearVelocity = Random.insideUnitCircle.normalized * 1.5f;
     }
 
     private void OnCollisionEnter2D(Collision2D collision)

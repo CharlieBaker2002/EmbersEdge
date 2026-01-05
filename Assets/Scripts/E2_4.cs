@@ -44,21 +44,21 @@ public class E2_4 : Unit, IRoomUnit
             {
                 if (col.bounds.Intersects(bounds.bounds))
                 {
-                    AS.rb.velocity = Vector3.Lerp(AS.rb.velocity,2f * actRate * Random.Range(1f, 1.5f) * Random.insideUnitCircle.normalized, 0.5f);
+                    AS.rb.linearVelocity = Vector3.Lerp(AS.rb.linearVelocity,2f * actRate * Random.Range(1f, 1.5f) * Random.insideUnitCircle.normalized, 0.5f);
                     yield return new WaitForSeconds(1f);
                     AS.Stop();
                 }
                 else
                 {
                     Vector3 point = goTo + GS.RandCircle(1, 4);
-                    AS.rb.velocity = Vector3.Lerp(AS.rb.velocity, 4f * actRate * (Vector2)(point - transform.position).normalized, 0.5f);
+                    AS.rb.linearVelocity = Vector3.Lerp(AS.rb.linearVelocity, 4f * actRate * (Vector2)(point - transform.position).normalized, 0.5f);
                     while ((transform.position - point).sqrMagnitude > 1)
                     {
                         yield return new WaitForFixedUpdate();
                         if(Random.Range(0,100) == 0)
                         {
                             point = goTo + GS.RandCircle(1, 4);
-                            AS.rb.velocity = Vector3.Lerp(AS.rb.velocity,4f * actRate * (Vector2)(point - transform.position).normalized, 0.5f);
+                            AS.rb.linearVelocity = Vector3.Lerp(AS.rb.linearVelocity,4f * actRate * (Vector2)(point - transform.position).normalized, 0.5f);
                         }
                     }
                 }
@@ -100,7 +100,7 @@ public class E2_4 : Unit, IRoomUnit
                     this.QA(()=>GS.Stat(this,"immaterial",1.5f),0.75f);
                     if (T != null)
                     {
-                        AS.AddPush(1f, false, actRate * ((T.position - transform.position).normalized * 4f + (Vector3)GS.VectInRange(Vector2.Distance(transform.position, T.position) * T.GetComponentInParent<Rigidbody2D>().velocity, 0.25f, 2f)));
+                        AS.AddPush(1f, false, actRate * ((T.position - transform.position).normalized * 4f + (Vector3)GS.VectInRange(Vector2.Distance(transform.position, T.position) * T.GetComponentInParent<Rigidbody2D>().linearVelocity, 0.25f, 2f)));
                     } 
                     yield return new WaitForSeconds(1.5f);
                     AS.Stop();
@@ -112,7 +112,7 @@ public class E2_4 : Unit, IRoomUnit
                     this.QA(()=>GS.Stat(this,"immaterial",1.5f),0.5f);
                     if(T!= null)
                     {
-                        AS.AddPush(1f, false, actRate * ((T.position - transform.position).normalized * 4f + (Vector3)GS.VectInRange(Vector2.Distance(transform.position, T.position) * T.GetComponentInParent<Rigidbody2D>().velocity, 0.25f, 2f)));
+                        AS.AddPush(1f, false, actRate * ((T.position - transform.position).normalized * 4f + (Vector3)GS.VectInRange(Vector2.Distance(transform.position, T.position) * T.GetComponentInParent<Rigidbody2D>().linearVelocity, 0.25f, 2f)));
                     }
                     yield return new WaitForSeconds(1.5f);
                 }

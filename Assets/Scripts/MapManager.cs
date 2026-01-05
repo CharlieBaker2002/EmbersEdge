@@ -70,7 +70,7 @@ public class MapManager : MonoBehaviour
     private void EnsureTextureAndBuffer()
     {
         if (tex == null)
-            tex = new Texture2D(textureSize, textureSize, TextureFormat.Alpha8, false);
+            tex = new Texture2D(textureSize, textureSize, TextureFormat.ARGB32, false);
 
         if (!pixelBuffer.IsCreated)
             pixelBuffer = new NativeArray<Color32>(textureSize * textureSize, Allocator.Persistent,
@@ -172,6 +172,13 @@ public class MapManager : MonoBehaviour
         var meshVerts = pts.Select(v => (Vector3)v).ToArray();
         maskMesh.vertices  = meshVerts;
         maskMesh.triangles = indices.ToArray();
+
+        // Set UVs and colors for shader compatibility
+        var uvs = pts.Select(v => new Vector2((v.x / scale) + 0.5f, (v.y / scale) + 0.5f)).ToArray();
+        var colors = Enumerable.Repeat(Color.white, pts.Length).ToArray();
+        maskMesh.uv = uvs;
+        maskMesh.colors = colors;
+        maskMesh.RecalculateBounds();
     }
 
     public void GenerateSpriteFromPoly()
@@ -189,34 +196,52 @@ public class MapManager : MonoBehaviour
             meshDirty = false;
         }
 
-        if (maskRT == null)
+        if (maskRT == null || maskRT.format != RenderTextureFormat.ARGB32)
         {
-            maskRT = new RenderTexture(textureSize, textureSize, 0, RenderTextureFormat.R8);
+            if (maskRT != null) maskRT.Release();
+            maskRT = new RenderTexture(textureSize, textureSize, 0, RenderTextureFormat.ARGB32);
             maskRT.filterMode = FilterMode.Point;
             maskRT.Create();
         }
 
+        // ----- Render polygon mask using GL immediate mode -----
         var prevRT = RenderTexture.active;
+        RenderTexture.active = maskRT;
+        GL.Clear(true, true, Color.clear);
 
-        // ----- Render spline mask into RT in pixel space -----
-        Graphics.SetRenderTarget(maskRT);
+        // Use Unity's internal colored shader for GL immediate mode (respects GL.Color)
+        var colorMat = new Material(Shader.Find("Hidden/Internal-Colored"));
+        colorMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+        colorMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
+        colorMat.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+        colorMat.SetInt("_ZWrite", 0);
+        colorMat.SetInt("_ZTest", (int)UnityEngine.Rendering.CompareFunction.Always);
+        colorMat.SetPass(0);
+
         GL.PushMatrix();
-        GL.LoadPixelMatrix(0, textureSize, 0, textureSize);   // 1 unit == 1 pixel
+        GL.LoadOrtho();
 
-        GL.Clear(false, true, Color.clear);
+        GL.Begin(GL.TRIANGLES);
+        GL.Color(Color.white);
 
-        // Matrix that maps world‑space spline (‑scale/2 … +scale/2) to pixel coords (0 … textureSize)
-        float pxPerWU = textureSize / scale;
-        var xform = Matrix4x4.TRS(
-                        new Vector3(textureSize * 0.5f, textureSize * 0.5f, 0f),  // move origin to centre
-                        Quaternion.identity,
-                        new Vector3(pxPerWU, pxPerWU, 1f));                       // scale world→pixel
+        var tris = maskMesh.triangles;
+        var verts = maskMesh.vertices;
+        for (int i = 0; i < tris.Length; i += 3)
+        {
+            Vector3 v0 = verts[tris[i]];
+            Vector3 v1 = verts[tris[i + 1]];
+            Vector3 v2 = verts[tris[i + 2]];
 
-        gpuMaskMat.SetPass(0);      // material outputs solid white
-        Graphics.DrawMeshNow(maskMesh, xform);
+            // Convert from world space (-scale/2 to +scale/2) to normalized (0 to 1)
+            GL.Vertex3(v0.x / scale + 0.5f, v0.y / scale + 0.5f, 0);
+            GL.Vertex3(v1.x / scale + 0.5f, v1.y / scale + 0.5f, 0);
+            GL.Vertex3(v2.x / scale + 0.5f, v2.y / scale + 0.5f, 0);
+        }
+        GL.End();
 
         GL.PopMatrix();
-        Graphics.SetRenderTarget(prevRT);
+        DestroyImmediate(colorMat);
+        RenderTexture.active = prevRT;
 
         // ---------- CPU texture update using SetPixelData ----------
         AsyncGPUReadback.Request(maskRT, 0, request =>
@@ -523,6 +548,19 @@ public class MapManager : MonoBehaviour
     {
         i = this;
         fading = null;
+
+        // Fix SpriteMask sorting layer range (back layer ID was orphaned after Unity 6 upgrade)
+        sr.backSortingLayerID = SortingLayer.NameToID("Corruption");
+        sr.backSortingOrder = -1000;
+        sr.frontSortingLayerID = SortingLayer.NameToID("Projectiles");
+        sr.frontSortingOrder = 100;
+
+        // Ensure we have a working GPU mask material (create simple unlit white if needed)
+        if (gpuMaskMat == null || gpuMaskMat.shader == null || !gpuMaskMat.shader.isSupported)
+        {
+            gpuMaskMat = new Material(Shader.Find("Sprites/Default"));
+            gpuMaskMat.color = Color.white;
+        }
     }
 
     public static void FadeBoundary(bool fadeIn)

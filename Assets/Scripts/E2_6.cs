@@ -107,7 +107,7 @@ public class E2_6 : Unit
         if (!AS.CheckWall(collision.transform)) return;
         if (AS.interactive) return;
         AS.Reflect(collision.GetContact(0).normal, true);
-        transform.up = -AS.rb.velocity;
+        transform.up = -AS.rb.linearVelocity;
     }
 
     public override void UpdateActRate()

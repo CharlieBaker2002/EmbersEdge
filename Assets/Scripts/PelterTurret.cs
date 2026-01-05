@@ -132,12 +132,12 @@ public class PelterTurret : Building
                     g.GetComponent<Seeking>().target = target;
                     if (i == 0)
                     {
-                        g.GetComponent<Rigidbody2D>().velocity =
+                        g.GetComponent<Rigidbody2D>().linearVelocity =
                             5f * GS.Rotated(target.transform.position - g.transform.position, 17.5f);
                     }
                     else
                     {
-                        g.GetComponent<Rigidbody2D>().velocity =
+                        g.GetComponent<Rigidbody2D>().linearVelocity =
                             5f * GS.Rotated(target.transform.position - g.transform.position, -17.5f);
                     }
                 }
@@ -145,7 +145,7 @@ public class PelterTurret : Building
                 var b = Instantiate(bullets[1], shootPoint.position, GS.VTQ(shootPoint.position - transform.position),
                     GS.FindParent(GS.Parent.allyprojectiles));
                 b.GetComponent<Seeking>().target = target;
-                b.GetComponent<Rigidbody2D>().velocity =
+                b.GetComponent<Rigidbody2D>().linearVelocity =
                     6f * (target.transform.position - b.transform.position);
             }
             else
@@ -153,7 +153,7 @@ public class PelterTurret : Building
                 var g = Instantiate(bullets[0], shootPoint.position,
                     GS.VTQ(shootPoint.position - transform.position), GS.FindParent(GS.Parent.allyprojectiles));
                 g.GetComponent<Seeking>().target = target;
-                g.GetComponent<Rigidbody2D>().velocity =
+                g.GetComponent<Rigidbody2D>().linearVelocity =
                     5f * (target.transform.position - g.transform.position);
             }
             b.Use(0.05f);
@@ -167,7 +167,7 @@ public class PelterTurret : Building
             var g = Instantiate(bullets[0], shootPoint.position,
                 GS.VTQ(shootPoint.position - transform.position), GS.FindParent(GS.Parent.allyprojectiles));
             g.GetComponent<Seeking>().target = target;
-            g.GetComponent<Rigidbody2D>().velocity =
+            g.GetComponent<Rigidbody2D>().linearVelocity =
                 5f * (target.transform.position - g.transform.position);
             b.Use(0.025f);
         }

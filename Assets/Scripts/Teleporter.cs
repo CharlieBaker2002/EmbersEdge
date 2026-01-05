@@ -29,11 +29,11 @@ public class Teleporter : MonoBehaviour
                         collision.transform.position = oT.spawnPoint.position;
                         if (oT.redirectVel)
                         {
-                            collision.attachedRigidbody.velocity = oT.transform.right * collision.attachedRigidbody.velocity.magnitude;
+                            collision.attachedRigidbody.linearVelocity = oT.transform.right * collision.attachedRigidbody.linearVelocity.magnitude;
                         }
                         if (oT.invertVel)
                         {
-                            collision.attachedRigidbody.velocity *= -1;
+                            collision.attachedRigidbody.linearVelocity *= -1;
                         }
                     }
                 }
