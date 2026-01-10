@@ -38578,7 +38578,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 2999f85500575465b89a9d3636a09cb7, type: 2}
   - {fileID: 11400000, guid: 4d8acc8c84a464b4381e4bd1205417a3, type: 2}
   - {fileID: 11400000, guid: b0d7a62d4f9044b1d9458e2e8a7931ee, type: 2}
-  - {fileID: 11400000, guid: 879c3d0ae92cc4c7f9773b0d875c136a, type: 2}
   seconds: []
   thirds: []
 --- !u!114 &1402483099
