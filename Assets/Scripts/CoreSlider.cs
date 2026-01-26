@@ -5,7 +5,6 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using UnityEditor.Rendering;
 
 public class CoreSlider : MonoBehaviour
 {

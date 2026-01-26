@@ -1,0 +1,571 @@
+================================================================================
+                              EMBER'S EDGE
+                    Comprehensive Game Description
+================================================================================
+
+GENRE & IDENTITY
+--------------------------------------------------------------------------------
+Ember's Edge is a top-down hybrid combining:
+  • Tower Defense - Grid-based building, turret placement, base protection
+  • Roguelike - Procedural progression, blueprint discovery
+  • Action RPG - Real-time combat, dodging, weapon swapping, abilities
+  • Factory/Automation - Drone logistics, ore processing, resource pipelines
+  • Mining/Exploration - Tile-based dungeon delving, drilling, resource extraction
+
+Inspirations: They Are Billions, Dome Keeper, Factorio, Vampire Survivors
+
+LORE
+--------------------------------------------------------------------------------
+We are a robotic race that:
+  • EXPANDS with ORE (building, construction, infrastructure)
+  • REGENERATES with EMBER (energy, power, life force)
+
+Ember Cores are mysterious energy sources that periodically explode, releasing
+ember energy that recharges everything - buildings, drones, the player. The main
+core explodes 3 times per cycle. These cores also serve as enemy spawn points
+and two-way teleporters between base and dungeon.
+
+================================================================================
+                              CORE GAME LOOP
+================================================================================
+
+    ┌─────────────┐
+    │   DUNGEON   │  Explore, mine ore, fight enemies, find blueprints
+    │  (Explore)  │  Melee/drill consumes durability - spend wisely
+    └──────┬──────┘
+           │
+           ▼
+    ┌─────────────┐
+    │    WAVE     │  Defend base from enemy swarms
+    │  (Survive)  │  Turrets have limited ammo per round
+    └──────┬──────┘
+           │
+           ▼
+    ┌─────────────┐
+    │   EVOLVE    │  Open tech tree, invest orbs (white/blue/red)
+    │  (Upgrade)  │  Upgrade mecha-suit parts, unlock new gear
+    └──────┬──────┘
+           │
+           └────────► Loop back to Dungeon
+
+================================================================================
+                            PLAYER SYSTEMS
+================================================================================
+
+MECHA-SUIT (MechaSuit.cs)
+--------------------------------------------------------------------------------
+The player controls a customisable mechanical suit with parts organised in rings:
+
+  CORE RING (innermost):
+    • Energy parts - Power generation/storage
+    • Kinematic parts - Movement modifiers
+    • Utility parts - Universal tools (same across mechas)
+
+  POWERED RING:
+    • Weapons (Guns) - Ranged attacks, up to 3 equipped
+    • Abilities - Active skills with mana cost, up to 3 equipped
+    • Automations - Passive/automatic systems, up to 3 equipped
+
+  EXTERNAL RING:
+    • Defences - Shields, armor
+    • Melee - Close combat / drilling tool
+
+  FOLLOWER RING:
+    • Boosts - Passive stat modifiers
+    • Standalone items - Drones that trail behind player
+
+Part Constancy Levels:
+  • innerinner - Never destroyed, stays with core
+  • permanent - Survives all deaths
+  • stubborn - Survives panic mode
+  • temporary - Lost on teleport
+
+COMBAT MECHANICS
+--------------------------------------------------------------------------------
+WEAPONS (WeaponScript.cs):
+  • Clip-based ammo system (100 max, variable clip sizes)
+  • Reload timer (2.5s default)
+  • Attack modes:
+    - Option=0: Single click fire
+    - Option=-1: Hold-to-fire continuous
+    - Option>0: Charge-to-release shots
+  • Sequential attacks for melee (delays between swings)
+  • Knockback affects both target and player recoil
+
+MELEE / DRILL (Design Vision):
+  • Unified melee weapon = drill for mining
+  • Limited durability per round - spend on enemies OR mining (tradeoff!)
+  • Direction-based attack with range
+  • Goes transparent on hit (cooldown visual)
+  • Health bar shows remaining durability
+  • Higher damage than guns, but resource cost opportunity
+
+ABILITIES:
+  • 3 slots available
+  • Mana costs and cooldowns
+  • Tied to tech trees for upgrades
+
+MOVEMENT:
+  • WASD/analog stick control
+  • Momentum-based physics (smooth acceleration)
+  • Dash/jump system with cooldown pumps
+  • Design intent: "Make character slow asf at beginning"
+
+SHIELDS & HEALTH (LifeScript.cs):
+  • HP with maxHp cap
+  • Latent shield regeneration
+  • Invulnerability frames on respawn (3 seconds) and dodge
+
+================================================================================
+                           RESOURCE SYSTEM
+================================================================================
+
+FOUR RESOURCE TYPES (Orbs)
+--------------------------------------------------------------------------------
+  WHITE  │ Wild resource, replaces green/blue in field
+  GREEN  │ Building construction and upgrades
+  BLUE   │ Mecha-suit upgrades and abilities
+  RED    │ Rare, special upgrades only
+
+
+ORE vs ORBS
+--------------------------------------------------------------------------------
+Key distinction in dungeon:
+  • ORE - Raw material found in dungeon, must be transported and refined
+  • ORBS - Refined resources that move autonomously to where needed
+
+Ore Transport Methods:
+  1. Player carries (limited capacity through Ember's Edge portal)
+  2. Carrier drones
+  3. Transporting infrastructure (Tele-tunneller, Shifters)
+
+Refining Pipeline:
+  Ore → Transport → Smelter → Orbs -> Storage
+
+RESOURCE GENERATION
+--------------------------------------------------------------------------------
+Three extraction methods:
+
+  DRILLING (Instant):
+    • Use melee/drill on tiles
+    • Immediate ore, but costs drill durability
+
+  MINES (Efficient):
+    • Build on ore deposits
+    • Extracts over multiple rounds
+    • Fragile, can be destroyed
+
+  RENEWERS (Sustainable):
+    • Build on crystal deposits
+    • Generates orbs each wave forever
+    • Alternative: Drone farms on crystals
+
+================================================================================
+                         BUILDING & BASE DEFENSE
+================================================================================
+
+BUILDING SYSTEM (Building.cs, GridManager.cs)
+--------------------------------------------------------------------------------
+  • Grid-based placement
+  • Buildings have health, can be destroyed
+  • Rebuild costs (array of 4 resource types)
+  • Upgrade system with up to 20 slots per building
+  • Research requisites gate some upgrades
+  • Icon system shows construction progress
+  • Buildings charged by ember explosions each wave
+
+BUILDING CATEGORIES
+--------------------------------------------------------------------------------
+  CORE INFRASTRUCTURE:
+    • Throne (central resource storage)
+    • Ember Battery (energy storage, charged by explosions)
+    • Ember-Cable (connects batteries)
+
+  RESOURCE GENERATION:
+    • Crop (white orbs)
+    • Harvester (green/blue)
+    • Renewers (on crystal deposits)
+    • Mines (on ore deposits)
+
+  DEFENCE:
+    • Base Turret
+    • Push Tower
+    • Specialised turrets
+    Design: "Turrets have limited ammo per round" - forces strategic placement
+
+  STORAGE:
+    • Pylon deposits (organized by resource type)
+    • Tele-Receiver (receives ore from dungeon instantly)
+
+  UTILITY:
+    • Shrines (healing, mana, resources)
+    • Portal
+    • Challenge points
+    • Tele-tunneller (teleports ore to base after round)
+    • Shifter (conveyor belt, 1x1, moves ore with energy cost)
+
+  LABS (Tech Tree Buildings):
+    • Mecha Lab (drill, kinematics, utility, defences)
+    • Gun Lab
+    • Ability Lab
+    • Automations Lab
+
+BUILDING INTERACTIONS (Design Vision)
+--------------------------------------------------------------------------------
+  • Adjacent building synergies ("increase by 25% for each X in vicinity")
+  • Sacrifice mechanics ("destroy specific adjacent buildings for power")
+  • Spatial intelligence matters for optimal expansion
+
+================================================================================
+                            ENEMY SYSTEMS
+================================================================================
+
+EMBER CORES (EmbersEdge.cs)
+--------------------------------------------------------------------------------
+Enemy spawn points with 3 states:
+  1. Inactive
+  2. Activating (spawnCoef increases)
+  3. Deactivating
+
+Spawn algorithm factors:
+  • Day number (time progression)
+  • Activity level (0.45-1.0)
+  • Era multipliers (1-3)
+  • Resource "budget" deductible by enemy rarity
+
+Design change: "Fix enemy spawning rates. Currently slow constant rate, aim
+for They-Are-Billions style instead." (Burst swarms, not trickle)
+
+ERAS (Difficulty Tiers)
+--------------------------------------------------------------------------------
+  ERA 1 │ Tier 1 enemies │ Prefabs/Enemies/E1/
+  ERA 2 │ Tier 2 enemies │ Prefabs/Enemies/E2/
+  ERA 3 │ Tier 3 enemies │ (Highest difficulty)
+
+Era transitions affect:
+  • Enemy spawns (different ScriptableObjects)
+  • Visual materials/colors
+  • Enemy stat scaling (exponential via Math.Sigma())
+
+ENEMY TYPES (Examples from E2)
+--------------------------------------------------------------------------------
+  • Jelly, Alpha Jelly
+  • Spitter, Alpha Spitter
+  • Bopper, Alpha Bopper
+  • Producer, Alpha Producer
+  • BombWinger, Jumper, Crosser
+  • Discer, Emitter, Patroller
+  • Scratcher, Poisoner, Zoner
+
+ENEMY BEHAVIORS
+--------------------------------------------------------------------------------
+AI Types:
+  • Spinning emitters (rotate, shoot on timer)
+  • NavMesh pathfinding (AIBase.cs)
+    - GuardSeeking: Return to spawn
+    - ChaseSeeking: Hunt target
+  • Range-based detection (searchRad, chaseRad)
+
+Design change: "Enemies far too bouncy and physics driven -> unpredictable.
+Just use translation, not velocity, and have a 'push back' animation. And A*."
+
+STATUS EFFECTS (StatusManager.cs)
+--------------------------------------------------------------------------------
+16 status types including:
+  • Stun - actRate = 0
+  • Slow - Reduces actRate (stackable)
+  • Root - Movement disabled
+  • Leech - Health drain with visual tether
+  • Lightning - Chains between units
+  • Shield (Strong/Weak)
+  • Dematerialization
+  • Charm, Knock, etc.
+
+Duration modified by enemy's statVulnerability.
+
+================================================================================
+                            DRONE SYSTEM
+================================================================================
+
+DRONE FARMS (Design Vision)
+--------------------------------------------------------------------------------
+"Place them on green ore. If destroyed, there will be no drones next round."
+
+Upgrades are PERMANENT: "A purchase means you get +1 drones per round forever."
+
+DRONE TYPES
+--------------------------------------------------------------------------------
+  MANUFACTURING DRONES:
+    • Build X items per round
+
+  MINING DRONES:
+    • Do X damage to mine-tiles per round
+
+  RESOURCE CARRIER DRONES:
+    • Transport X resources: dungeon→base, store→smelter, smelter→base
+
+  HEALING DRONES:
+    • Heal player and base by X per round
+
+  OFFENSIVE DRONES:
+    • Assist with clearing dungeon
+    • "Make them expensive asf but effective"
+    • Good players save green resources for base defense instead
+
+DRONE MECHANICS
+--------------------------------------------------------------------------------
+  • Battery indicator (line showing charge)
+  • Return to building when battery dies
+  • Can be teleported via hubs to save energy
+  • Tracked in CharacterScript.CS.group list
+  • GroupTile UI shows ally status
+
+================================================================================
+                         MINING & DUNGEON
+================================================================================
+
+DUNGEON STRUCTURE
+--------------------------------------------------------------------------------
+Tile-based top-down exploration with quasi-3D layers:
+
+  LAYER 1 - WALLS:
+    • May or may not contain ore
+    • When destroyed, reveals ground layer
+
+  LAYER 2 - GROUND:
+    • May or may not contain ore
+    • Drill for instant ore, OR
+    • Build mine for efficient extraction over rounds (but fragile)
+
+  LAYER 3 - CRYSTALS:
+    • Renewable resource deposits
+    • Build drone farms OR renewers OR enhance turrets
+
+DUNGEON PORTALS
+--------------------------------------------------------------------------------
+Ember cores act as TWO-WAY teleporters:
+  • Teleport back to that spot in dungeon later
+  • Cores stay in dungeon until end of dungeon
+  • Saves backtracking time
+
+EXPLORATION REWARDS
+--------------------------------------------------------------------------------
+  • Ore deposits
+  • Crystal deposits
+  • Blueprint discoveries
+  • Tech tree progression unlocks
+  • Enemies that can trigger attacks if unearthed
+
+================================================================================
+                            TECH TREES
+================================================================================
+
+TREE TYPES
+--------------------------------------------------------------------------------
+  MECHA TREE (Mecha Lab):
+    • Drill upgrades (unique per mecha)
+    • Kinematics
+    • Utility (same every time)
+    • Defences
+    • Many mechas share parts of this tree
+
+  GUN TREE (Gun Lab):
+    • Configurable / discoverable
+    • Up to 3 guns equipped
+
+  ABILITY TREE (Ability Lab):
+    • Configurable / discoverable
+    • Up to 3 abilities equipped
+
+  AUTOMATION TREE (Automations Lab):
+    • Configurable / discoverable
+    • Up to 3 automations equipped
+
+NON-TREE SYSTEMS
+--------------------------------------------------------------------------------
+  • Standalones → Drones (build at base, not a tree)
+  • Boosts → Findable, selectable, or buildable (not a tree)
+
+PROGRESSION GATING
+--------------------------------------------------------------------------------
+Tech trees limited by:
+  1. Current dungeon depth
+  2. Whether required lab is built
+  3. Lab level
+
+Starting loadout:
+  • 1 mecha (with drill)
+  • Up to 1 gun
+  • Up to 1 ability
+  • Up to 1 automation
+
+Max loadout:
+  • 1 drill
+  • Up to 3 guns
+  • Up to 3 abilities
+  • Up to 3 automations
+
+UPGRADE INVESTMENT
+--------------------------------------------------------------------------------
+Done in Evolution phase between rounds:
+  • Invest white, blue, red orbs
+  • Unlock nodes in tech trees
+  • Permanent upgrades per run
+
+================================================================================
+                        BLUEPRINT & LOOT SYSTEM
+================================================================================
+
+BLUEPRINT STATES (BlueprintManager.cs)
+--------------------------------------------------------------------------------
+  toDiscover → held → stashed → researched
+  (Unknown)   (Found)  (In lab)  (Unlocked)
+
+Blueprint Categories:
+  • Parts (MechanismSO): Weapons, abilities, boosts, automations
+  • Buildings: Towers, generators, storage
+  • Sciences: Technology unlocks
+  • Bonuses: Special items
+
+LOOT SELECTION (NewLoot.cs)
+--------------------------------------------------------------------------------
+  • Kill enough enemies → Loot selection UI appears
+  • 3 choices offered
+  • Mechanisms can have "evolutions" (upgrade paths)
+  • Evolution buttons: power upgrades vs new parts
+  • Rarity system affects selection weight
+
+================================================================================
+                         ALLY SYSTEM
+================================================================================
+
+ALLY AI (AllyAI.cs)
+--------------------------------------------------------------------------------
+Companions spawned from UnitBuilding structures.
+
+TWO MODES:
+  1. Rally Mode - Follow rally point set by player
+  2. Follow Mode - Chase player if too far away
+
+MECHANICS:
+  • Limited allies per player level (group cost per ally)
+  • targetPoint refreshes every 1.5s
+  • Explores within exploreRadius (2 units)
+  • "SkrSkr" evacuation if far from player
+  • Can be healed by healing drones
+
+================================================================================
+                     DAMAGE & COMBAT MATH
+================================================================================
+
+CURRENT SYSTEM (LifeScript.cs)
+--------------------------------------------------------------------------------
+  • HP tracked per unit with maxHp cap
+  • Damage value: negative = damage, positive = healing
+  • 4 damage types (0-3) with effectiveness multipliers
+  • Race-based weaknesses/resistances
+
+DESIGN CHANGE (Zero-To-Hero)
+--------------------------------------------------------------------------------
+"Fuck white, green, blue, red damage. Have damage, and percentage health
+damage." (Simplify to flat + %HP)
+
+================================================================================
+                      VISUAL & AUDIO SYSTEMS
+================================================================================
+
+VISUAL FEEDBACK
+--------------------------------------------------------------------------------
+  • Lens distortion FX (keeper from prototype)
+  • Outline shaders with thickness for health display
+  • Color-coded health: Green (healthy), Red (damaged), Era-colored (enemies)
+  • Line color updates in real-time
+  • Battery indicators on drones
+
+SPAWN VISUALS
+--------------------------------------------------------------------------------
+Ember cores are animated line renderers with physics effects.
+
+================================================================================
+                      PLANNED CHANGES SUMMARY
+                      (From Zero-To-Hero Doc)
+================================================================================
+
+CORE PHILOSOPHY SHIFT:
+  FROM: Dungeon-crawler with "mad skillage" dodging chaotic enemies
+  TO: Resource management optimization, "do I have enough X to do Y"
+
+ENEMY CHANGES:
+  □ Remove bouncy physics → Use translation + "push back" animation
+  □ Implement A* pathfinding
+  □ Slower enemies (speed increases each dungeon)
+  □ They-Are-Billions style spawn bursts
+
+RESOURCE CHANGES:
+  □ Increase scarcity (cost 5, not 100)
+  □ Ore transport is an ordeal (limits shield)
+  □ Reduce recurrent expenses → permanent upgrades
+  □ Remove seasons system
+
+MELEE/MINING UNIFICATION:
+  □ Melee = drill with shared durability pool
+  □ Tradeoff: damage enemies OR mine (not both freely)
+  □ Visual: bayonetta-style transparency on hit
+
+BUILDING ADDITIONS:
+  □ Tele-tunneller (teleport ore to base)
+  □ Tele-Receiver (instant ore reception)
+  □ Ember Battery + Ember-Cable
+  □ Shifter (conveyor belt with battery)
+  □ Building-building interactions
+
+TURRET CHANGES:
+  □ Limited ammo per round (not infinite)
+  □ Forces strategic placement and upgrade decisions
+
+TECH TREE IMPLEMENTATION:
+  □ Pre-run tree selection
+  □ 4 lab types gate progression
+  □ Dungeon exploration can unlock tree progression early
+
+DAMAGE SIMPLIFICATION:
+  □ Remove 4 damage types
+  □ Use flat damage + percentage HP damage only
+
+================================================================================
+                         KEY FILE LOCATIONS
+================================================================================
+
+SCRIPTS:
+  Assets/Scripts/CharacterScript.cs     - Player control & attributes
+  Assets/Scripts/EmbersEdge.cs          - Enemy spawn cores
+  Assets/Scripts/ResourceManager.cs     - Resource system
+  Assets/Scripts/Building.cs            - Base building framework
+  Assets/Scripts/WeaponScript.cs        - Weapon mechanics
+  Assets/Scripts/LifeScript.cs          - Health & damage
+  Assets/Scripts/AIBase.cs              - Enemy pathfinding
+  Assets/Scripts/MechaSuit.cs           - Part customization hub
+  Assets/Scripts/BlueprintManager.cs    - Loot & progression
+  Assets/Scripts/StatusManager.cs       - Status effects
+  Assets/Scripts/AllyAI.cs              - Companion system
+  Assets/Scripts/NewLoot.cs             - Loot UI & selection
+  Assets/Scripts/Part.cs                - Part base class
+  Assets/Scripts/GridManager.cs         - Building placement
+
+SCRIPTABLE OBJECTS:
+  Assets/ScriptableObjects/Enemies/     - Enemy definitions
+  Assets/ScriptableObjects/Buildings/   - Building definitions
+  Assets/ScriptableObjects/Weapons/     - Weapon definitions
+  Assets/ScriptableObjects/Abilities/   - Ability definitions
+  Assets/ScriptableObjects/Bonus/       - Bonus loot items
+
+PREFABS:
+  Assets/Prefabs/Enemies/E1/            - Tier 1 enemies
+  Assets/Prefabs/Enemies/E2/            - Tier 2 enemies
+  Assets/Prefabs/Buildings/             - Building categories
+  Assets/Prefabs/Allies/                - Ally units
+  Assets/Prefabs/AllyProjectiles/       - Projectile types
+
+================================================================================
+                              END OF DOCUMENT
+================================================================================

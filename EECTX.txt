@@ -1,0 +1,121 @@
+KEY PATHS
+---------
+- Main scene: Assets/Scenes/World.unity
+- Scripts: Assets/Scripts/ (310+ scripts), also Assets/Misc/, Assets/Test/
+- Prefabs: Assets/Prefabs/ (417 prefabs)
+- Sprites: Assets/Sprites/ (900+ files)
+- Animation: Assets/Animation/ (304 .anim, 124 .controller)
+- ScriptableObjects: Assets/ScriptableObjects/
+
+ASSET DATABASE STRUCTURE
+------------------------
+Assets/
+├── Animation/          - .anim clips + .controller state machines
+├── Prefabs/
+│   ├── Enemies/
+│   │   ├── E1/         - Tier 1 enemies (Shooter, Spinner, Crosser...)
+│   │   └── E2/         - Tier 2 enemies (Jelly, Spitter, Bopper...)
+│   ├── Buildings/
+│   │   ├── Core Infrastructure/
+│   │   ├── Defence/
+│   │   ├── Resource Generation/
+│   │   ├── Storage/
+│   │   └── Utility/
+│   ├── Allies/
+│   ├── AllyProjectiles/
+│   ├── AbilityProj/
+│   ├── FX/
+│   └── Misc/
+├── Scripts/            - Main gameplay scripts
+├── Sprites/            - Sprite sheets (often named E1-X, A0-1, etc.)
+├── ScriptableObjects/
+│   ├── Abilities/
+│   ├── Weapons/ 
+│   ├── Buildings/
+│   ├── Enemies/
+│   └── Boosts/
+├── Resources/          - Runtime-loadable assets
+├── Scenes/
+└── Misc/               - Extra scripts (Joe.cs, Dog.cs, etc.)
+
+UNITY YAML EDITING (PROVEN WORKING)
+-----------------------------------
+Unity scenes/prefabs are YAML when "Force Text" serialization is enabled (it is).
+
+To ADD a GameObject to a scene:
+1. Create the .cs script
+2. Create matching .meta file with unique GUID (use: openssl rand -hex 16)
+3. Add to scene YAML:
+   - GameObject entry: --- !u!1 &<fileID>
+   - Transform entry: --- !u!4 &<fileID+1>
+   - MonoBehaviour entry: --- !u!114 &<fileID+2>
+4. Add Transform fileID to SceneRoots at end of file
+
+YAML STRUCTURE REFERENCE
+------------------------
+GameObject (!u!1):
+  m_Component: list of {fileID: X} references
+  m_Name: "object name"
+  m_IsActive: 1
+
+Transform (!u!4):
+  m_GameObject: {fileID: X} - back-reference to GO
+  m_Father: {fileID: 0} - 0 means root level
+  m_LocalPosition/Rotation/Scale
+
+MonoBehaviour (!u!114):
+  m_GameObject: {fileID: X}
+  m_Script: {fileID: 11500000, guid: <SCRIPT_GUID>, type: 3}
+  <field_name>: <value>  <- serialized fields go here
+
+SceneRoots (!u!1660057539):
+  m_Roots: list of Transform fileIDs
+
+META FILE TEMPLATE
+------------------
+fileFormatVersion: 2
+guid: <32-char-hex>
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData:
+  assetBundleName:
+  assetBundleVariant:
+
+FILEIDS
+-------
+Use large unique numbers (e.g., 999000001, 999000002...) to avoid conflicts.
+Increment for each component on same GameObject.
+
+SERIALIZED FIELD OVERRIDE
+-------------------------
+To set a public field value on a scene instance (different from script default):
+Add the field name and value after m_EditorClassIdentifier in the MonoBehaviour:
+  m_EditorClassIdentifier:
+  myField: myValue
+
+ASSET TRACING (FINDING RELATED PREFABS)
+---------------------------------------
+Prefab names often don't match sprite/animation names. To find connections:
+
+1. DON'T just search by name - it may be named differently
+2. DO trace via GUIDs:
+   - Find .meta file for sprite/animation → get GUID
+   - grep for that GUID in .prefab and .unity files
+   - grep -rn "<GUID>" Assets --include="*.prefab"
+
+3. Animation chain tracing:
+   - .anim files → which .controller uses them?
+   - .controller → which prefab references it?
+   - Check the controller's .meta for its GUID, then grep prefabs
+
+
+NAMING CONVENTIONS (PROJECT-SPECIFIC)
+-------------------------------------
+- Prefabs/Enemies/E1/ - first enemy tier
+- Prefabs/Enemies/E2/ - second enemy tier
+- "P" suffix often means Projectile (e.g., E1-6P)
+- Enemy prefabs may have readable names (Jelly, Spitter, Bopper) that differ from their sprite codes (E1-6)
