@@ -44,13 +44,12 @@ public class RoomEditor : Editor
         }
         var rb = r.GetComponent<Rigidbody2D>();
         rb.bodyType = RigidbodyType2D.Kinematic;
-        rb.isKinematic = true;
         rb.simulated = true;
         rb.useFullKinematicContacts = true;
         bool jAddedBox = false;
         if (r.GetComponent<BoxCollider2D>()==null)
         {
-            r.gameObject.AddComponent<BoxCollider2D>().usedByComposite = true;
+            r.gameObject.AddComponent<BoxCollider2D>().compositeOperation = Collider2D.CompositeOperation.Merge;
             jAddedBox = true;
         }
         if (r.GetComponent<CompositeCollider2D>() == null)
@@ -59,7 +58,7 @@ public class RoomEditor : Editor
         }
         r.sp = new Transform[] { };
         var box = r.GetComponent<BoxCollider2D>();
-        box.usedByComposite = true;
+        box.compositeOperation = Collider2D.CompositeOperation.Merge;
         Rect rect = r.GetComponent<SpriteRenderer>().sprite.rect;
         rect.size *= 0.10695f;
         if (jAddedBox)
@@ -122,7 +121,6 @@ public class RoomEditor : Editor
             wall.transform.SetParent(T);
         }
         wall.GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Kinematic;
-        wall.GetComponent<Rigidbody2D>().isKinematic = true;
         wall.GetComponent<Rigidbody2D>().useFullKinematicContacts = true;
         wall.GetComponent<Rigidbody2D>().simulated = true;
         var walls = wall.GetComponents<BoxCollider2D>();

@@ -31,7 +31,7 @@ public class Status : MonoBehaviour
     private int colInd = 0;
     
     public float timer = 0f;
-    [HideInInspector] public int unitInstanceId;
+    [HideInInspector] public EntityId unitInstanceId;
     public bool dissapearing = false;
     
     public Action<float> onDamageDelete;
@@ -96,7 +96,7 @@ public class Status : MonoBehaviour
         statusSr.sprite = statusSprites[ind];
         
         unit = u;
-        unitInstanceId = unit.GetInstanceID();
+        unitInstanceId = unit.GetEntityId();
         unit.stati.Add(this);
 
         value1 = value1_;

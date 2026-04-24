@@ -19,7 +19,7 @@ public class DamageOverTime : ProjectileScript
         {
             if (collision.rigidbody.TryGetComponent<LifeScript>(out var ls))
             {
-                if (Array.IndexOf(enemiesHit,collision.rigidbody.GetInstanceID()) == -1)
+                if (Array.IndexOf(enemiesHit,collision.rigidbody.GetEntityId()) == -1)
                 {
                     ls.ChangeOverTime(-damageOverT, t, lifeScript.race, noKill);
                 }

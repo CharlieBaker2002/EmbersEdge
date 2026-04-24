@@ -366,7 +366,13 @@ public static class GS
             }
         }
 
-        var size = Physics2D.OverlapCircleNonAlloc(t.position, searchDistance, cols, LayerMask.GetMask(strs));
+        var filter = new ContactFilter2D
+        {
+            useTriggers = true,
+            useLayerMask = true,
+            layerMask = LayerMask.GetMask(strs)
+        };
+        var size = Physics2D.OverlapCircle(t.position, searchDistance, filter, cols);
         if (size > 0)
         {
             if (compare == null)
@@ -432,7 +438,13 @@ public static class GS
             cols = new Collider2D[10];
         }
 
-        int n = Physics2D.OverlapCircleNonAlloc(pos, searchDistance, cols, LayerMask.GetMask(layers.ToArray()));
+        var filter = new ContactFilter2D
+        {
+            useTriggers = true,
+            useLayerMask = true,
+            layerMask = LayerMask.GetMask(layers.ToArray())
+        };
+        int n = Physics2D.OverlapCircle(pos, searchDistance, filter, cols);
         for (int x = 0; x < n; x++)
         {
             if (cols[x].isTrigger)

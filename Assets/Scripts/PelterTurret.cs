@@ -25,6 +25,8 @@ public class PelterTurret : Building
     bool fastRefresh = false;
     private bool munitionsUpgrade = false;
     
+    float energyPerBullet = 0.025f;
+    
     public override void Start()
     {
         anim.speed = 0.5f;
@@ -58,9 +60,9 @@ public class PelterTurret : Building
             anchorSR.material = ColourManager.AllyMat(2);
         }, 6,false, null, null,()=>fastUpgrade);
         MapManager.OnUpdateMap += () => lookRot = GS.VTQ(GetNearestEE(transform)-(Vector2)transform.position);
-        b.act += e =>
+        b.onUpdate += e =>
         {
-            anim.SetBool(HasAmmo, e > 0.1f);
+            anim.SetBool(HasAmmo, b.energy > energyPerBullet);
         };
     }
     
@@ -156,7 +158,7 @@ public class PelterTurret : Building
                 g.GetComponent<Rigidbody2D>().linearVelocity =
                     5f * (target.transform.position - g.transform.position);
             }
-            b.Use(0.05f);
+            b.Use(energyPerBullet*2f);
         }
     }
     
@@ -169,7 +171,7 @@ public class PelterTurret : Building
             g.GetComponent<Seeking>().target = target;
             g.GetComponent<Rigidbody2D>().linearVelocity =
                 5f * (target.transform.position - g.transform.position);
-            b.Use(0.025f);
+            b.Use(energyPerBullet);
         }
     }
 }

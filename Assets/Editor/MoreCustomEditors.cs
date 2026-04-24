@@ -229,6 +229,59 @@ public class FinderEditor : Editor
     }
 }
 
+[CanEditMultipleObjects]
+[CustomEditor(typeof(Battery))]
+public class BatteryEditor : Editor
+{
+    public override void OnInspectorGUI()
+    {
+        base.OnInspectorGUI();
+        if (GUILayout.Button("AddLil"))
+        {
+            ((Battery)target).Add(1f);
+        }
+        if (GUILayout.Button("UseLil"))
+        {
+            ((Battery)target).Use(1f);
+        }
+        if (GUILayout.Button("Charge"))
+        {
+            ((Battery)target).Charge(8f,1f);
+        }
+        if (GUILayout.Button("Decharge"))
+        {
+            ((Battery)target).Charge(0,1f);
+        }
+        if (GUILayout.Button("Charge"))
+        {
+            ((Battery)target).Charge(8f,4f);
+        }
+        if (GUILayout.Button("Decharge"))
+        {
+            ((Battery)target).Charge(0f,4f);
+        }
+    
+    }
+}
+
+
+[CustomEditor(typeof(CameraScript))]
+public class CameraEditor : Editor
+{
+    public override void OnInspectorGUI()
+    {
+        base.OnInspectorGUI();
+        if (GUILayout.Button("DistortIn"))
+        {
+            ((CameraScript)target).DistortLens(true);
+        }
+        if (GUILayout.Button("DistortOut"))
+        {
+            ((CameraScript)target).DistortLens(false);
+        }
+    }
+}
+
 
 //
 // [CustomEditor(typeof(Constructor))]

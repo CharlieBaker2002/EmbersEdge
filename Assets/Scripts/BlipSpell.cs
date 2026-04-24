@@ -9,7 +9,7 @@ public class BlipSpell : Spell
     private float timer;
     [SerializeField] Animator anim;
     private float damage = 2f;
-    private List<int> cols = new List<int>();
+    private List<EntityId> cols = new List<EntityId>();
     private Vector3 init;
     private Transform cs;
     private float maxTime = 2;
@@ -121,11 +121,11 @@ public class BlipSpell : Spell
 
     private void OnTriggerEnter2D(Collider2D c)
     {
-        if (cols.Contains(c.GetInstanceID()))
+        if (cols.Contains(c.GetEntityId()))
         {
             return;
         }
-        cols.Add(c.GetInstanceID());
+        cols.Add(c.GetEntityId());
         if (c.CompareTag("Enemies"))
         {
             if (c.GetComponentInParent<LifeScript>() != null)

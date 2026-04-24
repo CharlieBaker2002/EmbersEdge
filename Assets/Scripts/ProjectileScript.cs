@@ -14,7 +14,7 @@ public class ProjectileScript : MonoBehaviour, IOnCollide
     public float angle = 0f;
     public float angVel = 0f;
     [HideInInspector]
-    public int[] enemiesHit;
+    public EntityId[] enemiesHit;
     protected LifeScript lifeScript;
     Rigidbody2D rb;
     public Transform father;
@@ -40,8 +40,8 @@ public class ProjectileScript : MonoBehaviour, IOnCollide
                 lifeScript.hp = Mathf.Abs(damage) * pierce;
             }
         }
-        enemiesHit = new int[pierce + 1];
-        enemiesHit[0] = GetComponent<Rigidbody2D>().GetInstanceID();
+        enemiesHit = new EntityId[pierce + 1];
+        enemiesHit[0] = GetComponent<Rigidbody2D>().GetEntityId();
         angVel *= GS.PlusMinus();
     }
 
@@ -153,7 +153,7 @@ public class ProjectileScript : MonoBehaviour, IOnCollide
         if (hit < pierce)
         {
             oAS = null;
-            if (Array.IndexOf(enemiesHit, coli.rigidbody.GetInstanceID()) == -1)
+            if (Array.IndexOf(enemiesHit, coli.rigidbody.GetEntityId()) == -1)
             {
                 if (coli.rigidbody.TryGetComponent<ActionScript>(out var actionScript))
                 {
@@ -215,7 +215,7 @@ public class ProjectileScript : MonoBehaviour, IOnCollide
                 }
                 if(coli.rigidbody != null)
                 {
-                    enemiesHit[hit] = coli.rigidbody.GetInstanceID();
+                    enemiesHit[hit] = coli.rigidbody.GetEntityId();
                 }
                 lifeScript.hp -= dmg;
                 lifeScript.LimitCheck();

@@ -95,7 +95,7 @@ public class Constructor : Building
 
     void UpgradeToBeam()
     {
-        radius = 6f;
+        radius += 3f;
         isBeam = true;
         sprs = upgradeSpritesBeam;
         stick.sprite = sprs[0];

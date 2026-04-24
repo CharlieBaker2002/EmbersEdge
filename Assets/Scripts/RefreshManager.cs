@@ -119,6 +119,7 @@ public class RefreshManager : MonoBehaviour
         EnergyManager.constructors = new List<Constructor>();
         SoulGenerator.gs = new List<SoulGenerator>();
         EEIcon.icons = new List<EEIcon>();
+       
         //Set the bloom to white
 
         v.sharedProfile.TryGet(out Bloom bl);

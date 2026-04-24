@@ -9,7 +9,7 @@ public class Spell : Part
     private MechanismSO oLevel1 = null;
     private MechanismSO oLevel2 = null;
     private Sprite initS = null;
-    private Dictionary<int, int> removeInds = new Dictionary<int, int>();
+    private Dictionary<EntityId, int> removeInds = new Dictionary<EntityId, int>();
     private Sprite[] lvlSprites = new Sprite[2];
     private GameObject ability;
     [HideInInspector]
@@ -35,7 +35,7 @@ public class Spell : Part
 
     public virtual void Performed(InputAction.CallbackContext ctx)
     {
-        cd.SetValue(CharacterScript.CS.spellmaxCDs[removeInds[MechaSuit.m.GetInstanceID()]]);
+        cd.SetValue(CharacterScript.CS.spellmaxCDs[removeInds[MechaSuit.m.GetEntityId()]]);
         engagement = 0f;
         ar.enabled = true;
     }
@@ -86,9 +86,9 @@ public class Spell : Part
             }
         }
         int ind = CharacterScript.CS.NewAbility(this, ability1, ability2, sprite);
-        if (!removeInds.ContainsKey(m.GetInstanceID()))
+        if (!removeInds.ContainsKey(m.GetEntityId()))
         {
-            removeInds.Add(m.GetInstanceID(), ind);
+            removeInds.Add(m.GetEntityId(), ind);
         }
 
         //ABILITY RANGE INDICATOR
@@ -108,7 +108,7 @@ public class Spell : Part
     public override void StopPart(MechaSuit m)
     {
         MechaSuit.abilitiesLeft++;
-        CharacterScript.CS.RemoveAbility(removeInds[m.GetInstanceID()]);
+        CharacterScript.CS.RemoveAbility(removeInds[m.GetEntityId()]);
     }
 
     public void LevelUpDo(MechanismSO o)

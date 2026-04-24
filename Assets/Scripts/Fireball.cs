@@ -13,7 +13,7 @@ public class Fireball : MonoBehaviour
     [SerializeField] float castTime = 999f;
     public bool hit;
     private float discrepency;
-    List<int> hitUnits = new();
+    List<EntityId> hitUnits = new();
     private float timeModulator = 1f;
     [SerializeField] CircleCollider2D col;
 
@@ -147,7 +147,7 @@ public class Fireball : MonoBehaviour
         if(other.CompareTag(tag)) return;
         if (!other.attachedRigidbody.TryGetComponent<ActionScript>(out var AS)) return;
         if (AS.ls == null) return;
-        int id = AS.GetInstanceID();
+        EntityId id = AS.GetEntityId();
         if (hitUnits.Contains(id)) return;
         hitUnits.Add(id);
         

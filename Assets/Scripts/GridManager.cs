@@ -276,36 +276,16 @@ public class GridManager : MonoBehaviour
     /// <summary>Re‑computes which cells are inside any pylon's reach and toggles the energy overlay colours.</summary>
     public void RefreshEnergyCells()
     {
-        var pylons = EnergyManager.i?.pylons;
-
         for (int gx = 0; gx < width; ++gx)
             for (int gy = 0; gy < height; ++gy)
             {
-                bool powered = false;
-
-                if (pylons != null && pylons.Count > 0)
-                {
-                    Vector3 cellWorld = GridToWorld(new Vector2Int(gx, gy));
-                    foreach (var p in pylons)
-                    {
-                        if (p == null) continue;
-                        float r = p.reachDistance;
-                        if ((p.transform.position - cellWorld).sqrMagnitude <= r * r)
-                        {
-                            powered = true;
-                            break;
-                        }
-                    }
-                }
-
                 bool freeAccess = inRange[gx, gy] && !occupied[gx, gy];
-
-                // Show / hide the energy sprite
-                SetEnergy(gx, gy, powered);
+                
+                SetEnergy(gx, gy, true);
 
                 // Decide the color
                 Color targetColour;
-                if (powered && freeAccess)
+                if (freeAccess)
                 {
                     targetColour = energyFreeColour; // yellow - energy & buildable
                 }
@@ -324,7 +304,7 @@ public class GridManager : MonoBehaviour
 
                 // Apply color to both blocks
                 overlay[gx, gy].color = targetColour;
-                if (energyOverlay[gx, gy] != null && powered)
+                if (energyOverlay[gx, gy] != null)
                 {
                     energyOverlay[gx, gy].color = targetColour;
                 }

@@ -7,7 +7,6 @@ using Random = UnityEngine.Random;
 using Vector2 = UnityEngine.Vector2;
 using Vector3 = UnityEngine.Vector3;
 
-[RequireComponent(typeof(SpriteRenderer))]
 public class Ember : MonoBehaviour
 {
     // ──────────────────────────  CONFIG  ──────────────────────────
@@ -22,7 +21,7 @@ public class Ember : MonoBehaviour
     [Header("Flight")]
     [SerializeField] public Vector3 to;          // world destination
     [SerializeField] private float arcHeight = 1; // vertical lift of the arc
-    [SerializeField] private float flightTime = 0.75f;
+    [SerializeField] public float flightTime = 0.75f;
     [SerializeField] private LeanTweenType flightEase = LeanTweenType.easeInOutCubic;
 
     [Header("Timings")]
@@ -37,6 +36,7 @@ public class Ember : MonoBehaviour
 
     [SerializeField] bool quick = false;
     public bool portalEmber = false;
+    public bool charEmber = false;
     public Extractor extract = null;
     [SerializeField] private ParticleSystem[] trailPS;
 
@@ -47,12 +47,121 @@ public class Ember : MonoBehaviour
     Vector3 spawnPos;
     Vector2 prevPos;                 // for heading
     private Vector2 current;
+
+    // charEmber tracking: bump this to freeze all currently-tracking charEmbers
+    public static int trackGen = 0;
+    int myTrackGen;
+    Vector3 charOffset;
+
+    public static event Action<Vector3, Vector3> OnPortalBurst;
+    public static void TriggerPortalBurst(Vector3 charPos, Vector3 returnPos) => OnPortalBurst?.Invoke(charPos, returnPos);
+
+    public static event Action OnPortalEmberBurst;
+    public static void TriggerPortalEmberBurst() => OnPortalEmberBurst?.Invoke();
+
     void Awake()
     {
         if (!sr) sr = GetComponent<SpriteRenderer>();
-        UpdateColours(GS.era);
+        if(sr!= null) UpdateColours(GS.era);
         spawnPos = transform.position;
         prevPos  = spawnPos;
+        myTrackGen = trackGen;
+        if (charEmber)
+        {
+            Transform charT = GS.CS();
+            if (charT != null) charOffset = spawnPos - charT.position;
+            OnPortalBurst += HandlePortalBurst;
+        }
+        if (portalEmber) OnPortalEmberBurst += HandlePortalEmberBurst;
+    }
+
+    void OnDestroy()
+    {
+        if (charEmber)   OnPortalBurst      -= HandlePortalBurst;
+        if (portalEmber) OnPortalEmberBurst -= HandlePortalEmberBurst;
+    }
+
+    void HandlePortalEmberBurst()
+    {
+        LeanTween.cancel(gameObject);
+
+        Vector3 corePos = EmbersEdge.mainCore != null ? (Vector3)EmbersEdge.mainCore.transform.position : Vector3.zero;
+        Vector3 fromCore = transform.position - corePos;
+        Vector3 outDir = fromCore.sqrMagnitude > 0.0001f
+            ? fromCore.normalized
+            : (Vector3)Random.insideUnitCircle.normalized;
+        Vector3 burstTarget = corePos + outDir * Random.Range(6f, 10f);
+        float returnDelay = Random.Range(0.3f, 1.5f);
+        Vector3 returnTarget = corePos + (Vector3)Random.insideUnitCircle * Random.Range(0f, 0.5f);
+
+        LeanTween.move(gameObject, burstTarget, 0.15f).setEase(LeanTweenType.easeOutExpo)
+            .setOnComplete(() =>
+                LeanTween.delayedCall(gameObject, returnDelay, () =>
+                    StartCoroutine(BezierReturnI(returnTarget, 0.5f))));
+    }
+
+    IEnumerator BezierReturnI(Vector3 to, float duration)
+    {
+        Vector2 from2 = transform.position;
+        Vector2 to2   = to;
+        Vector2 dir   = to2 - from2;
+        Vector2 perp  = new Vector2(-dir.y, dir.x).normalized;
+        Vector2 ctrl  = (from2 + to2) * 0.5f + perp * Random.Range(-0.5f, 0.5f) * dir.magnitude;
+        Vector2[] pts = new Vector2[] { from2, ctrl, to2 };
+
+        for (float elapsed = 0f; elapsed < duration; elapsed += Time.deltaTime)
+        {
+            float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
+            transform.position = (Vector3)GS.Bez(pts, t);
+            yield return null;
+        }
+        transform.position = to;
+        Cease();
+    }
+
+    void HandlePortalBurst(Vector3 charPos, Vector3 returnPos)
+    {
+        if (myTrackGen != trackGen) return;
+        myTrackGen = -1;
+
+        Vector3 outDir;
+        if (returnPos.sqrMagnitude < 0.0001f)
+        {
+            // Going to base: burst behind the player away from origin, with a narrow spread
+            Vector3 away = charPos.sqrMagnitude > 0.0001f ? charPos.normalized : Vector3.right;
+            Vector3 perp = new Vector3(-away.y, away.x, 0f);
+            outDir = (away + perp * Random.Range(-0.5f, 0.5f)).normalized;
+        }
+        else
+        {
+            outDir = transform.position - charPos;
+            if (outDir.sqrMagnitude < 0.001f) outDir = (Vector3)Random.insideUnitCircle.normalized;
+            outDir = outDir.normalized;
+        }
+
+        bool goingHome = returnPos.sqrMagnitude > 0.0001f;
+        Vector3 burstTarget = charPos + outDir * Random.Range(3f, 5f);
+        float outDur = goingHome ? 0.3f : 0.2f;
+        float returnDur = goingHome ? Random.Range(0.7f, 1.1f) : 0.35f;
+
+        LeanTween.cancel(gameObject);
+        LeanTween.move(gameObject, burstTarget, outDur).setEase(LeanTweenType.easeOutExpo)
+            .setOnComplete(() =>
+                LeanTween.move(gameObject, returnPos, returnDur).setEase(LeanTweenType.easeInCubic)
+                    .setOnComplete(Cease));
+    }
+
+    void Update()
+    {
+        if (charEmber && myTrackGen == trackGen)
+        {
+            Transform charT = GS.CS();
+            if (charT == null) return;
+            Vector3 charPos = charT.position;
+            if (float.IsNaN(charPos.x) || float.IsNaN(charPos.y) || float.IsNaN(charPos.z)) return;
+            to = charPos;
+            transform.position = charPos + charOffset;
+        }
     }
     
     void UpdateColours(int era)
@@ -88,6 +197,11 @@ public class Ember : MonoBehaviour
         var em = ps.emission;
         trailPS[0]?.gameObject.SetActive(true);
         trailPS[1]?.gameObject.SetActive(true);
+        if (charEmber)
+        {
+            if (trailPS[0] != null) { var m = trailPS[0].main; m.loop = true; trailPS[0].Play(); }
+            if (trailPS[1] != null) { var m = trailPS[1].main; m.loop = true; trailPS[1].Play(); }
+        }
         float speed = 1f + Random.Range(-0.3f,0.3f);
         var seq = LeanTween.sequence();
         if (!portalEmber)
@@ -95,14 +209,14 @@ public class Ember : MonoBehaviour
             if (!quick)
             {
                 seq.insert(LeanTween.value(gameObject, 0f, 30f, loadTime).setOnUpdate(t => em.rateOverTime = t));
-                seq.append(sr.LeanAnimate(loadSprites, loadTime));
+                if(!portalEmber && !charEmber) seq.append(sr.LeanAnimate(loadSprites, loadTime));
             }
             else
             {
                 LeanTween.value(gameObject, 0f, 30f, loadTime).setOnUpdate(t => em.rateOverTime = t);
-                sr.LeanAnimate(loadSprites, loadTime);
+                if(!portalEmber && !charEmber) sr.LeanAnimate(loadSprites, loadTime);
             }
-            seq.append(() => StartCoroutine(RandomFlicker()));
+            if(!portalEmber && !charEmber) seq.append(() => StartCoroutine(RandomFlicker()));
         }
         Vector3 start = transform.position;
         Vector3 dirSide = ((Vector2)(to - start)).Rotated(90f);
@@ -129,22 +243,47 @@ public class Ember : MonoBehaviour
         {
             seq.append(LeanTween.move(gameObject, path, flightTime * speed).setEase(flightEase));
         }
-        else
+        else if (!charEmber)
         {
             seq.append(LeanTween.move(gameObject, path, flightTime * speed).setEase(flightEase).setOnUpdate((Vector3 v) => FaceHeading()));
             seq.append(LeanTween.delayedCall(gameObject,0f, StopAllCoroutines)).insert(LeanTween.value(gameObject, 30f, 0f, offTime).setOnUpdate(t => em.rateOverTime = t));
         }
-        if (!portalEmber)
+        if (!portalEmber && !charEmber)
         {
             seq.append(()=> ps2.SetActive(true));
             seq.append(()=>onComplete?.Invoke());
             seq.append(sr.LeanAnimate(offSprites, offTime));
         }
-        seq.append(LeanTween.delayedCall(gameObject, 1f, () =>
-        {
-            Destroy(gameObject);
-        }));
+        float destroyDelay = charEmber ? flightTime : 1f;
+        seq.append(LeanTween.delayedCall(gameObject, destroyDelay, Cease));
     }
+    // ──────────────────────────  CEASE / DESTROY  ──────────────────────────
+    public void Cease()
+    {
+        if (charEmber)   OnPortalBurst      -= HandlePortalBurst;
+        if (portalEmber) OnPortalEmberBurst -= HandlePortalEmberBurst;
+        myTrackGen = -1;                // freeze any charEmber tracking
+        LeanTween.cancel(gameObject);
+        StopAllCoroutines();
+
+        // Stop emitting — existing particles live out their lifetimes
+        if (ps != null)       ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+        if (trailPS[0] != null) trailPS[0].Stop(true, ParticleSystemStopBehavior.StopEmitting);
+        if (trailPS[1] != null) trailPS[1].Stop(true, ParticleSystemStopBehavior.StopEmitting);
+
+        // Fade sprite out
+        if (sr != null)
+        {
+            float startAlpha = sr.color.a;
+            LeanTween.value(gameObject, startAlpha, 0f, 0.35f)
+                .setOnUpdate(a => { if (sr) { Color c = sr.color; c.a = a; sr.color = c; } });
+        }
+
+        // Destroy after the longest particle can reasonably finish
+        float grace = ps != null ? ps.main.startLifetime.constantMax : 2f;
+        Destroy(gameObject, Mathf.Max(grace, 0.5f));
+    }
+
     // ──────────────────────────  HELPERS  ──────────────────────────
     IEnumerator RandomFlicker()
     {

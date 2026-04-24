@@ -19,7 +19,6 @@ public class PortalScript : MonoBehaviour
     public int tsID = 0;
 
     CharacterScript CS;
-    [SerializeField] ParticleSystem FX;
 
     [SerializeField] float televal;
     [SerializeField] float televalMax;
@@ -61,9 +60,13 @@ public class PortalScript : MonoBehaviour
     [SerializeField] public Sprite[] outerRimSprites;
 
     [SerializeField] private Ember portalEmber;
+    [SerializeField] private Ember characterEmber;
 
     private float emitRate = 0f;
     private float emitTimer = 0f;
+    private float charEmitRate = 0f;
+    private float charEmitTimer = 0f;
+    private int emitRampTweenId = -1;
     
     private void Awake()
     {
@@ -97,7 +100,6 @@ public class PortalScript : MonoBehaviour
         GS.OnNewEra += ctx =>
         {
             IncrementAnim(ctx);
-            FX.GetComponent<Renderer>().material = GS.MatByEra(ctx);
         };
         SpawnManager.instance.OnNewDay += YesPortal;
         foreach (Transform t in slTs)
@@ -134,8 +136,25 @@ public class PortalScript : MonoBehaviour
         while (emitTimer <= 0f)
         {
             emitTimer += 1f;
-            var emb = Instantiate(portalEmber, Vector3.zero,Quaternion.identity, GS.FindParent(GS.Parent.fx));
-            emb.to = (Vector3)Random.insideUnitCircle.normalized * Random.Range(2f, 2f + 0.5f * emitRate);
+            var emb = Instantiate(portalEmber, Vector3.zero, Quaternion.identity, GS.FindParent(GS.Parent.fx));
+            float t = Mathf.Clamp01(emitRate / 20f);
+            emb.to = (Vector3)Random.insideUnitCircle.normalized * Random.Range(0.5f, 0.5f + 9f * t);
+            emb.flightTime = Mathf.Lerp(2f, 0.15f, t);
+        }
+        if (characterEmber)
+        {
+            charEmitTimer -= Time.deltaTime * charEmitRate;
+            while (charEmitTimer <= 0f)
+            {
+                charEmitTimer += 1f;
+                Transform charT = GS.CS();
+                if (!charT) break;
+                Vector3 target = charT.position;
+                Vector3 origin = target + (Vector3)Random.insideUnitCircle.normalized * Random.Range(0f, 0.25f);
+                var cemb = Instantiate(characterEmber, origin, Quaternion.identity, GS.FindParent(GS.Parent.fx));
+                cemb.to = target;
+                cemb.flightTime = 3f;
+            }
         }
         if (cd)
         {
@@ -197,10 +216,13 @@ public class PortalScript : MonoBehaviour
         if (CanPortal())
         {
             cd = false;
-            FX.Play();
+            charEmitRate = inDungeon ? 6f : 3f;
             televalMax = 2f;
             timer = televalMax;
             UpdateSlider(televalMax);
+            if (inDungeon)
+                emitRampTweenId = LeanTween.value(gameObject, 0f, 8f, televalMax)
+                    .setEaseInSine().setOnUpdate(x => emitRate = x).id;
             return true;
         }
         return false;
@@ -213,6 +235,8 @@ public class PortalScript : MonoBehaviour
             StartCoroutine(OrbManager.LerpDistortion(2f));
         }
         waitMaxSlide = true;
+        if (!inDungeon)
+            Ember.TriggerPortalBurst(GS.CS().position, Vector3.zero);
         Cancel();
         if (!inDungeon)
         {
@@ -223,7 +247,19 @@ public class PortalScript : MonoBehaviour
             stopBool = false;
             anim.SetBool("Morph", true);
             PortalTrigger.i.FadeIn();
-            StartCoroutine(ToDungeonSequence());
+
+            // Lock input and UI immediately so player can't move during burst
+            goingToDungeon = true;
+            IM.i.pi.Player.Disable();
+            UIManager.CloseAllUIs();
+
+            // Character bursts in same direction as VFX (away from base), then snaps to zero
+            Vector3 charPos = CS.transform.position;
+            Vector3 burstDir = charPos.sqrMagnitude > 0.0001f ? charPos.normalized : Vector3.right;
+            LeanTween.move(CS.gameObject, charPos + burstDir * 1.5f, 0.2f).setEase(LeanTweenType.easeOutExpo)
+                .setOnComplete(() =>
+                    LeanTween.move(CS.gameObject, Vector3.zero, 0.35f).setEase(LeanTweenType.easeInCubic)
+                        .setOnComplete(() => StartCoroutine(ToDungeonSequence())));
         }
         else
         {
@@ -266,8 +302,10 @@ public class PortalScript : MonoBehaviour
                 id = SpawnManager.instance.NewTS(3f, 5);
             }
             UIManager.i.cg.alpha = 0;
-            CameraScript.i.DistortLens(true, true, false);
-            CameraScript.Flip(Vector2.zero, 2.75f, 1f);
+            CameraScript.i.locked = false;
+            CameraScript.i.noMove = true;
+            CameraScript.i.DistortLens(true, true, true);
+            this.QA(() => CameraScript.Flip(Vector2.zero, 2.75f, 1f),1f);
             IM.i.StartCoroutine(IM.i.PS5InitColor(2));
             IM.i.BlockColourChangeForT(3f);
             IM.i.Rumble(4f, 3, true, true, 0.1f, 0.35f, 0.625f);
@@ -275,12 +313,15 @@ public class PortalScript : MonoBehaviour
         
         DM.i.activeRoom.ResetRoom();
         PortalTrigger.i.OffForT((20 - 4 * Mathf.Log(CS.attributes[2] + 1)) / 2);
+        
         yield return null;
         if (swapTeleIcon)
         {
             swapTeleIcon = false;
             YesPortal();
         }
+        Vector3 dungeonPos = GS.CS().position;
+        Ember.TriggerPortalBurst(dungeonPos, dungeonPos);
         PortalFR();
         yield return null;
         StartCoroutine(IQuarters(false));
@@ -311,16 +352,14 @@ public class PortalScript : MonoBehaviour
         {
             id = SpawnManager.instance.NewTS(3f, 5);
         }
-        goingToDungeon = true;
+        // goingToDungeon, Player.Disable, CloseAllUIs already done in Portal() before burst
         Transform t = GS.CS();
-        IM.i.pi.Player.Disable();
-        UIManager.CloseAllUIs();
-        t.LeanMove(Vector3.zero, 2f).setEaseInOutCirc();
-        LeanTween.value(gameObject,0f,20f,4f).setEaseInOutSine().setOnUpdate(x=>
+        // character already at Vector3.zero from burst — skip LeanMove
+        LeanTween.value(gameObject,0f,20f,1.2f).setEaseInSine().setOnUpdate(x=>
         {
             emitRate = x;
         });
-        yield return new WaitForSeconds(1.5f);
+        yield return new WaitForSeconds(1.2f);
         t.SetParent(ankorSR.transform);
         t.localScale = new Vector3(1f, 1f, 1f);
         anim.SetBool("Spin", true);
@@ -406,13 +445,16 @@ public class PortalScript : MonoBehaviour
             yield break;
         }
         yield return new WaitForSeconds(0.25f);
-        CameraScript.Flip(DM.i.activeRoom.safeSpawn.position, 6f, 2f);
+        Ember.TriggerPortalEmberBurst();
+        yield return new WaitForSeconds(0.5f);
+        CameraScript.Flip(DM.i.activeRoom.safeSpawn.position, 6f, 2f, reverse: true);
         yield return new WaitForSeconds(1.75f);
         IncrementQuarters(increment); 
     }
 
     public void PortalFR() //called in spin
     {
+        Ember.trackGen++;
         CharacterScript.CS.ls.Change(999f,-1);
         ResourceManager.instance.ChangeFuels(999f);
         GS.CS().SetParent(null);
@@ -478,7 +520,9 @@ public class PortalScript : MonoBehaviour
     public void Cancel()
     {
         clickSkip = false;
-        FX.Stop();
+        charEmitRate = 0f;
+        if (emitRampTweenId >= 0) { LeanTween.cancel(emitRampTweenId); emitRampTweenId = -1; }
+        emitRate = 0f;
         timer = -1f;
         cd = true;
     }

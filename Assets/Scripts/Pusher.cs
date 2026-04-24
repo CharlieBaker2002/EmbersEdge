@@ -7,7 +7,7 @@ public class Pusher : MonoBehaviour
     public float duration = 1f;
     public float force = 1f;
     private Rigidbody2D rb;
-    private List<int> cols = new List<int>();
+    private List<EntityId> cols = new List<EntityId>();
 
     private void Awake()
     {
@@ -17,11 +17,11 @@ public class Pusher : MonoBehaviour
     {
         if (collision.CompareTag(GS.EnemyTag(tag)))
         {
-            if (cols.Contains(collision.GetInstanceID()))
+            if (cols.Contains(collision.GetEntityId()))
             {
                 return;
             }
-            cols.Add(collision.GetInstanceID());
+            cols.Add(collision.GetEntityId());
             if (collision.GetComponentInParent<ActionScript>() != null)
             {
                 collision.GetComponentInParent<ActionScript>().AddPush(duration, true, rb.linearVelocity.normalized * force);
@@ -41,11 +41,11 @@ public class Pusher : MonoBehaviour
         if (collisionP.collider.CompareTag(GS.EnemyTag(tag)))
         {
             var collision = collisionP.collider;
-            if (cols.Contains(collision.GetInstanceID()))
+            if (cols.Contains(collision.GetEntityId()))
             {
                 return;
             }
-            cols.Add(collision.GetInstanceID());
+            cols.Add(collision.GetEntityId());
             if (collision.GetComponentInParent<ActionScript>() != null)
             {
                 collision.GetComponentInParent<ActionScript>().AddPush(duration, true, rb.linearVelocity.normalized * force);

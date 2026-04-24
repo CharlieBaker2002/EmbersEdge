@@ -16,7 +16,7 @@ public class CameraScript : MonoBehaviour
     private Vector2 direction;
     private InputAction move;
     private CharacterScript CS;
-    private bool noMove = false;
+    public bool noMove = false;
     public static CameraScript i;
     private Coroutine initzoom;
     [SerializeField] Volume v;
@@ -36,10 +36,18 @@ public class CameraScript : MonoBehaviour
     public const float dungDistort = 0.2f;
 
     Coroutine distort = null;
+    private bool distorting = false;
 
     public void SetZeroScale()
     {
         ld.scale.Override(0f);
+    }
+
+    public void ResetLensToDungeonState()
+    {
+        if (distort != null) { StopCoroutine(distort); distort = null; }
+        ld.intensity.Override(dungDistort);
+        ld.scale.Override(1f);
     }
 
     private void Awake()
@@ -47,11 +55,10 @@ public class CameraScript : MonoBehaviour
         i = this;
         cam = GetComponent<Camera>();
         v.sharedProfile.TryGet(out ld);
+        v.priority = 1000f;
         ld.intensity.Override(0f);
         ld.scale.Override(1f);
         cam.ResetAspect();
-       
-      
     }
 
     private IEnumerator Start()
@@ -82,6 +89,7 @@ public class CameraScript : MonoBehaviour
 
     public static void QuickLeanDistort(float intensity, float scale)
     {
+        if (i.distorting) return;
         LeanTween.value(i.gameObject, i.ld.intensity.value, intensity, 2f).setOnUpdate(x => i.ld.intensity.Override(x)).setEaseInOutQuad();
         LeanTween.value(i.gameObject, i.ld.scale.value, scale, 2f).setOnUpdate(x => i.ld.scale.Override(x)).setEaseInOutQuad();
     }
@@ -101,35 +109,39 @@ public class CameraScript : MonoBehaviour
     /// <summary>
     /// Full time is 2.6x duration
     /// </summary>
-    public static void Flip(Vector2 p, float scale = 10, float duration = 2f)
+    public static void Flip(Vector2 p, float scale = 10, float duration = 2f, bool reverse = false)
     {
         i.locked = false;
         i.noMove = true;
-        i.StartCoroutine(i.FlipI(p, scale, duration));
+        i.StartCoroutine(i.FlipI(p, scale, duration, reverse));
     }
 
-    IEnumerator FlipI(Vector2 p, float scaleUp, float duration)
+    IEnumerator FlipI(Vector2 p, float scaleUp, float duration, bool reverse = false)
     {
+        float dir = reverse ? -1f : 1f;
         for (float i = 0f; i < duration; i += Time.deltaTime)
         {
             cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, correctScale + scaleUp, Time.deltaTime * 6f/duration * i);
-            transform.rotation = Quaternion.Euler(i * i * 90f / Mathf.Pow(duration, 2), 0f, 0f);
+            //transform.rotation = Quaternion.Euler(dir * i * i * 90f / Mathf.Pow(duration, 2), 0f, dir * Mathf.SmoothStep(0f,180f,i/duration));
+            transform.rotation = Quaternion.Euler(dir * i * i * 90f / Mathf.Pow(duration, 2), 0f, 0f);
             yield return null;
         }
         transform.position = new Vector3(p.x, p.y, -10f);
         cam.orthographicSize = correctScale + scaleUp;
         for (float i = duration; i > duration * 0.4f; i -= Time.deltaTime)
         {
-            CameraScript.i.transform.rotation = Quaternion.Euler(i * i * 90f / Mathf.Pow(duration, 2), 0f, 0f);
+            //CameraScript.i.transform.rotation = Quaternion.Euler(dir * i * i * 90f / Mathf.Pow(duration, 2), 0f, dir * i * i * 90f / Mathf.Pow(duration, 2));
+            CameraScript.i.transform.rotation = Quaternion.Euler(-dir * i * i * 90f / Mathf.Pow(duration, 2), 0f, 0f);
             yield return null;
         }
         for (float i = duration * 0.4f; i > 0f; i -= Time.deltaTime)
         {
-            CameraScript.i.transform.rotation = Quaternion.Euler(i * i * 90f / Mathf.Pow(duration, 2), 0f, 0f);
+            //CameraScript.i.transform.rotation = Quaternion.Euler(dir * i * i * 90f / Mathf.Pow(duration, 2), 0f, dir * i * i * 90f / Mathf.Pow(duration, 2));
+            CameraScript.i.transform.rotation = Quaternion.Euler(-dir * i * i * 90f / Mathf.Pow(duration, 2), 0f,0f);
             cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, CameraScript.i.correctScale, Time.deltaTime * 6f/duration * (duration - (i + duration * 0.6f)));
             yield return null;
         }
-        DistortLens(false, false,true);
+        DistortLens(false, false, true);
         for (float i = duration * 0.6f; i > 0f; i -= Time.deltaTime)
         {
             cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, CameraScript.i.correctScale, Time.deltaTime * 6f/duration * (duration - i));
@@ -146,6 +158,7 @@ public class CameraScript : MonoBehaviour
 
     public void DistortLens(bool intoDistort, bool quick = false, bool fade = false, bool special = false)
     {
+        distorting = false;
         LeanTween.cancel(gameObject);
         if(distort != null)
         {
@@ -182,6 +195,7 @@ public class CameraScript : MonoBehaviour
 
     IEnumerator Distort(bool intoDistort, bool quick, bool fade = false)
     {
+        distorting = true;
         bool goingToDungeon = PortalScript.goingToDungeon;
         bool UId = false;
         if (RefreshManager.i.STARTSEQUENCE)
@@ -225,6 +239,7 @@ public class CameraScript : MonoBehaviour
             }
             yield return null;
         }
+        distorting = false;
         if (intoDistort) yield break;
         ld.intensity.Override(!goingToDungeon ? 0f : 0.2f);
         ld.scale.Override(1f);

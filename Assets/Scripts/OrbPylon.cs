@@ -14,6 +14,7 @@ public class OrbPylon : Building
     public float refreshRate = 0.15f;
     [SerializeField] private Sprite[] sprs;
     float t = 1f;
+    [SerializeField] private Rotator rot;
 
     public override void Start()
     {
@@ -134,6 +135,7 @@ public class OrbPylon : Building
                 {
                     if (mag.orbs.Count > Mathf.Round(mag.capacity / 2))
                     {
+                        Spin();
                         mag.SendOrb(m, false, false);
                         yield return new WaitForSeconds(refreshRate);
                      
@@ -141,6 +143,11 @@ public class OrbPylon : Building
                 }
             }
         }
+    }
+
+    void Spin()
+    {
+        rot.omega += (orbType % 2 == 0 ? 1f : -1f) * 0.25f * (1 + orbType) * (1+orbType);
     }
 
 
@@ -158,6 +165,7 @@ public class OrbPylon : Building
                 mag.demand += Mathf.Max(0, m.capacity - m.n - 0.5f * mag.n) * TypeCoef();
                 if (mag.orbs.Count > 0 && m.n < m.capacity)
                 {
+                    Spin();
                     mag.SendOrb(m, false, true);
                     yield return new WaitForSeconds(refreshRate);
                 }
@@ -165,8 +173,9 @@ public class OrbPylon : Building
         }
     }
 
-    void Update() 
+    void Update()
     {
+        rot.omega = Mathf.Lerp(rot.omega, 0f, Time.deltaTime);
         if (magnets.Count == 0 || t > 0f)
         {
             t -= Time.deltaTime;
@@ -191,6 +200,7 @@ public class OrbPylon : Building
                     mag.demand = Mathf.Max(mag.demand, Mathf.Min(m.demand - 2, Mathf.FloorToInt(0.7f * m.demand)));
                     if (m.n < m.capacity)
                     {
+                        Spin();
                         mag.SendOrb(m, true, false);
                     }
                 }
@@ -198,11 +208,13 @@ public class OrbPylon : Building
                 {
                     if (mag.n > m.n + 1 && m.n < m.capacity)
                     {
+                        Spin();
                         mag.SendOrb(m, true, false);
                     }
                 }
                 if (m.n < mag.n && m.n < m.capacity && mag.n > mag.capacity) //if over capacity (throne mag) try make all local pylons even
                 {
+                    Spin();
                     mag.SendOrb(m, true, false);
                 }
             }

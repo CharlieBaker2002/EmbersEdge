@@ -7,7 +7,7 @@ public class Teleporter : MonoBehaviour
     public bool charOnly = false;
     public bool invertVel = false;
     public Transform spawnPoint;
-    private List<int> IDs = new List<int>();
+    private List<EntityId> IDs = new List<EntityId>();
     public Teleporter oT;
     public bool redirectVel = false;
 
@@ -21,11 +21,11 @@ public class Teleporter : MonoBehaviour
         {
             if (collision.attachedRigidbody != null)
             {
-                if (!IDs.Contains(collision.attachedRigidbody.GetInstanceID()))
+                if (!IDs.Contains(collision.attachedRigidbody.GetEntityId()))
                 {
                     if (collision.attachedRigidbody.GetComponent<LifeScript>() != null)
                     {
-                        oT.IDs.Add(collision.attachedRigidbody.GetInstanceID());
+                        oT.IDs.Add(collision.attachedRigidbody.GetEntityId());
                         collision.transform.position = oT.spawnPoint.position;
                         if (oT.redirectVel)
                         {
@@ -52,9 +52,9 @@ public class Teleporter : MonoBehaviour
         {
             if (collision.attachedRigidbody != null)
             {
-                if (IDs.Contains(collision.attachedRigidbody.GetInstanceID()))
+                if (IDs.Contains(collision.attachedRigidbody.GetEntityId()))
                 {
-                    IDs.Remove(collision.attachedRigidbody.GetInstanceID());
+                    IDs.Remove(collision.attachedRigidbody.GetEntityId());
                 }
             }
         }

@@ -136,7 +136,7 @@ public class HealingPlatform : Building
         // Attempt to find something to heal in range
         // (One simple way is to do an Overlap. Or use OnTriggerStay2D from your original code, but here we do an explicit check.)
         var hits = new Collider2D[10];
-        Physics2D.OverlapCollider(platformCollider, new ContactFilter2D().NoFilter(), hits);
+        Physics2D.OverlapCollider(platformCollider, ContactFilter2D.noFilter, hits);
 
         // Grab the first valid Unit that has missing HP
         Unit targetUnit = null;

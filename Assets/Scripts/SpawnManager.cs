@@ -96,7 +96,7 @@ public class SpawnManager : MonoBehaviour
             OrbScript.tot--;
         }, orb =>
         {
-            Debug.Log("attempted destruction of orb");
+            if (!Application.isPlaying || !orb) return;
             Destroy(orb);
             OrbScript.tot--;
         });
@@ -116,7 +116,7 @@ public class SpawnManager : MonoBehaviour
             OrbScript.tot--;
         }, orb =>
         {
-            Debug.Log("attempted destruction of orb");
+            if (!Application.isPlaying || !orb) return;
             Destroy(orb);
             OrbScript.tot--;
         });
@@ -136,7 +136,7 @@ public class SpawnManager : MonoBehaviour
             OrbScript.tot--;
         }, orb =>
         {
-            Debug.Log("attempted destruction of orb");
+            if (!Application.isPlaying || !orb) return;
             Destroy(orb);
             OrbScript.tot--;
         });
@@ -156,7 +156,7 @@ public class SpawnManager : MonoBehaviour
             OrbScript.tot--;
         }, orb =>
         {
-            Debug.Log("attempted destruction of orb");
+            if (!Application.isPlaying || !orb) return;
             Destroy(orb);
             OrbScript.tot--;
         });

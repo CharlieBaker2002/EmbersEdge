@@ -13,7 +13,7 @@ public class StatusManager : MonoBehaviour
     [SerializeField] private Transform statusParent;
 
     public static List<Unit> staticUnits = new List<Unit>();
-    static Dictionary<int, List<UnitSample>> staticSamples = new Dictionary<int, List<UnitSample>>(); //This is necessary for the way status onDisable is used to deinitialise the static unit (rather than adding an IonDeath or clunky lifescript hack)
+    static Dictionary<EntityId, List<UnitSample>> staticSamples = new Dictionary<EntityId, List<UnitSample>>(); //This is necessary for the way status onDisable is used to deinitialise the static unit (rather than adding an IonDeath or clunky lifescript hack)
 
     public static bool lightning = false;
     private int count;
@@ -41,7 +41,7 @@ public class StatusManager : MonoBehaviour
     [SerializeField] private Follower charmFX;
 
     private static List<(LifeScript,GameObject)> dematerialsing = new List<(LifeScript,GameObject)>();
-    private static List<(int, GameObject)> charmed;
+    private static List<(EntityId, GameObject)> charmed;
 
     [SerializeField] private Follower leechFX;
     private static List<(Unit, GameObject, LineRenderer)> leeched;
@@ -57,14 +57,14 @@ public class StatusManager : MonoBehaviour
         Status.borderSprites = borderSprites;
         dematerialsing = new List<(LifeScript,GameObject)>();
         leeched = new List<(Unit, GameObject,LineRenderer)>();
-        charmed = new List<(int, GameObject)>();
+        charmed = new List<(EntityId, GameObject)>();
         staticUnits = new List<Unit>();
         statusPool = new ObjectPool<Status>(() => Instantiate(statusPrefab,statusParent), status =>
         {
             status.ind = -1; 
             status.gameObject.SetActive(true);
             status.enabled = true;
-        }, status => {status.gameObject.SetActive(false);}, status => {Destroy(status.gameObject);},true,999);
+        }, status => { if (status) status.gameObject.SetActive(false); }, status => { if (status) Destroy(status.gameObject); },true,999);
     }
 
     public void StartLeech(Unit u)
@@ -513,7 +513,7 @@ public class StatusManager : MonoBehaviour
        
         foreach (Unit u in staticUnits)
         {
-            var buf = u.GetInstanceID();
+            var buf = u.GetEntityId();
             if (u.staticEffectActivated)
             {
                 if (staticSamples[buf].Count > 1)
@@ -540,7 +540,7 @@ public class StatusManager : MonoBehaviour
         {
             if (u.staticEffectActivated)
             {
-                var buf = u.GetInstanceID();
+                var buf = u.GetEntityId();
                 var transform1 = u.transform;
                 transform1.position = staticSamples[buf][0].pos;
                 transform1.rotation = staticSamples[buf][0].rot;
@@ -552,26 +552,26 @@ public class StatusManager : MonoBehaviour
     public static void AddStaticUnit(Unit u)
     {
         staticUnits.Add(u);
-        staticSamples.Add(u.GetInstanceID(), new List<UnitSample>());
-        staticSamples[u.GetInstanceID()].Add(new UnitSample(u));
+        staticSamples.Add(u.GetEntityId(), new List<UnitSample>());
+        staticSamples[u.GetEntityId()].Add(new UnitSample(u));
     }
 
     public static void RemoveStaticUnit(Unit u)
     {
         staticUnits.Remove(u);
-        staticSamples.Remove(u.GetInstanceID());
+        staticSamples.Remove(u.GetEntityId());
     }
 
     public void ConvertFX(Unit u)
     {
         Follower f = Instantiate(charmFX, u.transform.position, Quaternion.Euler(90f,45f,0f), u.transform);
         f.t = u.stati.First(x => x.ind == 16).transform;
-        charmed.Add((u.GetInstanceID(), f.gameObject));
+        charmed.Add((u.GetEntityId(), f.gameObject));
     }
 
     public void DeConvertFX(Unit u)
     {
-        int inst = u.GetInstanceID();
+        EntityId inst = u.GetEntityId();
         for(int i = 0; i < charmed.Count; i++)
         {
             if (charmed[i].Item1 == inst)

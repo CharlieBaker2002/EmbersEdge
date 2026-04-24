@@ -26,9 +26,9 @@ public class ActionScript : MonoBehaviour
     [HideInInspector]
     public float speedCoef = 1f;
 
-    private Dictionary<int, (Vector2,Vector2,bool)> wallNormals = new(); //contact 1, contact 2, dontDeleteBool
-    private Dictionary<int, float> contactIDs = new Dictionary<int, float>();
-    private List<(int, float)> recentlyHit = new();
+    private Dictionary<EntityId, (Vector2,Vector2,bool)> wallNormals = new(); //contact 1, contact 2, dontDeleteBool
+    private Dictionary<EntityId, float> contactIDs = new Dictionary<EntityId, float>();
+    private List<(EntityId, float)> recentlyHit = new();
     [HideInInspector]
     public Vector3 force = new Vector2(0, 0);
     [HideInInspector]
@@ -88,19 +88,20 @@ public class ActionScript : MonoBehaviour
         Vector2 vel = rb.linearVelocity + (Vector2)force * Time.fixedDeltaTime / mass;
         if (!PS)
         {
-            int id = -1;
             while (true)
             {
-                id = -1;
+                EntityId id = default;
+                bool found = false;
                 foreach (var idbuffer in wallNormals.Keys)
                 {
                     if (wallNormals[idbuffer].Item3 == false)
                     {
                         id = idbuffer;
+                        found = true;
                         break;
                     }
                 }
-                if (id != -1)
+                if (found)
                 {
                     wallNormals.Remove(id);
                     continue;
@@ -115,8 +116,8 @@ public class ActionScript : MonoBehaviour
                     vel = RemoveComponent(vel, v.Item2);
                 }
             }
-            List<int> keys = new List<int>(wallNormals.Keys);
-            foreach(int key in keys)
+            List<EntityId> keys = new List<EntityId>(wallNormals.Keys);
+            foreach(EntityId key in keys)
             {
                 wallNormals[key] = (wallNormals[key].Item1, wallNormals[key].Item2,false);
             }
@@ -268,10 +269,10 @@ public class ActionScript : MonoBehaviour
                 {
                     if (PS == null && oAS.PS == null && !oAS.transform.IsChildOf(transform) && !transform.IsChildOf(oAS.transform))
                     {
-                        int key = collision.rigidbody.GetInstanceID();
+                        EntityId key = collision.rigidbody.GetEntityId();
                         if (!contactIDs.ContainsKey(key))
                         {
-                            contactIDs.Add(collision.rigidbody.GetInstanceID(), oAS.mass * oAS.mass);
+                            contactIDs.Add(collision.rigidbody.GetEntityId(), oAS.mass * oAS.mass);
                         }
                     }
                 }
@@ -297,7 +298,7 @@ public class ActionScript : MonoBehaviour
                     }
                     if (PS == null && oAS.PS == null && !wall) //DAMAGING OTHER BODY
                     {
-                        int oASID = oAS.GetInstanceID();
+                        EntityId oASID = oAS.GetEntityId();
                         bool damage = true;
                         for (int i = 0; i < recentlyHit.Count; i++)
                         {
@@ -374,7 +375,7 @@ public class ActionScript : MonoBehaviour
 
     private void AddWall(Collision2D coli)
     {
-        int ID = coli.collider.GetInstanceID();
+        EntityId ID = coli.collider.GetEntityId();
         if (!wallNormals.ContainsKey(ID))
         {
             if(coli.contacts.Length == 1)
@@ -414,7 +415,7 @@ public class ActionScript : MonoBehaviour
         }
         if(PS == null && collision.rigidbody != null)
         {
-            var id = collision.rigidbody.GetInstanceID();
+            var id = collision.rigidbody.GetEntityId();
             if (contactIDs.ContainsKey(id))
             {
                 TryAddForce(3 * contactIDs[id] * collision.GetContact(0).normal, false); 
@@ -422,7 +423,7 @@ public class ActionScript : MonoBehaviour
             }
             else 
             {
-                id = collision.collider.GetInstanceID();
+                id = collision.collider.GetEntityId();
                 if (wallNormals.ContainsKey(id))
                 {
                     if(collision.contacts.Length == 1)
@@ -455,14 +456,14 @@ public class ActionScript : MonoBehaviour
     {
         if (PS == null && collision.rigidbody!=null)
         {
-            var id = collision.rigidbody.GetInstanceID();
+            var id = collision.rigidbody.GetEntityId();
             if (contactIDs.ContainsKey(id))
             {
                 contactIDs.Remove(id);
             }
             //else 
             //{
-            //    id = collision.collider.GetInstanceID(); //removal has been taken of (and made more robust) through addition of third boolean tuple parameter in wallNormals
+            //    id = collision.collider.GetEntityId(); //removal has been taken of (and made more robust) through addition of third boolean tuple parameter in wallNormals
             //    if (wallNormals.ContainsKey(id))
             //    {
             //        wallNormals.Remove(id);

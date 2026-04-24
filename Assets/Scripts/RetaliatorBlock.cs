@@ -7,7 +7,7 @@ public class RetaliatorBlock : Part
 {
     [SerializeField] private Retaliator[] retals;
     private bool any = false;
-    private List<int> ids = new List<int>();
+    private List<EntityId> ids = new List<EntityId>();
     private List<float> ts = new List<float>();
     
     private void OnTriggerEnter2D(Collider2D other)
@@ -15,12 +15,12 @@ public class RetaliatorBlock : Part
         if (!any) return;
         retals.FirstOrDefault(x=>x.timer < 0f)?.OnTriggerEnter2D(other);
         ts.Add(0f);
-        ids.Add(other.GetInstanceID());
+        ids.Add(other.GetEntityId());
     }
 
     private void OnTriggerStay2D(Collider2D other)
     {
-        int ind = ids.IndexOf(other.GetInstanceID());
+        int ind = ids.IndexOf(other.GetEntityId());
         if (ind == -1) return;
         ts[ind] += 2*Time.deltaTime;
         if (ts[ind] < 1f) return;
@@ -30,7 +30,7 @@ public class RetaliatorBlock : Part
 
     private void OnTriggerExit2D(Collider2D other)
     {
-        int ind = ids.IndexOf(other.GetInstanceID());
+        int ind = ids.IndexOf(other.GetEntityId());
         if (ind == -1) return;
         ids.RemoveAt(ind);
         ts.RemoveAt(ind);

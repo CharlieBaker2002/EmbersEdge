@@ -18,3 +18,4 @@ EditorBuildSettings:
     path: Assets/Scenes/CoreCut.unity
     guid: e7948e5063f93405aad6659ae7954860
   m_configObjects: {}
+  m_UseUCBPForAssetBundles: 0

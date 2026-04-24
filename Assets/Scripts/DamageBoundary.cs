@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class DamageBoundary : MonoBehaviour
 {
-    private Dictionary<int,LifeScript> enemies = new();
+    private Dictionary<EntityId,LifeScript> enemies = new();
     [Tooltip("Damage, not change, so positive is damage")]
     public float damage;
     public int damageType;
@@ -82,8 +82,8 @@ public class DamageBoundary : MonoBehaviour
                         {
                             ls.ChangeOverTime(-damageOverT, damageOverTtime, damageType);
                         }
-                        enemies.Add(coli.attachedRigidbody.GetInstanceID(), ls);
-                        StartCoroutine(RemoveAfterT(coli.attachedRigidbody.GetInstanceID()));
+                        enemies.Add(coli.attachedRigidbody.GetEntityId(), ls);
+                        StartCoroutine(RemoveAfterT(coli.attachedRigidbody.GetEntityId()));
                     }
                 }
             }
@@ -125,8 +125,8 @@ public class DamageBoundary : MonoBehaviour
                         {
                             ls.ChangeOverTime(-damageOverT, damageOverTtime, damageType);
                         }
-                        enemies.Add(coli.attachedRigidbody.GetInstanceID(), ls);
-                        StartCoroutine(RemoveAfterT(coli.attachedRigidbody.GetInstanceID()));
+                        enemies.Add(coli.attachedRigidbody.GetEntityId(), ls);
+                        StartCoroutine(RemoveAfterT(coli.attachedRigidbody.GetEntityId()));
                     }
                 }
             }
@@ -145,11 +145,11 @@ public class DamageBoundary : MonoBehaviour
             {
                 if (RefreshManager.twentyFixFrame)
                 {
-                    enemies[c.attachedRigidbody.GetInstanceID()].Change(-dps * Time.fixedDeltaTime, damageType, false, false, false,false,true);
+                    enemies[c.attachedRigidbody.GetEntityId()].Change(-dps * Time.fixedDeltaTime, damageType, false, false, false,false,true);
                 }
                 else
                 {
-                    enemies[c.attachedRigidbody.GetInstanceID()].Change(-dps * Time.fixedDeltaTime, damageType, false, false, false,false,false);
+                    enemies[c.attachedRigidbody.GetEntityId()].Change(-dps * Time.fixedDeltaTime, damageType, false, false, false,false,false);
                 }
             }
         }
@@ -160,7 +160,7 @@ public class DamageBoundary : MonoBehaviour
     }
    
 
-    IEnumerator RemoveAfterT(int id)
+    IEnumerator RemoveAfterT(EntityId id)
     {
         yield return new WaitForSeconds(refreshCollideTimer);
         if (enemies.ContainsKey(id))
@@ -173,7 +173,7 @@ public class DamageBoundary : MonoBehaviour
     {
         if(c.attachedRigidbody != null)
         {
-            if (enemies.ContainsKey(c.attachedRigidbody.GetInstanceID()))
+            if (enemies.ContainsKey(c.attachedRigidbody.GetEntityId()))
             {
                 return true;
             }
@@ -185,7 +185,7 @@ public class DamageBoundary : MonoBehaviour
     {
         if (c.attachedRigidbody != null)
         {
-            if (!enemies.ContainsKey(c.attachedRigidbody.GetInstanceID()))
+            if (!enemies.ContainsKey(c.attachedRigidbody.GetEntityId()))
             {
                 return true;
             }

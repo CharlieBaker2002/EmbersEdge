@@ -10,13 +10,13 @@ namespace ColorfulHierarchy
         public static readonly Color DEFAULT_COLOR_HIERARCHY_SELECTED = new Color(0.243f, 0.4901f, 0.9058f, 1f);
         static ColorfulHierarchyManager()
         {
-            EditorApplication.hierarchyWindowItemOnGUI -= HierarchyHighlight_OnGUI;
-            EditorApplication.hierarchyWindowItemOnGUI += HierarchyHighlight_OnGUI;
+            EditorApplication.hierarchyWindowItemByEntityIdOnGUI -= HierarchyHighlight_OnGUI;
+            EditorApplication.hierarchyWindowItemByEntityIdOnGUI += HierarchyHighlight_OnGUI;
         }
 
-        private static void HierarchyHighlight_OnGUI(int inSelectionID, Rect inSelectionRect)
+        private static void HierarchyHighlight_OnGUI(EntityId inSelectionID, Rect inSelectionRect)
         {
-            GameObject GO_Label = EditorUtility.InstanceIDToObject(inSelectionID) as GameObject;
+            GameObject GO_Label = EditorUtility.EntityIdToObject(inSelectionID) as GameObject;
 
             if (GO_Label != null)
             {
@@ -25,7 +25,7 @@ namespace ColorfulHierarchy
                 if (Label != null && Event.current.type == EventType.Repaint)
                 {
                     #region Style
-                    bool ObjectIsSelected = Selection.instanceIDs.Contains(inSelectionID);
+                    bool ObjectIsSelected = Selection.entityIds.Contains(inSelectionID);
                     Color BKCol = Label.Background_Color;
                     Color TextCol = Label.Text_Color;
                     FontStyle TextStyle = Label.TextStyle;
