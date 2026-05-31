@@ -10,8 +10,6 @@ GameObject:
   m_Component:
   - component: {fileID: 6747150846021745428}
   - component: {fileID: 2659970683800356829}
-  - component: {fileID: 2322315983662271389}
-  - component: {fileID: 414252195008763445}
   - component: {fileID: 7781985896240849372}
   m_Layer: 7
   m_Name: Pelter
@@ -95,45 +93,6 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!95 &2322315983662271389
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2988240046395830169}
-  m_Enabled: 0
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 2061efd9c04c341599f868368705d40a, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
---- !u!114 &414252195008763445
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2988240046395830169}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4fac86eb96904416c86c35ecacae9c61, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  names:
-  - Shoot
-  - FastRefill
-  - ShootBig
-  mono: {fileID: 7187010004958310239}
 --- !u!114 &7781985896240849372
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -469,7 +428,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   buildingBehaviours:
   - {fileID: 5797088041366126530}
-  - {fileID: 2322315983662271389}
+  - {fileID: 0}
   - {fileID: 0}
   sr: {fileID: 2659970683800356829}
   groundEdit: {fileID: 7271814261387001144}
@@ -480,7 +439,7 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 461a7fe19ae644b2f9039ce7ab906606, type: 3}
   size: {x: 1, y: 1}
   physic: {fileID: 2877277909168904401}
-  builtBlasts: 4
+  builtBlasts: 1
   rebuildCost: 05000000000000000000000000000000
   icons: []
   prevN: 0
@@ -490,14 +449,64 @@ MonoBehaviour:
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
   f: {fileID: 5797088041366126530}
-  anim: {fileID: 2322315983662271389}
   bullets:
   - {fileID: 6648518190254958327, guid: 0340bb906388949c8aac4ed0534671be, type: 3}
   - {fileID: 6648518190254958327, guid: 4120c3b53702c4ba98af81feaa9411ae, type: 3}
   shootPoint: {fileID: 7056777285920801783}
   cannon: {fileID: 6747150846021745428}
   anchorSR: {fileID: 6329920215015198537}
-  b: {fileID: 0}
+  frames:
+  - {fileID: 1582402437, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -48912261, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 1796420904, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 748110283, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 676500771, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 723507111, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 759609003, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 82040065, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -442910982, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 2083583154, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -1307566041, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 1786714366, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 1968361376, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 480364820, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -1699413974, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -1874039597, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 1643768215, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -1371880278, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 494404564, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 1525937307, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -755796943, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -624424415, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -1905165056, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -884292989, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 731465121, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 262348607, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -2142850170, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -1681963846, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -12576446, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -564578169, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 517941954, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -725776455, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 14093450, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -2111929112, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 1226241587, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 1890544516, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 1704928687, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -577282714, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -1670412089, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 1343911942, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -1876500396, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 61094404, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 228380651, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: -292435847, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 1210641960, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 1443994071, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  - {fileID: 1381075942, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
+  shootFrameTime: 0.033333335
+  reloadFrameTime: 0.33333334
+  fastReloadFrameTime: 0.06666667
+  energyPerBullet: 1
 --- !u!61 &4036957657726916120
 BoxCollider2D:
   m_ObjectHideFlags: 0

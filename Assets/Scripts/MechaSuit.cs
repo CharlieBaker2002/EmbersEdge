@@ -9,7 +9,7 @@ public class MechaSuit : MonoBehaviour
 {
     public List<WeaponScript> weapons = new();
     public List<Part> parts = new();
-    public static MechaSuit m; //NEVER SET TO THE MECHAPERSON
+    public static MechaSuit m; 
     public static List<(string, int)> prevs = new();
     public static int abilitiesLeft = 3;
     public static int boostsLeft = 3;
@@ -25,6 +25,8 @@ public class MechaSuit : MonoBehaviour
     public Transform followersParent;
     public Transform poweredParent;
     public Transform coreParent;
+
+    public GameObject[] rings;
 
     public GameObject TabText;
 

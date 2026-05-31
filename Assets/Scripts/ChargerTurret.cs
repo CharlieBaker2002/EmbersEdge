@@ -24,8 +24,10 @@ public class ChargerTurret : Building
     [SerializeField] Sprite tileSprite;
     [SerializeField] private Sprite morphSprite;
     [SerializeField] private Sprite upgradeBaseSprite;
-    [SerializeField] private Battery b;
-    private float energyCost = 0.2f;
+    [Tooltip("Maximum locally-buffered energy. Bursts drain it; a background coroutine refills via Power.DrawEnergy at the adjacent pads' combined drawRate.")]
+    [SerializeField] private float bufferMax = 1f;
+    private float energyBuffer;
+    private Coroutine refillCo;
 
     private void Update()
     {
@@ -40,15 +42,47 @@ public class ChargerTurret : Building
             canActivate = true;
         }
     }
-    
+
     protected override void BEnable()
     {
         find.engaged = true;
+        if (refillCo == null) refillCo = StartCoroutine(RefillBuffer());
     }
 
     protected override void BDisable()
     {
         find.engaged = false;
+        if (refillCo != null) { StopCoroutine(refillCo); refillCo = null; }
+    }
+
+    IEnumerator RefillBuffer()
+    {
+        while (true)
+        {
+            float needed = bufferMax - energyBuffer;
+            if (needed > 1e-4f && Power.Energy > 0f)
+            {
+                // DrawEnergy yields each frame at the rate cap; we add to the buffer in lockstep.
+                float startRemaining = needed;
+                float drawn = 0f;
+                while (drawn < startRemaining - 1e-4f && energyBuffer < bufferMax)
+                {
+                    float rate = Power.DrawRate;
+                    float available = Power.Energy;
+                    float step = Mathf.Min(startRemaining - drawn, rate * Time.deltaTime, available, bufferMax - energyBuffer);
+                    if (step > 0f && Power.Use(step))
+                    {
+                        drawn += step;
+                        energyBuffer += step;
+                    }
+                    yield return null;
+                }
+            }
+            else
+            {
+                yield return null;
+            }
+        }
     }
 
     public override void OnDeath()
@@ -74,23 +108,23 @@ public class ChargerTurret : Building
         int x = 0;
         for(float i = 0; i < Mathf.RoundToInt(Random.Range(n * 0.75f, n)); i++)
         {
-            if (b.energy < energyCost)
-            {
-                yield break;
-            }
+            float cost = level == 1 ? 0.01f : 0.015f;
+            // Consume from the buffer the background RefillBuffer coroutine maintains —
+            // attack loop never waits on Power directly, so it can keep firing while
+            // batteries refill in parallel.
+            if (energyBuffer < cost) yield break;
+            energyBuffer -= cost;
             x++;
             if(level == 1)
             {
                 GS.NewP(p, transform, tag, 1.8f * (1.2f - (i / n)), 7 * (1 - (i / n)), 3f).transform.localScale =
                     Vector3.one * Random.Range(0.85f, 1.15f);
-                b.Use(0.01f);
                 yield return new WaitForSeconds(interPWait);
             }
             else
             {
                 GS.NewP(p, transform, tag, 2.4f * (1.2f - (i / n)), 24 * (1 - (i / n)), 6f).transform.localScale =
                     Vector3.one * Random.Range(1f, 1.3334f);
-                b.Use(0.015f);
                 yield return new WaitForSeconds(interPWait);
             }
         }
@@ -121,7 +155,7 @@ public class ChargerTurret : Building
         {
             T = x;
         }
-        if (T != null && b.energy > 0.015f && canActivate)
+        if (T != null && energyBuffer > 0.015f && canActivate)
         {
             anim.SetBool(Charge, true);
             canActivate = false;

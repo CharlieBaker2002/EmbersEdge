@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 2018161822163578109}
   - component: {fileID: 3145056401604892688}
   - component: {fileID: 4842455334063485095}
-  - component: {fileID: 5424745834416745017}
   m_Layer: 7
   m_Name: Pulse Generator
   m_TagString: Allies
@@ -38,6 +37,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &2018161822163578109
 SpriteRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -53,6 +53,11 @@ SpriteRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -74,9 +79,11 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -1090980157
   m_SortingLayer: 2
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_Sprite: {fileID: -40674267, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -86,7 +93,6 @@ SpriteRenderer:
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
-  m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!114 &3145056401604892688
 MonoBehaviour:
@@ -101,7 +107,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   buildingBehaviours:
-  - {fileID: 5424745834416745017}
+  - {fileID: 0}
   sr: {fileID: 2018161822163578109}
   groundEdit: {fileID: 0}
   tiles: []
@@ -120,7 +126,6 @@ MonoBehaviour:
   builtYet: 0
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
-  b: {fileID: 5424745834416745017}
   sprs:
   - {fileID: -40674267, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
   - {fileID: -1791213235, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
@@ -185,21 +190,6 @@ MonoBehaviour:
   demand: 0
   init: 1
   initialMag: 0
---- !u!114 &5424745834416745017
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2000541545583142029}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d1c410497b8a647eb9b4ccd17e78066f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  energy: 0
-  maxEnergy: 10
-  gridID: 0
 --- !u!1001 &8929228007466600301
 PrefabInstance:
   m_ObjectHideFlags: 0

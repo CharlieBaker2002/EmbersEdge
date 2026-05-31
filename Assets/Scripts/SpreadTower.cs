@@ -19,7 +19,6 @@ public class SpreadTower : Building
     [SerializeField] Sprite morphSprite;
     [SerializeField] private Sprite baseUpgradeSprite;
     float energyCost = 0.05f;
-    [SerializeField] private Battery b;
     
     void SetMode(float x)
     {
@@ -81,7 +80,7 @@ public class SpreadTower : Building
     private void StartAttack(Transform t)
     {
         if(!enabled) return;
-        if(b.energy < energyCost)
+        if(Power.Energy < energyCost)
         {
             return;
         }
@@ -107,6 +106,6 @@ public class SpreadTower : Building
             GS.NewP(proj, sp[i], tag, GS.Rotated(transform.up, -ang * spread), 0.05f, strength);
             i++;
         }
-        b.Use(energyCost);
+        Power.Use(energyCost);
     }
 }

@@ -14,7 +14,6 @@ public class DaddyBuildingTile : MonoBehaviour, IClickable
         if (current == this) return;
         current = this;
         BM.i.SetupDaddy(this);
-        IM.i.pi.Player.Escape.performed -= UIManager.i.escapeDel;
         BM.i.AddDaddyDel();
     }
 

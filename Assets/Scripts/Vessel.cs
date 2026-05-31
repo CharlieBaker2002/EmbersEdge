@@ -29,8 +29,6 @@ public class Vessel : Building
 
     private bool readyToGive = false;
     private bool preventOpen = false;
-    
-    [SerializeField] private Battery b;
 
     public override void Start()
     {

@@ -77,6 +77,10 @@ public class UIManager : MonoBehaviour
         #if !UNITY_EDITOR
         Application.focusChanged += pauseOnTabDel;
         #endif
+        // SetDefault must happen before the first Escape press. Start was running too
+        // late on some scene-load paths (default stayed null until the player triggered
+        // an unrelated EscapeRouter Push, which is why Esc only worked after a select-cancel).
+        if (EscapeRouter.i != null) EscapeRouter.i.SetDefault(InvokeDefaultEscape);
     }
 
     public void Hint(string nam)
@@ -133,22 +137,9 @@ public class UIManager : MonoBehaviour
         {
             cg.alpha = 0f;
         }
-        escapeDel = _ =>
-        {
-            if (RefreshManager.i.ARENAMODE)
-            {
-                CheckPauseMenu();
-                return;
-            }
-            if (partOptionOpened)
-            {
-                GoBackToPrevVesselOptions();
-                return;
-            }
-            CheckPauseMenu();
-            CloseAllUIs();
-        }; 
-        IM.i.pi.Player.Escape.performed += escapeDel;
+        // Kept around for legacy callers (e.g. EndConditionClickable) that still .Invoke it
+        // to "press Escape programmatically". New code should call EscapeRouter.i directly.
+        escapeDel = _ => InvokeDefaultEscape();
         if (RefreshManager.i.ARENAMODE)
         {
             IM.i.pi.Player.Escape.Enable();
@@ -161,6 +152,34 @@ public class UIManager : MonoBehaviour
         if(currentVessel == null){ return;}
         currentVessel.GoBackButton();
         partOptionOpened = false;
+    }
+
+    /// <summary>
+    /// Default Escape action when no modal/transient state is on the EscapeRouter stack.
+    /// Toggles the pause menu (or, in vessel-options mode, backs out of that first).
+    /// </summary>
+    public void InvokeDefaultEscape()
+    {
+        if (RefreshManager.i.ARENAMODE)
+        {
+            CheckPauseMenu();
+            return;
+        }
+        if (partOptionOpened)
+        {
+            GoBackToPrevVesselOptions();
+            return;
+        }
+        // If pause is up, close it. CheckPauseMenu only opens pause; the close path
+        // used to live inside CloseAllUIs (called by the old escapeDel lambda).
+        if (pauseUI.activeInHierarchy)
+        {
+            SpawnManager.instance.CancelTS(pauseID);
+            pauseUI.SetActive(false);
+            IM.i.StopControllerMoving();
+            return;
+        }
+        CheckPauseMenu();
     }
 
     public void DamageText(float dmg, int typ, Vector2 pos)
@@ -270,6 +289,7 @@ public class UIManager : MonoBehaviour
             CharacterScript.CS.AltGroupUI();
         }
         Building.CloseBuildingUIs();
+        CableLink.CloseActive();
     }
 
     public void CheckPauseMenu()

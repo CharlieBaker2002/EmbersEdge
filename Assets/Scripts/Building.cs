@@ -47,7 +47,13 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     private Action<int> numTextAction;
 
     private SpriteRenderer[] spriterenderers;
-    
+
+    private BuildingPower _power;
+    /// <summary>Aggregate view onto adjacent EnergyPads. Use Power.Use/Add/Energy from consumer scripts.</summary>
+    public BuildingPower Power => _power ??= new BuildingPower(this);
+
+    private Action closeUIViaEscape;
+
 
     public virtual void Start()
     {
@@ -60,13 +66,19 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         buildings.Add(this);
         UIParent.SetActive(false);
         if (!buildingBehaviours.Contains(this)) buildingBehaviours.Add(this);
+        closeUIViaEscape = () => OnClose?.Invoke();
         OnOpen += delegate
         {
             UIManager.CloseAllUIs();
             UpdateUI();
             UIParent.SetActive(true);
+            EscapeRouter.i?.Push(closeUIViaEscape);
         };
-        OnClose += delegate { UIParent.SetActive(false); };
+        OnClose += delegate
+        {
+            UIParent.SetActive(false);
+            EscapeRouter.i?.Remove(closeUIViaEscape);
+        };
 
         spriterenderers = hasExtraParent ? transform.parent.GetComponentsInChildren<SpriteRenderer>(true) : GetComponentsInChildren<SpriteRenderer>(true);
     
@@ -178,6 +190,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         if(GS.qutting) return;
         BDisable();
         GridManager.i.SetArea(anchorCell, gridSize, false);
+        _power?.Detach();
     }
 
     public void AddSlot(int[] cost, string nam, Sprite spr, bool destroyOnUseP, Action act, bool science = false, Action instantAction = null, Func<bool> optionalParameter = null, Func<bool> showParameter = null, GameObject g = null)
@@ -467,6 +480,8 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         Vector2Int anchor = GridManager.i.WorldToGrid(transform.position)
                              - new Vector2Int(sizeCells.x / 2, sizeCells.y / 2);
 
+        anchorCell = anchor;
+        gridSize = sizeCells;
         GridManager.i.SetArea(anchor, sizeCells, true);
     }
 

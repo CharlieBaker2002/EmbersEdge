@@ -6,6 +6,6 @@ public class BuildingUI : MonoBehaviour
 {
     public void OnDisable()
     {
-        BM.i.goToDaddy.Invoke(new InputAction.CallbackContext());
+        BM.i.goToDaddy.Invoke();
     }
 }

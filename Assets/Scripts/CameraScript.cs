@@ -128,12 +128,14 @@ public class CameraScript : MonoBehaviour
         }
         transform.position = new Vector3(p.x, p.y, -10f);
         cam.orthographicSize = correctScale + scaleUp;
+        PortalScript.i.MakeSpawnFX(GS.CS().position);
         for (float i = duration; i > duration * 0.4f; i -= Time.deltaTime)
         {
             //CameraScript.i.transform.rotation = Quaternion.Euler(dir * i * i * 90f / Mathf.Pow(duration, 2), 0f, dir * i * i * 90f / Mathf.Pow(duration, 2));
             CameraScript.i.transform.rotation = Quaternion.Euler(-dir * i * i * 90f / Mathf.Pow(duration, 2), 0f, 0f);
             yield return null;
         }
+        CharacterScript.CS.Show();
         for (float i = duration * 0.4f; i > 0f; i -= Time.deltaTime)
         {
             //CameraScript.i.transform.rotation = Quaternion.Euler(dir * i * i * 90f / Mathf.Pow(duration, 2), 0f, dir * i * i * 90f / Mathf.Pow(duration, 2));

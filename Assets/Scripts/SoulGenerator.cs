@@ -3,9 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class SoulGenerator : Building, IOnDeath
+public class SoulGenerator : Building, IOnDeath, IEnergyAccumulator
 {
-   [SerializeField] Battery b;
    [SerializeField] Sprite[] sprs;
    [SerializeField] private SpriteRenderer[] arms;
    [SerializeField] private Sprite offSpr;
@@ -16,6 +15,38 @@ public class SoulGenerator : Building, IOnDeath
    [SerializeField] private SpriteRenderer blanksr;
    private System.Action act;
    public bool busy;
+
+   [Header("Internal battery — non-visible, non-draggable storage this generator fills on Generate")]
+   [SerializeField] private float internalCapacity = 12f;
+   [SerializeField] private float drawRate = 3f;
+   private float internalEnergy;
+
+   public float Energy    => internalEnergy;
+   public float MaxEnergy => internalCapacity;
+   public float DrawRate  => internalEnergy > 0f ? drawRate : 0f;
+   public float MaxDrawThisFrame(float dt) => Mathf.Min(internalEnergy, drawRate * dt);
+
+   public event Action<float> OnUpdate;
+   public event Action OnUse;
+
+   public bool Use(float cost)
+   {
+      if (cost <= 0f) return true;
+      if (internalEnergy < cost) return false;
+      internalEnergy -= cost;
+      OnUpdate?.Invoke(internalEnergy);
+      OnUse?.Invoke();
+      return true;
+   }
+
+   public void Add(float amount)
+   {
+      if (amount <= 0f) return;
+      float room = internalCapacity - internalEnergy;
+      if (room <= 0f) return;
+      internalEnergy += Mathf.Min(amount, room);
+      OnUpdate?.Invoke(internalEnergy);
+   }
 
    public void Animate()
    {
@@ -33,7 +64,7 @@ public class SoulGenerator : Building, IOnDeath
    private void Generate()
    {
       Instantiate(FX, transform.position, Quaternion.identity, GS.FindParent(GS.Parent.fx));
-      b.energy++;
+      Add(1f);
    }
 
    public override void Start()

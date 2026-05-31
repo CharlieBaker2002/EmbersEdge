@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,12 +7,175 @@ using UnityEngine;
 public class EnergyManager : MonoBehaviour
 {
     public static EnergyManager i;
-    
+
     #region Energy
-    // public List<Pylon> pylons;
-    // private List<List<Battery>> grids = new(); // batteries sorted in ascending max energy so update grid works
-    // public List<Battery> allBatteries;
-    //
+
+    // Sources (pads aggregating batteries, generators with internal storage, pylons relaying
+    // upstreams) register themselves at every cell they want to be visible from. Multiple
+    // sources may share a cell — consumers see them all via SourcesAt(cell) and aggregate.
+    private readonly Dictionary<Vector2Int, List<IEnergyAccumulator>> sourcesAt = new();
+    private static readonly List<IEnergyAccumulator> emptySources = new();
+
+    // Separate footprint map used by Battery.Drop (PadAt) so the hub's physical area is
+    // still findable for battery insertion even though its consumer-adjacency claim is
+    // only the forward strip.
+    private readonly Dictionary<Vector2Int, EnergyPad> padFootprintAt = new();
+
+    /// <summary>Fires whenever a source is registered or unregistered. Power consumers re-resolve adjacency on this signal.</summary>
+    public event Action OnPadsChanged;
+
+    /// <summary>
+    /// Register an EnergyPad's source claim at its full footprint. For hubs (single-battery
+    /// directional pads), the cell registration is the same as a regular pad — but
+    /// BuildingPower applies a directional filter (see <see cref="HubAccessibleFrom"/>)
+    /// so only consumers in the hub's forward column actually pick it up.
+    /// </summary>
+    public void RegisterPad(EnergyPad pad)
+    {
+        if (pad == null) return;
+        var size = pad.gridSize;
+        if (size.x <= 0 || size.y <= 0) size = Vector2Int.one;
+        for (int x = 0; x < size.x; x++)
+        {
+            for (int y = 0; y < size.y; y++)
+            {
+                var cell = pad.anchorCell + new Vector2Int(x, y);
+                padFootprintAt[cell] = pad;
+                AddSourceAt(cell, pad);
+            }
+        }
+        OnPadsChanged?.Invoke();
+    }
+
+    public void UnregisterPad(EnergyPad pad)
+    {
+        if (pad == null) return;
+        var size = pad.gridSize;
+        if (size.x <= 0 || size.y <= 0) size = Vector2Int.one;
+        bool changed = false;
+        for (int x = 0; x < size.x; x++)
+        {
+            for (int y = 0; y < size.y; y++)
+            {
+                var cell = pad.anchorCell + new Vector2Int(x, y);
+                if (padFootprintAt.TryGetValue(cell, out var existing) && existing == pad)
+                    padFootprintAt.Remove(cell);
+                if (RemoveSourceAt(cell, pad)) changed = true;
+            }
+        }
+        if (changed) OnPadsChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Directional filter for hubs. The consumer's footprint must lie entirely on the
+    /// forward side of the hub's front edge AND its perpendicular range must overlap the
+    /// hub's perpendicular range. That gives exactly the cells directly in front of the
+    /// hub, matching its width — no diagonal/side leakage from cardinal adjacency.
+    /// </summary>
+    public static bool HubAccessibleFrom(EnergyPad hub, Vector2Int conAnchor, Vector2Int conSize)
+    {
+        int dx = Mathf.RoundToInt(hub.transform.up.x);
+        int dy = Mathf.RoundToInt(hub.transform.up.y);
+        // Collapse near-diagonal facings to the dominant axis.
+        if (dx != 0 && dy != 0)
+        {
+            if (Mathf.Abs(hub.transform.up.x) >= Mathf.Abs(hub.transform.up.y)) dy = 0; else dx = 0;
+        }
+        if (dx == 0 && dy == 0) dy = 1;
+
+        int hX0 = hub.anchorCell.x, hX1 = hub.anchorCell.x + hub.gridSize.x;
+        int hY0 = hub.anchorCell.y, hY1 = hub.anchorCell.y + hub.gridSize.y;
+        int cX0 = conAnchor.x, cX1 = conAnchor.x + conSize.x;
+        int cY0 = conAnchor.y, cY1 = conAnchor.y + conSize.y;
+
+        if (dy > 0) return cY0 >= hY1 && cX0 < hX1 && cX1 > hX0;
+        if (dy < 0) return cY1 <= hY0 && cX0 < hX1 && cX1 > hX0;
+        if (dx > 0) return cX0 >= hX1 && cY0 < hY1 && cY1 > hY0;
+        return cX1 <= hX0 && cY0 < hY1 && cY1 > hY0;
+    }
+
+    /// <summary>Register any IEnergyAccumulator (generator, pylon, …) across a building's footprint.</summary>
+    public void RegisterSource(IEnergyAccumulator source, Vector2Int anchor, Vector2Int size)
+    {
+        if (source == null) return;
+        if (size.x <= 0 || size.y <= 0) size = Vector2Int.one;
+        for (int x = 0; x < size.x; x++)
+        {
+            for (int y = 0; y < size.y; y++)
+            {
+                AddSourceAt(anchor + new Vector2Int(x, y), source);
+            }
+        }
+        OnPadsChanged?.Invoke();
+    }
+
+    public void UnregisterSource(IEnergyAccumulator source, Vector2Int anchor, Vector2Int size)
+    {
+        if (source == null) return;
+        if (size.x <= 0 || size.y <= 0) size = Vector2Int.one;
+        bool changed = false;
+        for (int x = 0; x < size.x; x++)
+        {
+            for (int y = 0; y < size.y; y++)
+            {
+                if (RemoveSourceAt(anchor + new Vector2Int(x, y), source)) changed = true;
+            }
+        }
+        if (changed) OnPadsChanged?.Invoke();
+    }
+
+    void AddSourceAt(Vector2Int cell, IEnergyAccumulator source)
+    {
+        if (!sourcesAt.TryGetValue(cell, out var list))
+        {
+            list = new List<IEnergyAccumulator>();
+            sourcesAt[cell] = list;
+        }
+        if (!list.Contains(source)) list.Add(source);
+    }
+
+    bool RemoveSourceAt(Vector2Int cell, IEnergyAccumulator source)
+    {
+        if (!sourcesAt.TryGetValue(cell, out var list)) return false;
+        if (!list.Remove(source)) return false;
+        if (list.Count == 0) sourcesAt.Remove(cell);
+        return true;
+    }
+
+    /// <summary>All sources claiming this cell (pads, generators, pylons, …). Read-only.</summary>
+    public IReadOnlyList<IEnergyAccumulator> SourcesAt(Vector2Int cell)
+    {
+        return sourcesAt.TryGetValue(cell, out var list) ? list : emptySources;
+    }
+
+    /// <summary>Back-compat alias used by BuildingPower's neighbour walk.</summary>
+    public IReadOnlyList<IEnergyAccumulator> PadsAt(Vector2Int cell) => SourcesAt(cell);
+
+    /// <summary>Register a single-cell claim on an arbitrary source (pylons routing to remote consumers, …).</summary>
+    public void RegisterSourceAt(IEnergyAccumulator source, Vector2Int cell)
+    {
+        if (source == null) return;
+        AddSourceAt(cell, source);
+        OnPadsChanged?.Invoke();
+    }
+
+    public void UnregisterSourceAt(IEnergyAccumulator source, Vector2Int cell)
+    {
+        if (source == null) return;
+        if (RemoveSourceAt(cell, source)) OnPadsChanged?.Invoke();
+    }
+
+    /// <summary>Legacy aliases kept so EnergyPad-specific callers don't break during the source-generalisation.</summary>
+    public void RegisterPadAt(EnergyPad pad, Vector2Int cell) => RegisterSourceAt(pad, cell);
+    public void UnregisterPadAt(EnergyPad pad, Vector2Int cell) => UnregisterSourceAt(pad, cell);
+
+    /// <summary>EnergyPad physically occupying this cell, or null. Used by Battery.Drop.</summary>
+    public EnergyPad PadAt(Vector2Int cell)
+    {
+        padFootprintAt.TryGetValue(cell, out var pad);
+        return pad;
+    }
+
     private void Awake()
     {
         i = this;
@@ -240,15 +404,15 @@ public class EnergyManager : MonoBehaviour
         Debug.Log(ends.Count);
         List<List<EmberConnector>> paths = CalculateShortestRoutes(starts,ends); //for each start, find the shortest path to each end, returns a list ordered by shortest distance (evaluating inter-connector distance sums)
         int i = 0;
-        foreach(List<EmberConnector> path in paths)
-        {
-            Debug.Log("i: " + i);
-            for(int m = 0; m < path.Count; m++)
-            {
-                Debug.Log("M: " + m);
-                Debug.Log(path[m].gameObject);
-            }
-        }
+        // foreach(List<EmberConnector> path in paths)
+        // {
+        //     Debug.Log("i: " + i);
+        //     for(int m = 0; m < path.Count; m++)
+        //     {
+        //         Debug.Log("M: " + m);
+        //         Debug.Log(path[m].gameObject);
+        //     }
+        // }
         int protecc = 0;
         while (starts.Count > 0)
         {

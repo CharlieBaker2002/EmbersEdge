@@ -74,6 +74,7 @@ public class CharacterScript : Unit
     public GameObject groupUIParent;
     public List<GroupTile> groupTiles;
     private Action<InputAction.CallbackContext> closeUI;
+    private Action closeGroupDel;
     public CoreSlider healthSlider;
     public CoreSlider shieldSlider;
 
@@ -102,6 +103,8 @@ public class CharacterScript : Unit
     
     private bool rotating = true;
     private float fanEngagment = 0f;
+
+    [SerializeField] private GameObject revealFX;
     private void Awake()
     {
         CS = this;
@@ -181,6 +184,7 @@ public class CharacterScript : Unit
         inputs.Player.Reload.Enable();
 
         closeUI += _ => CloseGroup();
+        closeGroupDel = CloseGroup;
         ls.onDamageDelegate += _ => ColourControllerRed(_);
         
         healthSlider.InitialiseSlider(10f * GS.Era1());
@@ -588,13 +592,13 @@ public class CharacterScript : Unit
 
     private void OpenGroup()
     {
-        IM.i.pi.Player.Escape.performed += closeUI;
+        EscapeRouter.i?.Push(closeGroupDel);
         groupUIParent.SetActive(true);
     }
 
     private void CloseGroup()
     {
-        IM.i.pi.Player.Escape.performed -= closeUI;
+        EscapeRouter.i?.Remove(closeGroupDel);
         groupUIParent.SetActive(false);
     }
 
@@ -733,5 +737,27 @@ public class CharacterScript : Unit
     {
         respawnSlider.value = t;
         respawnText.text = t.ToString("F0");
+    }
+
+    public void Hide()
+    {
+        gameObject.SetActive(false);
+        foreach (GameObject g in MechaSuit.m.rings)
+        {
+            g.SetActive(false);
+        }
+    }
+
+    public void Show()
+    {
+        Instantiate(revealFX, transform.position, Quaternion.identity,GS.FindParent(GS.Parent.fx));
+        RefreshManager.i.QA(() =>
+        {
+            CS.gameObject.SetActive(true);
+            foreach (GameObject g in MechaSuit.m.rings)
+            {
+                g.SetActive(true);
+            }
+        },2.4f);
     }
 }

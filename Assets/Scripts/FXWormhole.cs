@@ -20,19 +20,13 @@ public class FXWormhole : MonoBehaviour
 
     private bool controlled = true;
     public static FXWormhole i;
-
-    private void Awake()
-    {
-
-        extraR.material = GS.MatByEra(GS.era, true);
-        render.material = GS.MatByEra(GS.era, true);
-        sr.material = GS.MatByEra(GS.era, true);
-    }
-
-
+    
     IEnumerator Start()
     {
         i = this;
+        extraR.material = GS.MatByEra(GS.era, true);
+        render.material = GS.MatByEra(GS.era, true);
+        sr.material = GS.MatByEra(GS.era, true);
         em = ps.emission;
         var main = ps.main;
         v = ps.velocityOverLifetime;

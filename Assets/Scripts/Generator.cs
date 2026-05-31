@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Generator : Building
+public class Generator : Building, IEnergyAccumulator
 {
    public enum Taip
    {
@@ -14,12 +14,11 @@ public class Generator : Building
       Blue,
    }
 
-   [SerializeField] Battery b;
    [SerializeField] Sprite[] sprs;
    [SerializeField] Taip typ;
    private float genQuantity = 0;
    [SerializeField] float actionTimer = -1f;
-   
+
    [SerializeField] Sprite increaseSprite;
    [SerializeField] Sprite decreaseSprite;
 
@@ -31,6 +30,39 @@ public class Generator : Building
    private bool finishedBurnFlag = true;
    private int queue;
    private bool coroutined = false;
+
+   [Header("Internal battery — non-visible, non-draggable storage this generator fills on Generate")]
+   [SerializeField] private float internalCapacity = 10f;
+   [Tooltip("Energy/sec this generator can supply through DrawEnergy when internal storage is non-empty.")]
+   [SerializeField] private float drawRate = 2f;
+   private float internalEnergy;
+
+   public float Energy    => internalEnergy;
+   public float MaxEnergy => internalCapacity;
+   public float DrawRate  => internalEnergy > 0f ? drawRate : 0f;
+   public float MaxDrawThisFrame(float dt) => Mathf.Min(internalEnergy, drawRate * dt);
+
+   public event Action<float> OnUpdate;
+   public event Action OnUse;
+
+   public bool Use(float cost)
+   {
+      if (cost <= 0f) return true;
+      if (internalEnergy < cost) return false;
+      internalEnergy -= cost;
+      OnUpdate?.Invoke(internalEnergy);
+      OnUse?.Invoke();
+      return true;
+   }
+
+   public void Add(float amount)
+   {
+      if (amount <= 0f) return;
+      float room = internalCapacity - internalEnergy;
+      if (room <= 0f) return;
+      internalEnergy += Mathf.Min(amount, room);
+      OnUpdate?.Invoke(internalEnergy);
+   }
 
    public void Animate()
    {
@@ -67,7 +99,7 @@ public class Generator : Building
 
    private void Generate()
    {
-      b.Add( genQuantity);
+      Add(genQuantity);
       Instantiate(FX, transform.position, Quaternion.identity, GS.FindParent(GS.Parent.fx));
       genQuantity = 0f;
       finishedBurnFlag = true;
@@ -156,8 +188,9 @@ public class Generator : Building
             break;
       }
       finishedBurnFlag = true;
+      EnergyManager.i?.RegisterSource(this, anchorCell, gridSize);
    }
-   
+
    protected override void BDisable()
    {
       switch (typ)
@@ -169,6 +202,7 @@ public class Generator : Building
             SpawnManager.instance.onWaveComplete -= act;
             break;
       };
+      EnergyManager.i?.UnregisterSource(this, anchorCell, gridSize);
    }
 
    private void Reduce()

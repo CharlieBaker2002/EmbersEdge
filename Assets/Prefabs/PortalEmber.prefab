@@ -9841,6 +9841,7 @@ MonoBehaviour:
   flickerInterval: 0.05
   quick: 1
   portalEmber: 1
+  reversePortalEmber: 0
   charEmber: 0
   extract: {fileID: 0}
   trailPS:

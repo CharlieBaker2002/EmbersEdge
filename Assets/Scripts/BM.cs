@@ -17,7 +17,8 @@ public class BM : MonoBehaviour //Building Manager
     [HideInInspector] public int[] cost = new int[4];
     private GameObject redbuildingPrefab;
     private Action<InputAction.CallbackContext> clickAction;
-    private Action<InputAction.CallbackContext> escape;
+    private Action escape;
+    private Action closeUIDel;
     [SerializeField] Transform mainDaddyT;
     [SerializeField] GameObject backButton;
     [SerializeField] DaddyBuildingTile[] daddies;
@@ -28,10 +29,11 @@ public class BM : MonoBehaviour //Building Manager
     //private bool sampled = false;
     [HideInInspector] public bool planting = false;
     public bool added = false;
-    public Action<InputAction.CallbackContext> goToDaddy;
+    public Action goToDaddy;
     [SerializeField] GameObject map;
     [SerializeField] Vector2Int gridSize = new Vector2Int(1,1); // size in cells
     Vector2Int anchorCell;                                      // where we’re hovering
+    int rotationStep;                                           // 0..3, each step = 90° clockwise
     
     private void Awake()
     {
@@ -41,13 +43,13 @@ public class BM : MonoBehaviour //Building Manager
     public void AddDaddyDel()
     {
         if (added) return;
-        IM.i.pi.Player.Escape.performed += goToDaddy;
+        EscapeRouter.i?.Push(goToDaddy);
         added = true;
     }
 
     public void RemoveDaddyDel()
     {
-        IM.i.pi.Player.Escape.performed -= goToDaddy;
+        EscapeRouter.i?.Remove(goToDaddy);
         added = false;
     }
 
@@ -91,11 +93,14 @@ public class BM : MonoBehaviour //Building Manager
         IM.i.pi.Player.Escape.Enable();
         IM.i.pi.Player.Build.Enable();
         clickAction = delegate { TryPlace(); };
-        escape = delegate { Escape(); };
-        goToDaddy = context =>
+        escape = () => Escape();
+        closeUIDel = CloseUIs;
+        goToDaddy = () =>
         {
-            IM.i.pi.Player.Escape.performed += UIManager.i.escapeDel;
-            IM.i.pi.Player.Escape.performed -= goToDaddy;
+            // No-op if router already popped us (Esc path); pops us when called
+            // programmatically (e.g. BuildingUI.OnDisable) so the stack stays in sync.
+            EscapeRouter.i?.Remove(goToDaddy);
+            added = false;
             BackItUpOffDaddy(false);
         };
     }
@@ -119,6 +124,7 @@ public class BM : MonoBehaviour //Building Manager
             UI.SetActive(true);
             IM.i.pi.Player.Interact.Enable();
             DetermineFitDaddies();
+            EscapeRouter.i?.Push(closeUIDel);
         }
         else
         {
@@ -130,6 +136,9 @@ public class BM : MonoBehaviour //Building Manager
     {
         UI.SetActive(false);
         Escape(false);
+        EscapeRouter.i?.Remove(goToDaddy);
+        added = false;
+        EscapeRouter.i?.Remove(closeUIDel);
         DestroyChildren();
         foreach (DaddyBuildingTile d in daddies)
         {
@@ -152,13 +161,14 @@ public class BM : MonoBehaviour //Building Manager
         }
         GridManager.i.ActivateGrid();
         ChangeBuildingColour(false);
-        Vector2 bSize = rbb.size;
-        gridSize = new Vector2Int(
-            Mathf.Max(1, Mathf.RoundToInt(bSize.x / GridManager.i.cellSize)),
-            Mathf.Max(1, Mathf.RoundToInt(bSize.y / GridManager.i.cellSize)));
+        rotationStep = 0;
+        RecomputeGridSize();
         IM.i.pi.Player.Interact.performed += clickAction;
-        IM.i.pi.Player.Escape.performed += escape;
-        IM.i.pi.Player.Escape.performed -= UIManager.i.escapeDel;
+        // Daddy delegate is already on the router; layer the placement-cancel handler on top.
+        // Pressing Esc now hits placement-cancel first, then the daddy UI back-out.
+        EscapeRouter.i?.Remove(goToDaddy);
+        added = false;
+        EscapeRouter.i?.Push(escape);
         IM.i.pi.Player.Interact.Disable();
         planting = true;
         StartCoroutine(BuildingFollowMouse());
@@ -173,19 +183,25 @@ public class BM : MonoBehaviour //Building Manager
             yield return new WaitForFixedUpdate();
             if (redBuilding == null) yield break;
 
+            // R rotates the preview 90° clockwise. Non-square footprints swap their gridSize.
+            if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
+            {
+                rotationStep = (rotationStep + 1) % 4;
+                redBuilding.transform.rotation = Quaternion.Euler(0f, 0f, -90f * rotationStep);
+                RecomputeGridSize();
+            }
+
             // Snap to grid and preview footprint
             Position(redBuilding.transform);
 
-            // int[] orbs = new int[4];
-            // GS.CopyArray(ref orbs, cost);
-
             bool gridClear   = GridManager.i.AreaClear(anchorCell, gridSize);
+            Vector2 effSize = EffectiveSize();
             bool boundClear = true;
             for (int x = -1; x <= 1; x+=2)
             {
                 for(int y = -1; y <= 1; y+=2)
                 {
-                    boundClear = MapManager.InsideBounds(redBuilding.transform.position + new Vector3(x*rbb.size.x,y*rbb.size.y) * 0.49f);
+                    boundClear = MapManager.InsideBounds(redBuilding.transform.position + new Vector3(x*effSize.x,y*effSize.y) * 0.49f);
                     if (boundClear == false) break;
                 }
                 if(boundClear == false) break;
@@ -193,6 +209,20 @@ public class BM : MonoBehaviour //Building Manager
             // colour overlay & sprite tint
             GridManager.i.PreviewArea(anchorCell, gridSize, gridClear&&boundClear);
         }
+    }
+
+    /// <summary>World-space bounding size after rotation. 90°/270° swap x and y.</summary>
+    Vector2 EffectiveSize()
+    {
+        return rotationStep % 2 == 0 ? rbb.size : new Vector2(rbb.size.y, rbb.size.x);
+    }
+
+    void RecomputeGridSize()
+    {
+        Vector2 eff = EffectiveSize();
+        gridSize = new Vector2Int(
+            Mathf.Max(1, Mathf.RoundToInt(eff.x / GridManager.i.cellSize)),
+            Mathf.Max(1, Mathf.RoundToInt(eff.y / GridManager.i.cellSize)));
     }
 
     public void Escape(bool activateGoToDaddy = true)
@@ -207,7 +237,9 @@ public class BM : MonoBehaviour //Building Manager
         }
 
         IM.i.pi.Player.Interact.performed -= clickAction;
-        IM.i.pi.Player.Escape.performed -= escape;
+        // No-op when called via the router (it already popped us); active when called
+        // programmatically (CloseUIs, BuildingTile.OnClick re-pick).
+        EscapeRouter.i?.Remove(escape);
         if (activateGoToDaddy)
         {
             AddDaddyDel();
@@ -299,8 +331,9 @@ public class BM : MonoBehaviour //Building Manager
         planting = false;
         redBuilding = null;
         IM.i.pi.Player.Interact.performed -= clickAction;
-        IM.i.pi.Player.Escape.performed -= escape;
-        IM.i.pi.Player.Escape.performed += UIManager.i.escapeDel;
+        // Successful place: pop placement-cancel; daddy UI back-out (closeUIDel) stays on stack.
+        EscapeRouter.i?.Remove(escape);
+        AddDaddyDel();
         GS.QA(() =>
         {
             if (ResourceManager.instance.CanAfford(recent.cost, false, false))
@@ -313,7 +346,8 @@ public class BM : MonoBehaviour //Building Manager
 
     private void Position(Transform t)
         {
-            Vector2 vAdjust = new Vector2(-0.125f + 0.5f * rbb.size.x, -0.125f + 0.5f * rbb.size.y);
+            Vector2 eff = EffectiveSize();
+            Vector2 vAdjust = new Vector2(-0.125f + 0.5f * eff.x, -0.125f + 0.5f * eff.y);
             Vector2 worldMouse = IM.controller
                 ? IM.i.controllerCursor.position
                 : IM.i.MousePosition();

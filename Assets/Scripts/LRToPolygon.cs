@@ -56,6 +56,22 @@ public class LRToPolygon : MonoBehaviour
         for (int i = 0; i < vs.Count; i++)
             if (float.IsNaN(vs[i].x) || float.IsNaN(vs[i].y) || float.IsInfinity(vs[i].x) || float.IsInfinity(vs[i].y)) return;
 
+        // Collapse runs of coincident vertices (including the wrap-around pair) — libtess2's
+        // convex-merge step crashes on zero-length edges. See ~/Library/Logs/DiagnosticReports
+        // Unity-2026-05-28-034212.ips: SIGSEGV at 0x24 inside tessMeshMergeConvexFaces.
+        const float coincidentEps = 1e-6f;
+        for (int i = vs.Count - 1; i > 0; i--)
+            if ((vs[i] - vs[i - 1]).sqrMagnitude < coincidentEps) vs.RemoveAt(i);
+        while (vs.Count > 1 && (vs[vs.Count - 1] - vs[0]).sqrMagnitude < coincidentEps)
+            vs.RemoveAt(vs.Count - 1);
+
+        if (vs.Count < 4) return;
+
+        float a = 0f;
+        for (int i = 0, j = vs.Count - 1; i < vs.Count; j = i++)
+            a += (vs[j].x * vs[i].y) - (vs[i].x * vs[j].y);
+        if (Mathf.Abs(0.5f * a) < 1e-6f) return;
+
         col.SetPath(0, vs);
     }
 }

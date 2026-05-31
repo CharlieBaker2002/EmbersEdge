@@ -28,7 +28,7 @@ public class EndConditionClickable : MonoBehaviour, IClickable
         }
         else if(function == "resume")
         {
-            UIManager.i.escapeDel.Invoke(new InputAction.CallbackContext());
+            UIManager.i.InvokeDefaultEscape();
         }
     }
 }

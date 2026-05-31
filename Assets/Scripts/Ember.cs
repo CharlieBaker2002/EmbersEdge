@@ -15,7 +15,7 @@ public class Ember : MonoBehaviour
     [SerializeField] private Sprite[] loadSprites;   // charge-up frames
     [SerializeField] private Sprite[] onSprites;     // random flicker frames
     [SerializeField] private Sprite[] offSprites;    // power-down frames
-    [SerializeField] private ParticleSystem ps;
+    [SerializeField] public ParticleSystem ps;
     [SerializeField] private GameObject ps2;
 
     [Header("Flight")]
@@ -36,9 +36,10 @@ public class Ember : MonoBehaviour
 
     [SerializeField] bool quick = false;
     public bool portalEmber = false;
+    public bool reversePortalEmber = false;
     public bool charEmber = false;
     public Extractor extract = null;
-    [SerializeField] private ParticleSystem[] trailPS;
+    [SerializeField] public ParticleSystem[] trailPS;
 
     [SerializeField] private ParticleSystemRenderer[] r;
     
@@ -62,7 +63,6 @@ public class Ember : MonoBehaviour
     void Awake()
     {
         if (!sr) sr = GetComponent<SpriteRenderer>();
-        if(sr!= null) UpdateColours(GS.era);
         spawnPos = transform.position;
         prevPos  = spawnPos;
         myTrackGen = trackGen;
@@ -144,11 +144,12 @@ public class Ember : MonoBehaviour
         float outDur = goingHome ? 0.3f : 0.2f;
         float returnDur = goingHome ? Random.Range(0.7f, 1.1f) : 0.35f;
 
+        Vector3 snapTo = returnPos;
         LeanTween.cancel(gameObject);
         LeanTween.move(gameObject, burstTarget, outDur).setEase(LeanTweenType.easeOutExpo)
             .setOnComplete(() =>
-                LeanTween.move(gameObject, returnPos, returnDur).setEase(LeanTweenType.easeInCubic)
-                    .setOnComplete(Cease));
+                LeanTween.move(gameObject, snapTo, returnDur).setEase(LeanTweenType.easeInCubic)
+                    .setOnComplete(() => { transform.position = snapTo; Cease(); }));
     }
 
     void Update()
@@ -187,6 +188,7 @@ public class Ember : MonoBehaviour
 
     void Start()
     {
+        if(sr!= null) UpdateColours(GS.era);
         onComplete += SetParticle;
         PlaySequence();
     }
@@ -194,9 +196,20 @@ public class Ember : MonoBehaviour
     // ──────────────────────────  MAIN SEQUENCE  ──────────────────────────
     void PlaySequence()
     {
-        var em = ps.emission;
         trailPS[0]?.gameObject.SetActive(true);
         trailPS[1]?.gameObject.SetActive(true);
+
+        if (reversePortalEmber)
+        {
+            Vector3 rDS = ((Vector2)(to - spawnPos)).Rotated(90f);
+            Vector3 rM1 = Vector3.Lerp(spawnPos, to, 0.35f) + Random.Range(-0.6f, 0.6f) * rDS * arcHeight;
+            Vector3 rM2 = Vector3.Lerp(spawnPos, to, 0.7f) + Random.Range(-0.3f, 0.3f) * rDS * arcHeight;
+            LeanTween.move(gameObject, new[] { spawnPos, rM1, rM2, to }, flightTime)
+                .setEase(flightEase).setOnComplete(Cease);
+            return;
+        }
+
+        var em = ps.emission;
         if (charEmber)
         {
             if (trailPS[0] != null) { var m = trailPS[0].main; m.loop = true; trailPS[0].Play(); }
@@ -225,7 +238,11 @@ public class Ember : MonoBehaviour
         Vector3[] path;
         if (portalEmber)
         {
-            if (Random.Range(0, 2) == 0)
+            if (reversePortalEmber)
+            {
+                path = new []{ start, mid1, mid2, to };
+            }
+            else if (Random.Range(0, 2) == 0)
             {
                 path = new []{ start,  mid1, mid2, start };
             }
@@ -254,7 +271,7 @@ public class Ember : MonoBehaviour
             seq.append(()=>onComplete?.Invoke());
             seq.append(sr.LeanAnimate(offSprites, offTime));
         }
-        float destroyDelay = charEmber ? flightTime : 1f;
+        float destroyDelay = charEmber ? flightTime : reversePortalEmber ? 0f : 1f;
         seq.append(LeanTween.delayedCall(gameObject, destroyDelay, Cease));
     }
     // ──────────────────────────  CEASE / DESTROY  ──────────────────────────

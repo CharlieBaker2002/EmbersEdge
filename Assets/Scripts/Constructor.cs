@@ -45,10 +45,15 @@ public class Constructor : Building
         if (builtYet)
         {
             connect.ember = 5;
-            // connect.ember = 12;
-            // connect.maxEmber = 12;
-            // UpgradeToLargeConstructor();
-            UpgradeToBeam();
+            connect.ember = 12;
+            connect.maxEmber = 12;
+            UpgradeToLargeConstructor();
+            radius += 3f;
+            sprs = upgradeSpritesBeam;
+            stick.sprite = sprs[0];
+            sr.sprite = baseSprites[0];
+           // UpgradeToBeam();
+           // UpgradeToBeam();
         }
         RefreshMax();
         GridManager.i.RebuildRangeCache(); 

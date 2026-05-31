@@ -61,6 +61,7 @@ public class RefreshManager : MonoBehaviour
         SpawnManager.daySinceNewEra = 0;
         GS.Manager = GameObject.FindGameObjectWithTag("Manager");
         GS.spawn = GS.Manager.GetComponent<SpawnManager>();
+        SpawnManager.instance = GS.spawn;
         GS.portal = GameObject.FindGameObjectWithTag("Portal");
         GS.OnNewEra = null;
         GS.isRaidPhase = false;

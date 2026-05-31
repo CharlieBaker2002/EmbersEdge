@@ -16,12 +16,12 @@ public class GridManager : MonoBehaviour
     public float cellSize = 1f;
     public Vector2 origin = Vector2.zero;
 
-    private Color clearColour     = new Color(0f, 0.4f, 0f, 1f); // green – inside constructor range
+    private Color clearColour     = new Color(0f, 0.4f, 0f, 0.5f); // green – inside constructor range
     private Color filledColour    = new Color(0.4f, 0f, 0f, 1f); // red – occupied
-    private Color outColour    = new Color(0.05f, 0.05f, 0.05f, 1f); // black – out of range
+    private Color outColour    = new Color(0.05f, 0.05f, 0.05f, 0.5f); // black – out of range
     private Color brightClearColour   = new Color(0f, 1f, 0f, 1f); // super‑bright green
     private Color brightBlockedColour = new Color(0.8f, 0f, 0f, 1f);  // super‑bright red
-    private Color energyFreeColour   = new Color(0f, 0.4f, 0f, 1f); // yellow – energy & buildable
+    private Color energyFreeColour   = new Color(0f, 0.4f, 0f, 0.5f); // yellow – energy & buildable
 
     [SerializeField] Transform buildingGrid;
     [SerializeField] SpriteRenderer block;

@@ -12,7 +12,7 @@ public class UnitBuilding : Building
     [HideInInspector]
     public Vector2 rallyPoint;
     private Action<InputAction.CallbackContext> clickAction;
-    private Action<InputAction.CallbackContext> esc;
+    private Action esc;
     private bool stopBool = false;
     public int live = 0;
     public int maxLive = 5;
@@ -32,8 +32,20 @@ public class UnitBuilding : Building
         rallyPoint = transform.position;
         rallyBounds = Instantiate(rallyBounds, transform);
         rallyBounds.SetActive(false);
-        esc = delegate { stopBool = true; IM.i.pi.Player.Interact.started -= clickAction; IM.i.pi.Player.Escape.performed -= esc; };
-        clickAction = delegate { stopBool = true; rallyPoint = rallyBounds.transform.position; IM.i.pi.Player.Interact.started -= clickAction; IM.i.pi.Player.Escape.performed -= esc; };
+        esc = () =>
+        {
+            stopBool = true;
+            IM.i.pi.Player.Interact.started -= clickAction;
+            // Router already popped us when invoked via Escape; no-op when invoked from clickAction.
+            EscapeRouter.i?.Remove(esc);
+        };
+        clickAction = delegate
+        {
+            stopBool = true;
+            rallyPoint = rallyBounds.transform.position;
+            IM.i.pi.Player.Interact.started -= clickAction;
+            EscapeRouter.i?.Remove(esc);
+        };
         AddSlot(new int[] { 0, 0, 0, 0 }, "Rally", Resources.Load<Sprite>("Sprites/RallyIcon"), false, SetRally);
 
         AddSlot(cost, unitName, unitSprite, false, SpawnNewUnit, false,delegate { live++; UpdateText(); }, SpaceForMore, IsNotAutomated);
@@ -99,7 +111,7 @@ public class UnitBuilding : Building
         rallyBounds.SetActive(true);
         StartCoroutine(RallyFollowMouse());
         IM.i.pi.Player.Interact.started += clickAction;
-        IM.i.pi.Player.Escape.performed += esc;
+        EscapeRouter.i?.Push(esc);
     }
 
     IEnumerator RallyFollowMouse()
