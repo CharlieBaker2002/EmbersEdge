@@ -5524,6 +5524,8 @@ MonoBehaviour:
   empty: {fileID: 8469738808800067906, guid: 4a2345c873a814c42bf7f02c8cba02fa, type: 3}
   numText: {fileID: 2066030852843807801, guid: fd6556e9358414fd58edba89083ec292, type: 3}
   buildingsUI: {fileID: 1946810515}
+  noEnergyIcon: {fileID: -2656519046743609965, guid: 1bdc5c05252a249c6b982321eae1ebed, type: 3}
+  insufficientEnergyIcon: {fileID: 5931402956672538229, guid: b50c7618b1e604339a2c729b941f3161, type: 3}
   pauseUI: {fileID: 244101949}
   canPauseMenu: 1
   lootUI: {fileID: 430580533}
@@ -6697,6 +6699,11 @@ MonoBehaviour:
   builtYet: 1
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0.7, z: 0}
+  energyIconScale: 0.75
+  energyMinShowTime: 5
+  throttleLingerTime: 2
+  energyFlashPeriod: 0.4
 --- !u!114 &282472131
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20217,6 +20224,11 @@ MonoBehaviour:
   builtYet: 1
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0.7, z: 0}
+  energyIconScale: 0.75
+  energyMinShowTime: 5
+  throttleLingerTime: 2
+  energyFlashPeriod: 0.4
   radius: 6.1
   mag: {fileID: 1272465380}
   magnetsOfficial: []
@@ -28599,6 +28611,11 @@ MonoBehaviour:
   builtYet: 1
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0.7, z: 0}
+  energyIconScale: 0.75
+  energyMinShowTime: 5
+  throttleLingerTime: 2
+  energyFlashPeriod: 0.4
 --- !u!1 &947558060
 GameObject:
   m_ObjectHideFlags: 0
@@ -33928,6 +33945,11 @@ MonoBehaviour:
   builtYet: 1
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0.7, z: 0}
+  energyIconScale: 0.75
+  energyMinShowTime: 5
+  throttleLingerTime: 2
+  energyFlashPeriod: 0.4
   radius: 5.1
   mag: {fileID: 1770628851}
   magnetsOfficial: []
@@ -37796,6 +37818,11 @@ MonoBehaviour:
   builtYet: 1
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0.7, z: 0}
+  energyIconScale: 0.75
+  energyMinShowTime: 5
+  throttleLingerTime: 2
+  energyFlashPeriod: 0.4
 --- !u!1 &1417212843
 GameObject:
   m_ObjectHideFlags: 0
@@ -39850,6 +39877,11 @@ MonoBehaviour:
   builtYet: 1
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0.7, z: 0}
+  energyIconScale: 0.75
+  energyMinShowTime: 5
+  throttleLingerTime: 2
+  energyFlashPeriod: 0.4
   radius: 5.1
   mag: {fileID: 1369899390}
   magnetsOfficial: []
@@ -41001,6 +41033,11 @@ MonoBehaviour:
   builtYet: 1
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0.7, z: 0}
+  energyIconScale: 0.75
+  energyMinShowTime: 5
+  throttleLingerTime: 2
+  energyFlashPeriod: 0.4
 --- !u!1 &1554261999
 GameObject:
   m_ObjectHideFlags: 0
@@ -49519,6 +49556,11 @@ MonoBehaviour:
   builtYet: 1
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0.7, z: 0}
+  energyIconScale: 0.75
+  energyMinShowTime: 5
+  throttleLingerTime: 2
+  energyFlashPeriod: 0.4
   radius: 7.1
   mag: {fileID: 773659899}
   magnetsOfficial: []
@@ -51030,6 +51072,11 @@ MonoBehaviour:
   builtYet: 1
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0.7, z: 0}
+  energyIconScale: 0.75
+  energyMinShowTime: 5
+  throttleLingerTime: 2
+  energyFlashPeriod: 0.4
 --- !u!1 &1775534700
 GameObject:
   m_ObjectHideFlags: 0
@@ -52396,6 +52443,11 @@ MonoBehaviour:
   builtYet: 1
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0.7, z: 0}
+  energyIconScale: 0.75
+  energyMinShowTime: 5
+  throttleLingerTime: 2
+  energyFlashPeriod: 0.4
 --- !u!1 &1860916262
 GameObject:
   m_ObjectHideFlags: 0
@@ -52858,6 +52910,11 @@ MonoBehaviour:
   builtYet: 1
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0.7, z: 0}
+  energyIconScale: 0.75
+  energyMinShowTime: 5
+  throttleLingerTime: 2
+  energyFlashPeriod: 0.4
 --- !u!1 &1887166915
 GameObject:
   m_ObjectHideFlags: 0
@@ -57461,6 +57518,11 @@ MonoBehaviour:
   builtYet: 1
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0.7, z: 0}
+  energyIconScale: 0.75
+  energyMinShowTime: 5
+  throttleLingerTime: 2
+  energyFlashPeriod: 0.4
   defaults:
   - {fileID: 11400000, guid: f71a62f95877f4fb2a9a645980589e66, type: 2}
   - {fileID: 11400000, guid: 050092785df38472f993d04a65d2a734, type: 2}
@@ -57767,6 +57829,11 @@ MonoBehaviour:
   builtYet: 0
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0.7, z: 0}
+  energyIconScale: 0.75
+  energyMinShowTime: 5
+  throttleLingerTime: 2
+  energyFlashPeriod: 0.4
   healingOrbPrefab: {fileID: 0}
   platformCollider: {fileID: 0}
   txt: {fileID: 479228266}

@@ -126,6 +126,11 @@ MonoBehaviour:
   builtYet: 0
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0, z: 0}
+  energyIconScale: 1
+  energyMinShowTime: 5
+  throttleLingerTime: 2
+  energyFlashPeriod: 0.4
   sprs:
   - {fileID: 230899506, guid: c05f26d8bfda046dd9e5398876873399, type: 3}
   - {fileID: 2006730091, guid: c05f26d8bfda046dd9e5398876873399, type: 3}
@@ -144,6 +149,8 @@ MonoBehaviour:
   limit: 1
   current: 1
   FX: {fileID: 3189509133760383441, guid: 3ebfa320f58fc4e8a9c4219ecef7f00b, type: 3}
+  internalCapacity: 10
+  drawRate: 2
 --- !u!114 &1919429571480737283
 MonoBehaviour:
   m_ObjectHideFlags: 0

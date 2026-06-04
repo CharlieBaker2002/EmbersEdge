@@ -26,6 +26,10 @@ public class UIManager : MonoBehaviour
     public GameObject empty;
     public TextMeshPro numText;
     public Transform buildingsUI;
+
+    [Header("Energy status overlay icons (shared by all power-consuming buildings)")]
+    public Sprite noEnergyIcon;
+    public Sprite insufficientEnergyIcon;
     public GameObject pauseUI;
     private int pauseID = 0;
     public bool canPauseMenu = true;

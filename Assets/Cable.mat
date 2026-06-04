@@ -129,6 +129,6 @@ Material:
     - _Flip: {r: 1, g: 1, b: 1, a: 1}
     - _Outline: {r: 1, g: 0, b: 0, a: 0.6862745}
     - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
-    - thecolor: {r: 0.12056329, g: 0.120228566, b: 0.119994596, a: 1}
+    - thecolor: {r: 0.28598303, g: 0.12041653, b: 0.7735849, a: 0.5882353}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

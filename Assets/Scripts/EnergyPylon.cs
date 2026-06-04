@@ -66,6 +66,19 @@ public class EnergyPylon : Building, IEnergyAccumulator
     /// <summary>Upstreams added explicitly via cable (a generator/pylon dragged onto this pylon). Adjacency upstreams come from Power.Sources.</summary>
     private readonly List<IEnergyAccumulator> cableUpstreams = new();
 
+    /// <summary>
+    /// Source cables this pylon pulls FROM — i.e. a generator the pylon was dragged onto. The
+    /// pylon owns the cable visual (lr); the source itself is added to <see cref="cableUpstreams"/>
+    /// (no relay wrapper — generators carry their own battery + rate).
+    /// </summary>
+    private class SourceCable
+    {
+        public Building target;
+        public IEnergyAccumulator source;
+        public LineRenderer lr;
+    }
+    private readonly List<SourceCable> sourceCables = new();
+
     // Cycle guard: while a recursive Energy/Use/DrawRate read is in flight on this pylon,
     // further entries return the zero/skip value so an A→B→A chain can't infinite-loop.
     private bool resolving;
@@ -251,12 +264,14 @@ public class EnergyPylon : Building, IEnergyAccumulator
     {
         EnergyManager.i?.UnregisterSource(this, anchorCell, gridSize);
         DropAllDownstreams();
+        DropAllSourceCables();
         DropAllCableUpstreams();
     }
 
     public override void OnDestroy()
     {
         DropAllDownstreams();
+        DropAllSourceCables();
         DropAllCableUpstreams();
         base.OnDestroy();
     }
@@ -303,29 +318,57 @@ public class EnergyPylon : Building, IEnergyAccumulator
                 || (up is PylonCable pc && (pc.pylon == null || (UnityEngine.Object)pc.pylon == null));
             if (dead) cableUpstreams.RemoveAt(i);
         }
+        // Cull source cables whose generator was destroyed.
+        for (int i = sourceCables.Count - 1; i >= 0; i--)
+        {
+            var sc = sourceCables[i];
+            if (sc.target == null || (sc.source is UnityEngine.Object o && o == null))
+            {
+                RemoveCableUpstream(sc.source);
+                if (sc.lr != null) Destroy(sc.lr.gameObject);
+                sourceCables.RemoveAt(i);
+            }
+        }
     }
 
     bool ValidateTarget(Building target)
     {
         if (target == null || target == this) return false;
-        // Pylons only supply downstream consumers — towers, factories, other pylons.
-        // Sources (pads, hubs, generators) can't be downstream of a pylon. Other pylons
-        // are allowed even though they implement IEnergyAccumulator.
-        if (target is IEnergyAccumulator && !(target is EnergyPylon)) return false;
-        // Already connected? Don't allow double cabling.
+        // Pads/hubs aren't cable endpoints. Generators (IEnergyAccumulator, non-pylon, non-pad)
+        // ARE allowed — they're treated as an upstream source we pull from (see OnConnected).
+        // Consumers (towers, factories) and other pylons are downstream targets.
+        if (target is EnergyPad) return false;
+        // Already connected? Don't allow double cabling (either direction).
         for (int i = 0; i < downstreams.Count; i++)
-        {
             if (downstreams[i].target == target) return false;
-        }
+        for (int i = 0; i < sourceCables.Count; i++)
+            if (sourceCables[i].target == target) return false;
         // Range.
         if ((target.transform.position - transform.position).sqrMagnitude > radius * radius) return false;
-        // Cap.
-        if (downstreams.Count >= maxCableConnections) return false;
+        // Cap — downstream consumers and upstream source-cables share the connection budget.
+        if (downstreams.Count + sourceCables.Count >= maxCableConnections) return false;
         return true;
     }
 
     void OnConnected(Building target, LineRenderer lr)
     {
+        // Upstream source (a generator dragged onto): pull FROM it. It has its own battery and
+        // rate, so add it straight to our cable upstreams — no PylonCable relay/cap wrapper.
+        if (target is IEnergyAccumulator src && !(target is EnergyPylon))
+        {
+            AddCableUpstream(src);
+            if (lr != null)
+            {
+                var sc = new SourceCable { target = target, source = src, lr = lr };
+                sourceCables.Add(sc);
+                var go = lr.gameObject;
+                var link = go.GetComponent<CableLink>();
+                if (link == null) link = go.AddComponent<CableLink>();
+                link.Init(() => DeleteSourceCable(sc), icon, transform.position, target.transform.position, cableClickRadius);
+            }
+            return;
+        }
+
         Vector2Int cell = ChooseClaimCell(target);
         var cable = new PylonCable(this, target, perCableCap, 4f);
         EnergyManager.i?.RegisterSourceAt(cable, cell);
@@ -445,6 +488,31 @@ public class EnergyPylon : Building, IEnergyAccumulator
         {
             RemoveCableUpstream(cableUpstreams[i]);
         }
+    }
+
+    /// <summary>Tear down a single upstream source cable (generator): drop the supply link, then retract the visual into the pylon.</summary>
+    void DeleteSourceCable(SourceCable sc)
+    {
+        if (sc == null || !sourceCables.Remove(sc)) return;
+        RemoveCableUpstream(sc.source);
+        if (sc.lr != null)
+        {
+            if (sc.lr.TryGetComponent<EdgeCollider2D>(out var ec)) ec.enabled = false;
+            if (sc.lr.TryGetComponent<CableLink>(out var cl)) cl.enabled = false;
+            if (connectable != null) StartCoroutine(connectable.Retract(sc.lr, transform.position));
+            else Destroy(sc.lr.gameObject);
+        }
+        OnUpdate?.Invoke(Energy);
+    }
+
+    void DropAllSourceCables()
+    {
+        for (int i = 0; i < sourceCables.Count; i++)
+        {
+            RemoveCableUpstream(sourceCables[i].source);
+            if (sourceCables[i].lr != null) Destroy(sourceCables[i].lr.gameObject);
+        }
+        sourceCables.Clear();
     }
 
     // ---- upgrades ----

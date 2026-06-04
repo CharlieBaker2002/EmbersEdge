@@ -52,6 +52,21 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     /// <summary>Aggregate view onto adjacent EnergyPads. Use Power.Use/Add/Energy from consumer scripts.</summary>
     public BuildingPower Power => _power ??= new BuildingPower(this);
 
+    public enum EnergyStatus { Powered, Throttled, Unpowered }
+    [Header("Energy status overlay (power-consuming buildings)")]
+    [Tooltip("World-space placement of the energy-status icon above this building.")]
+    [SerializeField] protected Vector3 energyIconOffset = new Vector3(0f, 0f, 0f);
+    [SerializeField] protected float energyIconScale = 1f;
+    // Insufficient-icon timing (private, not inspector-tuned): min on-screen time, flash-out duration, blink period.
+    private float energyMinShowTime = 5f;
+    private float throttleLingerTime = 2f;
+    private float energyFlashPeriod = 1.5f;
+    private SpriteRenderer energyStatusSR;
+    private EnergyStatus energyStatus = EnergyStatus.Powered;
+    private Coroutine energyLingerCo;
+    private Coroutine energyWatchCo;
+    private float throttleShownAt;
+
     private Action closeUIViaEscape;
 
 
@@ -367,7 +382,179 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     
     protected virtual void BDisable()
     {
-        
+
+    }
+
+    /// <summary>
+    /// Standardised energy reporting for any power-consuming building, surfaced as the overlay icon.
+    /// Call this every frame the building is trying to draw, passing the energy/sec it consumes at
+    /// full capacity:
+    ///   • Powered   — the grid meets <paramref name="desiredRate"/> (full capacity),
+    ///   • Throttled — running, but the grid can't sustain that rate (reduced capacity),
+    ///   • Unpowered — no energy left to draw.
+    /// The test is RATE-based, not "is a whole charge stored", so a source that keeps up at its rate
+    /// reads Powered right down to empty and then flips straight to Unpowered (no spurious flicker).
+    /// Use <see cref="ClearEnergyStatus"/> when the building doesn't need energy (idle / full).
+    /// </summary>
+    protected void ReportEnergyDraw(float desiredRate)
+    {
+        if (Power.Energy <= 1e-3f)
+            SetEnergyStatus(EnergyStatus.Unpowered);
+        else if (Power.DrawRate < desiredRate - 1e-3f)
+            SetEnergyStatus(EnergyStatus.Throttled);
+        else
+            SetEnergyStatus(EnergyStatus.Powered);
+    }
+
+    /// <summary>Hide the energy overlay — the building isn't trying to draw (idle / full).</summary>
+    protected void ClearEnergyStatus() => SetEnergyStatus(EnergyStatus.Powered);
+
+    private void SetEnergyStatus(EnergyStatus status)
+    {
+        // "No energy" is sticky: once shown it stays until the grid actually has energy again, so it
+        // survives the building going idle / firing / cooling down. Only a genuine return of power
+        // (or powering down via ClearEnergyStatusImmediate) clears it.
+        if (energyStatus == EnergyStatus.Unpowered)
+        {
+            if (status == EnergyStatus.Unpowered) return;     // already showing it
+            if (Power.Energy <= 1e-3f) return;                // still empty — keep "no energy" up
+            // energy is back: fall through and apply the requested status
+        }
+
+        if (status == energyStatus) return;
+        EnergyStatus prev = energyStatus;
+        energyStatus = status;
+
+        if (status == EnergyStatus.Unpowered)
+        {
+            StopEnergyLinger();
+            ApplyEnergyIcon(EnergyStatus.Unpowered);
+            // Watch the grid so it clears itself once power returns, even if the building stops asking.
+            if (energyWatchCo == null) energyWatchCo = StartCoroutine(WatchForPower());
+            return;
+        }
+
+        StopEnergyWatch();   // not unpowered any more
+
+        if (status == EnergyStatus.Throttled)
+        {
+            // (Re)appearing: restart the minimum-show clock and show it solid.
+            StopEnergyLinger();
+            throttleShownAt = Time.time;
+            ApplyEnergyIcon(EnergyStatus.Throttled);
+            return;
+        }
+
+        // Leaving "insufficient" for "all good" mid-combat: hold it for a minimum on-screen time,
+        // then flash it out, so it's readable. Skip when combat has ended (turrets off / end of day).
+        if (prev == EnergyStatus.Throttled && status == EnergyStatus.Powered && Finder.turretsOn)
+        {
+            if (energyLingerCo == null) energyLingerCo = StartCoroutine(WindDownInsufficient());
+            return;   // the wind-down coroutine holds + flashes the icon, then hides it
+        }
+
+        StopEnergyLinger();
+        ApplyEnergyIcon(status);
+    }
+
+    // Keep "insufficient" up for at least energyMinShowTime total, then flash it for
+    // throttleLingerTime before hiding. Bails (hides) early if combat ends mid-wind-down.
+    IEnumerator WindDownInsufficient()
+    {
+        float hideTime = Mathf.Max(throttleShownAt + energyMinShowTime, Time.time + throttleLingerTime);
+        float flashStart = hideTime - throttleLingerTime;
+        while (Time.time < hideTime)
+        {
+            if (!Finder.turretsOn) break;   // end of day — drop it now
+            if (energyStatusSR != null)
+            {
+                bool flashing = Time.time >= flashStart;
+                energyStatusSR.enabled = !flashing || Mathf.Repeat(Time.time, energyFlashPeriod) < energyFlashPeriod * 0.5f;
+            }
+            yield return null;
+        }
+        energyLingerCo = null;
+        if (energyStatus == EnergyStatus.Powered) ApplyEnergyIcon(EnergyStatus.Powered);
+    }
+
+    void StopEnergyLinger()
+    {
+        if (energyLingerCo != null) { StopCoroutine(energyLingerCo); energyLingerCo = null; }
+    }
+
+    // Holds the sticky "no energy" icon until the grid can supply again, even if the building stops
+    // reporting (idle / between waves). Clears it the moment power returns.
+    IEnumerator WatchForPower()
+    {
+        while (Power.Energy <= 1e-3f) yield return null;
+        energyWatchCo = null;
+        if (energyStatus == EnergyStatus.Unpowered)
+        {
+            energyStatus = EnergyStatus.Powered;
+            ApplyEnergyIcon(EnergyStatus.Powered);   // the building's next report sets the real state
+        }
+    }
+
+    void StopEnergyWatch()
+    {
+        if (energyWatchCo != null) { StopCoroutine(energyWatchCo); energyWatchCo = null; }
+    }
+
+    /// <summary>Hide the overlay at once, bypassing the throttle linger / sticky no-energy (building powering down / removed).</summary>
+    protected void ClearEnergyStatusImmediate()
+    {
+        StopEnergyLinger();
+        StopEnergyWatch();
+        energyStatus = EnergyStatus.Powered;
+        ApplyEnergyIcon(EnergyStatus.Powered);
+    }
+
+    // Lazily creates a world-space icon above the building. Icons live on the UIManager singleton so
+    // every power-consuming building shares one assignment; no per-prefab setup.
+    private void ApplyEnergyIcon(EnergyStatus status)
+    {
+        Sprite icon = null;
+        if (UIManager.i != null)
+        {
+            icon = status switch
+            {
+                EnergyStatus.Unpowered => UIManager.i.noEnergyIcon,
+                EnergyStatus.Throttled => UIManager.i.insufficientEnergyIcon,
+                _ => null
+            };
+        }
+
+        if (icon == null)
+        {
+            if (energyStatusSR != null) energyStatusSR.enabled = false;
+            return;
+        }
+
+        if (energyStatusSR == null)
+        {
+            // Anchor to the non-rotating root: for hasExtraParent buildings the script lives on a
+            // child that rotates to aim (e.g. the Mine Sprayer's turret), so use the parent instead.
+            Transform anchor = (hasExtraParent && transform.parent != null) ? transform.parent : transform;
+            var go = new GameObject("EnergyStatus");
+            go.transform.SetParent(anchor, false);
+            go.transform.localPosition = energyIconOffset;
+            go.transform.localScale = Vector3.one * energyIconScale;
+            energyStatusSR = go.AddComponent<SpriteRenderer>();
+            // Draw above the building's own art.
+            if (sr != null)
+            {
+                energyStatusSR.sortingLayerID = sr.sortingLayerID;
+                energyStatusSR.sortingOrder = sr.sortingOrder + 50;
+            }
+            else
+            {
+                energyStatusSR.sortingOrder = 100;
+            }
+        }
+
+        energyStatusSR.sprite = icon;
+        energyStatusSR.enabled = true;
+        energyStatusSR.color = new Color(1, 1f, 1f, 0.5f);
     }
 
     IEnumerator CountDown()

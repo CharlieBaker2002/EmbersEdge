@@ -322,7 +322,6 @@ GameObject:
   m_Component:
   - component: {fileID: 4816399736768080804}
   - component: {fileID: 4816399736768080807}
-  - component: {fileID: 4816399736768080806}
   - component: {fileID: 4816399736768080805}
   - component: {fileID: 4816399736768080802}
   - component: {fileID: 8983562740169204775}
@@ -408,28 +407,6 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!95 &4816399736768080806
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4816399736768080809}
-  m_Enabled: 0
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 9fa58cd7f4e87411ba43dabe1ed1fd96, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!114 &4816399736768080805
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -464,12 +441,68 @@ MonoBehaviour:
   builtYet: 0
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0, z: 0}
+  energyIconScale: 1
   p: {fileID: 4783886860522150799, guid: 39aac824a6cd3484686ae388eaaa9303, type: 3}
   find: {fileID: 4816399736768080802}
-  anim: {fileID: 4816399736768080806}
+  frames:
+  - {fileID: -64255269, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 1372947550, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -193595147, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 804071303, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 1041066580, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -1029048602, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 904298054, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -150272575, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 518357864, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -5985576, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 1474069090, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 1744819648, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 1733639325, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 1953505761, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -1879977319, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -1583514406, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 658762445, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 1544893288, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -716807702, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -942928019, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 1850729564, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 59589831, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -333293848, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -1656737554, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -1623061111, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 1206115388, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 2142611520, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -206990317, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -1461157007, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 364720514, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 1543791386, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 686034794, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 1511587006, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -648855000, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 1378417463, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -231883100, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -333358605, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 360793499, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 2056871626, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 28525042, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -1072091487, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -1014437852, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 244837652, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 777556954, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: 2047389988, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
+  - {fileID: -684729816, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
   tileSprite: {fileID: -274817329, guid: 0bb54eee2802e4ab2af79341b258c41e, type: 3}
   morphSprite: {fileID: -1656737554, guid: bd497cc8e0ee742aeab2247cfae37251, type: 3}
   upgradeBaseSprite: {fileID: 8863195269304895172, guid: a0fd5021a86c2437495af83d98e69e2c, type: 3}
+  chargeTime: 1
+  attackTime: 1
+  cooldown: 5
+  cooldownUpgrade: 2.8
+  aimSpeed: 8
+  drawRate: 3
+  drawRateUpgrade: 6
+  energyPerMine: 0.25
 --- !u!114 &4816399736768080802
 MonoBehaviour:
   m_ObjectHideFlags: 0

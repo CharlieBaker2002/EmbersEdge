@@ -16,25 +16,21 @@ public class SoulGenerator : Building, IOnDeath, IEnergyAccumulator
    private System.Action act;
    public bool busy;
 
-   [Header("Internal battery — non-visible, non-draggable storage this generator fills on Generate")]
-   [SerializeField] private float internalCapacity = 12f;
-   [SerializeField] private float drawRate = 3f;
-   private float internalEnergy;
+   // Internal battery: capacity + draw rate + instabuffer (burst pool), sized by variant in Start.
+   private readonly EnergyStore store = new EnergyStore(10f, 2f, 2f);
 
-   public float Energy    => internalEnergy;
-   public float MaxEnergy => internalCapacity;
-   public float DrawRate  => internalEnergy > 0f ? drawRate : 0f;
-   public float MaxDrawThisFrame(float dt) => Mathf.Min(internalEnergy, drawRate * dt);
+   public float Energy    => store.Energy;
+   public float MaxEnergy => store.MaxEnergy;
+   public float DrawRate  => store.DrawRate;
+   public float MaxDrawThisFrame(float dt) => store.MaxDrawThisFrame(dt);
 
    public event Action<float> OnUpdate;
    public event Action OnUse;
 
    public bool Use(float cost)
    {
-      if (cost <= 0f) return true;
-      if (internalEnergy < cost) return false;
-      internalEnergy -= cost;
-      OnUpdate?.Invoke(internalEnergy);
+      if (!store.Use(cost)) return false;
+      OnUpdate?.Invoke(store.Energy);
       OnUse?.Invoke();
       return true;
    }
@@ -42,37 +38,54 @@ public class SoulGenerator : Building, IOnDeath, IEnergyAccumulator
    public void Add(float amount)
    {
       if (amount <= 0f) return;
-      float room = internalCapacity - internalEnergy;
-      if (room <= 0f) return;
-      internalEnergy += Mathf.Min(amount, room);
-      OnUpdate?.Invoke(internalEnergy);
+      store.Add(amount);
+      OnUpdate?.Invoke(store.Energy);
    }
+
+   private void Update() => store.Tick(Time.deltaTime);   // reconcile the instabuffer every frame
+
+   // Visuals (arms/sprs) are optional for now — guard every access so a headless,
+   // un-wired generator still collects souls and feeds the grid.
+   bool HasArms => arms != null && arms.Length >= 2;
+   bool HasSprs => sprs != null && sprs.Length > 0;
 
    public void Animate()
    {
-      arms[0].LeanAnimateFPS(sprs, 1, true);
-      arms[1].LeanAnimateFPS(sprs, 1, true);
-      this.QA(Generate,sprs.Length*0.5f / 12f);
+      if (HasArms && HasSprs)
+      {
+         arms[0].LeanAnimateFPS(sprs, 1, true);
+         arms[1].LeanAnimateFPS(sprs, 1, true);
+      }
+      this.QA(Generate, (sprs != null ? sprs.Length : 0) * 0.5f / 12f);
    }
 
    public void Activate()
    {
+      if (!HasArms || !HasSprs) return;
       arms[0].sprite = sprs[0];
       arms[1].sprite = sprs[0];
    }
-   
+
    private void Generate()
    {
-      Instantiate(FX, transform.position, Quaternion.identity, GS.FindParent(GS.Parent.fx));
+      if (FX != null) Instantiate(FX, transform.position, Quaternion.identity, GS.FindParent(GS.Parent.fx));
       Add(1f);
    }
 
    public override void Start()
    {
+      // Internal battery (capacity, rate, instabuffer) + collection radius sized by variant
+      // (code-authoritative). The full Soul Generator reaches further (collects more souls/wave)
+      // and banks more than the small one.
+      bool small = name.StartsWith("Small");
+      store.Configure(small ? 5f : 30f, small ? 1f : 3f, 0f);
+      range = small ? 2f : 3.5f;
+
       act = () =>
       {
          this.QA(() =>
          {
+            if (!HasArms) return;
             arms[0].sprite = offSpr;
             arms[1].sprite = offSpr;
          },1.5f);
@@ -84,14 +97,19 @@ public class SoulGenerator : Building, IOnDeath, IEnergyAccumulator
    {
       gs.Add(this);
       SpawnManager.instance.onWaveComplete += act;
+      EnergyManager.i?.RegisterSource(this, anchorCell, gridSize);
    }
-   
+
    protected override void BDisable()
    {
       gs.Remove(this);
-      arms[0].sprite = offSpr;
-      arms[1].sprite = offSpr;
+      if (HasArms)
+      {
+         arms[0].sprite = offSpr;
+         arms[1].sprite = offSpr;
+      }
       SpawnManager.instance.onWaveComplete -= act;
+      EnergyManager.i?.UnregisterSource(this, anchorCell, gridSize);
    }
 
    public void Collect(Transform tran)

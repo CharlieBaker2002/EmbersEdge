@@ -448,6 +448,8 @@ MonoBehaviour:
   builtYet: 0
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0, z: 0}
+  energyIconScale: 1
   f: {fileID: 5797088041366126530}
   bullets:
   - {fileID: 6648518190254958327, guid: 0340bb906388949c8aac4ed0534671be, type: 3}

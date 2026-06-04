@@ -310,6 +310,8 @@ public class EnergyManager : MonoBehaviour
     public List<EmberStoreBuilding> emberStores;
     public static List<Constructor> constructors;
     public static List<Constructor> toBeBuilt;
+    /// <summary>Ember generators participating in the cable network as sinks (they burn delivered ember into energy).</summary>
+    public List<Generator> emberGens = new();
 
     private bool extracting = false;
 
@@ -354,6 +356,12 @@ public class EnergyManager : MonoBehaviour
             sum += c.connect.ember + c.connect.emberTravel;
             c.connect.desiredEmber = 0;
         }
+        foreach (Generator g in emberGens)
+        {
+            if (g == null || g.connect == null) continue;
+            sum += g.connect.ember + g.connect.emberTravel;
+            g.connect.desiredEmber = 0;
+        }
 
         foreach (EmberConnector c in Extractor.extractors.Select(x=>x.connect).Concat(EmberCannon.ecs.Select(x=>x.connect)))
         {
@@ -366,6 +374,18 @@ public class EnergyManager : MonoBehaviour
             {
                 if (c.connect.desiredEmber >= c.connect.maxEmber) continue;
                 c.connect.desiredEmber++;
+                sum -= 1;
+                if (sum <= 0) break;
+            }
+        }
+        // Ember generators fill after constructors, before stores — they turn ember into energy
+        // (more useful than banking it). Adjust this ordering if stores should win.
+        while (sum > 0 && emberGens.Any(g => g != null && g.connect != null && g.connect.desiredEmber < g.connect.maxEmber))
+        {
+            foreach (Generator g in emberGens)
+            {
+                if (g == null || g.connect == null || g.connect.desiredEmber >= g.connect.maxEmber) continue;
+                g.connect.desiredEmber++;
                 sum -= 1;
                 if (sum <= 0) break;
             }
@@ -383,7 +403,7 @@ public class EnergyManager : MonoBehaviour
   
         List<EmberConnector> starts = new List<EmberConnector>();
         List<EmberConnector> ends = new List<EmberConnector>();
-        IEnumerable<EmberConnector> ecs = constructors.Select(x => x.connect).Concat(emberStores.Select(x => x.connect)).Concat(Extractor.extractors.Select(x => x.connect)).Concat(EmberCannon.ecs.Select(x => x.connect));
+        IEnumerable<EmberConnector> ecs = constructors.Select(x => x.connect).Concat(emberStores.Select(x => x.connect)).Concat(Extractor.extractors.Select(x => x.connect)).Concat(EmberCannon.ecs.Select(x => x.connect)).Concat(emberGens.Where(g => g != null && g.connect != null).Select(g => g.connect));
         foreach(EmberConnector e in ecs)
         {
             if (e.desiredEmber > e.ember + e.emberTravel)
@@ -487,6 +507,7 @@ public class EnergyManager : MonoBehaviour
             .Concat(constructors.Select(x => x.connect))
             .Concat(Extractor.extractors.Select(x => x.connect))
             .Concat(EmberCannon.ecs.Select(x => x.connect))
+            .Concat(emberGens.Where(g => g != null && g.connect != null).Select(g => g.connect))
             .Distinct()
             .ToList();
         
@@ -652,6 +673,7 @@ public class EnergyManager : MonoBehaviour
         var allConnectors = emberStores.Select(x => x.connect)
             .Concat(constructors.Select(x => x.connect))
             .Concat(Extractor.extractors.Select(x => x.connect)).Concat(EmberCannon.ecs.Select(x=> x.connect))
+            .Concat(emberGens.Where(g => g != null && g.connect != null).Select(g => g.connect))
             .ToList();
         
         // Create connections based on type rules

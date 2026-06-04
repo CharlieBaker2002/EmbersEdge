@@ -134,7 +134,6 @@ GameObject:
   - component: {fileID: 4994082855171647129}
   - component: {fileID: 4994082855171647130}
   - component: {fileID: 4994082855171647132}
-  - component: {fileID: 4994082855171647122}
   - component: {fileID: 4994082855171647123}
   - component: {fileID: 4994082855171647120}
   - component: {fileID: 7970749995119017867}
@@ -298,28 +297,6 @@ MonoBehaviour:
   T: {fileID: 0}
   radius: 5
   engaged: 0
---- !u!95 &4994082855171647122
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4994082855171647141}
-  m_Enabled: 0
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: c1441e19c423a4c31914707e9d7fa1f4, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!114 &4994082855171647123
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -386,7 +363,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   buildingBehaviours:
   - {fileID: 4994082855171647132}
-  - {fileID: 4994082855171647122}
+  - {fileID: 0}
   - {fileID: 4994082855171647123}
   - {fileID: 0}
   sr: {fileID: 4994082855171647129}
@@ -408,7 +385,6 @@ MonoBehaviour:
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
   find: {fileID: 4994082855171647132}
-  anim: {fileID: 4994082855171647122}
   proj: {fileID: 8444806945408973731, guid: a1c813ef6d32648838e978c4dcd39bf6, type: 3}
   sp:
   - {fileID: 4994082855824555984}
@@ -429,8 +405,23 @@ MonoBehaviour:
   - {fileID: -885427089, guid: 0bb54eee2802e4ab2af79341b258c41e, type: 3}
   - {fileID: -1602802721, guid: 0bb54eee2802e4ab2af79341b258c41e, type: 3}
   bar: {fileID: 4994082854933380291}
+  barFrames:
+  - {fileID: -1202345157, guid: a0731b94992d248868802b79ead21f33, type: 3}
+  - {fileID: -988063878, guid: a0731b94992d248868802b79ead21f33, type: 3}
+  - {fileID: 2058496596, guid: a0731b94992d248868802b79ead21f33, type: 3}
+  - {fileID: -562377601, guid: a0731b94992d248868802b79ead21f33, type: 3}
+  - {fileID: -1749643616, guid: a0731b94992d248868802b79ead21f33, type: 3}
+  barFramesUpgraded:
+  - {fileID: 28667227, guid: a0731b94992d248868802b79ead21f33, type: 3}
+  - {fileID: -1673114966, guid: a0731b94992d248868802b79ead21f33, type: 3}
+  - {fileID: -352728520, guid: a0731b94992d248868802b79ead21f33, type: 3}
+  - {fileID: 1645020523, guid: a0731b94992d248868802b79ead21f33, type: 3}
+  - {fileID: -1016642981, guid: a0731b94992d248868802b79ead21f33, type: 3}
   morphSprite: {fileID: -901959784, guid: ae56994949c024ca88e3ca821c3ebb08, type: 3}
   baseUpgradeSprite: {fileID: 8863195269304895172, guid: a0fd5021a86c2437495af83d98e69e2c, type: 3}
+  chargeCost: 2
+  chargeTime: 1
+  dischargeTime: 0.2
 --- !u!114 &7970749995119017867
 MonoBehaviour:
   m_ObjectHideFlags: 0

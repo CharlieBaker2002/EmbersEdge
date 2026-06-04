@@ -125,7 +125,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2000541545583142029}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f6e73a9610a87401ca14112d4d980b6b, type: 3}
   m_Name: 
@@ -149,6 +149,11 @@ MonoBehaviour:
   builtYet: 0
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0, z: 0}
+  energyIconScale: 1
+  energyMinShowTime: 5
+  throttleLingerTime: 2
+  energyFlashPeriod: 0.4
   sprs: []
   arms: []
   offSpr: {fileID: 0}
@@ -156,6 +161,8 @@ MonoBehaviour:
   range: 2
   blanksr: {fileID: 0}
   busy: 0
+  internalCapacity: 12
+  drawRate: 3
 --- !u!1 &2791049751995125326
 GameObject:
   m_ObjectHideFlags: 0

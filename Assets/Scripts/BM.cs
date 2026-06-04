@@ -309,7 +309,12 @@ public class BM : MonoBehaviour //Building Manager
                     {
                         Destroy(rbb.GetComponent<Collider2D>());
                     }
-                    rbb.physic.gameObject.SetActive(true);
+                    // physic is created+activated by SwitchMonos(true) (the EE-icon build path),
+                    // which is QA-deferred and races this orb-task callback. If the orbs land
+                    // first, physic is still null here — skip; SwitchMonos will create AND
+                    // activate it a moment later (this SetActive is redundant with that). Without
+                    // the guard this NREs intermittently on build (BM.cs:312).
+                    if (rbb.physic != null) rbb.physic.gameObject.SetActive(true);
                 };
                 foreach (var spriteDecompressor in SD)
                 {

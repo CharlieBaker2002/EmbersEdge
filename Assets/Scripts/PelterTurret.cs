@@ -114,6 +114,7 @@ public class PelterTurret : Building
     {
         f.engaged = false;
         if (animLoop != null) { StopCoroutine(animLoop); animLoop = null; }
+        ClearEnergyStatusImmediate();   // turret off — hide at once, don't linger
     }
 
     IEnumerator TurnOffInASec()
@@ -171,6 +172,7 @@ public class PelterTurret : Building
             {
                 // Full, no target: idle on the Full pose.
                 sr.sprite = frames[IdleSprite[MaxAmmo]];
+                ClearEnergyStatus();
                 yield return null;
             }
         }
@@ -214,6 +216,12 @@ public class PelterTurret : Building
             float drawn = 0f, t = 0f;
             while (drawn < cost - 1e-4f || t < legAnimTime)
             {
+                // Full capacity = drawing this round's energy within the reload's CURRENT frame time
+                // (faster once Fast Refill is bought). If the grid can't sustain that rate the reload
+                // visibly slows, and this reports "insufficient" — e.g. an upgraded Pelter on a single
+                // battery. (A standard reload only needs ~0.5/s, so one battery still reads Powered.)
+                ReportEnergyDraw(cost / legAnimTime);
+
                 // When to stop reloading and go shoot the round(s) we already hold:
                 //  - Standard (no Fast Refill): after EVERY round -> shoot-one / recharge-one.
                 //  - Fast Refill: keep going to batch the whole magazine, UNLESS the grid is so
@@ -232,6 +240,7 @@ public class PelterTurret : Building
             ammo++;
         }
         sr.sprite = frames[IdleSprite[MaxAmmo]];
+        ClearEnergyStatus();   // full again — clear any overlay
     }
 
     /// <summary>Draws up to <paramref name="remaining"/> this frame, rate-limited by DrawRate. Returns what arrived.</summary>
