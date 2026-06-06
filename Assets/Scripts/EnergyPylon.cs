@@ -52,6 +52,9 @@ public class EnergyPylon : Building, IEnergyAccumulator
     private float radius = 4f;
     private int maxCableConnections = 4;
 
+    [SerializeField] private bool multi;
+    [SerializeField] private bool longRange;
+
     public event Action<float> OnUpdate;
     public event Action OnUse;
 
@@ -235,15 +238,17 @@ public class EnergyPylon : Building, IEnergyAccumulator
         base.Start();
         connectable = GetComponent<Connectable>();
         WireConnectable();
+        if(longRange) UpgradeToLong();
+        if(multi) UpgradeToMulti();
         if (transform.parent != null && transform.parent.TryGetComponent<SpriteRenderer>(out var psr))
         {
             psr.color = Color.white;
         }
-        AddUpgradeSlot(
-            tier2Cost, "Long-Pylon Upgrade",
-            tileSprites != null && tileSprites.Length > 0 && tileSprites[0] != null ? tileSprites[0] : icon,
-            true, UpgradeToLong, tier2Bursts, false,
-            longPylonSprite != null ? (Action)(() => GS.QuickMorphWithOrbs(gameObject, longPylonSprite, transform.parent)) : null);
+        // AddUpgradeSlot(
+        //     tier2Cost, "Long-Pylon Upgrade",
+        //     tileSprites != null && tileSprites.Length > 0 && tileSprites[0] != null ? tileSprites[0] : icon,
+        //     true, UpgradeToLong, tier2Bursts, false,
+        //     longPylonSprite != null ? (Action)(() => GS.QuickMorphWithOrbs(gameObject, longPylonSprite, transform.parent)) : null);
     }
 
     void WireConnectable()
@@ -522,13 +527,6 @@ public class EnergyPylon : Building, IEnergyAccumulator
         level = 2;
         radius = 8f;
         maxCableConnections = 4;
-        if (longPylonSprite != null) sr.sprite = longPylonSprite;
-        ChangeFootprint(new Vector2(1.5f, 1.5f));
-        AddUpgradeSlot(
-            tier3Cost, "Multi-Pylon Upgrade",
-            tileSprites != null && tileSprites.Length > 1 && tileSprites[1] != null ? tileSprites[1] : icon,
-            true, UpgradeToMulti, tier3Bursts, false,
-            multiPylonSprite != null ? (Action)(() => GS.QuickMorphWithOrbs(gameObject, multiPylonSprite, transform.parent)) : null);
     }
 
     void UpgradeToMulti()
@@ -536,21 +534,5 @@ public class EnergyPylon : Building, IEnergyAccumulator
         level = 3;
         radius = 4f;
         maxCableConnections = int.MaxValue;
-        if (multiPylonSprite != null) sr.sprite = multiPylonSprite;
-        ChangeFootprint(new Vector2(2f, 2f));
-    }
-
-    void ChangeFootprint(Vector2 worldSize)
-    {
-        if (GridManager.i == null) { size = worldSize; return; }
-        EnergyManager.i?.UnregisterSource(this, anchorCell, gridSize);
-        GridManager.i.SetArea(anchorCell, gridSize, false);
-        size = worldSize;
-        int cellsX = Mathf.Max(1, Mathf.RoundToInt(size.x / GridManager.i.cellSize));
-        int cellsY = Mathf.Max(1, Mathf.RoundToInt(size.y / GridManager.i.cellSize));
-        gridSize = new Vector2Int(cellsX, cellsY);
-        anchorCell = GridManager.i.WorldToGrid(transform.position) - new Vector2Int(cellsX / 2, cellsY / 2);
-        GridManager.i.SetArea(anchorCell, gridSize, true);
-        EnergyManager.i?.RegisterSource(this, anchorCell, gridSize);
     }
 }

@@ -131,18 +131,8 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0, z: 0}
   energyIconScale: 1
-  energyMinShowTime: 5
-  throttleLingerTime: 2
-  energyFlashPeriod: 0.4
-  sprs: []
-  arms: []
-  offSpr: {fileID: 0}
   FX: {fileID: 3189509133760383441, guid: 3ebfa320f58fc4e8a9c4219ecef7f00b, type: 3}
   range: 3
-  blanksr: {fileID: 0}
-  busy: 0
-  internalCapacity: 12
-  drawRate: 3
 --- !u!114 &4842455334063485095
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -223,7 +213,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: c4d71fbc2c9484b4e90e8375860f638e, type: 2}
+  - {fileID: 2100000, guid: 84e68b01cdc9046ce947b0e69dd3f0cc, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -314,7 +304,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: c4d71fbc2c9484b4e90e8375860f638e, type: 2}
+  - {fileID: 2100000, guid: 84e68b01cdc9046ce947b0e69dd3f0cc, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -405,7 +395,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: c4d71fbc2c9484b4e90e8375860f638e, type: 2}
+  - {fileID: 2100000, guid: 84e68b01cdc9046ce947b0e69dd3f0cc, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -496,7 +486,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: c4d71fbc2c9484b4e90e8375860f638e, type: 2}
+  - {fileID: 2100000, guid: 84e68b01cdc9046ce947b0e69dd3f0cc, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

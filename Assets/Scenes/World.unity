@@ -6092,10 +6092,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c5cbe919e3d854d4eaecb09127cf9a19, type: 2}
   defaultBuildings:
   - {fileID: 8717592895239521666, guid: 2913575db97684212923989f97c3294f, type: 3}
-  - {fileID: 2125101617666481163, guid: 85393bdb3cc40479281e9e9ca02436ee, type: 3}
-  - {fileID: 6690452695661889564, guid: 447f46108148f49bc9a271c8ec529adc, type: 3}
-  - {fileID: 7516228573472891795, guid: fa335567e5e7f449c9ec457012afb338, type: 3}
-  - {fileID: 3225950974384564412, guid: 6fcdc6b2f150c4655a9518b85e539ab1, type: 3}
   - {fileID: 5982873851202269136, guid: 51ea994a7248d418db39585b955b1b1a, type: 3}
   - {fileID: 6824026069347418877, guid: b89dad762eb48404aa11697a0c463675, type: 3}
   - {fileID: 7392214813360835918, guid: 021468752872a4bbcb58bbea0207dc5e, type: 3}
@@ -6115,8 +6111,6 @@ MonoBehaviour:
   - {fileID: 7926129472078753466, guid: 9774a4455fdf8468493ba45345dad493, type: 3}
   - {fileID: 1517340900197829438, guid: 805f6552ad38f4e80b73f71addefa600, type: 3}
   - {fileID: 8703573291081529796, guid: d34e5631dbe8d4504a93975a078eb1c0, type: 3}
-  - {fileID: 2307775052015017985, guid: abfe8ae49574941d4b4097d531c28c9c, type: 3}
-  - {fileID: 5930459321446844039, guid: e86b09003b52f4d0595db07a0724cf6e, type: 3}
   - {fileID: 9010514658136673332, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
   - {fileID: 4464479778263070814, guid: ffe893d2c949d4b83a265550d4f6d0d4, type: 3}
   - {fileID: 4309717612728443263, guid: 4ad98b295555746fb951c722b82db47d, type: 3}
@@ -6131,6 +6125,8 @@ MonoBehaviour:
   - {fileID: 323440563046157391, guid: e2161ff026b2b48899f7cd40ac500ff1, type: 3}
   - {fileID: 323440563046157391, guid: b5ddb25a104a54785b79e82ef5cb2157, type: 3}
   - {fileID: 323440563046157391, guid: bc024c4044cb24255aabb3d97bc4b96d, type: 3}
+  - {fileID: 323440563046157391, guid: ab64099e038884b9f92acf5ed93a96be, type: 3}
+  - {fileID: 323440563046157391, guid: 4ebad86a49c3f4f4ab997551f0a990e3, type: 3}
   baseBuildingSciences: []
   barons:
   - {fileID: 1402483098}
@@ -6554,6 +6550,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   emberStores: []
+  emberGens: []
   constructCableTimer: 0
   emberCablePrefab: {fileID: 8298006957447366199, guid: 1b459db7957ce4375b4e6c3061a6d11d, type: 3}
 --- !u!1 &273691170
@@ -6701,9 +6698,6 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
-  energyMinShowTime: 5
-  throttleLingerTime: 2
-  energyFlashPeriod: 0.4
 --- !u!114 &282472131
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -19311,6 +19305,8 @@ MonoBehaviour:
   - {fileID: 323440563046157391, guid: bc024c4044cb24255aabb3d97bc4b96d, type: 3}
   - {fileID: 323440563046157391, guid: e2161ff026b2b48899f7cd40ac500ff1, type: 3}
   - {fileID: 323440563046157391, guid: b5ddb25a104a54785b79e82ef5cb2157, type: 3}
+  - {fileID: 323440563046157391, guid: 4ebad86a49c3f4f4ab997551f0a990e3, type: 3}
+  - {fileID: 323440563046157391, guid: ab64099e038884b9f92acf5ed93a96be, type: 3}
   - {fileID: 5015000612375107076, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
   - {fileID: 5015000612375107076, guid: be600958fede34aecbc6b892ccf95daa, type: 3}
   - {fileID: 4116005223152699529, guid: 58d0c298cbdb14859abfe9d04f02fd52, type: 3}
@@ -20226,9 +20222,6 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
-  energyMinShowTime: 5
-  throttleLingerTime: 2
-  energyFlashPeriod: 0.4
   radius: 6.1
   mag: {fileID: 1272465380}
   magnetsOfficial: []
@@ -28613,9 +28606,6 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
-  energyMinShowTime: 5
-  throttleLingerTime: 2
-  energyFlashPeriod: 0.4
 --- !u!1 &947558060
 GameObject:
   m_ObjectHideFlags: 0
@@ -33947,9 +33937,6 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
-  energyMinShowTime: 5
-  throttleLingerTime: 2
-  energyFlashPeriod: 0.4
   radius: 5.1
   mag: {fileID: 1770628851}
   magnetsOfficial: []
@@ -37820,9 +37807,6 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
-  energyMinShowTime: 5
-  throttleLingerTime: 2
-  energyFlashPeriod: 0.4
 --- !u!1 &1417212843
 GameObject:
   m_ObjectHideFlags: 0
@@ -39879,9 +39863,6 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
-  energyMinShowTime: 5
-  throttleLingerTime: 2
-  energyFlashPeriod: 0.4
   radius: 5.1
   mag: {fileID: 1369899390}
   magnetsOfficial: []
@@ -41035,9 +41016,6 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
-  energyMinShowTime: 5
-  throttleLingerTime: 2
-  energyFlashPeriod: 0.4
 --- !u!1 &1554261999
 GameObject:
   m_ObjectHideFlags: 0
@@ -49558,9 +49536,6 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
-  energyMinShowTime: 5
-  throttleLingerTime: 2
-  energyFlashPeriod: 0.4
   radius: 7.1
   mag: {fileID: 773659899}
   magnetsOfficial: []
@@ -51074,9 +51049,6 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
-  energyMinShowTime: 5
-  throttleLingerTime: 2
-  energyFlashPeriod: 0.4
 --- !u!1 &1775534700
 GameObject:
   m_ObjectHideFlags: 0
@@ -52445,9 +52417,6 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
-  energyMinShowTime: 5
-  throttleLingerTime: 2
-  energyFlashPeriod: 0.4
 --- !u!1 &1860916262
 GameObject:
   m_ObjectHideFlags: 0
@@ -52912,9 +52881,6 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
-  energyMinShowTime: 5
-  throttleLingerTime: 2
-  energyFlashPeriod: 0.4
 --- !u!1 &1887166915
 GameObject:
   m_ObjectHideFlags: 0
@@ -57520,9 +57486,6 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
-  energyMinShowTime: 5
-  throttleLingerTime: 2
-  energyFlashPeriod: 0.4
   defaults:
   - {fileID: 11400000, guid: f71a62f95877f4fb2a9a645980589e66, type: 2}
   - {fileID: 11400000, guid: 050092785df38472f993d04a65d2a734, type: 2}
@@ -57831,9 +57794,6 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
-  energyMinShowTime: 5
-  throttleLingerTime: 2
-  energyFlashPeriod: 0.4
   healingOrbPrefab: {fileID: 0}
   platformCollider: {fileID: 0}
   txt: {fileID: 479228266}

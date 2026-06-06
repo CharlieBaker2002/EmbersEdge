@@ -151,18 +151,8 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0, z: 0}
   energyIconScale: 1
-  energyMinShowTime: 5
-  throttleLingerTime: 2
-  energyFlashPeriod: 0.4
-  sprs: []
-  arms: []
-  offSpr: {fileID: 0}
   FX: {fileID: 0}
   range: 2
-  blanksr: {fileID: 0}
-  busy: 0
-  internalCapacity: 12
-  drawRate: 3
 --- !u!1 &2791049751995125326
 GameObject:
   m_ObjectHideFlags: 0
@@ -221,7 +211,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 985c4bf162de44181bc8748329edb00b, type: 2}
+  - {fileID: 2100000, guid: e9bed828ce4f24c55a920f32fa879191, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -312,7 +302,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 985c4bf162de44181bc8748329edb00b, type: 2}
+  - {fileID: 2100000, guid: e9bed828ce4f24c55a920f32fa879191, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 3961939903466927042}
   - component: {fileID: 9110878769623498410}
   m_Layer: 0
-  m_Name: EnergyPylon
+  m_Name: MultiPylon
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -84,7 +84,7 @@ SpriteRenderer:
   m_SortingLayer: 2
   m_SortingOrder: 10
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: e55e1aa750a284332977807f847f9860, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 04eb57c69b2724d1e9b9af5549ea16a6, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -136,7 +136,7 @@ MonoBehaviour:
   canOpen: 1
   hasExtraParent: 0
   icon: {fileID: 0}
-  size: {x: 0.5, y: 0.5}
+  size: {x: 1, y: 1}
   physic: {fileID: 0}
   builtBlasts: 2
   rebuildCost: 00000000000000000000000000000000
@@ -160,7 +160,7 @@ MonoBehaviour:
   tier3Bursts: 8
   perCableCap: 4
   cableClickRadius: 0.15
-  multi: 0
+  multi: 1
   longRange: 0
 --- !u!114 &9110878769623498410
 MonoBehaviour:
