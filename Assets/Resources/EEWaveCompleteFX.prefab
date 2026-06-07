@@ -263,3 +263,4 @@ MonoBehaviour:
   shockwaveStrength: 1
   shockwaveWidthStart: 2.5
   shockwaveWidthEnd: 0.5
+  ringRadius: 14

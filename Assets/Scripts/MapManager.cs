@@ -33,6 +33,12 @@ public class MapManager : MonoBehaviour
     [SerializeField] SplineContainer sc;
     [SerializeField] SpriteMask sr;
     public PolygonCollider2D poly;
+    // A SECOND trigger collider, inset `pushInset` units inside `poly`, that drives ONLY the enemy
+    // pull‑toward‑centre. poly itself is left untouched, so the map size, boundary visuals, GPU mask,
+    // building placement and in‑bounds checks all stay on the true edge — only the "wall" that pulls
+    // enemies back sits further inside. Re‑synced to poly's shape in UpdatePolyFromLR.
+    [SerializeField] float pushInset = 1f;
+    PolygonCollider2D pushPoly;
     private static bool? fading = null;
     private static Coroutine c;
     [Header("Represents time to wait to update the lr for rotation. Negative is backwards")]
@@ -54,6 +60,12 @@ public class MapManager : MonoBehaviour
   private const float areaEpsilon        = 0.01f;  // Minimum extra area required for an expansion
   private const float minSmoothAngle     = 10f;   // Interior‑angle threshold (deg) – sharper angles will be softened
   private const float smoothDisplacement = 0.5f;   // Outward nudge (world units) for neighbour knots
+  // --- No‑regress constants: a smoothed edge can bow inside the old outline even when area grows ---
+  private const int   containRepairIters = 40;     // Max outward‑push passes used to re‑contain the old outline
+  private const int   containSamples     = 512;    // Dense boundary resolution for catching thin slivers
+  private const float containEpsilon     = 0.02f;  // Inward nudge: sub‑epsilon coincidence counts as enclosed
+  private const float containStep        = 0.06f;  // Minimum outward push per pass (world units)
+  private Vector2[] asyncPreOutline;               // Pre‑change outline captured for the animated (extractor) path
   bool fff = false; //finish follow flag
 
     public List<ActionScript> asses = new List<ActionScript>();
@@ -567,6 +579,12 @@ public class MapManager : MonoBehaviour
             gpuMaskMat = new Material(Shader.Find("Sprites/Default"));
             gpuMaskMat.color = Color.white;
         }
+
+        // Inset push boundary (see field docs). Lives on this same GameObject/transform as poly, so it
+        // inherits all map scaling; its shape is kept in sync with poly in UpdatePolyFromLR.
+        pushPoly = gameObject.AddComponent<PolygonCollider2D>();
+        pushPoly.isTrigger = true;
+        SyncPushPoly();
     }
 
     public static void FadeBoundary(bool fadeIn)
@@ -656,11 +674,16 @@ public class MapManager : MonoBehaviour
     /// <summary>
     /// Adds a new point to the map
     /// </summary>
-    public (int,BezierKnot) MapChange(Vector3 EEpos, bool updateMask)
+    public (int,BezierKnot) MapChange(Vector3 EEpos, bool updateMask, bool smoothShape = false)
     {
-        // Capture current area before we make any structural change
+        // doShape => produce the REAL smoothed, no‑regress outline. True for a commit, and also for
+        // an accurate preview (which reverts afterwards). The cheap structural‑only preview omits it.
+        bool doShape = updateMask || smoothShape;
+        // Capture current area + outline before we make any structural change
         UpdatePolyFromLR();                // make sure poly is up‑to‑date
         float originalArea = PolygonArea(poly.points);
+        // Dense sample of the OLD curve (not the 100‑pt collider) so we can catch thin slivers later.
+        Vector2[] preChangePts = doShape ? SampleSplineDense(containSamples) : null;
 
         //Find three closest knots to the position. Determine the single closest knot.
         //Make vectors vA[1,2,3] from knots to the position
@@ -731,14 +754,19 @@ public class MapManager : MonoBehaviour
             return (-1, returnV);   // ‑1 signals “no change was kept”
         }
 
-        // Neighbour smoothing is only required for committed edits
-        if (updateMask)
+        // Smoothing + no‑regress are part of the REAL shape: run them for a commit AND for an
+        // accurate preview, but not for the cheap structural‑only preview.
+        if (doShape)
         {
             SmoothLocalAngles(ind);
             sc.Spline.SetTangentMode(TangentMode.AutoSmooth);
+            // Area grew, but a smoothed edge can still dip inside the old outline and shave a sliver
+            // of existing territory. Push the boundary back out until it fully re‑encloses the old
+            // outline, so an expansion can never lose ground.
+            EnforceContainment(preChangePts);
         }
 
-        // Refresh visuals after smoothing
+        // Refresh visuals to match the final spline.
         UpdateLRFromSpline();
         UpdatePolyFromLR();
 
@@ -834,7 +862,44 @@ public class MapManager : MonoBehaviour
             vs[i] = (Vector2)(Vector3)sc.Spline.EvaluatePosition(i / (float)splineSampleCount);
         }
         poly.points = vs;
+        SyncPushPoly();
     }
+
+    // Re‑sync the inset push boundary to poly's current shape (a copy shrunk inward by pushInset).
+    private void SyncPushPoly()
+    {
+        if (pushPoly == null || poly == null) return;
+        Vector2[] p = poly.points;
+        if (p.Length < 3) return;
+        pushPoly.points = InsetPoints(p, pushInset);
+    }
+
+    // Shrink a closed polygon inward (toward its centroid) by `d` units, offsetting each vertex along
+    // its inward edge normal. The boundary spline is smooth, so a uniform normal offset stays clean.
+    private Vector2[] InsetPoints(Vector2[] pts, float d)
+    {
+        int n = pts.Length;
+        if (n < 3 || d <= 0f) return (Vector2[])pts.Clone();
+        Vector2 c = PolygonCentroid(pts);
+        var outp = new Vector2[n];
+        for (int k = 0; k < n; k++)
+        {
+            Vector2 prev = pts[(k - 1 + n) % n];
+            Vector2 next = pts[(k + 1) % n];
+            Vector2 edge = next - prev;
+            Vector2 nrm = new Vector2(edge.y, -edge.x);
+            float m = nrm.magnitude;
+            nrm = m > 1e-5f ? nrm / m : (pts[k] - c).normalized;
+            if (Vector2.Dot(nrm, c - pts[k]) < 0f) nrm = -nrm;   // orient inward (toward centroid)
+            outp[k] = pts[k] + nrm * d;
+        }
+        return outp;
+    }
+
+    // True when p is inside the inset push boundary (i.e. NOT in the pull band). Falls back to the
+    // true edge if the inset collider isn't ready yet.
+    private bool InsideInset(Vector2 p) =>
+        pushPoly != null ? pushPoly.OverlapPoint(p) : InsideBounds(p);
 
     // === Geometry helpers =====================================================
 
@@ -864,6 +929,135 @@ public class MapManager : MonoBehaviour
         }
         float k = 1f / (6f * signedA);
         return new Vector2(cx * k, cy * k);
+    }
+
+    // Standard ray‑cast point‑in‑polygon test.
+    private static bool PointInPolygon(Vector2 p, Vector2[] poly)
+    {
+        bool inside = false;
+        int n = poly.Length;
+        for (int a = 0, b = n - 1; a < n; b = a++)
+        {
+            Vector2 pa = poly[a], pb = poly[b];
+            if (((pa.y > p.y) != (pb.y > p.y)) &&
+                (p.x < (pb.x - pa.x) * (p.y - pa.y) / (pb.y - pa.y) + pa.x))
+                inside = !inside;
+        }
+        return inside;
+    }
+
+    // Densely sample the boundary spline into world‑space points — finer than the 100‑pt collider,
+    // so containment tests catch thin slivers that fall between collider vertices.
+    private Vector2[] SampleSplineDense(int count)
+    {
+        var vs = new Vector2[count];
+        for (int s = 0; s < count; s++)
+            vs[s] = (Vector2)(Vector3)sc.Spline.EvaluatePosition(s / (float)count);
+        return vs;
+    }
+
+    /// <summary>
+    /// A world‑space point ON the boundary spline within <paramref name="radius"/> of
+    /// <paramref name="world"/>, picked uniformly at random among the in‑range samples. Falls back
+    /// to the NEAREST boundary point when nothing lies within the radius (e.g. the query point sits
+    /// deeper inside the map than <paramref name="radius"/>). Used so base EEs spawn enemies right on
+    /// the rim next to themselves instead of in a disc around them.
+    /// </summary>
+    public Vector2 BoundaryPointNear(Vector2 world, float radius, int samples = 512)
+    {
+        if (sc == null || sc.Spline == null || sc.Spline.Count < 3) return world;
+
+        Vector2[] pts = SampleSplineDense(samples);
+        float r2 = radius * radius;
+        int count = 0;
+        Vector2 chosen = world, closest = world;
+        float closestSqr = float.PositiveInfinity;
+
+        for (int s = 0; s < pts.Length; s++)
+        {
+            float d2 = (pts[s] - world).sqrMagnitude;
+            if (d2 <= r2 && UnityEngine.Random.Range(0, ++count) == 0) chosen = pts[s];   // reservoir sample
+            if (d2 < closestSqr) { closestSqr = d2; closest = pts[s]; }
+        }
+        return count > 0 ? chosen : closest;
+    }
+
+    /// <summary>
+    /// Guarantees the current boundary fully re‑encloses <paramref name="oldDense"/> (a DENSE sample
+    /// of the outline from before this expansion). Even when total area grows, the AutoSmoothed edge
+    /// can bow inside the previous edge and clip a sliver of old territory — and at 100 collider
+    /// points that sliver hides between vertices, which is why a coarse check missed it. Here we test
+    /// a dense sample of the old curve against a dense sample of the NEW curve, and for every clipped
+    /// point push the nearest spline knot (and, more gently, its two neighbours, so mid‑segment dips
+    /// also lift) straight outward from the centroid. Knots only ever move OUTWARD, so the map grows
+    /// monotonically and never loses ground; the loop stops the instant nothing is left outside.
+    /// </summary>
+    private void EnforceContainment(Vector2[] oldDense)
+    {
+        if (oldDense == null || oldDense.Length < 3) return;
+
+        for (int iter = 0; iter < containRepairIters; iter++)
+        {
+            Vector2[] cur = SampleSplineDense(containSamples);   // dense NEW outline
+            Vector2 centroid = PolygonCentroid(cur);
+            int kc = sc.Spline.Count;
+            float[] push = new float[kc];
+            bool anyOutside = false;
+
+            foreach (Vector2 raw in oldDense)
+            {
+                // Nudge the test point slightly inward so a point merely sitting on an unchanged
+                // edge reads as enclosed (don't fight numerical coincidence).
+                Vector2 toC = centroid - raw;
+                Vector2 test = raw + (toC.sqrMagnitude > 1e-6f ? toC.normalized : Vector2.zero) * containEpsilon;
+                if (PointInPolygon(test, cur)) continue;
+                anyOutside = true;
+
+                // Nearest knot to the clipped point.
+                int nk = 0; float best = float.MaxValue;
+                for (int k = 0; k < kc; k++)
+                {
+                    float d = ((Vector2)(Vector3)sc.Spline[k].Position - raw).sqrMagnitude;
+                    if (d < best) { best = d; nk = k; }
+                }
+                Vector2 kp = (Vector2)(Vector3)sc.Spline[nk].Position;
+                float need = (raw - centroid).magnitude - (kp - centroid).magnitude;
+                if (need < containStep) need = containStep;   // guarantee outward progress each pass
+
+                // Lift the nearest knot fully, its neighbours partly — a dip between two knots can't
+                // be cleared by moving just one endpoint.
+                if (need        > push[nk]) push[nk] = need;
+                int pv = (nk - 1 + kc) % kc, nx = (nk + 1) % kc;
+                float half = need * 0.6f;
+                if (half > push[pv]) push[pv] = half;
+                if (half > push[nx]) push[nx] = half;
+            }
+
+            if (!anyOutside) return;   // fully enclosed — done
+
+            for (int k = 0; k < kc; k++)
+            {
+                if (push[k] <= 0f) continue;
+                Vector2 kp = (Vector2)(Vector3)sc.Spline[k].Position;
+                Vector2 dir = kp - centroid;
+                dir = dir.sqrMagnitude > 1e-6f ? dir.normalized : Vector2.up;
+                sc.Spline.SetKnot(k, new BezierKnot((Vector3)(kp + dir * push[k])));
+            }
+            sc.Spline.SetTangentMode(TangentMode.AutoSmooth);   // next pass evaluates the smoothed curve
+        }
+        // Note: callers sync the line renderer + collider afterwards — we work on the spline directly.
+    }
+
+    // Restore the boundary spline to a previously captured set of knots. Used to revert a PREVIEW
+    // edit after its outline has been drawn (a snapshot covers the containment pushes that
+    // UndoChange alone can't undo). Re‑applies AutoSmooth so the curve matches the original exactly.
+    private void RestoreSpline(BezierKnot[] snapshot)
+    {
+        if (snapshot == null) return;
+        while (sc.Spline.Count > snapshot.Length) sc.Spline.RemoveAt(sc.Spline.Count - 1);
+        while (sc.Spline.Count < snapshot.Length) sc.Spline.Insert(sc.Spline.Count, snapshot[sc.Spline.Count], TangentMode.AutoSmooth);
+        for (int k = 0; k < snapshot.Length; k++) sc.Spline.SetKnot(k, snapshot[k]);
+        sc.Spline.SetTangentMode(TangentMode.AutoSmooth);
     }
 
     /// <summary>
@@ -936,12 +1130,15 @@ public class MapManager : MonoBehaviour
                 yield return null;
                 continue;
             }
-            mapchangedata = MapChange(ProximityData(v, 3f).Item1, false); //spline is only changed and then unchanged, so unless multithreading is used, this is read-safe (no changes are kept until fff == true).
-            if (mapchangedata.Item1 != -1)   // skip preview+undo when MapChange was rejected
+            // Preview the SAME smoothed, no‑regress outline the commit will produce, then fully
+            // revert it. The snapshot covers the containment pushes that UndoChange alone can't undo.
+            BezierKnot[] previewSnap = sc.Spline.Knots.ToArray();
+            mapchangedata = MapChange(ProximityData(v, 3f).Item1, false, smoothShape: true);
+            if (mapchangedata.Item1 != -1)   // skip drawing when the change was rejected (no growth)
             {
-                UpdateLRFromSpline();
-                UndoChange(mapchangedata);
+                UpdateLRFromSpline();         // trace the real outline; spline reverts below, LR keeps it
             }
+            RestoreSpline(previewSnap);
 
             vEE = ProximityData(v,2f,true).Item1;
             vprev = vEE - vprev;
@@ -1051,7 +1248,7 @@ public class MapManager : MonoBehaviour
         yield return null;
         yield return CameraScript.i.StartTemporaryZoom(1.1f, 0.5f, 1.5f, 1.5f);
         yield return new WaitForSeconds(2f);
-        yield return CameraScript.i.StartCoroutine(CameraScript.i.DiveThrough(new Vector2(0,0),10f));
+        yield return CameraScript.i.StartCoroutine(CameraScript.i.DiveThrough(new Vector2(0,0),10f * MapManager.Scale));
         CameraScript.i.DistortLens(false, false, false);
         IM.i.pi.Player.Movement.Enable();
         if (id != 0 || SetM.quickTransition)
@@ -1123,7 +1320,10 @@ public class MapManager : MonoBehaviour
                         }
                     }
                 }
-                asses.Add(AS);
+                // Track for pull only once they're outside the inset boundary; both poly and
+                // pushPoly feed this, so ignore exits that still leave them inside it and dedupe.
+                if (InsideInset(collision.attachedRigidbody.transform.position)) return;
+                if (!asses.Contains(AS)) asses.Add(AS);
             }
         }
     }
@@ -1136,7 +1336,9 @@ public class MapManager : MonoBehaviour
         }
         if(collision.attachedRigidbody.TryGetComponent<ActionScript>(out var AS))
         {
-            if (asses.Contains(AS))
+            // Stop pulling only once they're back inside the inset boundary — re‑entering poly's true
+            // edge isn't enough, they'd still be in the pull band.
+            if (asses.Contains(AS) && InsideInset(collision.attachedRigidbody.transform.position))
             {
                 asses.Remove(AS);
             }
@@ -1155,7 +1357,7 @@ public class MapManager : MonoBehaviour
                 continue;
             }
 
-            if (InsideBounds(asses[i].transform.position))
+            if (InsideInset(asses[i].transform.position))
             {
                 asses.RemoveAt(i);
                 i--;
@@ -1291,6 +1493,9 @@ public void ChangeMapAsync(Vector3 pos, bool updateMask)
     // Start update coroutine if not already running
     if (updateCoroutine == null)
     {
+        // Snapshot the outline before this batch of animated edits, so the finished boundary can be
+        // guaranteed to still enclose all of it (no‑regress, same as the sync MapChange path).
+        asyncPreOutline = SampleSplineDense(containSamples);
         updateCoroutine = StartCoroutine(UpdateAnimationsCoroutine(updateMask));
     }
 }
@@ -1453,11 +1658,16 @@ private IEnumerator UpdateAnimationsCoroutine(bool updateMask)
     // Final updates
     if (updateMask)
     {
+        // Re‑enclose the pre‑animation outline before committing, then rebuild visuals + mask.
+        UpdatePolyFromLR();
+        EnforceContainment(asyncPreOutline);
+        UpdateLRFromSpline();          // sync the line renderer to the pushed‑out boundary
+        GenerateSpriteFromPoly();      // re‑samples poly + rebuilds the mask
         PushBackEE();
         CheckExtras();
         OnUpdateMap?.Invoke();
     }
-    
+
     updateCoroutine = null;
 }
 

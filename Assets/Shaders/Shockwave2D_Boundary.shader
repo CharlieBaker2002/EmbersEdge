@@ -84,16 +84,25 @@ Shader "Hidden/Shockwave2D_Boundary"
                 float u = IN.uv.x;
                 float t = _Time.y * _Speed;
 
+                // Snap every spatial frequency to a whole number of waves so the pattern closes
+                // seamlessly at the u=0/1 seam — non-integer counts (e.g. _Waves*1.7) left a
+                // phase break exactly where the spline starts. Time drifts stay non-integer, so
+                // it still never visibly repeats.
+                float wA = round(_Waves);
+                float wB = round(_Waves * 0.5);
+                float wC = round(_Waves * 1.7);
+                float wD = max(1.0, round(_Waves * 0.33));
+
                 // Living amplitude: layered, phase-offset travelling waves around the rim. Different
                 // spatial freqs + drift speeds + phases means it never visibly repeats.
                 float shimmer = 0.55
-                              + 0.30 * sin(u * TAU * _Waves        - t)
-                              + 0.20 * sin(u * TAU * _Waves * 0.5  + t * 0.73 + THIRD)
-                              + 0.15 * sin(u * TAU * _Waves * 1.7  - t * 1.31 + TWOTHIRD);
+                              + 0.30 * sin(u * TAU * wA - t)
+                              + 0.20 * sin(u * TAU * wB + t * 0.73 + THIRD)
+                              + 0.15 * sin(u * TAU * wC - t * 1.31 + TWOTHIRD);
                 shimmer = max(shimmer, 0.0);
 
                 // Breathing membrane: the crest drifts across the band so the edge ripples in/out.
-                float centre = 0.5 + 0.16 * sin(u * TAU * (_Waves * 0.33) + t * 0.5);
+                float centre = 0.5 + 0.16 * sin(u * TAU * wD + t * 0.5);
                 float prof   = saturate(cos(clamp((IN.uv.y - centre) / 0.5, -1.0, 1.0) * 1.5707963));
 
                 float amp = _Strength * prof * shimmer;
@@ -103,9 +112,9 @@ Shader "Hidden/Shockwave2D_Boundary"
 
                 // Chromatic aberration: each channel pushed by a 2π/3 phase-shifted amount, so the
                 // colour split itself pulses and breathes — alive even though the shape is fixed.
-                float oR = amp * (1.0 + _Chroma * sin(u * TAU * _Waves + t));
-                float oG = amp * (1.0 + _Chroma * sin(u * TAU * _Waves + t + THIRD));
-                float oB = amp * (1.0 + _Chroma * sin(u * TAU * _Waves + t + TWOTHIRD));
+                float oR = amp * (1.0 + _Chroma * sin(u * TAU * wA + t));
+                float oG = amp * (1.0 + _Chroma * sin(u * TAU * wA + t + THIRD));
+                float oB = amp * (1.0 + _Chroma * sin(u * TAU * wA + t + TWOTHIRD));
 
                 float2 uv = IN.screenUV;
                 half r = SAMPLE_TEXTURE2D_X(_CameraSortingLayerTexture, sampler_CameraSortingLayerTexture, uv + dir * oR).r;

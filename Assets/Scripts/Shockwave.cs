@@ -47,7 +47,7 @@ public class Shockwave : MonoBehaviour
     static readonly int ID_Chroma    = Shader.PropertyToID("_Chroma");
 
     /// <summary>Instantiate the Shockwave prefab at a world position with optional overrides.</summary>
-    public static Shockwave Spawn(Vector3 worldPos, float radius = -1f, float strength = -1f, float lifetime = -1f)
+    public static Shockwave Spawn(Vector3 worldPos, float radius = -1f, float strength = -1f, float lifetime = -1f, float chroma = -1f)
     {
         GameObject prefab = Resources.Load<GameObject>("Shockwave");
         if (prefab == null)
@@ -55,15 +55,21 @@ public class Shockwave : MonoBehaviour
             Debug.LogWarning("[Shockwave] Resources/Shockwave prefab not found.");
             return null;
         }
-        GameObject go = Instantiate(prefab, worldPos, Quaternion.identity);
+        GameObject go = Instantiate(prefab, (Vector2)worldPos, Quaternion.identity);
         Shockwave sw = go.GetComponent<Shockwave>();
         if (sw != null)
         {
             if (radius   > 0f) sw.maxRadius = radius;
             if (strength > 0f) sw.strength  = strength;
             if (lifetime > 0f) sw.lifetime  = lifetime;
+            if (chroma > 0f) sw.chroma  = chroma;
         }
         return sw;
+    }
+    
+    public static void EEWave(Vector2 position, float rad = 15f)
+    {
+        Instantiate(EmbersEdge.mainCore.eeWaveCompleteFX,position,Quaternion.identity,GS.FindParent(GS.Parent.fx)).GetComponent<EEWaveCompleteFX>().ringRadius = rad;
     }
 
     void Awake()

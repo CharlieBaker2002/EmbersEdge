@@ -423,7 +423,6 @@ public class EnergyManager : MonoBehaviour
         Debug.Log(starts.Count);
         Debug.Log(ends.Count);
         List<List<EmberConnector>> paths = CalculateShortestRoutes(starts,ends); //for each start, find the shortest path to each end, returns a list ordered by shortest distance (evaluating inter-connector distance sums)
-        int i = 0;
         // foreach(List<EmberConnector> path in paths)
         // {
         //     Debug.Log("i: " + i);

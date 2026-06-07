@@ -149,7 +149,15 @@ public class Ember : MonoBehaviour
         LeanTween.move(gameObject, burstTarget, outDur).setEase(LeanTweenType.easeOutExpo)
             .setOnComplete(() =>
                 LeanTween.move(gameObject, snapTo, returnDur).setEase(LeanTweenType.easeInCubic)
-                    .setOnComplete(() => { transform.position = snapTo; Cease(); }));
+                    .setOnComplete(() => 
+                    { 
+                        transform.position = snapTo;
+                        if (!PortalScript.goingHomeNow)
+                        {
+                            Shockwave.Spawn(Vector2.zero, 15f, 0.025f, 2f);
+                        }
+                        Cease(); 
+                    }));
     }
 
     void Update()
@@ -209,7 +217,10 @@ public class Ember : MonoBehaviour
             return;
         }
 
-        var em = ps.emission;
+        // portalEmber has no main `ps` (it uses ps2 + trailPS), so guard the deref — em is only
+        // read on the !portalEmber paths below. Without this, ps.emission threw a NullReferenceException
+        // that aborted the whole sequence, leaving portal embers frozen/invisible.
+        var em = ps ? ps.emission : default;
         if (charEmber)
         {
             if (trailPS[0] != null) { var m = trailPS[0].main; m.loop = true; trailPS[0].Play(); }

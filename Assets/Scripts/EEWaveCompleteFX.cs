@@ -20,7 +20,7 @@ public class EEWaveCompleteFX : MonoBehaviour
     [SerializeField] float shockwaveWidthEnd = 0.5f;
 
     Shockwave shock;
-    const float ringRadius = 15f;   // the LR expands to ringRadius * t (local units)
+    public float ringRadius = 12f;   // the LR expands to ringRadius * t (local units)
 
     // Start is called before the first frame update
     void Start()

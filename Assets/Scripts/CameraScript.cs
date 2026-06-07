@@ -230,9 +230,9 @@ public class CameraScript : MonoBehaviour
             {
                 UIManager.i.FadeInCanvas();
                 UId = true;
-                if (PortalScript.i.goingHomeNow)
+                if (PortalScript.goingHomeNow)
                 {
-                    PortalScript.i.goingHomeNow = false;
+                    PortalScript.goingHomeNow = false;
                     if (SpawnManager.instance.waveCompleted)
                     {
                         SpawnManager.instance.SetNextDay();
@@ -259,7 +259,9 @@ public class CameraScript : MonoBehaviour
             else
             {
                 direction = move.ReadValue<Vector2>();
-                transform.position += 2f * Time.deltaTime * (Vector3)direction;
+                // Pan speed scales with the map size squared, so panning a bigger (and further
+                // zoomed‑out) map stays responsive.
+                transform.position += 2f * (MapManager.Scale * MapManager.Scale) * Time.deltaTime * (Vector3)direction;
             }
         }
         if (!(shakeStrength > 0f)) return;

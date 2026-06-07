@@ -37,8 +37,6 @@ public class EnergyPylon : Building, IEnergyAccumulator
     [Header("Pylon — upgrade costs")]
     [SerializeField] private int[] tier2Cost = { 30, 0, 1, 0 };
     [SerializeField] private int[] tier3Cost = { 60, 0, 3, 0 };
-    [SerializeField] private int tier2Bursts = 5;
-    [SerializeField] private int tier3Bursts = 8;
 
     [Header("Pylon — rate cap")]
     [Tooltip("Maximum energy/sec a single cable can transmit. Total throughput = perCableCap × downstream-cable count.")]
@@ -48,7 +46,6 @@ public class EnergyPylon : Building, IEnergyAccumulator
     [Tooltip("Click-radius (world units) around a connected cable for selecting it to delete.")]
     [SerializeField] private float cableClickRadius = 0.15f;
 
-    private int level = 1;
     private float radius = 4f;
     private int maxCableConnections = 4;
 
@@ -244,11 +241,6 @@ public class EnergyPylon : Building, IEnergyAccumulator
         {
             psr.color = Color.white;
         }
-        // AddUpgradeSlot(
-        //     tier2Cost, "Long-Pylon Upgrade",
-        //     tileSprites != null && tileSprites.Length > 0 && tileSprites[0] != null ? tileSprites[0] : icon,
-        //     true, UpgradeToLong, tier2Bursts, false,
-        //     longPylonSprite != null ? (Action)(() => GS.QuickMorphWithOrbs(gameObject, longPylonSprite, transform.parent)) : null);
     }
 
     void WireConnectable()
@@ -524,14 +516,12 @@ public class EnergyPylon : Building, IEnergyAccumulator
 
     void UpgradeToLong()
     {
-        level = 2;
         radius = 8f;
         maxCableConnections = 4;
     }
 
     void UpgradeToMulti()
     {
-        level = 3;
         radius = 4f;
         maxCableConnections = int.MaxValue;
     }

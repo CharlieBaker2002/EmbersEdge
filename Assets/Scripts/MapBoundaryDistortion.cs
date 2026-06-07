@@ -128,11 +128,14 @@ public class MapBoundaryDistortion : MonoBehaviour
         int n = pts.Length;
         if (n < 3) return;
 
+        // (n+1) rows: duplicate row 0 at the end with u = 1, so the seam quad runs uv.x 0.99->1.0
+        // instead of folding back to 0.0 (which crammed the whole shimmer into one reversed quad,
+        // the "weird" distortion at wherever the spline starts). Matches MapBoundaryWaterfall.
         if (n != lastN || verts == null)
         {
-            verts = new Vector3[n * 2];
-            norms = new Vector3[n * 2];
-            uvs   = new Vector2[n * 2];
+            verts = new Vector3[(n + 1) * 2];
+            norms = new Vector3[(n + 1) * 2];
+            uvs   = new Vector2[(n + 1) * 2];
             tris  = new int[n * 6];
         }
 
@@ -142,8 +145,10 @@ public class MapBoundaryDistortion : MonoBehaviour
         c /= n;
 
         float hw = width * 0.5f;
-        for (int i = 0; i < n; i++)
+        int rows = n + 1;
+        for (int r = 0; r < rows; r++)
         {
+            int i = r % n;                          // row n duplicates point 0 (closes the seam)
             Vector2 prev = pts[(i - 1 + n) % n];
             Vector2 next = pts[(i + 1) % n];
             Vector2 edge = next - prev;
@@ -152,19 +157,19 @@ public class MapBoundaryDistortion : MonoBehaviour
             nrm = mag > 1e-5f ? nrm / mag : (pts[i] - c).normalized;
             if (Vector2.Dot(nrm, pts[i] - c) < 0f) nrm = -nrm;   // outward
 
-            verts[2 * i]     = pts[i] + nrm * hw;   // outer
-            verts[2 * i + 1] = pts[i] - nrm * hw;   // inner
-            norms[2 * i]     = nrm;
-            norms[2 * i + 1] = nrm;
-            float u = (float)i / n;
-            uvs[2 * i]       = new Vector2(u, 1f);  // band outer edge
-            uvs[2 * i + 1]   = new Vector2(u, 0f);  // band inner edge
+            verts[2 * r]     = pts[i] + nrm * hw;   // outer
+            verts[2 * r + 1] = pts[i] - nrm * hw;   // inner
+            norms[2 * r]     = nrm;
+            norms[2 * r + 1] = nrm;
+            float u = (float)r / n;                 // 0..1 around the rim; 1.0 at the duplicated seam row
+            uvs[2 * r]       = new Vector2(u, 1f);  // band outer edge
+            uvs[2 * r + 1]   = new Vector2(u, 0f);  // band inner edge
         }
 
         int ti = 0;
         for (int i = 0; i < n; i++)
         {
-            int j = (i + 1) % n;
+            int j = i + 1;                          // row j always exists (rows = n+1); no wrap
             int oi = 2 * i, ii = 2 * i + 1, oj = 2 * j, ij = 2 * j + 1;
             tris[ti++] = oi; tris[ti++] = oj; tris[ti++] = ii;
             tris[ti++] = ii; tris[ti++] = oj; tris[ti++] = ij;

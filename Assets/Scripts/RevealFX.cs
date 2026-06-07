@@ -50,6 +50,7 @@ public class RevealFX : MonoBehaviour
         {
             extra.Play();
         });
+        this.QA(() => Shockwave.EEWave(transform.position, 5f), 0.75f);
         this.QA(() => Destroy(gameObject),5f);
     }
 

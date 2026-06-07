@@ -31,7 +31,6 @@ public class Generator : Building, IEnergyAccumulator
    // Ember generators join the ember CABLE network as a sink (like an Ember Store): the network
    // routes ember into `connect` up to maxEmber, and we burn held ember into the energy battery.
    public EmberConnector connect;
-   private bool finishedBurnFlag = true;
    private int queue;
    private bool coroutined = false;
 
@@ -111,7 +110,6 @@ public class Generator : Building, IEnergyAccumulator
       Add(genQuantity);
       if (FX != null) Instantiate(FX, transform.position, Quaternion.identity, GS.FindParent(GS.Parent.fx));
       genQuantity = 0f;
-      finishedBurnFlag = true;
    }
 
    private void Update()
@@ -265,7 +263,6 @@ public class Generator : Building, IEnergyAccumulator
             SpawnManager.instance.onWaveComplete += act;
             break;
       }
-      finishedBurnFlag = true;
       EnergyManager.i?.RegisterSource(this, anchorCell, gridSize);
    }
 

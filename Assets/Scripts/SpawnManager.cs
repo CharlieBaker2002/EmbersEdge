@@ -340,7 +340,7 @@ public class SpawnManager : MonoBehaviour
             if (!PortalScript.i.inDungeon || helpedWithWave)
             {
                 SetNextDay();
-                PortalScript.i.goingHomeNow = false;
+                PortalScript.goingHomeNow = false;
             }
             timeText.text = "Ember's Edge Inactive";
             timeText.color = new Color(0.849f, 0.849f, 0.849f);

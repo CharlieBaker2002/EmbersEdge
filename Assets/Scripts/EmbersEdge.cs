@@ -351,13 +351,10 @@ public class EmbersEdge : MonoBehaviour
                 }
                 if (Random.Range(0, spawn.rarity) == 0)
                 {
-                    Vector3 dir = 200 * activity * size * Random.insideUnitCircle;
-                    if((dir + transform.position).sqrMagnitude < transform.position.sqrMagnitude)
-                    {
-                        dir *= -1f;
-                    }
-                    dir += (Vector3)(Vector2)transform.position;
-                    SpawnEnemy(spawn.prefab, dir,false);
+                    // Base EEs sit on the rim — spawn enemies right next to us ON the map boundary
+                    // (within 4 units) instead of scattered in a disc around the core.
+                    Vector2 spawnPos = MapManager.i.BoundaryPointNear(transform.position, 4f);
+                    SpawnEnemy(spawn.prefab, spawnPos, false);
                     valBuf -= spawn.price;
                     yield return new WaitForSeconds(Mathf.Pow(spawn.price, 0.6f) / activity);
                     break;

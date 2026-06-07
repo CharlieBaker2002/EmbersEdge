@@ -48,6 +48,7 @@ public class RefreshManager : MonoBehaviour
     [SerializeField] private SpawnManager sp;
     [SerializeField] private GameObject portal;
     [SerializeField] Volume v;
+
     private void Awake()
     {
         GS.Manager = manager;
@@ -61,6 +62,7 @@ public class RefreshManager : MonoBehaviour
         SpawnManager.daySinceNewEra = 0;
         GS.Manager = GameObject.FindGameObjectWithTag("Manager");
         GS.spawn = GS.Manager.GetComponent<SpawnManager>();
+        LeanTween.init(3000);
         SpawnManager.instance = GS.spawn;
         GS.portal = GameObject.FindGameObjectWithTag("Portal");
         GS.OnNewEra = null;
@@ -120,6 +122,7 @@ public class RefreshManager : MonoBehaviour
         EnergyManager.constructors = new List<Constructor>();
         SoulGenerator.gs = new List<SoulGenerator>();
         EEIcon.icons = new List<EEIcon>();
+        PortalScript.goingHomeNow = false;
        
         //Set the bloom to white
 
@@ -137,11 +140,46 @@ public class RefreshManager : MonoBehaviour
             cam.transform.position = new Vector3(0f, 0f, -10f);
         }
         
-#if UNITY_EDITOR
-        QualitySettings.vSyncCount = 1;  // VSync must be disabled
-        Application.targetFrameRate = 60;
-#endif
+        // Frame-rate cap. vSync MUST be 0: when it's > 0 the display drives the rate and
+        // Application.targetFrameRate is ignored, so the build would run at the monitor's refresh
+        // rate (120/144Hz...) instead of our cap. We aim for 60 everywhere; in a player build the
+        // Update monitor below settles on a stable 30 if the machine can't actually hold 60.
+        QualitySettings.vSyncCount = 0;
+        ApplyFrameRate(60);
     }
+
+    // ---- Frame-rate cap: aim for 60, fall back to a stable 30 if the machine can't hold it ----
+    int targetFps = 60;
+
+    void ApplyFrameRate(int fps)
+    {
+        targetFps = fps;
+        Application.targetFrameRate = fps;
+    }
+
+#if !UNITY_EDITOR
+    float fpsAccum;        // summed unscaled frame-times in the current sampling window
+    int   fpsFrames;       // frames counted in the current window
+    float fpsGrace = 4f;   // skip the first seconds (scene-load spikes would false-trigger)
+    int   slowStrikes;     // consecutive sub-target windows before we commit to 30
+
+    void Update()
+    {
+        if (targetFps != 60) return;                       // one-way downgrade; nothing to watch at 30
+        if (fpsGrace > 0f) { fpsGrace -= Time.unscaledDeltaTime; return; }
+
+        // Unscaled time: the game drives Time.timeScale during transitions, so scaled dt would lie.
+        fpsAccum += Time.unscaledDeltaTime;
+        fpsFrames++;
+        if (fpsAccum < 2f) return;
+
+        float avgFps = fpsFrames / fpsAccum;
+        fpsAccum = 0f; fpsFrames = 0;
+
+        if (avgFps < 50f) { if (++slowStrikes >= 3) ApplyFrameRate(30); }   // ~6s sustained sub-50 -> 30
+        else slowStrikes = 0;
+    }
+#endif
 
     private void Start()
     {

@@ -49,7 +49,7 @@ public class PortalScript : MonoBehaviour
     bool waitMaxSlide = false;
     public bool clickSkip = false; //Sets to teleport you automatically
 
-    public bool goingHomeNow = false; //used in DistortLens (cameraScript) to assess whether to set next day.
+    public static bool goingHomeNow = false; //used in DistortLens (cameraScript) to assess whether to set next day.
     [SerializeField] private SpriteRenderer[] quaterSRS;
 
     public static bool goingToDungeon = false;
@@ -239,7 +239,6 @@ public class PortalScript : MonoBehaviour
         {
             Ember.TriggerPortalBurst(GS.CS().position, Vector3.zero);
             // Dematerialise punch — fires as the first portal embers trail in from the base to the core.
-            Shockwave.Spawn(Vector3.zero, 4f, 2f, 10f);
         }
         Cancel();
         CharacterScript.CS.Hide();
@@ -301,7 +300,7 @@ public class PortalScript : MonoBehaviour
     {
         yield return new WaitForSeconds(1.5f);
         // Rematerialise punch — the embers were flung outward; this fires as they reach back into the centre.
-        this.QA(() => Shockwave.Spawn(Vector3.zero, 2f, 0.5f, 4f), 0.8f);
+        //this.QA(() => Shockwave.Spawn(Vector3.zero, 2f, 0.5f, 4f), 0.8f);
         float elapsed = 0f;
         float duration = 1.5f;
         float rate = 8f;
@@ -325,6 +324,7 @@ public class PortalScript : MonoBehaviour
     private IEnumerator ToHomeSequence(bool noDistort = false)
     {
         int id = 0;
+        Shockwave.EEWave((Vector2)CameraScript.i.transform.position,8f);
         if (!noDistort)
         {
             if (SetM.quickTransition)
@@ -335,7 +335,16 @@ public class PortalScript : MonoBehaviour
             CameraScript.i.locked = false;
             CameraScript.i.noMove = true;
             CameraScript.i.DistortLens(true, true, true);
-            this.QA(() => CameraScript.Flip(Vector2.zero, 2.75f, 1f),1f);
+            this.QA(() =>
+            {
+                CameraScript.Flip(Vector2.zero, 2.75f, 1f);
+                Shockwave.Spawn(CameraScript.i.transform.position, 2.25f, 0.5f, 2f);
+            },1f);
+            this.QA(() =>
+            {
+                Shockwave.Spawn(Vector3.zero, 2.75f, -3f, 5f);
+            },2f);
+
             StartCoroutine(EmitReversePortalEmbers(EmbersEdge.mainCore.transform.position));
             IM.i.StartCoroutine(IM.i.PS5InitColor(2));
             IM.i.BlockColourChangeForT(3f);
@@ -501,6 +510,7 @@ public class PortalScript : MonoBehaviour
         Ember.TriggerPortalEmberBurst();
         yield return new WaitForSeconds(0.5f);
         CameraScript.Flip(DM.i.activeRoom.safeSpawn.position, 6f, 2f, reverse: true);
+        Shockwave.EEWave(Vector2.zero,12.5f);
         yield return new WaitForSeconds(1.75f);
         IncrementQuarters(increment); 
     }
