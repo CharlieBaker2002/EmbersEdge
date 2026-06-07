@@ -40,8 +40,6 @@ public class Constructor : Building
         act = RefreshMax;
         EnergyManager.toBeBuilt.Add(this);
         base.Start();
-        AddUpgradeSlot(new int[] {0,0,0,1},"Long-Range Constructor",upgradeicons[0],true, UpgradeToBeam,5,false,null,() => !isLarge);
-        AddUpgradeSlot(new int[] {0,10,0,0},"Heavy Constructor",upgradeicons[1],true, UpgradeToLargeConstructor,5,false,null,() => !isBeam);
         if (builtYet)
         {
             connect.ember = 5;
@@ -54,6 +52,11 @@ public class Constructor : Building
             sr.sprite = baseSprites[0];
            // UpgradeToBeam();
            // UpgradeToBeam();
+        }
+        else
+        {
+            AddUpgradeSlot(new int[] {0,0,0,1},"Long-Range Constructor",upgradeicons[0],true, UpgradeToBeam,5,false,null,() => !isLarge);
+            AddUpgradeSlot(new int[] {0,10,0,0},"Heavy Constructor",upgradeicons[1],true, UpgradeToLargeConstructor,5,false,null,() => !isBeam);
         }
         RefreshMax();
         GridManager.i.RebuildRangeCache(); 

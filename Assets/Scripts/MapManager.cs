@@ -42,10 +42,14 @@ public class MapManager : MonoBehaviour
     float tim;
 
     (int, BezierKnot) mapchangedata;
-    readonly int textureSize = 400;
+    // Single source of truth for world size. The boundary spline, mask texture span & resolution,
+    // minimap quality, off-map corruption rings, edge extras, the resource bands and the MainCore
+    // position are ALL derived from this one float — change it to rescale the whole map.
+    public static float Scale = 1.5f;              // map size multiplier (1 = authored size, 2 = twice as big)
+    int textureSize => Mathf.RoundToInt(400 * Scale);   // mask resolution scales with the map (base 400)
     private const int splineSampleCount = 100;   // higher‑res sampling for tighter mask fit
     private bool awaitingReadback = false;       // guard to avoid overlapping GPU readbacks
-    readonly float scale = 40;
+    float maskSpan => 40f * Scale;               // world‑units the mask texture spans (was the 'scale' field)
   // --- Area‑safety & smoothing constants ---
   private const float areaEpsilon        = 0.01f;  // Minimum extra area required for an expansion
   private const float minSmoothAngle     = 10f;   // Interior‑angle threshold (deg) – sharper angles will be softened
@@ -174,7 +178,7 @@ public class MapManager : MonoBehaviour
         maskMesh.triangles = indices.ToArray();
 
         // Set UVs and colors for shader compatibility
-        var uvs = pts.Select(v => new Vector2((v.x / scale) + 0.5f, (v.y / scale) + 0.5f)).ToArray();
+        var uvs = pts.Select(v => new Vector2((v.x / maskSpan) + 0.5f, (v.y / maskSpan) + 0.5f)).ToArray();
         var colors = Enumerable.Repeat(Color.white, pts.Length).ToArray();
         maskMesh.uv = uvs;
         maskMesh.colors = colors;
@@ -232,10 +236,10 @@ public class MapManager : MonoBehaviour
             Vector3 v1 = verts[tris[i + 1]];
             Vector3 v2 = verts[tris[i + 2]];
 
-            // Convert from world space (-scale/2 to +scale/2) to normalized (0 to 1)
-            GL.Vertex3(v0.x / scale + 0.5f, v0.y / scale + 0.5f, 0);
-            GL.Vertex3(v1.x / scale + 0.5f, v1.y / scale + 0.5f, 0);
-            GL.Vertex3(v2.x / scale + 0.5f, v2.y / scale + 0.5f, 0);
+            // Convert from world space (-maskSpan/2 to +maskSpan/2) to normalized (0 to 1)
+            GL.Vertex3(v0.x / maskSpan + 0.5f, v0.y / maskSpan + 0.5f, 0);
+            GL.Vertex3(v1.x / maskSpan + 0.5f, v1.y / maskSpan + 0.5f, 0);
+            GL.Vertex3(v2.x / maskSpan + 0.5f, v2.y / maskSpan + 0.5f, 0);
         }
         GL.End();
 
@@ -269,7 +273,7 @@ public class MapManager : MonoBehaviour
                 var sprite = Sprite.Create(
                     tex, new Rect(0, 0, textureSize, textureSize),
                     new Vector2(0.5f, 0.5f),
-                    textureSize / scale);
+                    textureSize / maskSpan);
 
                 sr.sprite = sprite;
             }
@@ -342,7 +346,8 @@ public class MapManager : MonoBehaviour
         bool home = (RenderTexture)raw.texture == homeTexture;
         if (home)
         {
-            homeTexture = new RenderTexture(bigger ? 1024 : 256, bigger ? 1024 : 256, 32);
+            int low = Mathf.RoundToInt(256 * Scale);   // poor-quality minimap res scales with the map
+            homeTexture = new RenderTexture(bigger ? 1024 : low, bigger ? 1024 : low, 32);
             raw.texture = homeTexture;
             cams[0].targetTexture = homeTexture;
         }
@@ -487,6 +492,7 @@ public class MapManager : MonoBehaviour
         IM.i.pi.Player.Map.started += PressMap;
         IM.i.pi.Player.Map.Enable();
         yield return null;
+        ScaleSpline(Scale);   // grow the authored boundary so the playable map is Scale× bigger
         UpdateLRFromSpline();
         //InitializeSegmentation(); // Add this line
         GenerateSpriteFromPoly();
@@ -790,6 +796,21 @@ public class MapManager : MonoBehaviour
             val = sc.Spline.Count - 1;
         }
         return val;
+    }
+
+    // Scales every knot of the boundary spline outward from the origin so the whole
+    // map (line renderer, polygon collider, GPU mask and ProximityData edge) grows
+    // uniformly. EE spawns and edge resources read ProximityData, so they follow.
+    private void ScaleSpline(float factor)
+    {
+        var spline = sc.Spline;
+        for (int i = 0; i < spline.Count; i++)
+        {
+            BezierKnot k = spline[i];
+            k.Position *= factor;
+            spline.SetKnot(i, k);
+        }
+        spline.SetTangentMode(TangentMode.AutoSmooth);
     }
 
     private void UpdateLRFromSpline()

@@ -290,7 +290,6 @@ public class SpawnManager : MonoBehaviour
                     {
                         dayState = DayState.Attack;
                         timeText.text = "Ember's Edge Errupted";
-                        CameraScript.QuickLeanDistort(CameraScript.dungDistort * (0.5f + activityLevel), 1f - 0.125f * activityLevel);
                         Finder.TurnOnTurrets();
                         timeText.color = Color.Lerp(timeText.color, Color.blue, 0.5f);
                         helpedWithWave = !PortalScript.i.inDungeon;

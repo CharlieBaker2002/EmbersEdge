@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: EdgeWaterfall
+  m_Shader: {fileID: 4800000, guid: 7c9e1a3b5d7f02468a0c2e4f6b8d1a3e, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: 3000
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties:
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _Aspect: 1.7777
+    - _Chroma: 0.3
+    - _Mag: 2.5
+    - _Speed: 0.6
+    - _SpeedVar: 0.4
+    - _StrandCount: 200
+    - _StrandWidth: 0.5
+    - _Strength: 0.05
+    - _Stripes: 3
+    m_Colors: []
+  m_BuildTextureStacks: []
+  m_AllowLockingProperties: 1

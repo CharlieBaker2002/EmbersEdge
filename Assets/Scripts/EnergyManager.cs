@@ -645,10 +645,10 @@ public class EnergyManager : MonoBehaviour
             {
                 if (c.constructing || c.connect.ember <= 0 || c.connect.ember + c.connect.emberTravel <= 0) continue;
 
-                // Pick the task with the fewest embers *that this constructor can reach*
+                // Build in the order placed: the earliest-added task still needing work,
+                // finishing it before moving on (tasks are appended in placement order).
                 var task = c.tasks
-                    .OrderBy(t => emberCount[t])
-                    .FirstOrDefault();
+                    .FirstOrDefault(t => t.numIconsTrue > 0);
 
                 if (task == null) continue;           // nothing it can build right now
 

@@ -39,6 +39,17 @@ public class Generator : Building, IEnergyAccumulator
    // The instabuffer is what lets a consumer pull a whole shot in one frame instead of a trickle.
    private readonly EnergyStore store = new EnergyStore(10f, 2f, 2f);
 
+   [Header("Internal Battery")]
+   [Tooltip("When OFF, the fields below are filled from the per-type defaults at Start so you can see them. " +
+            "When ON, the values below are used instead.")]
+   [SerializeField] private bool overrideBattery = false;
+   [Tooltip("Energy storage capacity.")]
+   [SerializeField] private float batteryCapacity;
+   [Tooltip("Sustained draw rate (energy/second).")]
+   [SerializeField] private float batteryDrawRate;
+   [Tooltip("Burst pool — lets a consumer pull a whole shot in one frame.")]
+   [SerializeField] private float batteryInstabuffer;
+
    public float Energy    => store.Energy;
    public float MaxEnergy => store.MaxEnergy;
    public float DrawRate  => store.DrawRate;
@@ -145,6 +156,15 @@ public class Generator : Building, IEnergyAccumulator
          Taip.Blue  => (80f, 8f, 4f),
          _          => (10f, 2f, 2f),
       };
+      if (overrideBattery)
+      {
+         cap = batteryCapacity; rate = batteryDrawRate; insta = batteryInstabuffer;
+      }
+      else
+      {
+         // Mirror the per-type defaults into the serialized fields so they're visible in the inspector.
+         batteryCapacity = cap; batteryDrawRate = rate; batteryInstabuffer = insta;
+      }
       store.Configure(cap, rate, insta);
 
       switch (typ)

@@ -236,7 +236,11 @@ public class PortalScript : MonoBehaviour
         }
         waitMaxSlide = true;
         if (!inDungeon)
+        {
             Ember.TriggerPortalBurst(GS.CS().position, Vector3.zero);
+            // Dematerialise punch — fires as the first portal embers trail in from the base to the core.
+            Shockwave.Spawn(Vector3.zero, 4f, 2f, 10f);
+        }
         Cancel();
         CharacterScript.CS.Hide();
         if (!inDungeon)
@@ -296,6 +300,8 @@ public class PortalScript : MonoBehaviour
     private IEnumerator EmitReversePortalEmbers(Vector3 center)
     {
         yield return new WaitForSeconds(1.5f);
+        // Rematerialise punch — the embers were flung outward; this fires as they reach back into the centre.
+        this.QA(() => Shockwave.Spawn(Vector3.zero, 2f, 0.5f, 4f), 0.8f);
         float elapsed = 0f;
         float duration = 1.5f;
         float rate = 8f;

@@ -10,7 +10,7 @@ public class CameraScript : MonoBehaviour
 {
     public Transform character;
     public Camera cam;
-    public float correctScale = 3.5f;
+    public float correctScale = 4f;
     public bool locked = true;
     //private bool isZooming = false;
     private Vector2 direction;
@@ -33,7 +33,7 @@ public class CameraScript : MonoBehaviour
     public Transform characterIcon;
     [SerializeField] private Light2D globalLight;
 
-    public const float dungDistort = 0.2f;
+    public const float dungDistort = 0.075f;
 
     Coroutine distort = null;
     private bool distorting = false;
@@ -466,7 +466,7 @@ public class CameraScript : MonoBehaviour
 
     public void StopShake()
     {
-        correctScale = 3.5f;
+        correctScale = 4f;
         LeanTween.cancel(gameObject);
         shakeStrength = 0f;
         redWarning.color = new Color(0f, 0f, 0f, 0f);

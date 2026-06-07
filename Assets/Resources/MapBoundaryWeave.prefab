@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &7800000000000000001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7800000000000000002}
+  - component: {fileID: 7800000000000000003}
+  m_Layer: 0
+  m_Name: MapBoundaryWeave
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7800000000000000002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7800000000000000001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7800000000000000003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7800000000000000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3acfb478786949fc8eb3ac9bd74e6d4, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  frames:
+  - {fileID: -936016634, guid: a45bc537d15e74207babf37b125f5512, type: 3}
+  - {fileID: 495991346, guid: a45bc537d15e74207babf37b125f5512, type: 3}
+  - {fileID: 610001859, guid: a45bc537d15e74207babf37b125f5512, type: 3}
+  - {fileID: 381181163, guid: a45bc537d15e74207babf37b125f5512, type: 3}
+  - {fileID: 293275938, guid: a45bc537d15e74207babf37b125f5512, type: 3}
+  - {fileID: -792558928, guid: a45bc537d15e74207babf37b125f5512, type: 3}
+  - {fileID: 2072506716, guid: a45bc537d15e74207babf37b125f5512, type: 3}
+  - {fileID: 158982126, guid: a45bc537d15e74207babf37b125f5512, type: 3}
+  fps: 12
+  bright: 1
+  lit: 0
+  superBright: 0
+  emissionRate: 4
+  spawnEvery: {x: 0.15, y: 0.5}
+  maxWisps: 14
+  lifetime: {x: 1.2, y: 2.6}
+  startSpeed: {x: 16, y: 28}
+  endSpeedFactor: 0.06
+  weaveAmplitude: 0.6
+  weaveFrequency: 1.4
+  spriteSize: 0.6
+  peakAlpha: 0.9
+  spinMax: 40
+  sortingLayer: Projectiles
+  sortingOrder: 6

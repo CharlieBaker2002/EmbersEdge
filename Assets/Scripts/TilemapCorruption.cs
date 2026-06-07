@@ -57,13 +57,15 @@ public class TilemapCorruption : MonoBehaviour
         yield return null;
         Vector3Int v;
         Tile[] tiles = totTiles[GS.era];
-        for(int x = -40; x < 40; x++)
+        int bound = Mathf.RoundToInt(40 * MapManager.Scale);   // paint out to the bigger boundary
+        for(int x = -bound; x < bound; x++)
         {
             yield return null;
-            for (int y = -40; y < 40; y++)
+            for (int y = -bound; y < bound; y++)
             {
                 v = new Vector3Int(x, y,0);
-                switch (v.magnitude)
+                // Divide so the existing ring thresholds land at MapManager.Scale× the radius (textures shifted out, tiles stay 1×1)
+                switch (v.magnitude / MapManager.Scale)
                 {
                     case <= 16:
                         map.SetTile(v, tiles[0]);
@@ -133,7 +135,7 @@ public class TilemapCorruption : MonoBehaviour
             {
                 for(int trY = 0; trY < 10; trY++) //makes sure the spawned extras are not within the maps boundaries
                 {
-                    v2 = GS.RandCircleV2(9.51f + GS.era * 1.5f + i, 10.49f + GS.era * 3 + i);
+                    v2 = MapManager.Scale * GS.RandCircleV2(9.51f + GS.era * 1.5f + i, 10.49f + GS.era * 3 + i);
                     v = new Vector3Int(Mathf.RoundToInt(v2.x), Mathf.RoundToInt(v2.y));
                     if (MapManager.InsideBounds(extras.CellToWorld(v),true))
                     {

@@ -67,6 +67,12 @@ public class FocusRouter : MonoBehaviour
 
     void Interact()
     {
+        // While a building is being placed, the click belongs to placement only. Otherwise the
+        // router (which runs on Interact.started, before BM's TryPlace on .performed) would select
+        // or click an existing building under the cursor, masking the place — most noticeable when
+        // dropping a building right next to others.
+        if (BM.i != null && BM.i.planting) return;
+
         if (IM.controller && !TutorialManager.tutorial)
         {
             if (!IM.i.CActive())
@@ -93,26 +99,25 @@ public class FocusRouter : MonoBehaviour
             }
         }
 
-        // World — 2D physics raycast.
+        // World — 2D physics raycast. Coincident 2D hits have no stable order, so a cable's
+        // EdgeCollider2D (CableLink) — which starts at its pylon and shares the pylon's layer —
+        // would randomly win the press over the pylon itself, leaving press-and-drag to start a
+        // new cable only ~half the time. Demote CableLink to a fallback: a cable is only picked
+        // when nothing else is under the cursor (i.e. clicking it mid-span, away from buildings).
         var hits = WorldHits();
         if (hits.Length > 0)
         {
+            IClickable cableFallback = null;
             foreach (var h in hits)
             {
-                if (h.collider.attachedRigidbody != null)
-                {
-                    if (h.collider.attachedRigidbody.TryGetComponent<IClickable>(out var clickable))
-                    {
-                        DispatchClick(clickable);
-                        return;
-                    }
-                }
-                else if (h.collider.TryGetComponent<IClickable>(out var clickable))
-                {
-                    DispatchClick(clickable);
-                    return;
-                }
+                IClickable clickable = ClickableOf(h.collider);
+                if (clickable == null) continue;
+                if (clickable is CableLink) { cableFallback ??= clickable; continue; }
+                DispatchClick(clickable);
+                return;
             }
+            if (cableFallback != null) { DispatchClick(cableFallback); return; }
+            IM.i.CloseCursor();
         }
         else
         {
@@ -192,6 +197,14 @@ public class FocusRouter : MonoBehaviour
         }
         var p = IM.i.MousePosition();
         return Physics2D.RaycastAll(new Vector3(p.x, p.y, -100), Vector3.forward, 1000, mask);
+    }
+
+    /// <summary>Resolve the IClickable for a collider (rigidbody carrier first, then the collider itself).</summary>
+    static IClickable ClickableOf(Collider2D col)
+    {
+        if (col.attachedRigidbody != null && col.attachedRigidbody.TryGetComponent<IClickable>(out var c)) return c;
+        if (col.TryGetComponent<IClickable>(out var c2)) return c2;
+        return null;
     }
 
     // -------- selection API --------

@@ -78,6 +78,12 @@ public class EmbersEdge : MonoBehaviour
 
     private void Awake()
     {
+        if (name == "MainCore")
+        {
+            // Keep the core just outside the top of the (scaled) map — position only, not scale.
+            Vector3 ap = attachPoint.position;
+            attachPoint.position = new Vector3(ap.x * MapManager.Scale, ap.y * MapManager.Scale, ap.z);
+        }
         posVels = new Vector2[N];
         positions = new Vector3[N];
         positions[0] = attachPoint.transform.position;

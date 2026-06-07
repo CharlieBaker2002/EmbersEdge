@@ -35,7 +35,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!120 &7378535044932957256
 LineRenderer:
-  serializedVersion: 2
+  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -51,6 +51,11 @@ LineRenderer:
   m_ReflectionProbeUsage: 0
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -72,9 +77,11 @@ LineRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -1301597055
   m_SortingLayer: 1
   m_SortingOrder: 2
+  m_MaskInteraction: 0
   m_Positions:
   - {x: 1, y: -0, z: 0}
   - {x: 0.99798673, y: -0.063423924, z: 0}
@@ -231,7 +238,6 @@ LineRenderer:
     textureScale: {x: 1, y: 1}
     shadowBias: 0.5
     generateLightingData: 0
-  m_MaskInteraction: 0
   m_UseWorldSpace: 0
   m_Loop: 0
   m_ApplyActiveColorSpace: 1
@@ -252,3 +258,8 @@ MonoBehaviour:
   - {fileID: 2100000, guid: 168d50c5782ad471ab2cdafd7e4537fc, type: 2}
   - {fileID: 2100000, guid: fd143612e9b87441e8a69a9a4c58c5ca, type: 2}
   - {fileID: 2100000, guid: 27951cffdfcde4f13b8cc068e2cdd78f, type: 2}
+  setColour: 1
+  spawnShockwave: 1
+  shockwaveStrength: 1
+  shockwaveWidthStart: 2.5
+  shockwaveWidthEnd: 0.5

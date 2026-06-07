@@ -35,16 +35,18 @@ public class TilemapResource : MonoBehaviour
         float ang;
         Vector3Int r;
         Vector2 r2;
+        // Push the whole resource band out with the map so ore only starts at the (scaled) base map edge.
+        Vector2 dist = distances * MapManager.Scale;
         for (int n = batchN; n > 0; n--)
         {
             dec = 1f - (float)n / (float)batchN;
             ang = Random.Range(80f * dec + mapNumber * 15, 360f - 80f * dec - mapNumber*15) * Mathf.Deg2Rad;
-            pos = new Vector3Int(Mathf.RoundToInt(Mathf.Lerp(distances.x,distances.y,dec) * Mathf.Sin(ang)), Mathf.RoundToInt(Mathf.Lerp(distances.x, distances.y, dec) * Mathf.Cos(ang)));
+            pos = new Vector3Int(Mathf.RoundToInt(Mathf.Lerp(dist.x,dist.y,dec) * Mathf.Sin(ang)), Mathf.RoundToInt(Mathf.Lerp(dist.x, dist.y, dec) * Mathf.Cos(ang)));
             for(int i = 0; i < Mathf.RoundToInt(Mathf.Lerp(batchSizes.x,batchSizes.y,dec)); i++)
             {
                 r2 = Random.insideUnitCircle.normalized * diagonality;
                 r = new Vector3Int(Mathf.RoundToInt(r2.x), Mathf.RoundToInt(r2.y));
-                if((pos + r).sqrMagnitude < Mathf.Pow(Mathf.Lerp(distances.x, distances.y, dec), 2))
+                if((pos + r).sqrMagnitude < Mathf.Pow(Mathf.Lerp(dist.x, dist.y, dec), 2))
                 {
                     i--;
                     continue;
@@ -72,9 +74,10 @@ public class TilemapResource : MonoBehaviour
             {
                 Tilemap o = m[i];
                 Vector3Int v;
-                for (int x = -19; x <= 19; x++)
+                int b = Mathf.RoundToInt(19 * MapManager.Scale);   // scan region scales with the map
+                for (int x = -b; x <= b; x++)
                 {
-                    for (int y = -19; y <= 19; y++)
+                    for (int y = -b; y <= b; y++)
                     {
                         v = new Vector3Int(x, y, 0);
                         if (map.HasTile(v) && o.HasTile(v))

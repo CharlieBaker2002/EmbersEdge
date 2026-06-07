@@ -418,7 +418,7 @@ public class MechaSuit : MonoBehaviour
     {
         m.sr.sprite = m.happysad[0];
         lastlife = false;
-        CameraScript.i.correctScale = 3.5f;
+        CameraScript.i.correctScale = 4f;
     }
 
     public static void MakeSad()
