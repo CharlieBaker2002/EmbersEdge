@@ -39,5 +39,6 @@ public class CorePlan
 public class WavePlan
 {
     public float activity;
+    public float totalCredits; // the wave's full credit budget (Day Score): base main-core budget × intensity roll + extra-core share
     public List<CorePlan> cores = new List<CorePlan>();
 }

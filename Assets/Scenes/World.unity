@@ -5741,7 +5741,7 @@ MonoBehaviour:
   STARTSEQUENCE: 0
   STANDARDTIME: 1
   SPAWNTESTMODE: 0
-  TESTINGDEFENCE: 0
+  TESTINGDEFENCE: 1
   STARTDUNGEON: 1
   REVEALALLROOMS: 1
   LOSSPROTECTION: 1
@@ -5750,7 +5750,7 @@ MonoBehaviour:
   IGNOREEFFICIENCY: 0
   DIFFICULTY: 1.5
   ARENAMODE: 0
-  INSTASPAWN: 0
+  INSTASPAWN: 1
   QuickTeleport: 0
   manager: {fileID: 269883297}
   sp: {fileID: 269883300}
@@ -6545,6 +6545,7 @@ MonoBehaviour:
   height: 80
   cellSize: 0.25
   origin: {x: -10, y: -10}
+  buildEdgeMargin: 1
   buildingGrid: {fileID: 1789819616}
   block: {fileID: 4439992536765601820, guid: 3146235af92c34daeb8ab5ee553e3842, type: 3}
   energyBlock: {fileID: 4439992536765601820, guid: 0a284e50ed8754e2d8f0b841f0135210, type: 3}
@@ -42809,7 +42810,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1402483097}
   - component: {fileID: 1402483098}
-  - component: {fileID: 1402483099}
   m_Layer: 0
   m_Name: Teacher
   m_TagString: Untagged
@@ -42847,30 +42847,20 @@ MonoBehaviour:
   bar: 0
   inits:
   - {fileID: 11400000, guid: 920504d231e1848cc96738a423e0274c, type: 2}
-  - {fileID: 11400000, guid: ed61f6ebd03f24a0580cbb4b6cd6a69a, type: 2}
+  - {fileID: 11400000, guid: bcf61f5c53a3d4f77a73e18e8c781757, type: 2}
   - {fileID: 11400000, guid: 73acf5ac1147b44dcb74413c2d1f56c2, type: 2}
   - {fileID: 11400000, guid: 5065049bcf7df4ec68d4d735674c9850, type: 2}
   - {fileID: 11400000, guid: 675b5a06dcff64b4bb547334faa9db78, type: 2}
   - {fileID: 11400000, guid: 0578d4ada81f54352bfa529e94c0839f, type: 2}
   - {fileID: 11400000, guid: 7997d93bec761493b82586bc7272a89e, type: 2}
-  - {fileID: 11400000, guid: 74b36823986534f73b1303914c8529d5, type: 2}
   - {fileID: 11400000, guid: 0a5d3cd2ed2224ec9990a7b145cc5488, type: 2}
   - {fileID: 11400000, guid: 075cc61f2ec854fc88b3c8bc19a70522, type: 2}
   - {fileID: 11400000, guid: 4d8acc8c84a464b4381e4bd1205417a3, type: 2}
+  - {fileID: 11400000, guid: d8961dcee932b4aa5804bb44fc75594f, type: 2}
+  - {fileID: 11400000, guid: 74b36823986534f73b1303914c8529d5, type: 2}
+  - {fileID: 11400000, guid: 74b36823986534f73b1303914c8529d5, type: 2}
   seconds: []
   thirds: []
---- !u!114 &1402483099
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1402483096}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0ae18bc397d53bd4e884c6afb9a633a9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1413185163
 GameObject:
   m_ObjectHideFlags: 0

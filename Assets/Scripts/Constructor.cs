@@ -46,7 +46,7 @@ public class Constructor : Building
             connect.ember = 12;
             connect.maxEmber = 12;
             UpgradeToLargeConstructor();
-            radius += 3f;
+            radius = 100f;
             sprs = upgradeSpritesBeam;
             stick.sprite = sprs[0];
             sr.sprite = baseSprites[0];

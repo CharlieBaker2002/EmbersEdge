@@ -309,6 +309,13 @@ public class SpawnManager : MonoBehaviour
         int numExtra = Mathf.Max(0, EEs.Count - 1);
         float dayScore = baseBudget * (waveRand + waveAuthoring.budgetPerExtraCore * numExtra);
 
+        // Total credit budget for the whole wave, factoring in the main core's base day price, the
+        // difficulty-driven intensity roll (waveRand), and a share per extra core.
+        plan.totalCredits = dayScore;
+        Debug.Log($"[Wave] day {eraWaveIndex + 1}: total credits {dayScore:0} " +
+                  $"(base {baseBudget:0} × [rand {waveRand:0.00} + {waveAuthoring.budgetPerExtraCore:0.00}×{numExtra} extra cores], " +
+                  $"difficulty {Mathf.Clamp(SetM.difficulty, 1f, 3f):0.0}, {EEs.Count} cores)");
+
         // 3 / 4. Trim if over budget, else fill the leftover with clusters spread across the attack window:
         // window = max(2 * day-within-era, longest authored day across the cores' collections).
         if (placed > dayScore) TrimTimed(coreTimed, placed - dayScore);
@@ -352,11 +359,14 @@ public class SpawnManager : MonoBehaviour
         foreach (var e in ordered) sum += WaveAuthoringSO.EnemyPoints(e.so);
         // World-unit column spacing -> perimeter fraction uses the boundary's current arc length.
         float perimeter = MapManager.i != null ? MapManager.i.BoundaryPerimeter() : 0f;
+        // 50% chance to mirror this whole group horizontally (negate the rim offset around the EE anchor),
+        // so symmetrical variants come for free without authoring mirrored copies.
+        float mirror = Random.value < 0.5f ? -1f : 1f;
         float t = start;
         foreach (var e in ordered)
         {
             if (e.so != null)
-                timed.Add(new TimedSpawn(t, e.so, waveAuthoring.ColToTOffset(e.gridX, perimeter), locked));
+                timed.Add(new TimedSpawn(t, e.so, mirror * waveAuthoring.ColToTOffset(e.gridX, perimeter), locked));
             float slice = sum > 0f ? WaveAuthoringSO.EnemyPoints(e.so) * duration / sum : duration / ordered.Count;
             t += slice;
         }
@@ -440,7 +450,7 @@ public class SpawnManager : MonoBehaviour
 
             o.clusters.RemoveAll(cl => WaveAuthoringSO.ClusterPoints(cl) > leftover);
             if (o.clusters.Count == 0) { opts.Remove(o); continue; }
-            ClusterPlan pick = o.clusters[Random.Range(0, o.clusters.Count)];
+            ClusterPlan pick = WeightedPick(o.clusters);
             selected.Add(new KeyValuePair<List<TimedSpawn>, ClusterPlan>(o.timed, pick));
             leftover -= WaveAuthoringSO.ClusterPoints(pick);
         }
@@ -457,6 +467,21 @@ public class SpawnManager : MonoBehaviour
             AppendGroup(s.Key, s.Value.enemies, start, s.Value.duration, false);
             running += WaveAuthoringSO.ClusterPoints(s.Value);
         }
+    }
+
+    // Weighted random pick among clusters by their per-cluster favour (defaults to uniform).
+    private static ClusterPlan WeightedPick(List<ClusterPlan> clusters)
+    {
+        float total = 0f;
+        foreach (var cl in clusters) total += Mathf.Max(0f, cl.favour);
+        if (total <= 0f) return clusters[Random.Range(0, clusters.Count)];
+        float r = Random.Range(0f, total);
+        foreach (var cl in clusters)
+        {
+            r -= Mathf.Max(0f, cl.favour);
+            if (r <= 0f) return cl;
+        }
+        return clusters[clusters.Count - 1];
     }
 
     private class ClusterOption { public List<TimedSpawn> timed; public List<ClusterPlan> clusters; public int favour = 1; public int credit; }

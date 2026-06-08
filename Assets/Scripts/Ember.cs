@@ -55,10 +55,21 @@ public class Ember : MonoBehaviour
     Vector3 charOffset;
 
     public static event Action<Vector3, Vector3> OnPortalBurst;
-    public static void TriggerPortalBurst(Vector3 charPos, Vector3 returnPos) => OnPortalBurst?.Invoke(charPos, returnPos);
+    static bool portalBurstShockwaveDone;   // one rematerialise shockwave per burst, not one per ember
+    public static void TriggerPortalBurst(Vector3 charPos, Vector3 returnPos)
+    {
+        portalBurstShockwaveDone = false;
+        OnPortalBurst?.Invoke(charPos, returnPos);
+    }
 
     public static event Action OnPortalEmberBurst;
-    public static void TriggerPortalEmberBurst() => OnPortalEmberBurst?.Invoke();
+    const int MaxBurstFunnel = 10;       // at most this many embers funnel into the core per burst
+    static int portalEmberBurstCount;    // reset each burst; embers past the cap just fade instead
+    public static void TriggerPortalEmberBurst()
+    {
+        portalEmberBurstCount = 0;
+        OnPortalEmberBurst?.Invoke();
+    }
 
     void Awake()
     {
@@ -81,42 +92,27 @@ public class Ember : MonoBehaviour
         if (portalEmber) OnPortalEmberBurst -= HandlePortalEmberBurst;
     }
 
+    // Funnel into the main core, mirroring the initial to-dungeon burst but aimed at the core instead of
+    // (0,0): fling outward to a ring around the core first, THEN branch back in along a spline. The
+    // burst-out gives BranchPath a consistent inward distance/direction, so it fans cleanly instead of
+    // thrashing back and forth when the ember happens to start right on top of the core.
     void HandlePortalEmberBurst()
     {
+        // Cap how many embers funnel into the core; the rest just finish their ambient drift and fade.
+        if (++portalEmberBurstCount > MaxBurstFunnel) return;
+
         LeanTween.cancel(gameObject);
 
         Vector3 corePos = EmbersEdge.mainCore != null ? (Vector3)EmbersEdge.mainCore.transform.position : Vector3.zero;
         Vector3 fromCore = transform.position - corePos;
-        Vector3 outDir = fromCore.sqrMagnitude > 0.0001f
-            ? fromCore.normalized
-            : (Vector3)Random.insideUnitCircle.normalized;
-        Vector3 burstTarget = corePos + outDir * Random.Range(6f, 10f);
-        float returnDelay = Random.Range(0.3f, 1.5f);
-        Vector3 returnTarget = corePos + (Vector3)Random.insideUnitCircle * Random.Range(0f, 0.5f);
+        Vector3 outDir = fromCore.sqrMagnitude > 0.0001f ? fromCore.normalized : (Vector3)Random.insideUnitCircle.normalized;
+        Vector3 burstTarget = corePos + outDir * Random.Range(4f, 7f);
+        Vector3 target = corePos + (Vector3)Random.insideUnitCircle * Random.Range(0f, 0.5f);
 
         LeanTween.move(gameObject, burstTarget, 0.15f).setEase(LeanTweenType.easeOutExpo)
             .setOnComplete(() =>
-                LeanTween.delayedCall(gameObject, returnDelay, () =>
-                    StartCoroutine(BezierReturnI(returnTarget, 0.5f))));
-    }
-
-    IEnumerator BezierReturnI(Vector3 to, float duration)
-    {
-        Vector2 from2 = transform.position;
-        Vector2 to2   = to;
-        Vector2 dir   = to2 - from2;
-        Vector2 perp  = new Vector2(-dir.y, dir.x).normalized;
-        Vector2 ctrl  = (from2 + to2) * 0.5f + perp * Random.Range(-0.5f, 0.5f) * dir.magnitude;
-        Vector2[] pts = new Vector2[] { from2, ctrl, to2 };
-
-        for (float elapsed = 0f; elapsed < duration; elapsed += Time.deltaTime)
-        {
-            float t = Mathf.SmoothStep(0f, 1f, elapsed / duration);
-            transform.position = (Vector3)GS.Bez(pts, t);
-            yield return null;
-        }
-        transform.position = to;
-        Cease();
+                LeanTween.move(gameObject, BranchPath(burstTarget, target), Random.Range(0.55f, 0.9f))
+                    .setEase(flightEase).setOnComplete(Cease));
     }
 
     void HandlePortalBurst(Vector3 charPos, Vector3 returnPos)
@@ -148,16 +144,74 @@ public class Ember : MonoBehaviour
         LeanTween.cancel(gameObject);
         LeanTween.move(gameObject, burstTarget, outDur).setEase(LeanTweenType.easeOutExpo)
             .setOnComplete(() =>
-                LeanTween.move(gameObject, snapTo, returnDur).setEase(LeanTweenType.easeInCubic)
-                    .setOnComplete(() => 
-                    { 
-                        transform.position = snapTo;
-                        if (!PortalScript.goingHomeNow)
-                        {
-                            Shockwave.Spawn(Vector2.zero, 15f, 0.025f, 2f);
-                        }
-                        Cease(); 
-                    }));
+            {
+                System.Action arrive = () =>
+                {
+                    transform.position = snapTo;
+                    // Rematerialise punch — only the first ember to land fires it, so it's one wave, not one per ember.
+                    if (!PortalScript.goingHomeNow && !portalBurstShockwaveDone)
+                    {
+                        portalBurstShockwaveDone = true;
+                        Shockwave.Spawn(Vector2.zero, 15f, 0.025f, 2f);
+                    }
+                    Cease();
+                };
+                if (goingHome)
+                {
+                    // Return-to-base: unchanged straight punch back in.
+                    LeanTween.move(gameObject, snapTo, returnDur).setEase(LeanTweenType.easeInCubic)
+                        .setOnComplete(arrive);
+                }
+                else
+                {
+                    // To-dungeon: branch out via a curved spline so the embers fan through various
+                    // places before converging on the portal at the base.
+                    LeanTween.move(gameObject, BranchPath(burstTarget, snapTo), Random.Range(0.45f, 0.75f))
+                        .setEase(flightEase).setOnComplete(arrive);
+                }
+            });
+    }
+
+    // A wandering cousin of FlySpline: the embers bow out to one side through a couple of "branch"
+    // waypoints before converging on `target`, so they fan out across various places. Each path picks a
+    // single side (so it reads as one clean arc, not a sine wave), bows hardest early and tapers to ~zero
+    // at `target` (so it branches early and straightens into the destination). The bow scales with
+    // distance but is clamped so it reads the same near or far. Returned as a continuous cubic-bezier
+    // path — LeanTween.move needs the points in sets of four (anchor, control, control, anchor), so we
+    // Catmull-Rom-fit controls through the waypoints to keep the curve smooth and the length /4.
+    Vector3[] BranchPath(Vector3 from, Vector3 target)
+    {
+        Vector2 d = (Vector2)(target - from);
+        Vector3 perp = (Vector3)(d.Rotated(90f).normalized);
+        float bow = Mathf.Min(d.magnitude * 0.5f, 6f) * arcHeight;
+        float side = Random.value < 0.5f ? -1f : 1f;       // one side per ember -> a clean arc, not a sine wave
+
+        int branches = Random.Range(2, 4);                 // 2–3 mid waypoints = a gentle bend
+        int n = branches + 2;
+        Vector3[] w = new Vector3[n];                       // waypoints the ember actually weaves through
+        w[0] = from;
+        for (int i = 1; i <= branches; i++)
+        {
+            float f = i / (float)(branches + 1);           // evenly spaced along the line
+            float taper = 1f - f;                          // hardest bow early, ~0 into the target
+            w[i] = Vector3.Lerp(from, target, f) + perp * (side * bow * taper * Random.Range(0.6f, 1f));
+        }
+        w[n - 1] = target;
+
+        int segs = n - 1;
+        Vector3[] pts = new Vector3[segs * 4];             // 4 points per segment (LeanTween bezier)
+        for (int i = 0; i < segs; i++)
+        {
+            Vector3 p0 = w[Mathf.Max(i - 1, 0)];
+            Vector3 p1 = w[i];
+            Vector3 p2 = w[i + 1];
+            Vector3 p3 = w[Mathf.Min(i + 2, n - 1)];
+            pts[i * 4 + 0] = p1;                           // anchor (segment start)
+            pts[i * 4 + 1] = p1 + (p2 - p0) / 6f;          // Catmull-Rom -> bezier control
+            pts[i * 4 + 2] = p2 - (p3 - p1) / 6f;          // Catmull-Rom -> bezier control
+            pts[i * 4 + 3] = p2;                           // anchor (segment end; shared with next)
+        }
+        return pts;
     }
 
     void Update()
@@ -209,11 +263,7 @@ public class Ember : MonoBehaviour
 
         if (reversePortalEmber)
         {
-            Vector3 rDS = ((Vector2)(to - spawnPos)).Rotated(90f);
-            Vector3 rM1 = Vector3.Lerp(spawnPos, to, 0.35f) + Random.Range(-0.6f, 0.6f) * rDS * arcHeight;
-            Vector3 rM2 = Vector3.Lerp(spawnPos, to, 0.7f) + Random.Range(-0.3f, 0.3f) * rDS * arcHeight;
-            LeanTween.move(gameObject, new[] { spawnPos, rM1, rM2, to }, flightTime)
-                .setEase(flightEase).setOnComplete(Cease);
+            FlySpline(spawnPos, to, flightTime);
             return;
         }
 
@@ -284,6 +334,18 @@ public class Ember : MonoBehaviour
         }
         float destroyDelay = charEmber ? flightTime : reversePortalEmber ? 0f : 1f;
         seq.append(LeanTween.delayedCall(gameObject, destroyDelay, Cease));
+    }
+
+    // The neat 4-point spline flight shared by the return-home embers (main core -> origin) and the
+    // to-dungeon funnel (origin -> main core): a LeanTween path from `from` to `target` with two
+    // control points bowed perpendicular to the line (scaled by arcHeight) so the ember curves in
+    // smoothly instead of darting straight.
+    void FlySpline(Vector3 from, Vector3 target, float time)
+    {
+        Vector3 side = ((Vector2)(target - from)).Rotated(90f);
+        Vector3 m1 = Vector3.Lerp(from, target, 0.35f) + side * (Random.Range(-0.6f, 0.6f) * arcHeight);
+        Vector3 m2 = Vector3.Lerp(from, target, 0.7f)  + side * (Random.Range(-0.3f, 0.3f) * arcHeight);
+        LeanTween.move(gameObject, new[] { from, m1, m2, target }, time).setEase(flightEase).setOnComplete(Cease);
     }
     // ──────────────────────────  CEASE / DESTROY  ──────────────────────────
     public void Cease()

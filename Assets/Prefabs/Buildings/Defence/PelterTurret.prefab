@@ -505,10 +505,10 @@ MonoBehaviour:
   - {fileID: 1210641960, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
   - {fileID: 1443994071, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
   - {fileID: 1381075942, guid: 7c232031f5ef84a91a96fe0067948c5c, type: 3}
-  shootFrameTime: 0.033333335
-  reloadFrameTime: 0.33333334
-  fastReloadFrameTime: 0.06666667
-  energyPerBullet: 1
+  shootFrameTime: 0.01
+  reloadFrameTime: 0.16666667
+  fastReloadFrameTime: 0.066667
+  energyPerBullet: 0.5
 --- !u!61 &4036957657726916120
 BoxCollider2D:
   m_ObjectHideFlags: 0

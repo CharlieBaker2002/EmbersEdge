@@ -7,10 +7,6 @@ public class ProgressEEEventButton : MonoBehaviour, IClickable
 {
     public void OnClick()
     {
-        for (int i = 0; i < 5; i++)
-        {
-            EmbersEdge.EEExplodeEvent.Invoke();
-        }
-        
+        this.QA(()=> MapManager.i.NewCoreDebug(),0.1f);
     }
 }

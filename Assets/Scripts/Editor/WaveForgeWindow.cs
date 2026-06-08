@@ -381,6 +381,10 @@ public class WaveForgeWindow : EditorWindow
             GUILayout.Label("Duration (s)", GUILayout.Width(74));
             float ncd = EditorGUILayout.FloatField(cl.duration, GUILayout.Width(58));
             if (!Mathf.Approximately(ncd, cl.duration)) { cl.duration = Mathf.Max(0f, ncd); MarkDirty(); }
+            GUILayout.Space(12);
+            GUILayout.Label("Favour", GUILayout.Width(46));
+            float nfv = EditorGUILayout.FloatField(cl.favour, GUILayout.Width(48));
+            if (!Mathf.Approximately(nfv, cl.favour)) { cl.favour = Mathf.Max(0f, nfv); MarkDirty(); }
             EditorGUILayout.EndHorizontal();
             DrawOverrideRow(ref cl.scoreOverridden, ref cl.scoreOverride, auto);
             DrawGrid(cl.enemies);

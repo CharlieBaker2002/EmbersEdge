@@ -15,6 +15,8 @@ public class GridManager : MonoBehaviour
     public int height = 64;
     public float cellSize = 1f;
     public Vector2 origin = Vector2.zero;
+    [Tooltip("Extra world-unit margin, beyond the map's inner inset, that the build grid must stay inside.")]
+    public float buildEdgeMargin = 1.5f;
 
     private Color clearColour     = new Color(0f, 0.4f, 0f, 0.5f); // green – inside constructor range
     private Color filledColour    = new Color(0.4f, 0f, 0f, 1f); // red – occupied
@@ -50,15 +52,76 @@ public class GridManager : MonoBehaviour
     void Awake()
     {
         i = this;
+        // Grid arrays + overlay squares are built lazily, sized to the map (see EnsureGridFitsMap), the
+        // first time build mode is entered — by then MapManager has built the (possibly scaled) boundary.
+        buildingGrid.gameObject.SetActive(false);
+    }
 
-        occupied   = new bool[width, height];
-        inRange    = new bool[width, height];
-        baseColour = new Color[width, height];
-        overlay    = new SpriteRenderer[width, height];
+    /// <summary>
+    /// Size the grid to cover the whole map. Builds it on first use and grows it (never shrinks, so placed
+    /// buildings stay addressable) when the map has expanded. A no-op when the current grid already fits,
+    /// so it's cheap to call on every build-mode entry. The map's bounding box drives the cell count
+    /// instead of a fixed width/height that could cut off before the edge.
+    /// </summary>
+    void EnsureGridFitsMap()
+    {
+        Bounds b = MapManager.MapBounds();
+        if (b.size.x <= 0f || b.size.y <= 0f)
+        {
+            if (overlay == null) RebuildGrid(origin, width, height); // no map yet — fall back to authored size
+            return;
+        }
+
+        float margin = cellSize * 2f;
+        float minX = b.min.x - margin, minY = b.min.y - margin;
+        float maxX = b.max.x + margin, maxY = b.max.y + margin;
+
+        // Union with the existing coverage so a grow never drops cells that already hold buildings.
+        if (overlay != null)
+        {
+            minX = Mathf.Min(minX, origin.x);
+            minY = Mathf.Min(minY, origin.y);
+            maxX = Mathf.Max(maxX, origin.x + width * cellSize);
+            maxY = Mathf.Max(maxY, origin.y + height * cellSize);
+        }
+
+        // Snap origin to the cell lattice so the origin shift between grows is a whole number of cells —
+        // that keeps the occupied remap an exact integer index offset.
+        Vector2 newOrigin = new Vector2(Mathf.Floor(minX / cellSize) * cellSize, Mathf.Floor(minY / cellSize) * cellSize);
+        int newW = Mathf.CeilToInt((maxX - newOrigin.x) / cellSize);
+        int newH = Mathf.CeilToInt((maxY - newOrigin.y) / cellSize);
+
+        if (overlay != null && newOrigin == origin && newW == width && newH == height) return; // already fits
+
+        RebuildGrid(newOrigin, newW, newH);
+    }
+
+    /// <summary>(Re)allocate the grid at a new origin/size, carrying placed-building occupancy across.</summary>
+    void RebuildGrid(Vector2 newOrigin, int newW, int newH)
+    {
+        var newOccupied = new bool[newW, newH];
+        if (occupied != null)
+        {
+            int ox = Mathf.RoundToInt((origin.x - newOrigin.x) / cellSize);
+            int oy = Mathf.RoundToInt((origin.y - newOrigin.y) / cellSize);
+            for (int x = 0; x < width; ++x)
+                for (int y = 0; y < height; ++y)
+                {
+                    if (!occupied[x, y]) continue;
+                    int nx = x + ox, ny = y + oy;
+                    if (nx >= 0 && ny >= 0 && nx < newW && ny < newH) newOccupied[nx, ny] = true;
+                }
+        }
+
+        origin = newOrigin; width = newW; height = newH;
+        occupied      = newOccupied;
+        inRange       = new bool[width, height];
+        baseColour    = new Color[width, height];
+        overlay       = new SpriteRenderer[width, height];
         energyOverlay = new SpriteRenderer[width, height];
 
+        for (int c = buildingGrid.childCount - 1; c >= 0; --c) Destroy(buildingGrid.GetChild(c).gameObject);
         MakeOverlaySquares();
-        buildingGrid.gameObject.SetActive(false);
     }
 
     void MakeOverlaySquares()
@@ -104,8 +167,13 @@ public class GridManager : MonoBehaviour
             0f);
 
     /// <summary>True if every cell in the given rectangle is both un‑occupied *and* inside constructor range.</summary>
+    /// <summary>Build the grid on demand if something touches it before the first build-mode entry
+    /// (e.g. a pre-placed building registering occupancy at game start).</summary>
+    void EnsureBuilt() { if (overlay == null) EnsureGridFitsMap(); }
+
     public bool AreaClear(Vector2Int anchor, Vector2Int size)
     {
+        EnsureBuilt();
         for (int y = 0; y < size.y; ++y)
             for (int x = 0; x < size.x; ++x)
             {
@@ -118,6 +186,7 @@ public class GridManager : MonoBehaviour
 
     public void SetArea(Vector2Int anchor, Vector2Int size, bool state)
     {
+        EnsureBuilt();
         for (int y = 0; y < size.y; ++y)
             for (int x = 0; x < size.x; ++x)
             {
@@ -185,6 +254,7 @@ public class GridManager : MonoBehaviour
     public void ActivateGrid()
     {
         if (deactivating) stopDeactivate = true;
+        EnsureGridFitsMap();    // size to the (possibly grown) map before painting
         RebuildRangeCache();    // expensive work done once on entry
         buildingGrid.gameObject.SetActive(true);
         RefreshEnergyCells();   // Also refresh energy cells when grid is activated
@@ -236,15 +306,20 @@ public class GridManager : MonoBehaviour
     /// </summary>
     public void RebuildRangeCache()
     {
+        if (overlay == null) return; // grid not built yet (constructor placed before first build-mode entry)
         var constructors = EnergyManager.constructors.Concat(EnergyManager.toBeBuilt).ToList(); // assumed to exist per brief
-    
+
+        // Clip the buildable grid to the map's inner inset (pulled in by buildEdgeMargin). Computed once
+        // here, then a cheap point-in-polygon per cell — far cheaper than testing the footprint each frame.
+        Vector2[] buildable = MapManager.GetBuildableBoundary(buildEdgeMargin);
+
         for (int gx = 0; gx < width; ++gx)
             for (int gy = 0; gy < height; ++gy)
             {
+                Vector3 cellWorld = GridToWorld(new Vector2Int(gx, gy));
                 bool range = false;
-                if (constructors.Count > 0)
+                if (constructors.Count > 0 && (buildable == null || MapManager.PointInPoly(cellWorld, buildable)))
                 {
-                    Vector3 cellWorld = GridToWorld(new Vector2Int(gx, gy));
                     foreach (var c in constructors)
                     {
                         if (c == null) continue;
@@ -276,6 +351,7 @@ public class GridManager : MonoBehaviour
     /// <summary>Re‑computes which cells are inside any pylon's reach and toggles the energy overlay colours.</summary>
     public void RefreshEnergyCells()
     {
+        if (overlay == null) return; // grid not built yet; ActivateGrid will refresh once it is
         for (int gx = 0; gx < width; ++gx)
             for (int gy = 0; gy < height; ++gy)
             {

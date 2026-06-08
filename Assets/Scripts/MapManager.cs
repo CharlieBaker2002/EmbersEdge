@@ -901,6 +901,42 @@ public class MapManager : MonoBehaviour
     private bool InsideInset(Vector2 p) =>
         pushPoly != null ? pushPoly.OverlapPoint(p) : InsideBounds(p);
 
+    // A buildable-area boundary, code-based (independent of Physics2D, since placement disables the map
+    // collider): the INNER inset (pushPoly) pulled in by `extraInset` more, so the build grid can stop
+    // further from the map edge. Compute ONCE per build-mode entry (it allocates), not per cell — then
+    // test cells against it with PointInPoly. Falls back to the outer poly if the inset isn't built yet.
+    public static Vector2[] GetBuildableBoundary(float extraInset)
+    {
+        if (i == null) return null;
+        Vector2[] basePts = (i.pushPoly != null && i.pushPoly.points.Length >= 3)
+            ? i.pushPoly.points
+            : (i.poly != null ? i.poly.points : null);
+        if (basePts == null || basePts.Length < 3) return null;
+        return extraInset > 0f ? i.InsetPoints(basePts, extraInset) : basePts;
+    }
+
+    // Public, allocation-free point-in-polygon for a precomputed boundary (e.g. GetBuildableBoundary).
+    public static bool PointInPoly(Vector2 p, Vector2[] poly) =>
+        poly != null && poly.Length >= 3 && PointInPolygon(p, poly);
+
+    // World-space bounding box of the current outer map boundary, so the build grid can size itself to
+    // the map instead of a fixed cell count. Empty bounds if the map isn't built yet.
+    public static Bounds MapBounds()
+    {
+        if (i == null || i.poly == null || i.poly.points.Length < 3) return new Bounds(Vector3.zero, Vector3.zero);
+        Vector2[] p = i.poly.points;
+        float minX = p[0].x, maxX = p[0].x, minY = p[0].y, maxY = p[0].y;
+        for (int k = 1; k < p.Length; k++)
+        {
+            Vector2 v = p[k];
+            if (v.x < minX) minX = v.x; else if (v.x > maxX) maxX = v.x;
+            if (v.y < minY) minY = v.y; else if (v.y > maxY) maxY = v.y;
+        }
+        var b = new Bounds();
+        b.SetMinMax(new Vector3(minX, minY, 0f), new Vector3(maxX, maxY, 0f));
+        return b;
+    }
+
     // === Geometry helpers =====================================================
 
     // Signed polygon area (positive = CCW winding, negative = CW)

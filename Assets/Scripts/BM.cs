@@ -195,12 +195,9 @@ public class BM : MonoBehaviour //Building Manager
             Position(redBuilding.transform);
 
             bool gridClear   = GridManager.i.AreaClear(anchorCell, gridSize);
-            // NOTE: validity must match TryPlace(), which only checks AreaClear. We used to also
-            // AND-in a MapManager.InsideBounds() poly.OverlapPoint() test, but BuildingFollowMouse
-            // now does map.SetActive(false) which disables that boundary collider, so OverlapPoint
-            // always returned false and the buildable footprint never highlighted green. Placement
-            // is already constrained to constructor range (inside the map), so the bounds test was
-            // redundant anyway.
+            // Validity matches TryPlace() — both rely on AreaClear's inRange, which RebuildRangeCache now
+            // clips to the map's inner inset (pulled in by buildEdgeMargin), so cells near the edge are
+            // already out-of-range and unbuildable. No per-frame bounds test needed.
             // colour overlay & sprite tint
             GridManager.i.PreviewArea(anchorCell, gridSize, gridClear);
         }

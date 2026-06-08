@@ -166,6 +166,17 @@ public class WeaponScript : Part
         transform.localPosition = transform.localPosition.normalized * (MechaSuit.poweredDist - sr.sprite.rect.height * 0.25f * 0.015625f);
         //LeanTween.cancel(gameObject);
         //transform.localScale = Vector3.one *0.5f;
+
+        // Cancel any in-progress charge so swapping weapons mid-charge doesn't leave the cast FX looping
+        // or carry the charge over to the next time this weapon is equipped.
+        if (colCo != null) { StopCoroutine(colCo); colCo = null; }
+        if (ps != null)
+        {
+            castfx.loop = false;
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        }
+        if (shootID != -1) { IM.i.BlockVB(shootID); }
+
         if (!hasStarted) return;
         if (option != -1f)
         {

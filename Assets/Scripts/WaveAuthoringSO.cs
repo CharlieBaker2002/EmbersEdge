@@ -193,6 +193,9 @@ public class ClusterPlan
 {
     public string name = "Cluster";
     public float duration = 3f;  // seconds over which the cluster's enemies are spread (price-weighted)
+    // Relative weight for the random pick among this collection's clusters when its turn comes up in the
+    // round-robin. 1 = normal; 2 = twice as likely to be the chosen cluster as a favour-1 sibling.
+    public float favour = 1f;
     public List<PlacedEnemy> enemies = new List<PlacedEnemy>();
     public bool scoreOverridden;   // when true, the cluster's cost is the manual value, not the auto sum
     public float scoreOverride;
