@@ -79,7 +79,7 @@ public class PortalScript : MonoBehaviour
     {
         CS = CharacterScript.CS;
         recall = IM.i.pi.Player.Portal;
-        recall.started += _ => StartPortal();
+        recall.started += _ => OnRecallPressed();
         GS.OnNewEra += i =>
         {
             foreach (SpriteRenderer sr in quaterSRS)
@@ -208,7 +208,23 @@ public class PortalScript : MonoBehaviour
 
     public static bool CanPortal()
     {
+        // At base you can only head to the dungeon while peaceful & unarmed — not once a wave is
+        // armed/pending or actively attacking. (Returning FROM the dungeon is always allowed.)
+        if (!i.inDungeon && (SpawnManager.instance.waveArmed || SpawnManager.instance.dayState != SpawnManager.DayState.Day))
+            return false;
         return GS.CanAct() && i.canPortal && i.televal >= i.televalMax;
+    }
+
+    // V key. At base with an armed wave, V SUMMONS the wave instead of charging a teleport (you
+    // can't go back to the dungeon until it's cleared). Otherwise it charges a teleport as before.
+    private void OnRecallPressed()
+    {
+        if (!inDungeon && SpawnManager.instance.waveArmed)
+        {
+            SpawnManager.instance.TryStartWave();
+            return;
+        }
+        StartPortal();
     }
 
     public bool StartPortal()
@@ -254,6 +270,7 @@ public class PortalScript : MonoBehaviour
 
             // Lock input and UI immediately so player can't move during burst
             goingToDungeon = true;
+            SpawnManager.instance.HideWavePreview(); // drop the pre-dungeon forecast while we're away
             IM.i.pi.Player.Disable();
             UIManager.CloseAllUIs();
 
@@ -268,10 +285,9 @@ public class PortalScript : MonoBehaviour
         else
         {
             goingHomeNow = true;
-            if (!CharacterScript.CS.ls.hasDied)
-            {
-                SpawnManager.instance.AccelerateWave(false); //no need to call this twice
-            }
+            // Returning home no longer auto-starts the wave. It is ARMED on arrival (PortalFR) and
+            // summoned manually by the player (V / Tele-Phone). Death still force-starts it via
+            // AccelerateWave(true) -> forceStartOnReturn.
             StartCoroutine(ToHomeSequence(noDistort));
         }
     }
@@ -557,6 +573,15 @@ public class PortalScript : MonoBehaviour
         else
         {
             MapManager.i.SetMap(false);
+            // Dungeon run finished -> arm the next wave (absorbed cores are now included). The player
+            // summons it with V / the Tele-Phone; teleport stays locked until it's cleared. On death
+            // the punishment flag force-starts it immediately.
+            SpawnManager.instance.ArmWave();
+            if (SpawnManager.instance.forceStartOnReturn)
+            {
+                SpawnManager.instance.forceStartOnReturn = false;
+                SpawnManager.instance.TryStartWave();
+            }
             if (!SpawnManager.instance.waveCompleted)
             {
                 Invoke(nameof(NoPortal),3f);
@@ -623,6 +648,7 @@ public class PortalScript : MonoBehaviour
 
     public void DefeatedBoss()
     {
+        SpawnManager.instance.inBossTransition = true; // don't arm a wave on the boss-room return home
         SpawnManager.instance.dayState = SpawnManager.DayState.Day;
         SpawnManager.instance.timeText.text = "Ember's Edge Deconstructing";
         SpawnManager.instance.timeText.color = new Color(0.25f, 1f, 0.35f);
@@ -663,6 +689,7 @@ public class PortalScript : MonoBehaviour
         {
             Baron.current.Three();
         }
+        SpawnManager.instance.inBossTransition = false; // new era is set up; dungeon-run to arm its first wave
         YesPortal();
     }
 

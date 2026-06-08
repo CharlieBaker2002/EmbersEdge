@@ -59,7 +59,7 @@ public class E2_5 : Unit, IOnCollide, IRoomUnit, IOnDeath
     public void OnCollide(Collision2D collision)
     {
         if (!collision.rigidbody.TryGetComponent<ActionScript>(out var oAS)) return;
-        if(oAS.CompareTag(tag) || oAS.PS != null || !AS.canAct || oAS.wall)
+        if(oAS.CompareTag(tag) || oAS.PS != null || !AS.canAct || oAS.wall || oAS.building)
         {
             return;
         }

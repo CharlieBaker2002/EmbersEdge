@@ -638,6 +638,10 @@ public class EnergyManager : MonoBehaviour
                 RegenerateCables();
             }
         }
+        // Constructors hold ALL building work (including repairs) while a wave is live — they only
+        // start once Ember's Edge goes quiet again (eeactive is cleared after the wave completes).
+        if (SpawnManager.eeactive) return;
+
         for (int x = 0; x < bs.Count; x++)
         {
             foreach (Constructor c in constructors)

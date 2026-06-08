@@ -16,7 +16,9 @@ public class ClickSkipButton : MonoBehaviour, IClickable
             CM.Message("Return to base to activate the next wave...");
             return;
         }
-        SpawnManager.instance.AccelerateWave(false);
+        // Tele-Phone skips the dungeon: summon the next wave now with the cores you currently have
+        // (no dungeon-absorbed bonus). The V key still enforces the dungeon-first cycle.
+        SpawnManager.instance.ForceStartWave();
         LeanTween.cancel(gameObject);
         LeanTween.scale(gameObject, new Vector3(1.1f, 1.1f), 0.3f).setOnComplete(() => LeanTween.scale(gameObject, new Vector3(1f, 1f), 0.3f));
     }

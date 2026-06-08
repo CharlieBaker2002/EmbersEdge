@@ -29,12 +29,25 @@ public class SpawnManager : MonoBehaviour
     public TextMeshProUGUI timeText;
     public System.Action OnNewDay;
     private float sinceLastBigAttack = 0f;
-    private float activityLevel;
+    private float activityLevel;     // 0.45–1, drives wave VISUALS (spin / Acco wibble / slider)
+    private float waveRand = 1f;     // budget multiplier rolled per cycle (EnsureActivityRolled)
+    private int activityCategory;    // 0=Weakly,1=Active,2=Very,3=Extremely (difficulty-shifted vocabulary)
     public System.Action onWaveComplete;
-    public bool waveCompleted = false; 
+    public bool waveCompleted = false;
     bool helpedWithWave = false; //determines whether next day should be called even from dungeon
     float maxTimer;
     public static bool eeactive = false;
+
+    // Player-triggered waves: a wave is "armed" (pre-rolled + previewed) when the player returns
+    // from a dungeon run, then summoned manually with V / the Tele-Phone. See ArmWave / TryStartWave.
+    public bool waveArmed = false;
+    public WavePlan currentPlan;
+    [Tooltip("Authored waves (Tools > Wave Forge). If null, falls back to Resources/WaveAuthoring, then to the legacy procedural roll.")]
+    public WaveAuthoringSO waveAuthoring;
+    [HideInInspector] public bool forceStartOnReturn = false; // death punishment: auto-summon on the way home
+    [HideInInspector] public bool inBossTransition = false;   // suppress arming during boss/era change
+    private bool activityRolled = false; // activity is rolled once per cycle (forecast or arm); reset on defeat/era
+    private bool previewActive = false;  // a wave preview (pre-dungeon forecast OR armed) is currently shown
 
     public Material[] eraMats;
 
@@ -47,6 +60,11 @@ public class SpawnManager : MonoBehaviour
 
     public static int day = 0;
     public static int daySinceNewEra = 0;
+    // Clean 0-based index of the upcoming wave within the current era -> authored Day index (Day 1 = 0).
+    // Kept separate from daySinceNewEra (which has a start-up/era-change off-by-one) so the designer's
+    // "Day 1" always lines up with the first wave of a dungeon.
+    public static int eraWaveIndex = 0;
+    private bool realWaveThisCycle = false; // true once a real wave is summoned; gates the eraWaveIndex bump
     public Slider activitySlider;
     public Slider eraCompletionSlider;
 
@@ -76,6 +94,7 @@ public class SpawnManager : MonoBehaviour
         };
         maxTimer = timer;
         instance = this;
+        if (waveAuthoring == null) waveAuthoring = Resources.Load<WaveAuthoringSO>("WaveAuthoring");
         EmbersEdge.warmUpTime = 20f;
         day = 0;
         daySinceNewEra = 0;
@@ -162,43 +181,365 @@ public class SpawnManager : MonoBehaviour
         });
     }
     
+    /// <summary>
+    /// Forecast the next wave while peaceful at base BEFORE any dungeon run, so the player can scout
+    /// where/what it will be. Builds (display-only) the plan for the cores they currently have. The
+    /// SAME plan object is reused + extended by ArmWave on return, so the main core's part of the
+    /// forecast stays stable and the dungeon only ADDS cores. Driven from the Day-state Update.
+    /// </summary>
+    private void ShowPreDungeonPreview()
+    {
+        EnsureActivityRolled();
+        currentPlan = BuildFullPlan(activityLevel);
+        previewActive = true;
+        if (EnemyTracker.i != null) EnemyTracker.i.ShowPreview(currentPlan);
+        MapManager.SetSpin(activityLevel); // testingDefence: the EE goes active pre-dungeon for defence testing
+        SetActivityText();
+    }
+
+    // Status text + colour for the current rolled activity tier (vocabulary shifts with difficulty).
+    private void SetActivityText()
+    {
+        switch (activityCategory)
+        {
+            case 0: timeText.text = "Ember's Edge Weakly Active"; timeText.color = new Color(0.675f, 0.5f, 0.3f); break;
+            case 1: timeText.text = "Ember's Edge Active"; timeText.color = new Color(0.775f, 0.4f, 0.2f); break;
+            case 2: timeText.text = "Ember's Edge Very Active"; timeText.color = new Color(0.875f, 0.15f, 0.1f); break;
+            default: timeText.text = "Ember's Edge Extremely Active"; timeText.color = Color.red; break;
+        }
+    }
+
+    /// <summary>
+    /// Arm the next wave on return from a dungeon run (PortalScript.PortalFR): reuse the rolled
+    /// activity, fold in any cores absorbed during the run, lock the dungeon teleport, and keep the
+    /// preview up. The player then summons it manually (V / Tele-Phone).
+    /// </summary>
+    public void ArmWave()
+    {
+        if (inBossTransition) return;          // boss-defeat / era change manages its own flow
+        if (dayState != DayState.Day) return;  // a wave is already underway
+        if (waveArmed || eeactive) return;     // already armed/active this cycle
+        if (EEs.Count == 0) return;
+
+        EnsureActivityRolled();
+        currentPlan = BuildFullPlan(activityLevel); // recompute for the full core set (now incl. absorbed cores)
+
+        waveArmed = true;
+        previewActive = true;
+        PortalScript.i.NoPortal();               // can't flee back to the dungeon until it's cleared
+        if (EnemyTracker.i != null) EnemyTracker.i.ShowPreview(currentPlan);
+        // The Ember's Edge becomes ACTIVE on return (visual spin + status) but doesn't spawn until summoned.
+        MapManager.SetSpin(activityLevel);
+        SetActivityText();
+    }
+
+    /// <summary>
+    /// Tele-Phone "skip the dungeon" hatch: arm (if needed) with whatever cores you have RIGHT NOW —
+    /// no dungeon-absorbed bonus — and summon immediately. The V-key cycle still requires a dungeon
+    /// run; this is the explicit accelerate/skip option.
+    /// </summary>
+    public void ForceStartWave()
+    {
+        if (eeactive || dayState != DayState.Day || PortalScript.i.inDungeon || EEs.Count == 0) return;
+        if (!waveArmed)
+        {
+            EnsureActivityRolled();
+            currentPlan = BuildFullPlan(activityLevel);
+            waveArmed = true;
+        }
+        TryStartWave();
+    }
+
+    // Intermediate per-core spawn in absolute-time space (converted to PlannedSpawn pre-spawn delays
+    // at the end). `locked` spawns come from a day whose score the designer overrode and must not be trimmed.
+    private class TimedSpawn
+    {
+        public float time;
+        public MarauderSO so;
+        public float tOffset;
+        public bool locked;
+        public TimedSpawn(float t, MarauderSO s, float off, bool lck) { time = t; so = s; tOffset = off; locked = lck; }
+    }
+
+    /// <summary>
+    /// Assemble the whole wave from the authored content (Wave Forge):
+    ///  1. each core lays out its assigned collection's day (subwave times -> absolute spawn times),
+    ///  2. the day's credit budget ("Day Score") = sum of the per-core formula (intensity * cores),
+    ///  3. if the placed score exceeds the budget, randomly delete enemies (override-locked days are spared),
+    ///  4. otherwise spend the leftover by randomly adding clusters round-robin across the cores.
+    /// Falls back to the legacy procedural roll when no authoring asset is assigned.
+    /// </summary>
+    WavePlan BuildFullPlan(float activity)
+    {
+        var plan = new WavePlan { activity = activity };
+        if (EEs.Count == 0) return plan;
+
+        if (waveAuthoring == null)
+        {
+            foreach (EmbersEdge EE in EEs) plan.cores.Add(EE.PlanWave(activity + EE.bias));
+            return plan;
+        }
+
+        int dungeon = Mathf.Clamp(GS.era, 0, 2);
+        int dayIndex = eraWaveIndex; // GetDay clamps to the dungeon's day count
+
+        // 1. Base placement from each core's collection day.
+        var coreTimed = new List<KeyValuePair<EmbersEdge, List<TimedSpawn>>>();
+        float placed = 0f;
+        float maxDayDuration = 0f;
+        foreach (EmbersEdge EE in EEs)
+        {
+            var timed = new List<TimedSpawn>();
+            string collName = CollectionFor(EE, dungeon);
+            WaveCollection coll = string.IsNullOrEmpty(collName) ? null : waveAuthoring.GetCollection(dungeon, collName);
+            DayPlan day = waveAuthoring.GetDay(coll, dungeon, dayIndex);
+            if (day != null)
+            {
+                AppendDay(timed, day);
+                placed += WaveAuthoringSO.DayPoints(day); // override-aware budget contribution
+                maxDayDuration = Mathf.Max(maxDayDuration, WaveAuthoringSO.DayWaveDuration(day));
+            }
+            coreTimed.Add(new KeyValuePair<EmbersEdge, List<TimedSpawn>>(EE, timed));
+        }
+
+        // 2. Day Score = the Main collection's day price ("base budget") × the activity roll, plus a flat
+        //    share per extra (non-main) core:  base*rand + budgetPerExtraCore*numExtra*base.
+        WaveCollection mainColl = waveAuthoring.GetCollection(dungeon, WaveAuthoringSO.MAIN);
+        float baseBudget = WaveAuthoringSO.DayPoints(waveAuthoring.GetDay(mainColl, dungeon, dayIndex));
+        int numExtra = Mathf.Max(0, EEs.Count - 1);
+        float dayScore = baseBudget * (waveRand + waveAuthoring.budgetPerExtraCore * numExtra);
+
+        // 3 / 4. Trim if over budget, else fill the leftover with clusters spread across the attack window:
+        // window = max(2 * day-within-era, longest authored day across the cores' collections).
+        if (placed > dayScore) TrimTimed(coreTimed, placed - dayScore);
+        else FillClusters(coreTimed, dungeon, dayScore - placed, Mathf.Max(2f * (eraWaveIndex + 1), maxDayDuration));
+
+        // 5. Convert to CorePlans (sort by time -> pre-spawn delays).
+        foreach (var kv in coreTimed)
+        {
+            var cp = new CorePlan(kv.Key);
+            kv.Value.Sort((a, b) => a.time.CompareTo(b.time)); // Acco relies on plannedSpawns being time-sorted
+            foreach (var ts in kv.Value)
+                if (ts.so != null) cp.spawns.Add(new PlannedSpawn(ts.so, ts.tOffset, ts.time));
+            plan.cores.Add(cp);
+        }
+        return plan;
+    }
+
+    // The collection a core draws from this era: "Main" for the main core, a stable random one otherwise.
+    string CollectionFor(EmbersEdge EE, int dungeon)
+    {
+        if (EE == EmbersEdge.mainCore) { EE.assignedCollection = WaveAuthoringSO.MAIN; return WaveAuthoringSO.MAIN; }
+        if (string.IsNullOrEmpty(EE.assignedCollection))
+            EE.assignedCollection = waveAuthoring.RandomCollectionName(dungeon, true);
+        return EE.assignedCollection;
+    }
+
+    void AppendDay(List<TimedSpawn> timed, DayPlan day)
+    {
+        foreach (Subwave sw in day.subwaves)
+            AppendGroup(timed, sw.enemies, sw.time, sw.duration, day.scoreOverridden);
+    }
+
+    // Lay a subwave/cluster onto the timeline starting at `start`: each enemy's gap to the next equals
+    // price * duration / (sum of the group's prices), so the group is spread across `duration` weighted
+    // by price. Order: top rows (lowest gridY) first, random within each row.
+    void AppendGroup(List<TimedSpawn> timed, List<PlacedEnemy> enemies, float start, float duration, bool locked)
+    {
+        var ordered = OrderForSpawn(enemies);
+        if (ordered.Count == 0) return;
+        float sum = 0f;
+        foreach (var e in ordered) sum += WaveAuthoringSO.EnemyPoints(e.so);
+        float t = start;
+        foreach (var e in ordered)
+        {
+            if (e.so != null)
+                timed.Add(new TimedSpawn(t, e.so, waveAuthoring.ColToTOffset(e.gridX), locked));
+            float slice = sum > 0f ? WaveAuthoringSO.EnemyPoints(e.so) * duration / sum : duration / ordered.Count;
+            t += slice;
+        }
+    }
+
+    // Spawn order within a group: rows top-down (gridY ascending), randomised within each row.
+    static List<PlacedEnemy> OrderForSpawn(List<PlacedEnemy> es)
+    {
+        var byRow = new SortedDictionary<int, List<PlacedEnemy>>();
+        foreach (var e in es)
+        {
+            if (!byRow.TryGetValue(e.gridY, out var row)) { row = new List<PlacedEnemy>(); byRow[e.gridY] = row; }
+            row.Add(e);
+        }
+        var result = new List<PlacedEnemy>(es.Count);
+        foreach (var kv in byRow)
+        {
+            var row = kv.Value;
+            for (int i = row.Count - 1; i > 0; i--) { int j = Random.Range(0, i + 1); (row[i], row[j]) = (row[j], row[i]); }
+            result.AddRange(row);
+        }
+        return result;
+    }
+
+    // Detail 1: over budget -> randomly delete enemies (skipping override-locked days) until within budget.
+    void TrimTimed(List<KeyValuePair<EmbersEdge, List<TimedSpawn>>> coreTimed, float excess)
+    {
+        var pool = new List<KeyValuePair<List<TimedSpawn>, TimedSpawn>>();
+        foreach (var kv in coreTimed)
+            foreach (var ts in kv.Value)
+                if (!ts.locked) pool.Add(new KeyValuePair<List<TimedSpawn>, TimedSpawn>(kv.Value, ts));
+        // Fisher–Yates shuffle so the deletions are random.
+        for (int i = pool.Count - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            (pool[i], pool[j]) = (pool[j], pool[i]);
+        }
+        for (int k = 0; k < pool.Count && excess > 0f; k++)
+            if (pool[k].Key.Remove(pool[k].Value))
+                excess -= WaveAuthoringSO.EnemyPoints(pool[k].Value.so);
+    }
+
+    // Cluster filling, in two strict phases:
+    //  A) SELECTION — round-robin across cores, randomly taking affordable clusters until the leftover
+    //     can't afford any (unaffordable clusters are dropped; leftover only shrinks). No timing yet.
+    //  B) PLACEMENT — decided AFTER selection: spread the chosen clusters across [0, window] weighted by
+    //     cumulative price, so the added price rate stays as constant as possible through the attack.
+    void FillClusters(List<KeyValuePair<EmbersEdge, List<TimedSpawn>>> coreTimed, int dungeon, float leftover, float window)
+    {
+        if (leftover <= 0f) return;
+
+        var opts = new List<ClusterOption>();
+        foreach (var kv in coreTimed)
+        {
+            string collName = CollectionFor(kv.Key, dungeon);
+            WaveCollection coll = string.IsNullOrEmpty(collName) ? null : waveAuthoring.GetCollection(dungeon, collName);
+            if (coll == null || coll.clusters == null) continue;
+            var list = new List<ClusterPlan>();
+            foreach (ClusterPlan cl in coll.clusters)
+                if (WaveAuthoringSO.ClusterPoints(cl) > 0f) list.Add(cl);
+            if (list.Count > 0) opts.Add(new ClusterOption { timed = kv.Value, clusters = list });
+        }
+
+        // Phase A — selection.
+        var selected = new List<KeyValuePair<List<TimedSpawn>, ClusterPlan>>();
+        int cursor = 0, guard = 0;
+        while (leftover > 0f && opts.Count > 0 && guard++ < 5000)
+        {
+            ClusterOption o = opts[cursor % opts.Count];
+            o.clusters.RemoveAll(cl => WaveAuthoringSO.ClusterPoints(cl) > leftover);
+            if (o.clusters.Count == 0) { opts.Remove(o); continue; }
+            ClusterPlan pick = o.clusters[Random.Range(0, o.clusters.Count)];
+            selected.Add(new KeyValuePair<List<TimedSpawn>, ClusterPlan>(o.timed, pick));
+            leftover -= WaveAuthoringSO.ClusterPoints(pick);
+            cursor++;
+        }
+        if (selected.Count == 0) return;
+
+        // Phase B — even placement by cumulative price (constant rate). Shuffle first so cores interleave.
+        float total = 0f;
+        foreach (var s in selected) total += WaveAuthoringSO.ClusterPoints(s.Value);
+        for (int i = selected.Count - 1; i > 0; i--) { int j = Random.Range(0, i + 1); (selected[i], selected[j]) = (selected[j], selected[i]); }
+        float running = 0f;
+        foreach (var s in selected)
+        {
+            float start = total > 0f ? running / total * window : 0f;
+            AppendGroup(s.Key, s.Value.enemies, start, s.Value.duration, false);
+            running += WaveAuthoringSO.ClusterPoints(s.Value);
+        }
+    }
+
+    private class ClusterOption { public List<TimedSpawn> timed; public List<ClusterPlan> clusters; }
+
+    // Wave intensity is rolled once per cycle — by whichever of the forecast / arm / skip happens
+    // first — and the difficulty bookkeeping (sinceLastBigAttack) is committed at the same moment.
+    // Roll the wave's intensity once per cycle. waveRand is the budget multiplier; the roll's percentile
+    // within its difficulty-dependent range picks the activity category (vocabulary) and the 0.45–1
+    // visual level.  rand = max(0.9, Random.Range(0.5 + d/4, 1 + d/3)).
+    private void EnsureActivityRolled()
+    {
+        if (activityRolled) return;
+        activityRolled = true;
+        float d = Mathf.Clamp(SetM.difficulty, 1f, 3f);
+        float lo = 0.5f + d / 4f;
+        float hi = 1f + d / 3f;
+        float r = Random.Range(lo, hi);
+        waveRand = Mathf.Max(0.9f, r);
+        float p = hi > lo ? Mathf.Clamp01((r - lo) / (hi - lo)) : 0.5f; // percentile within the range
+        activityLevel = Mathf.Lerp(0.45f, 1f, p);
+        activityCategory = ClassifyActivity(p, d);
+        Debug.Log($"[Wave] day {eraWaveIndex + 1}: rand={waveRand:0.00} (roll {r:0.00} in [{lo:0.00},{hi:0.00}]), activity tier {activityCategory}, difficulty {d:0.0}");
+    }
+
+    // Map a roll percentile p∈[0,1] to an activity tier (0 Weakly … 3 Extremely). Tier widths shift with
+    // difficulty, interpolated between authored anchors at d = 1/1.5/2/2.5/3 — so ≤1.5 never reaches
+    // Extremely and ≥2.5 never reaches Weakly (those tiers interpolate to zero width there).
+    private static int ClassifyActivity(float p, float d)
+    {
+        float[] xs = { 1f, 1.5f, 2f, 2.5f, 3f };
+        float[] wf = { 0.5f, 0.25f, 0.1f, 0f, 0f };
+        float[] af = { 1f / 3f, 0.5f, 0.4f, 0.25f, 1f / 6f };
+        float[] vf = { 1f / 6f, 0.25f, 0.4f, 0.5f, 1f / 3f };
+        float cW = LerpAnchors(xs, wf, d);
+        float cA = cW + LerpAnchors(xs, af, d);
+        float cV = cA + LerpAnchors(xs, vf, d);
+        p = Mathf.Clamp(p, 0f, 0.999999f);
+        if (p < cW) return 0;
+        if (p < cA) return 1;
+        if (p < cV) return 2;
+        return 3;
+    }
+
+    private static float LerpAnchors(float[] xs, float[] ys, float x)
+    {
+        if (x <= xs[0]) return ys[0];
+        if (x >= xs[xs.Length - 1]) return ys[ys.Length - 1];
+        for (int i = 1; i < xs.Length; i++)
+            if (x <= xs[i])
+                return Mathf.Lerp(ys[i - 1], ys[i], (x - xs[i - 1]) / (xs[i] - xs[i - 1]));
+        return ys[ys.Length - 1];
+    }
+
+    public void HideWavePreview()
+    {
+        previewActive = false;
+        if (EnemyTracker.i != null) EnemyTracker.i.HidePreview();
+    }
+
+    /// <summary>
+    /// Summon the armed wave (V key / Tele-Phone). Returns false if there is nothing to summon
+    /// (must do a dungeon run first, or a wave is already active). Executes the exact plan that the
+    /// preview showed.
+    /// </summary>
+    public bool TryStartWave()
+    {
+        if (dayState != DayState.Day || !waveArmed) return false;
+        waveArmed = false;
+        HideWavePreview();
+        // Hand each core its pre-rolled list; clear any core not in this plan so it spawns nothing.
+        foreach (EmbersEdge EE in EEs)
+        {
+            EE.plannedSpawns = null;
+        }
+        if (currentPlan != null)
+        {
+            foreach (CorePlan cp in currentPlan.cores)
+            {
+                if (cp != null && cp.core != null) cp.core.plannedSpawns = cp.spawns;
+            }
+        }
+        SetPreAttack();
+        return true;
+    }
+
     void SetPreAttack()
     {
         if (!RefreshManager.i.CASUALNOTREALTIME) //IF REGULAR MODE, WE DON'T SET PRE-ATTACK WHEN DYING TO EE... BECAUSE IT JUST HAPPENS ANYWAY FOR SOME REASON?
         {
-            if(!DM.i.activeRoom.defeated && DM.i.activeRoom.EE!=null && PortalScript.i.inDungeon) return; 
+            if(!DM.i.activeRoom.defeated && DM.i.activeRoom.EE!=null && PortalScript.i.inDungeon) return;
         }
         eeactive = true;
-        activityLevel = Mathf.Lerp(0.45f, 1f, RandomManager.Rand(1, new Vector2(sinceLastBigAttack, 1), sinceLastBigAttack));
+        realWaveThisCycle = true;    // a genuine wave (not the start-up phantom) -> advances eraWaveIndex on completion
+        PortalScript.i.NoPortal();   // lock the dungeon teleport for the duration of the wave (all start paths)
         MapManager.SetSpin(activityLevel);
-        if(activityLevel < 0.6f)
-        {
-            timeText.text = "Ember's Edge Weakly Active";
-            timeText.color = new Color(0.675f, 0.5f, 0.3f);
-        }
-        else if (activityLevel < 0.75f)
-        {
-            timeText.text = "Ember's Edge Active";
-            timeText.color = new Color(0.775f, 0.4f, 0.2f);
-        }
-        else if (activityLevel < 0.9f)
-        {
-            timeText.text = "Ember's Edge Very Active";
-            timeText.color = new Color(0.875f, 0.15f, 0.1f);
-        }   
-        else
-        {
-            timeText.text = "Ember's Edge Extremely Active";
-            timeText.color = Color.red;
-        }
-        if (activityLevel > 0.75f)
-        {
-            sinceLastBigAttack = 0f;
-        }
-        else
-        {
-            sinceLastBigAttack += 0.01f * GS.Era1();
-        }
+        SetActivityText();
 
         foreach (EmberCannon ec in EmberCannon.ecs)
         {
@@ -212,26 +553,20 @@ public class SpawnManager : MonoBehaviour
         timer = EmbersEdge.warmUpTime;
         UpdateActivitySlider(activityLevel);
     }
-    
-    
 
+
+
+    // Repurposed: waves are summoned manually now, so this only handles the DEATH punishment —
+    // shorten the warm-up and auto-summon once the death teleport drops the player back at base
+    // (consumed in PortalScript.PortalFR via forceStartOnReturn).
     public void AccelerateWave(bool dead)
     {
-        if (dead)
+        if (!dead) return;
+        EmbersEdge.warmUpTime = 5f;
+        this.QA(() => EmbersEdge.warmUpTime = 20f, 15);
+        if (PortalScript.i.inDungeon)
         {
-            EmbersEdge.warmUpTime = 5f;
-            this.QA(() => EmbersEdge.warmUpTime = 20f, 15);
-        }
-        if(dayState == DayState.Day)
-        {
-            PortalScript.i.Cancel();
-            PortalScript.i.NoPortal();
-            if (RefreshManager.i.CASUALNOTREALTIME)
-            {
-                SetPreAttack();
-                return;
-            }
-            timer = Mathf.Min(timer,dead ? 0.01f : Mathf.Lerp(timer,10f,0.6f));
+            forceStartOnReturn = true;
         }
     }
 
@@ -254,8 +589,9 @@ public class SpawnManager : MonoBehaviour
         PortalScript.i.YesPortal();
         dayState = DayState.Attack;
         timer = -10f;
+        eraWaveIndex = 0;
         Time.timeScale = RefreshManager.i.STANDARDTIME;
-        GS.OnNewEra += (ctx) => { UIManager.i.UpdateDayText(day); timer = 20f; maxTimer = 10f; dayState = DayState.Day; waveCompleted = false; };
+        GS.OnNewEra += (ctx) => { UIManager.i.UpdateDayText(day); timer = 20f; maxTimer = 10f; dayState = DayState.Day; waveCompleted = false; waveArmed = false; currentPlan = null; activityRolled = false; previewActive = false; eraWaveIndex = 0; realWaveThisCycle = false; };
     }
 
     public void Update()
@@ -267,18 +603,22 @@ public class SpawnManager : MonoBehaviour
             switch (dayState)
             {
                 case DayState.Day:
-                    if (RefreshManager.i.CASUALNOTREALTIME)
+                    // Peaceful at base. The next wave is summoned MANUALLY (V / Tele-Phone) once it has
+                    // been armed by a dungeon run — no countdown auto-start and no countdown-driven core
+                    // shifting (positions are locked when the wave is armed so the preview stays honest).
+                    // Exception: SPAWNTESTMODE keeps auto-cycling waves (no dungeon run) for balancing.
+                    if (RefreshManager.i.SPAWNTESTMODE && !waveArmed && !eeactive && timer <= 0f)
                     {
-                        timer += Time.deltaTime;  //PSYCH!
+                        ArmWave();
+                        TryStartWave();
+                        break;
                     }
-                    activitySlider.value = timer / maxTimer;
-                    if (timer <= 0f)
+                    // Normally the activity + Directors only begin once you RETURN from a dungeon (ArmWave).
+                    // testingDefence forecasts the wave BEFORE a dungeon run so you can test base defence.
+                    if (RefreshManager.i.TESTINGDEFENCE && !previewActive && !waveArmed && !eeactive && !inBossTransition
+                        && !PortalScript.i.inDungeon && !PortalScript.goingToDungeon && EEs.Count > 0)
                     {
-                        SetPreAttack();
-                    }
-                    else if(timer <= 30f && save > 30f && Random.Range(0, 3) == 0)
-                    {
-                        SetShiftEEs();
+                        ShowPreDungeonPreview();
                     }
                     break;
                 case DayState.PreAttack:
@@ -384,6 +724,11 @@ public class SpawnManager : MonoBehaviour
             }
             waveCompleted = false;
             dayState = DayState.Day;
+            waveArmed = false;      // wave defeated -> peaceful & disarmed; player dungeon-runs (V) or skips (Tele-Phone)
+            currentPlan = null;     // start a fresh forecast for the new cycle
+            activityRolled = false;
+            previewActive = false;
+            if (realWaveThisCycle) { eraWaveIndex++; realWaveThisCycle = false; } // advance to the next authored Day
             timer = 100f + 1.5f * timer + Random.Range(60f, 90f) + 90f * activityLevel; // how fast you beat the prev wave, random, activity
             maxTimer = timer;
             helpedWithWave = false;
@@ -404,6 +749,13 @@ public class SpawnManager : MonoBehaviour
                         e.Shift();
                     }
                 }
+            }
+            if (RefreshManager.i.TESTINGDEFENCE)
+            {
+                // Re-roll a fresh activity + Directors right after the win so you can keep testing
+                // defence (still no spawning — summon it with the Tele-Phone).
+                eeactive = false;
+                ShowPreDungeonPreview();
             }
         }
     }

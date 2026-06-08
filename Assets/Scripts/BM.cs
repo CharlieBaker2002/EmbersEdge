@@ -195,19 +195,14 @@ public class BM : MonoBehaviour //Building Manager
             Position(redBuilding.transform);
 
             bool gridClear   = GridManager.i.AreaClear(anchorCell, gridSize);
-            Vector2 effSize = EffectiveSize();
-            bool boundClear = true;
-            for (int x = -1; x <= 1; x+=2)
-            {
-                for(int y = -1; y <= 1; y+=2)
-                {
-                    boundClear = MapManager.InsideBounds(redBuilding.transform.position + new Vector3(x*effSize.x,y*effSize.y) * 0.49f);
-                    if (boundClear == false) break;
-                }
-                if(boundClear == false) break;
-            }
+            // NOTE: validity must match TryPlace(), which only checks AreaClear. We used to also
+            // AND-in a MapManager.InsideBounds() poly.OverlapPoint() test, but BuildingFollowMouse
+            // now does map.SetActive(false) which disables that boundary collider, so OverlapPoint
+            // always returned false and the buildable footprint never highlighted green. Placement
+            // is already constrained to constructor range (inside the map), so the bounds test was
+            // redundant anyway.
             // colour overlay & sprite tint
-            GridManager.i.PreviewArea(anchorCell, gridSize, gridClear&&boundClear);
+            GridManager.i.PreviewArea(anchorCell, gridSize, gridClear);
         }
     }
 

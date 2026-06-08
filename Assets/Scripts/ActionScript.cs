@@ -40,6 +40,8 @@ public class ActionScript : MonoBehaviour
     public bool velCap = true; //massively slows down lerp to maxVel.
     public bool rooted = false; //stop every frame
     public bool wall = false; //if true, things reflect off this instead of being pushed. If pushed into wall, they are stunned and take damage.
+    [Tooltip("Wall that can still be sought & attacked. Physically behaves exactly like a wall (others reflect off it, it never pushes them), but takes collision damage from whoever rams it. Configure like a wall: set interactive = false and give it a LifeScript. Immaterial bodies phase through a solid building unless the building is itself immaterial.")]
+    public bool building = false;
     public bool ignoreWalls = false; //guess
     public bool convertProjectiles = false;
     [Tooltip("Forces projectiles to expend all health")] public bool absorbProjectiles = false;
@@ -252,11 +254,18 @@ public class ActionScript : MonoBehaviour
                     return;
                 }
             }
-            if (oAS.wall) //STOPPING VELOCITY TOWARD WALLS (via wallNormals)
+            if (oAS.wall || oAS.building) //STOPPING VELOCITY TOWARD WALLS (via wallNormals)
             {
-                if (!ignoreWalls)
+                // Immaterial bodies phase *physically* through a solid building (no bounce), but
+                // can still attack it — an immaterial building, however, blocks them like any wall.
+                bool phaseThrough = oAS.building && immaterial && !oAS.immaterial;
+                if (!phaseThrough && !ignoreWalls)
                 {
-                    AddWall(collision); 
+                    AddWall(collision);
+                }
+                if (oAS.building) //buildings, unlike pure walls, can be sought & attacked on contact
+                {
+                    DealBuildingDamage(collision, oAS);
                 }
             }
             else //NON-WALL INTERACTION
@@ -371,6 +380,45 @@ public class ActionScript : MonoBehaviour
             }
         }
         OnCollides(collision); //only for valid collisions. For ally collisions only applies if pushed.
+    }
+
+    // A building reflects bodies like a wall, but still soaks collision damage from whatever rams it.
+    // Mirrors the "DAMAGING OTHER BODY" path of the normal (non-wall) branch, minus the pushing.
+    private void DealBuildingDamage(Collision2D collision, ActionScript oAS)
+    {
+        if (PS != null || oAS.PS != null || wall) return; // projectiles & walls don't deal contact damage
+        if (transform.CompareTag("Misc")) return;
+
+        EntityId oASID = oAS.GetEntityId();
+        for (int i = 0; i < recentlyHit.Count; i++)
+        {
+            if (recentlyHit[i].Item1 == oASID) return; // already hit this body recently
+        }
+        recentlyHit.Add((oASID, Time.time));
+
+        float dmg = sharpness;
+        if (collision.rigidbody.CompareTag(tag)) // ramming a same-team (e.g. allied) building
+        {
+            if (!CheckCCs(new string[] { "push" })) return; // only while being pushed
+            dmg *= 0.5f;
+        }
+
+        if (GetLifeScript(collision, out var oLS))
+        {
+            if (oLS.hasDied) return;
+            if (dmg > oAS.hardness)
+            {
+                dmg -= oAS.hardness;
+                if (ls != null)
+                {
+                    oLS.Change(-dmg, ls.race);
+                }
+                else
+                {
+                    oLS.Change(-dmg, 0);
+                }
+            }
+        }
     }
 
     private void AddWall(Collision2D coli)
@@ -730,7 +778,7 @@ public class ActionScript : MonoBehaviour
     {
         if (t.TryGetComponent<ActionScript>(out var AS))
         {
-            if (AS.wall)
+            if (AS.wall || AS.building)
             {
                 return true;
             }
@@ -743,7 +791,7 @@ public class ActionScript : MonoBehaviour
         {
             if (t.GetComponentInParent<ActionScript>() != null)
             {
-                if (t.GetComponentInParent<ActionScript>().wall)
+                if (t.GetComponentInParent<ActionScript>().wall || t.GetComponentInParent<ActionScript>().building)
                 {
                     return true;
                 }

@@ -3723,7 +3723,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 1536.4, y: 50}
+  m_AnchoredPosition: {x: 1536.3984, y: 50}
   m_SizeDelta: {x: 275, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &214017267
@@ -5083,6 +5083,10 @@ MonoBehaviour:
   Followers: {fileID: 8090153}
   timeText: {fileID: 464186689}
   waveCompleted: 0
+  waveArmed: 0
+  waveAuthoring: {fileID: 0}
+  forceStartOnReturn: 0
+  inBossTransition: 0
   eraMats:
   - {fileID: 2100000, guid: ef9c135c3b53a49eb8da1cbf58f008cc, type: 2}
   - {fileID: 2100000, guid: fdeefabc73a2e46949c8a90996e30c41, type: 2}
@@ -5734,16 +5738,17 @@ MonoBehaviour:
   rui: {fileID: 533550133}
   cam: {fileID: 519420030}
   CASUALNOTREALTIME: 1
-  STARTSEQUENCE: 1
+  STARTSEQUENCE: 0
   STANDARDTIME: 1
   SPAWNTESTMODE: 0
+  TESTINGDEFENCE: 1
   STARTDUNGEON: 1
   REVEALALLROOMS: 1
   LOSSPROTECTION: 1
   DAMAGEPROTECTION: 0
   DAILYORBBOUNTY: 0
   IGNOREEFFICIENCY: 0
-  DIFFICULTY: 2
+  DIFFICULTY: 1.5
   ARENAMODE: 0
   INSTASPAWN: 1
   QuickTeleport: 0
@@ -10117,6 +10122,7 @@ MonoBehaviour:
   velCap: 1
   rooted: 0
   wall: 0
+  building: 0
   ignoreWalls: 0
   convertProjectiles: 0
   absorbProjectiles: 0
@@ -18729,7 +18735,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 1811.3999, y: 50}
+  m_AnchoredPosition: {x: 1811.3984, y: 50}
   m_SizeDelta: {x: 275, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &605127801
@@ -33426,7 +33432,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 986.3999, y: 50}
+  m_AnchoredPosition: {x: 986.39844, y: 50}
   m_SizeDelta: {x: 275, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &892542370
@@ -38227,7 +38233,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 711.3999, y: 50}
+  m_AnchoredPosition: {x: 711.39844, y: 50}
   m_SizeDelta: {x: 275, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1153035694
@@ -39476,18 +39482,6 @@ PrefabInstance:
       propertyPath: m_WasSpriteAssigned
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 1311188358348928707, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
-      propertyPath: builtYet
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 1311188358348928707, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
-      propertyPath: m_Enabled
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 1311188358348928707, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
-      propertyPath: reachDistance
-      value: 3
-      objectReference: {fileID: 0}
     - target: {fileID: 5189617424200109761, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -39632,7 +39626,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
-  m_AnchoredPosition: {x: 274.89648, y: 263.77002}
+  m_AnchoredPosition: {x: 274.89453, y: 263.77002}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1255539445
@@ -52371,7 +52365,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 1261.4, y: 50}
+  m_AnchoredPosition: {x: 1261.3984, y: 50}
   m_SizeDelta: {x: 275, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1587368022
@@ -57647,7 +57641,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 436.40002, y: 50}
+  m_AnchoredPosition: {x: 436.40234, y: 50}
   m_SizeDelta: {x: 275, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1837376972
@@ -73039,6 +73033,7 @@ MonoBehaviour:
   velCap: 1
   rooted: 1
   wall: 0
+  building: 0
   ignoreWalls: 0
   convertProjectiles: 0
   absorbProjectiles: 0

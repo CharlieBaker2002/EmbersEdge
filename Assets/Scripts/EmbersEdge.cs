@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Linq;
@@ -41,6 +42,12 @@ public class EmbersEdge : MonoBehaviour
     public GameObject ps;
 
     public MarauderSO[] SOs;
+
+    // Pre-rolled spawn list for the upcoming wave, built by the planner and executed by Acco().
+    [System.NonSerialized] public List<PlannedSpawn> plannedSpawns;
+    // Which authored collection feeds this core for the current era ("Main" for the main core, a random
+    // one for absorbed cores). Assigned lazily by SpawnManager.CollectionFor and reset on era change.
+    [System.NonSerialized] public string assignedCollection;
 
     private System.Action changeNOnDay;
 
@@ -321,48 +328,102 @@ public class EmbersEdge : MonoBehaviour
         reduceFluidityOverTime = fluidness * 0.85f;
         increaseHastinessOverTime = hastiness * 2f;
         finishedSpawning = false;
-        int valBuf = Mathf.CeilToInt(activity * spawnCoef * 1.5f * GS.Sigma(SpawnManager.daySinceNewEra) + Mathf.Lerp(0, 2f, (activity - 0.45f) / 0.55f) * spawnCoef);
-        MarauderSO spawn;
+        // Execute the pre-rolled plan built by PlanWave() (so the wave matches the Director
+        // preview shown while peaceful). Positions are stored relative to our boundary t, so
+        // resolving against our CURRENT t makes the formation follow us if we shift mid-wave.
+        if (plannedSpawns != null && plannedSpawns.Count > 0)
+        {
+            // plannedSpawns are sorted by absolute time. Accumulate REAL elapsed time and fire each
+            // enemy exactly when its scheduled time arrives — no chained WaitForSeconds drift, and any
+            // enemies that fall due in the same frame all spawn that frame.
+            float elapsed = 0f;
+            int idx = 0;
+            while (idx < plannedSpawns.Count)
+            {
+                while (idx < plannedSpawns.Count && plannedSpawns[idx].time <= elapsed)
+                {
+                    PlannedSpawn s = plannedSpawns[idx];
+                    idx++;
+                    if (s.so == null || s.so.prefab == null) continue;
+                    float coreT = MapManager.i.BoundaryT(transform.position);
+                    Vector2 spawnPos = MapManager.i.BoundaryWorldAtT(coreT + s.tOffset);
+                    SpawnEnemy(s.so.prefab, spawnPos, false);
+                }
+                if (idx >= plannedSpawns.Count) break;
+                yield return null;
+                elapsed += Time.deltaTime;
+            }
+        }
+        finishedSpawning = true;
+        ChangeN(SpawnManager.day + N);
+    }
+
+    /// <summary>The credit budget this core contributes to a day — the original per-core spawn-budget
+    /// formula. Summed across cores by SpawnManager to get the day's total "Day Score".</summary>
+    public float DayBudget(float activity)
+    {
+        return Mathf.CeilToInt(activity * spawnCoef * 1.5f * GS.Sigma(SpawnManager.daySinceNewEra) + Mathf.Lerp(0, 2f, (activity - 0.45f) / 0.55f) * spawnCoef);
+    }
+
+    /// <summary>
+    /// Legacy procedural roll — pre-rolls a CorePlan from the price/rarity formula WITHOUT spawning.
+    /// Only used as a fallback when no WaveAuthoringSO is assigned (otherwise SpawnManager.BuildFullPlan
+    /// drives spawns from the authored content).
+    /// </summary>
+    public CorePlan PlanWave(float activity)
+    {
+        CorePlan plan = new CorePlan(this);
+        if (SOs == null || SOs.Length == 0)
+        {
+            return plan;
+        }
+        float coreT = MapManager.i.BoundaryT(transform.position);
+        int valBuf = Mathf.RoundToInt(DayBudget(activity));
+        float t = 0f; // absolute spawn time, accumulated so plannedSpawns come out sorted
         while (valBuf > 0)
         {
-            if (SOs.Length == 0)
-            {
-                break;
-            }
-            bool brek = true;
+            bool affordable = false;
             foreach (MarauderSO so in SOs)
             {
                 if (so.price <= valBuf)
                 {
-                    brek = false;
+                    affordable = true;
                     break;
                 }
             }
-            if (brek == true)
+            if (!affordable)
             {
                 break;
             }
             while (true)
             {
-                spawn = SOs[Random.Range(0, SOs.Length)]; //THIS WAS THE BUG! Prev: SOs.Length - 1!
+                MarauderSO spawn = SOs[Random.Range(0, SOs.Length)];
                 if (valBuf < spawn.price)
                 {
                     continue;
                 }
                 if (Random.Range(0, spawn.rarity) == 0)
                 {
-                    // Base EEs sit on the rim — spawn enemies right next to us ON the map boundary
-                    // (within 4 units) instead of scattered in a disc around the core.
-                    Vector2 spawnPos = MapManager.i.BoundaryPointNear(transform.position, 4f);
-                    SpawnEnemy(spawn.prefab, spawnPos, false);
+                    // Same rim placement as before (within 4 units of the core), captured as a
+                    // boundary-relative offset.
+                    Vector2 worldPos = MapManager.i.BoundaryPointNear(transform.position, 4f);
+                    float tOffset = WrapTOffset(MapManager.i.BoundaryT(worldPos) - coreT);
+                    plan.spawns.Add(new PlannedSpawn(spawn, tOffset, t));
+                    t += Mathf.Pow(spawn.price, 0.6f) / activity; // advance the schedule for the next spawn
                     valBuf -= spawn.price;
-                    yield return new WaitForSeconds(Mathf.Pow(spawn.price, 0.6f) / activity);
                     break;
                 }
             }
         }
-        finishedSpawning = true;
-        ChangeN(SpawnManager.day + N);
+        return plan;
+    }
+
+    // Wrap a spline-t difference into (-0.5, 0.5] so an offset always loops the short way round the rim.
+    private static float WrapTOffset(float dt)
+    {
+        dt -= Mathf.Floor(dt); // [0,1)
+        if (dt > 0.5f) dt -= 1f;
+        return dt;
     }
 
     public IEnumerator DeAcco()

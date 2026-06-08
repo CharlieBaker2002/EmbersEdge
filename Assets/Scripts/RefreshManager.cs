@@ -20,6 +20,8 @@ public class RefreshManager : MonoBehaviour
     public float STANDARDTIME = 0.9f;
     [Space(5)]
     public bool SPAWNTESTMODE = false;
+    [Tooltip("Show the next-wave forecast (Directors + activity) BEFORE a dungeon run, for testing base defence.")]
+    public bool TESTINGDEFENCE = false;
     [Space(5)]
     public int STARTDUNGEON = 1;
     public bool REVEALALLROOMS = false;
@@ -31,7 +33,7 @@ public class RefreshManager : MonoBehaviour
     [Space(5)]
     public bool IGNOREEFFICIENCY = false;
     [Space(5)]
-    public int DIFFICULTY = 3;
+    public float DIFFICULTY = 3;
     [Space(5)]
     public bool ARENAMODE = false;
 
@@ -231,6 +233,7 @@ public class RefreshManager : MonoBehaviour
             INSTASPAWN = true;
             STANDARDTIME = 1f;
             QuickTeleport = true;
+            TESTINGDEFENCE = false;
         }
         
     }

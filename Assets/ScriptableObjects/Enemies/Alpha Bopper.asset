@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   prefab: {fileID: 4350004889805296890, guid: 72118dcb16e5b48a79a5bf34fc7fea82, type: 3}
   rarity: 7
-  price: 8
+  price: 5
   isBuilding: 0
   xOffset: {x: 0, y: 5}
   yOffset: {x: -1, y: 1}

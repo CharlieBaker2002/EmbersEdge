@@ -983,6 +983,25 @@ public class MapManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Parametric position (t in [0,1)) of the nearest boundary point to <paramref name="world"/>.
+    /// Thin wrapper over <see cref="ProximityData"/> so wave plans can record positions as a
+    /// boundary-relative coordinate instead of a world point (the boundary moves/scales).
+    /// </summary>
+    public float BoundaryT(Vector2 world) => ProximityData(world).Item2;
+
+    /// <summary>
+    /// World-space point on the boundary spline at parametric position <paramref name="t"/>.
+    /// <paramref name="t"/> is wrapped into [0,1) so callers can add a signed offset to a core's t
+    /// and have it loop around the rim. Inverse of <see cref="BoundaryT"/>.
+    /// </summary>
+    public Vector2 BoundaryWorldAtT(float t)
+    {
+        if (sc == null || sc.Spline == null) return Vector2.zero;
+        t -= Mathf.Floor(t); // wrap into [0,1)
+        return (Vector2)(Vector3)sc.Spline.EvaluatePosition(t);
+    }
+
+    /// <summary>
     /// Guarantees the current boundary fully re‑encloses <paramref name="oldDense"/> (a DENSE sample
     /// of the outline from before this expansion). Even when total area grows, the AutoSmoothed edge
     /// can bow inside the previous edge and clip a sliver of old territory — and at 100 collider
@@ -1364,7 +1383,7 @@ public class MapManager : MonoBehaviour
             }
             else
             {
-                asses[i].AddPush(2f * Time.fixedDeltaTime, true, -asses[i].transform.position);
+                asses[i].AddPush((asses[i].CompareTag("Allies")? 2f : 0.25f) * Time.fixedDeltaTime , true, -asses[i].transform.position);
             }
         }
     }

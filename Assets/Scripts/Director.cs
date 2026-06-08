@@ -17,6 +17,14 @@ public class Director : MonoBehaviour
    // Markers used by EnemyTracker so we don’t reuse a Director that is
    // already representing a cluster this frame.
    [HideInInspector] public bool inUse = false;
+   // Pre-wave preview Directors keep showing even when their cluster is on-screen (so the wave UI
+   // never blinks out as you walk up to a spawn point). Live combat Directors leave this false.
+   [HideInInspector] public bool alwaysShow = false;
+   // Pre-wave preview only: a canvas offset so overlapping enemy-type Directors fan out instead of
+   // stacking on top of each other (which hid types entirely). Set by EnemyTracker.ResolvePreviewOverlaps.
+   [HideInInspector] public Vector2 previewOffset;
+   // This Director's intended canvas position BEFORE previewOffset — read by EnemyTracker to detect overlaps.
+   [HideInInspector] public Vector2 basePos;
    private Camera cam;
    public static float maxdistance = 12.5f;
 
@@ -36,19 +44,27 @@ public class Director : MonoBehaviour
 
    public void Update()
    {
-      if (ClusterOnScreen())
+      if (ts == null || ts.Count == 0)
       {
-         // Hide when not needed and exit early
+         // No cluster to represent (e.g. recycled but not reused) — never leave a stray "0" Director up,
+         // even in alwaysShow preview mode.
          if (gameObject.activeSelf) gameObject.SetActive(false);
          return;
       }
-      LookTowardsCentreOfEnemies();
+      bool visible = ClusterOnScreen();
+      if (!alwaysShow && visible)
+      {
+         // Hide when not needed and exit early (live combat radar behaviour)
+         if (gameObject.activeSelf) gameObject.SetActive(false);
+         return;
+      }
+      LookTowardsCentreOfEnemies(visible);
       SetVisuals(true);
-      if (tmp) tmp.text = ts != null ? ts.Count.ToString() : "0";
+      if (tmp) tmp.text = ts.Count.ToString();
    }
 
    //place on UIManager.i.canvas, scale by distance to nearest enemy (0.25 at 20+ units - 1)
-   void LookTowardsCentreOfEnemies()
+   void LookTowardsCentreOfEnemies(bool clusterVisible = false)
    {
        if (ts == null || ts.Count == 0) return;
 
@@ -61,10 +77,14 @@ public class Director : MonoBehaviour
        centre /= ts.Count;
 
        Vector3 playerPos = CharacterScript.CS.transform.position;
-       // Clamp the centre inside the viewport
+       // Off-screen: clamp to the viewport edge so the arrow rides the border. On-screen (only the
+       // alwaysShow preview Directors get here) hug the EXACT spawn position instead of clamping.
        Vector3 vp = cam.WorldToViewportPoint(centre);
-       vp.x = Mathf.Clamp(vp.x, 0.05f, 0.95f);
-       vp.y = Mathf.Clamp(vp.y, 0.05f, 0.95f);
+       if (!clusterVisible)
+       {
+           vp.x = Mathf.Clamp(vp.x, 0.05f, 0.95f);
+           vp.y = Mathf.Clamp(vp.y, 0.05f, 0.95f);
+       }
 
        // Convert viewport → screen‑space pixel position
        Vector2 screenPoint = new Vector2(vp.x * Screen.width, vp.y * Screen.height);
@@ -73,9 +93,15 @@ public class Director : MonoBehaviour
        Vector2 localPoint;
        RectTransformUtility.ScreenPointToLocalPointInRectangle(
            (RectTransform)rt.parent, screenPoint, null, out localPoint);
-       rt.anchoredPosition = localPoint;
+       basePos = localPoint; // intended position pre-offset, so EnemyTracker can resolve overlaps
+       rt.anchoredPosition = localPoint + (alwaysShow ? previewOffset : Vector2.zero);
        
-       Vector3 dir       = centre - cam.ScreenToWorldPoint(transform.position);
+       // Preview Directors (alwaysShow) ALWAYS point along the attack vector — from the spawn point
+       // toward the base centre (0,0) — whether on- or off-screen. Live radar Directors instead point
+       // from the screen edge toward their cluster.
+       Vector3 dir = alwaysShow
+           ? Vector3.zero - centre
+           : centre - cam.ScreenToWorldPoint(transform.position);
 
        // Rotate the arrow so it faces the cluster
        float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
@@ -96,6 +122,9 @@ public class Director : MonoBehaviour
            if (d < nearest) nearest = d;
        }
        float scale = Mathf.Lerp(1.5f, 0.5f, Mathf.InverseLerp(0f,maxdistance, nearest));
+       // Preview Directors never grow past their grounded ("locked") size — they may shrink with distance
+       // but never balloon, on- or off-screen.
+       if (alwaysShow) scale = Mathf.Min(scale, 1f);
        rt.localScale = Vector3.one * scale;
    }
 
