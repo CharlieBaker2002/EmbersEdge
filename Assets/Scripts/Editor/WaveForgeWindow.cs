@@ -139,7 +139,9 @@ public class WaveForgeWindow : EditorWindow
         EditorGUILayout.LabelField("Grid / timing", EditorStyles.boldLabel);
         EditorGUILayout.PropertyField(so.FindProperty("gridCols"));
         EditorGUILayout.PropertyField(so.FindProperty("gridRows"));
-        EditorGUILayout.PropertyField(so.FindProperty("boundarySpan"));
+        EditorGUILayout.PropertyField(so.FindProperty("unitsPerColumn"),
+            new GUIContent("Units / Column", "World-unit gap along the rim between adjacent grid columns. " +
+                "Fixed world units, so the formation width no longer grows when the map scales up."));
         EditorGUILayout.PropertyField(so.FindProperty("budgetPerExtraCore"));
         EditorGUILayout.Space(4);
         EditorGUILayout.LabelField("Enemy palettes (per dungeon)", EditorStyles.boldLabel);
@@ -348,6 +350,11 @@ public class WaveForgeWindow : EditorWindow
     void DrawClustersSection(WaveCollection coll)
     {
         GUILayout.Label("CLUSTERS  (collection-wide budget fillers — no time)", sub);
+        EditorGUILayout.BeginHorizontal();
+        GUILayout.Label("Favour (round-robin weight)", GUILayout.Width(170));
+        int nf = EditorGUILayout.IntField(coll.clusterFavour, GUILayout.Width(48));
+        if (nf != coll.clusterFavour) { coll.clusterFavour = Mathf.Max(1, nf); MarkDirty(); }
+        EditorGUILayout.EndHorizontal();
         for (int c = 0; c < coll.clusters.Count; c++)
         {
             var cl = coll.clusters[c];

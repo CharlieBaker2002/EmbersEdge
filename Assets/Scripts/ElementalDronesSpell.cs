@@ -49,7 +49,6 @@ public class ElementalDronesSpell : Spell
             var d = Instantiate(drones[j], transform.position + level*(Vector3)Random.insideUnitCircle, Quaternion.Euler(0, 0, Random.Range(0, 360)), GS.FindParent(GS.Parent.allies));
             d.tag = tag;
         }
-        LevelUp();
     }
 
     public override void Started(InputAction.CallbackContext ctx)

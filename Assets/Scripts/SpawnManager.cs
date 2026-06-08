@@ -350,11 +350,13 @@ public class SpawnManager : MonoBehaviour
         if (ordered.Count == 0) return;
         float sum = 0f;
         foreach (var e in ordered) sum += WaveAuthoringSO.EnemyPoints(e.so);
+        // World-unit column spacing -> perimeter fraction uses the boundary's current arc length.
+        float perimeter = MapManager.i != null ? MapManager.i.BoundaryPerimeter() : 0f;
         float t = start;
         foreach (var e in ordered)
         {
             if (e.so != null)
-                timed.Add(new TimedSpawn(t, e.so, waveAuthoring.ColToTOffset(e.gridX), locked));
+                timed.Add(new TimedSpawn(t, e.so, waveAuthoring.ColToTOffset(e.gridX, perimeter), locked));
             float slice = sum > 0f ? WaveAuthoringSO.EnemyPoints(e.so) * duration / sum : duration / ordered.Count;
             t += slice;
         }
@@ -415,21 +417,32 @@ public class SpawnManager : MonoBehaviour
             var list = new List<ClusterPlan>();
             foreach (ClusterPlan cl in coll.clusters)
                 if (WaveAuthoringSO.ClusterPoints(cl) > 0f) list.Add(cl);
-            if (list.Count > 0) opts.Add(new ClusterOption { timed = kv.Value, clusters = list });
+            if (list.Count > 0) opts.Add(new ClusterOption { timed = kv.Value, clusters = list, favour = Mathf.Max(1, coll.clusterFavour) });
         }
 
-        // Phase A — selection.
+        // Phase A — selection. Smooth weighted round-robin (à la nginx): each step every option gains
+        // its favour, the highest-credit option is picked and pays back the total favour. A favour of 2
+        // gets picked twice as often as a favour-1 option, but the picks land spread across the cycle
+        // rather than back-to-back.
         var selected = new List<KeyValuePair<List<TimedSpawn>, ClusterPlan>>();
-        int cursor = 0, guard = 0;
+        int guard = 0;
         while (leftover > 0f && opts.Count > 0 && guard++ < 5000)
         {
-            ClusterOption o = opts[cursor % opts.Count];
+            int totalFavour = 0;
+            ClusterOption o = null;
+            foreach (var c in opts)
+            {
+                c.credit += c.favour;
+                totalFavour += c.favour;
+                if (o == null || c.credit > o.credit) o = c;
+            }
+            o.credit -= totalFavour;
+
             o.clusters.RemoveAll(cl => WaveAuthoringSO.ClusterPoints(cl) > leftover);
             if (o.clusters.Count == 0) { opts.Remove(o); continue; }
             ClusterPlan pick = o.clusters[Random.Range(0, o.clusters.Count)];
             selected.Add(new KeyValuePair<List<TimedSpawn>, ClusterPlan>(o.timed, pick));
             leftover -= WaveAuthoringSO.ClusterPoints(pick);
-            cursor++;
         }
         if (selected.Count == 0) return;
 
@@ -446,7 +459,7 @@ public class SpawnManager : MonoBehaviour
         }
     }
 
-    private class ClusterOption { public List<TimedSpawn> timed; public List<ClusterPlan> clusters; }
+    private class ClusterOption { public List<TimedSpawn> timed; public List<ClusterPlan> clusters; public int favour = 1; public int credit; }
 
     // Wave intensity is rolled once per cycle — by whichever of the forecast / arm / skip happens
     // first — and the difficulty bookkeeping (sinceLastBigAttack) is committed at the same moment.

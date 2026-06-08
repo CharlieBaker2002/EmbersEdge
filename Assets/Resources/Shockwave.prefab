@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7700000000000000002}
   - component: {fileID: 7700000000000000003}
+  - component: {fileID: 3078763785679533774}
   m_Layer: 0
   m_Name: Shockwave
   m_TagString: Untagged
@@ -42,8 +43,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7f3a9c2b1e8d4f6a8b0c5d2e9f1a3b4c, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   maxRadius: 6
   startWidth: 1.2
   endWidth: 0.25
@@ -53,3 +54,19 @@ MonoBehaviour:
   shockMaterial: {fileID: 2100000, guid: 5d1a7c0b9f6e2d4c8a3b5c7d9e1f0a2b, type: 2}
   sortingLayer: Power Ups
   sortingOrder: 0
+  externalDrive: 0
+--- !u!114 &3078763785679533774
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7700000000000000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 014b956cdfc474ede92aaba15a571337, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DestroyAfterTime
+  time: 10
+  fromStart: 1
+  destroyOnDisable: 0

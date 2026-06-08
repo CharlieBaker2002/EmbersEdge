@@ -206,7 +206,7 @@ MonoBehaviour:
   dragCoef: 1
   PS: {fileID: 0}
   onCollides:
-  - {fileID: 4137480598735366568}
+  - {fileID: 2279746417681617559}
   CCs: []
   rb: {fileID: 0}
   speedCoef: 1

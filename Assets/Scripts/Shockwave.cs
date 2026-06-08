@@ -55,7 +55,7 @@ public class Shockwave : MonoBehaviour
             Debug.LogWarning("[Shockwave] Resources/Shockwave prefab not found.");
             return null;
         }
-        GameObject go = Instantiate(prefab, (Vector2)worldPos, Quaternion.identity);
+        GameObject go = Instantiate(prefab, (Vector2)worldPos, Quaternion.identity, GS.FindParent(GS.Parent.fx));
         Shockwave sw = go.GetComponent<Shockwave>();
         if (sw != null)
         {

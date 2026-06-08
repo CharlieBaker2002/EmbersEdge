@@ -15,8 +15,9 @@ public class WaveAuthoringSO : ScriptableObject
     [Header("Grid / placement")]
     public int gridCols = 14;
     public int gridRows = 6;
-    [Tooltip("Fraction of the boundary perimeter spanned by the full grid width, centred on the core.")]
-    public float boundarySpan = 0.15f;
+    [Tooltip("World-unit spacing along the rim between adjacent grid columns. Authored in world units " +
+             "(not a fraction of the perimeter) so a formation keeps the same physical width as the map grows.")]
+    public float unitsPerColumn = 1.5f;
 
     [Header("Budget")]
     [Tooltip("Each extra (non-main) core adds this fraction of the Main collection's day price to the day's credit budget.")]
@@ -82,11 +83,17 @@ public class WaveAuthoringSO : ScriptableObject
         return coll.days[Mathf.Clamp(dayIndex, 0, count - 1)];
     }
 
-    /// <summary>Grid column -> boundary-t offset relative to the core (centre column = on the core).</summary>
-    public float ColToTOffset(int col)
+    /// <summary>
+    /// Grid column -> boundary-t offset relative to the core (centre column = on the core).
+    /// <paramref name="perimeter"/> is the boundary's current world arc length; dividing the world-unit
+    /// column spacing by it yields the perimeter fraction (the t-offset), so the formation keeps a fixed
+    /// world width as the map scales. Pass <c>MapManager.i.BoundaryPerimeter()</c>.
+    /// </summary>
+    public float ColToTOffset(int col, float perimeter)
     {
-        float frac = gridCols > 1 ? col / (float)(gridCols - 1) : 0.5f;
-        return (frac - 0.5f) * boundarySpan;
+        if (perimeter <= 0f) return 0f;
+        float centre = (gridCols - 1) * 0.5f;
+        return (col - centre) * unitsPerColumn / perimeter;
     }
 
     // ---- Points / "score" (override-aware: the auto value is just a suggestion) ----
@@ -146,6 +153,10 @@ public class WaveCollection
     public string name = "Collection";
     public List<DayPlan> days = new List<DayPlan>();
     public List<ClusterPlan> clusters = new List<ClusterPlan>(); // collection-specific (era-specific), not per-day
+    // How many times this collection appears per round-robin cycle when filling leftover budget with
+    // clusters. 1 = normal. Higher = picked proportionally more often, but spread evenly through the
+    // cycle (never necessarily back-to-back). See SpawnManager.FillClusters.
+    public int clusterFavour = 1;
 
     public WaveCollection() { }
     public WaveCollection(string n, int dungeon) { name = n; EnsureDays(WaveAuthoringSO.DayCount(dungeon)); }

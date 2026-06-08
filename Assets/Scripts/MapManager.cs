@@ -946,6 +946,37 @@ public class MapManager : MonoBehaviour
         return inside;
     }
 
+    // Shortest distance from p to the polygon's edges (poly.points). Code‑based so it never depends on
+    // Physics2D collider sync — see NearOrInsidePoly for why.
+    private static float DistanceToPolygonEdge(Vector2 p, Vector2[] poly)
+    {
+        float best = float.MaxValue;
+        int n = poly.Length;
+        for (int a = 0, b = n - 1; a < n; b = a++)
+        {
+            Vector2 pa = poly[b], pb = poly[a];
+            Vector2 ab = pb - pa;
+            float len2 = ab.sqrMagnitude;
+            float t = len2 > 1e-8f ? Mathf.Clamp01(Vector2.Dot(p - pa, ab) / len2) : 0f;
+            float d = (p - (pa + t * ab)).sqrMagnitude;
+            if (d < best) best = d;
+        }
+        return Mathf.Sqrt(best);
+    }
+
+    // True when p is inside the boundary OR within `margin` of its edge — the "can't place here" test
+    // for the follow‑mouse placement. Uses the script‑maintained poly.points instead of
+    // poly.OverlapPoint/ClosestPoint: this project runs Physics2D with AutoSyncTransforms OFF, so those
+    // collider queries return stale/empty geometry in a build (the loop then skips every frame — no
+    // preview, no follow — though the final committed placement still works). The editor hides this by
+    // syncing physics continuously.
+    private bool NearOrInsidePoly(Vector2 p, float margin)
+    {
+        Vector2[] pts = poly.points;
+        if (pts == null || pts.Length < 3) return false;
+        return PointInPolygon(p, pts) || DistanceToPolygonEdge(p, pts) < margin;
+    }
+
     // Densely sample the boundary spline into world‑space points — finer than the 100‑pt collider,
     // so containment tests catch thin slivers that fall between collider vertices.
     private Vector2[] SampleSplineDense(int count)
@@ -1000,6 +1031,14 @@ public class MapManager : MonoBehaviour
         t -= Mathf.Floor(t); // wrap into [0,1)
         return (Vector2)(Vector3)sc.Spline.EvaluatePosition(t);
     }
+
+    /// <summary>
+    /// Total world-space arc length of the boundary spline (grows with <see cref="Scale"/>, since
+    /// ScaleSpline pushes every knot outward uniformly). Wave authoring divides world-unit column
+    /// spacing by this so a formation's rim span stays a fixed number of world units regardless of how
+    /// big the map has grown.
+    /// </summary>
+    public float BoundaryPerimeter() => sc != null && sc.Spline != null ? sc.Spline.GetLength() : 0f;
 
     /// <summary>
     /// Guarantees the current boundary fully re‑encloses <paramref name="oldDense"/> (a DENSE sample
@@ -1122,7 +1161,10 @@ public class MapManager : MonoBehaviour
 
     public void StopFollowMouse(UnityEngine.InputSystem.InputAction.CallbackContext ctx)
     {
-        if (poly.OverlapPoint(IM.i.MouseWorld()))
+        // Code‑based containment (not poly.OverlapPoint) so the click that commits placement is judged
+        // against the same up‑to‑date geometry as the follow loop — Physics2D AutoSyncTransforms is OFF.
+        Vector2[] pts = poly.points;
+        if (pts != null && pts.Length >= 3 && PointInPolygon(IM.i.MouseWorld(), pts))
         {
             return;
         }
@@ -1130,7 +1172,7 @@ public class MapManager : MonoBehaviour
         IM.i.pi.Player.Interact.performed -= StopFollowMouse;
     }
 
-    IEnumerator IFollowMouse(EmbersEdge EE)
+    IEnumerator IFollowMouse(EmbersEdge EE, bool instant = false)
     {
         while (EE.InDungeon)
         {
@@ -1139,12 +1181,12 @@ public class MapManager : MonoBehaviour
         Vector2 v = Vector2.zero;
         Vector2 vprev = EE.transform.position;
         Vector2 vEE;
-        yield return new WaitForSeconds(1f);
+        if (!instant) yield return new WaitForSeconds(1f);
         IM.i.pi.Player.Interact.performed += StopFollowMouse;
         while (fff == false)
         {
             v = IM.i.MouseWorld();
-            if (poly.OverlapPoint(v) || Vector2.Distance(poly.ClosestPoint(v),v) < 0.25f)
+            if (NearOrInsidePoly(v, 0.25f))
             {
                 yield return null;
                 continue;
@@ -1248,6 +1290,44 @@ public class MapManager : MonoBehaviour
     public static void BeginPlace(EmbersEdge EE, bool noReturnToDungeon)
     {
         i.StartCoroutine(i.PlaceNewEE(EE, noReturnToDungeon));
+    }
+
+    // Editor/debug entry: spawn a fresh EE core and drop straight into the place-it-on-the-map flow,
+    // skipping the camera dive-through. The camera snaps instantly to the home/map overview and the
+    // follow-mouse placement effect begins.
+    public void NewCoreDebug()
+    {
+        EmbersEdge EE = Instantiate(Resources.Load<GameObject>("EmbersEdge").GetComponent<EmbersEdge>(),
+            Vector3.zero, Quaternion.identity, GS.FindParent(GS.Parent.ee));
+        EE.Activate(0.5f, new MarauderSO[0]);
+        StartCoroutine(PlaceNewEEInstant(EE));
+    }
+
+    private IEnumerator PlaceNewEEInstant(EmbersEdge EE)
+    {
+        IM.i.pi.Player.LockMap.Disable();
+        IM.i.pi.Player.Movement.Disable();
+        CameraScript.i.locked = false;
+
+        // Snap straight to the home/map overview (no dive-through). Matches the dive target in PlaceNewEE.
+        Transform camT = CameraScript.i.transform;
+        camT.position = new Vector3(0f, 0f, camT.position.z);
+        CameraScript.i.cam.orthographicSize = 10f * Scale;
+
+        EE.SetPlacementReady();
+        IM.i.pi.Player.Movement.Enable();
+        yield return StartCoroutine(IFollowMouse(EE, true));
+
+        // Settle the camera back on the player and restore normal control (the no-return-to-dungeon tail).
+        CameraScript.i.locked = true;
+        UIManager.i.FadeInCanvas();
+        CameraScript.ZoomPermanent(CameraScript.i.correctScale, 0.01f);
+        CameraScript.i.StartCoroutine(CameraScript.i.ReturnToPlayer());
+        PortalScript.i.QuickOffSlider();
+        yield return new WaitForSeconds(0.5f);
+        IM.i.pi.Player.LockMap.Enable();
+        PortalScript.i.YesPortal();
+        EE.SetupUI();
     }
 
     private IEnumerator PlaceNewEE(EmbersEdge EE, bool noReturnToDungeon)

@@ -36,6 +36,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &8154912065706122714
 SpriteRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -51,6 +52,11 @@ SpriteRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -72,9 +78,11 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 955266357
   m_SortingLayer: 7
   m_SortingOrder: 4
+  m_MaskInteraction: 0
   m_Sprite: {fileID: -2408530018317867212, guid: 5cee1d2f62b554ba5a179c7c8739e312, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -84,7 +92,6 @@ SpriteRenderer:
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
-  m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!114 &8154912065706122713
 MonoBehaviour:
@@ -103,6 +110,7 @@ MonoBehaviour:
   permanent: 0
   stubborn: 1
   temporary: 0
+  cd: {fileID: 0}
   description: 
   ring: 0
   engagement: 0
@@ -127,7 +135,7 @@ MonoBehaviour:
   sp:
     active: 0
     repeatChances: 0
-  p1modifier: 05000000280000000200000000000000050000000000000000000000000000000000000003000000
+  p1modifier: 06000000d8ffffff0f00000000000000050000000000000001000000000000000000000003000000
   p2modifier: 00000000000000000000000000000000000000000000000000000000000000000000000000000000
   p3modifier: 00000000000000000000000000000000000000000000000000000000000000000000000000000000
   sequentialInt: -1
@@ -176,14 +184,14 @@ MonoBehaviour:
   - {fileID: 8444806945408973731, guid: 2f6ccdd66d0bd48748449ea1ce21d041, type: 3}
   - {fileID: 0}
   - {fileID: 0}
-  p1modifier1: 05000000280000000200000000000000050000000000000003000000000000000000000003000000
+  p1modifier1: 05000000e2ffffff1900000000000000050000000000000001000000000000000000000003000000
   p2modifier1: 00000000000000000000000000000000000000000000000000000000000000000000000000000000
   p3modifier1: 00000000000000000000000000000000000000000000000000000000000000000000000000000000
   cost1: 37000000000000000000000000000000
   a1:
   - 2
   - 82
-  - 0.5
+  - 1
   - 0
   knockback1: 1
   projectiles2:

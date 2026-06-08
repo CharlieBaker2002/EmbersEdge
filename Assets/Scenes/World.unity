@@ -5741,7 +5741,7 @@ MonoBehaviour:
   STARTSEQUENCE: 0
   STANDARDTIME: 1
   SPAWNTESTMODE: 0
-  TESTINGDEFENCE: 1
+  TESTINGDEFENCE: 0
   STARTDUNGEON: 1
   REVEALALLROOMS: 1
   LOSSPROTECTION: 1
@@ -5750,7 +5750,7 @@ MonoBehaviour:
   IGNOREEFFICIENCY: 0
   DIFFICULTY: 1.5
   ARENAMODE: 0
-  INSTASPAWN: 1
+  INSTASPAWN: 0
   QuickTeleport: 0
   manager: {fileID: 269883297}
   sp: {fileID: 269883300}
@@ -42847,7 +42847,7 @@ MonoBehaviour:
   bar: 0
   inits:
   - {fileID: 11400000, guid: 920504d231e1848cc96738a423e0274c, type: 2}
-  - {fileID: 11400000, guid: cd9abea3b81de4680bf43179ea6a61ce, type: 2}
+  - {fileID: 11400000, guid: ed61f6ebd03f24a0580cbb4b6cd6a69a, type: 2}
   - {fileID: 11400000, guid: 73acf5ac1147b44dcb74413c2d1f56c2, type: 2}
   - {fileID: 11400000, guid: 5065049bcf7df4ec68d4d735674c9850, type: 2}
   - {fileID: 11400000, guid: 675b5a06dcff64b4bb547334faa9db78, type: 2}
@@ -42855,6 +42855,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7997d93bec761493b82586bc7272a89e, type: 2}
   - {fileID: 11400000, guid: 74b36823986534f73b1303914c8529d5, type: 2}
   - {fileID: 11400000, guid: 0a5d3cd2ed2224ec9990a7b145cc5488, type: 2}
+  - {fileID: 11400000, guid: 075cc61f2ec854fc88b3c8bc19a70522, type: 2}
+  - {fileID: 11400000, guid: 4d8acc8c84a464b4381e4bd1205417a3, type: 2}
   seconds: []
   thirds: []
 --- !u!114 &1402483099

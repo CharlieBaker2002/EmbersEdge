@@ -58,6 +58,10 @@ public class MapManagerEditor : Editor
     public override void OnInspectorGUI()
     {
         base.OnInspectorGUI();
+        if (GUILayout.Button("New Core"))
+        {
+            ((MapManager)target).NewCoreDebug();
+        }
         //x = EditorGUILayout.FloatField(x);
         //y = EditorGUILayout.FloatField(y);
         //if (GUILayout.Button("Follow Mouse"))

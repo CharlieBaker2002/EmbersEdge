@@ -478,6 +478,30 @@ public class EmbersEdge : MonoBehaviour
         N = newN;
     }
 
+    // Debug/instant placement: skip the ~2s Dissapear animation and put the core straight into the
+    // "ready to be moved about" state (mirrors IDissapear's travel-to-base tail) so IFollowMouse can
+    // start following the mouse immediately.
+    public void SetPlacementReady()
+    {
+        transform.parent = GS.FindParent(GS.Parent.ee);
+        refresh = 0.05f;
+        fluidness = 0.1f;
+        hastiness = 0.13f;
+        sinOnOneSide = true;
+        lr.positionCount = 0;
+        ChangeN(N);
+        positions[0] = attachPoint.transform.position;
+        Vector3 dir = Random.insideUnitCircle.normalized * size;
+        for (int i = 1; i < N; i++)
+        {
+            positions[i] = positions[i - 1] + dir + size * fluidness * (Vector3)Random.insideUnitCircle;
+            dir = GS.Rotated(dir, Random.Range(0, fluidness * 15f), true);
+            posVels[i] = Vector2.zero;
+        }
+        lr.SetPositions(positions);
+        InDungeon = false; //signals that EE is ready to be moved about.
+    }
+
     public void Dissapear()
     {
         StopCoroutine(nameof(Acco));
