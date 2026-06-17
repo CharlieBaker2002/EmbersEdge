@@ -156,7 +156,7 @@ public class WaveForgeWindow : EditorWindow
 
     void ImportPalettes()
     {
-        var sm = Object.FindObjectOfType<SpawnManager>();
+        var sm = Object.FindAnyObjectByType<SpawnManager>();
         if (sm == null) { ShowNotification(new GUIContent("No SpawnManager in the open scene")); return; }
         data.dungeon1Enemies = sm.marauders != null ? sm.marauders.ToArray() : new MarauderSO[0];
         data.dungeon2Enemies = sm.E2SOs != null ? (MarauderSO[])sm.E2SOs.Clone() : new MarauderSO[0];

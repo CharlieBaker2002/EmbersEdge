@@ -40,6 +40,12 @@ public class Connectable : MonoBehaviour
     public Action<Building, LineRenderer> OnConnected;
     /// <summary>Fires when release happened without meaningful drag (host should open UI etc.).</summary>
     public Action OnClickWithoutDrag;
+    /// <summary>
+    /// When set, a real drag released ANYWHERE fires this with the release world position and the
+    /// cable retracts — no building targeting happens. For drag-to-aim hosts (e.g. Force Field
+    /// wall shaping) rather than drag-to-connect ones.
+    /// </summary>
+    public Action<Vector3> OnDraggedRelease;
     /// <summary>Fires when release landed on a Building but Validate returned false (host can flash etc.).</summary>
     public Action<Building> OnRejected;
 
@@ -154,6 +160,14 @@ public class Connectable : MonoBehaviour
             // A press-release in place: no cable, just the UI toggle.
             if (lr != null) Destroy(lr.gameObject);
             OnClickWithoutDrag?.Invoke();
+            return;
+        }
+
+        if (OnDraggedRelease != null)
+        {
+            // Drag-to-aim host: hand over the release point and whip the cable back.
+            OnDraggedRelease(release);
+            if (lr != null) StartCoroutine(Retract(lr, start));
             return;
         }
 

@@ -74,7 +74,6 @@ public class BlueprintManager : MonoBehaviour
             else
             {
                 b.Cleanup();
-                x--;
             }
         }
 

@@ -11,7 +11,7 @@ public class Melee : Part
     [SerializeField] private TrailRenderer trail;
     [SerializeField] ParticleSystem swingVFX;
     [SerializeField] Sprite[] animateSprites;
-    [SerializeField] private Collider2D col;
+    [SerializeField] protected Collider2D col;
     [SerializeField] private float attackRange = 2f;
     [SerializeField] private float returnTime = 2f;
     private float origMag;
@@ -92,7 +92,7 @@ public class Melee : Part
         //Sixthly, the melee needs to return to the ring, & make the dynamic trail renderer width reduce back to zero, and play the animation in reverse.
         //1
         Coroutine dep = Deploy(transform.position, 0f, Mathf.Infinity, 0f);
-        sr.LeanAnimate(animateSprites, 0.25f);
+        if (animateSprites != null && animateSprites.Length > 0) sr.LeanAnimate(animateSprites, 0.25f);
         //2 
         yield return null;
         transform.parent = Instantiate(Resources.Load<GameObject>("Empty"), CharacterScript.CS.transform.position, CharacterScript.CS.transform.rotation, GS.FindParent(GS.Parent.misc)).transform;
@@ -120,7 +120,7 @@ public class Melee : Part
         
         StopCoroutine(dep);
         engagement = 0f;
-        sr.LeanAnimate(animateSprites, 0.5f, false, true);
+        if (animateSprites != null && animateSprites.Length > 0) sr.LeanAnimate(animateSprites, 0.5f, false, true);
         yield return StartCoroutine(Return(returnTime));
     }
     
@@ -151,7 +151,7 @@ public class Melee : Part
             Vector3 slashDirection = (i % 2 == 0) ? forwardsOrBackwards : -forwardsOrBackwards;
             
             // Start effects
-            swingVFX.Play();
+            if (swingVFX != null) swingVFX.Play();
             col.enabled = true;
             trail.emitting = true;
             
@@ -164,7 +164,7 @@ public class Melee : Part
             }
             
             // Stop effects
-            swingVFX.Stop();
+            if (swingVFX != null) swingVFX.Stop();
             col.enabled = false;
             
             // Rest between slashes (if not the last slash)
@@ -237,7 +237,7 @@ public class Melee : Part
         }
         
         //3
-        swingVFX.Play();
+        if (swingVFX != null) swingVFX.Play();
         col.enabled = true;
         trail.emitting = true;
         
@@ -251,7 +251,7 @@ public class Melee : Part
         
         // Rest of the method remains the same
         //5
-        swingVFX.Stop();
+        if (swingVFX != null) swingVFX.Stop();
         col.enabled = false;
         //6
         float swingBuf;
@@ -313,7 +313,7 @@ public class Melee : Part
     transform.rotation = Quaternion.Euler(0, 0, targetRotation);
     
     // Prepare for thrust
-    swingVFX.Play();
+    if (swingVFX != null) swingVFX.Play();
     col.enabled = true;
     trail.emitting = true;
     
@@ -346,7 +346,7 @@ public class Melee : Part
     
     // Turn off collider after hit
     col.enabled = false;
-    swingVFX.Stop();
+    if (swingVFX != null) swingVFX.Stop();
     trail.emitting = false;
     
     GameObject p = transform.parent.gameObject;

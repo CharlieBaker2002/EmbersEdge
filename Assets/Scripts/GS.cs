@@ -1489,6 +1489,7 @@ public static class GS
     /// </summary>
     public static T PercentParameter<T>(T[] values, float t)
     {
+        if (values == null || values.Length == 0) return default; // empty frame arrays must never crash the tween loop
         t = PutInRange(t, 0f, 0.9999999f);
         int ind = Mathf.FloorToInt(t * values.Length);
         return values[ind];

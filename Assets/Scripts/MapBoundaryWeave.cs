@@ -5,8 +5,8 @@ using UnityEngine;
 /// <summary>
 /// Secondary boundary VFX: animated sprite "wisps" that spawn at random points along the map edge
 /// like shooting stars — they streak along the boundary, weave in and out across the line, slow
-/// down, and fade out. Each plays a looping sprite-sheet animation (GS.LeanAnimateFPS) with the era
-/// material (GS.MatByEra), and rides the live boundary polygon (world space, so it tracks reshaping
+/// down, and fade out. Each plays a looping sprite-sheet animation (frame stepped per-wisp in Update,
+/// no tween) with the era material (GS.MatByEra), and rides the live boundary polygon (world space, so it tracks reshaping
 /// + Shrink scaling).
 ///
 /// Drop on an empty GameObject (e.g. a child of MapManager). Frames default to the JLVisual sheet.
@@ -192,6 +192,11 @@ public class MapBoundaryWeave : MonoBehaviour
 
             w.t.position = polyT.TransformPoint(pLocal);
 
+            // Step the looping sprite-sheet frame straight off age (was a per-wisp LeanAnimateFPS
+            // .setLoopClamp() tween — up to maxWisps of those ran forever and never freed their slot).
+            if (frames != null && frames.Length > 0)
+                w.sr.sprite = frames[(int)(w.age * fps) % frames.Length];
+
             // Fade in quickly, fade out over the tail.
             float fadeIn = Mathf.Clamp01(w.age / (w.life * 0.15f));
             float fadeOut = Mathf.Clamp01((w.life - w.age) / (w.life * 0.55f));
@@ -216,10 +221,7 @@ public class MapBoundaryWeave : MonoBehaviour
         sr.sortingOrder = sortingOrder;
         sr.sharedMaterial = GS.MatByEra(GS.era, bright, lit, superBright);
         if (frames != null && frames.Length > 0)
-        {
-            sr.sprite = frames[0];
-            sr.LeanAnimateFPS(frames, fps, true).setLoopClamp();
-        }
+            sr.sprite = frames[0];   // frames are stepped per-wisp in Update (no tween — see below)
         Color c0 = sr.color; c0.a = 0f; sr.color = c0;   // start transparent, fade in
 
         wisps.Add(new Wisp

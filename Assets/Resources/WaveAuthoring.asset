@@ -24,6 +24,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 22fa7ae4ad15e4b8cb523214488945b1, type: 2}
   - {fileID: 11400000, guid: 90b86b0fa3d4b449fb24c81446ba1686, type: 2}
   - {fileID: 11400000, guid: 9ebf60457ff204b29b7d88caa981a080, type: 2}
+  - {fileID: 11400000, guid: 6d04b8f3a17e42c59e8d3a0b2c61f50a, type: 2}
   dungeon2Enemies:
   - {fileID: 11400000, guid: c66bd165ee9e64841a95c76d9bad1ae6, type: 2}
   - {fileID: 11400000, guid: 29e943444fd7a45589a37d5756d14026, type: 2}
@@ -151,6 +152,9 @@ MonoBehaviour:
         - time: 0
           duration: 2
           enemies:
+          - so: {fileID: 11400000, guid: 6d04b8f3a17e42c59e8d3a0b2c61f50a, type: 2}
+            gridX: 7
+            gridY: 2
           - so: {fileID: 11400000, guid: f45ef91775aad440a87b23d6553ea327, type: 2}
             gridX: 4
             gridY: 3
@@ -220,6 +224,12 @@ MonoBehaviour:
         - time: 0
           duration: 5
           enemies:
+          - so: {fileID: 11400000, guid: 6d04b8f3a17e42c59e8d3a0b2c61f50a, type: 2}
+            gridX: 3
+            gridY: 2
+          - so: {fileID: 11400000, guid: 6d04b8f3a17e42c59e8d3a0b2c61f50a, type: 2}
+            gridX: 11
+            gridY: 2
           - so: {fileID: 11400000, guid: 29423851d65a14569a31e3c1e2faa8bb, type: 2}
             gridX: 1
             gridY: 5
@@ -259,6 +269,12 @@ MonoBehaviour:
         - time: 0
           duration: 5
           enemies:
+          - so: {fileID: 11400000, guid: 6d04b8f3a17e42c59e8d3a0b2c61f50a, type: 2}
+            gridX: 4
+            gridY: 2
+          - so: {fileID: 11400000, guid: 6d04b8f3a17e42c59e8d3a0b2c61f50a, type: 2}
+            gridX: 10
+            gridY: 2
           - so: {fileID: 11400000, guid: 29423851d65a14569a31e3c1e2faa8bb, type: 2}
             gridX: 11
             gridY: 5
@@ -298,6 +314,18 @@ MonoBehaviour:
         scoreOverridden: 0
         scoreOverride: 0
       clusters:
+      - name: Sower
+        duration: 2
+        favour: 1
+        enemies:
+        - so: {fileID: 11400000, guid: 6d04b8f3a17e42c59e8d3a0b2c61f50a, type: 2}
+          gridX: 5
+          gridY: 5
+        - so: {fileID: 11400000, guid: 6d04b8f3a17e42c59e8d3a0b2c61f50a, type: 2}
+          gridX: 9
+          gridY: 5
+        scoreOverridden: 0
+        scoreOverride: 0
       - name: Shoot
         duration: 3
         favour: 1

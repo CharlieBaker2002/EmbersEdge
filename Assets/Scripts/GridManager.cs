@@ -27,7 +27,8 @@ public class GridManager : MonoBehaviour
 
     [SerializeField] Transform buildingGrid;
     [SerializeField] SpriteRenderer block;
-    [SerializeField] SpriteRenderer energyBlock;
+    [Tooltip("Per-frame time budget (ms) for (re)building overlay squares, so a map-grow spreads over a few frames instead of hitching in one.")]
+    [SerializeField] float buildBudgetMs = 2f;
 
     #endregion
 
@@ -36,8 +37,12 @@ public class GridManager : MonoBehaviour
     bool[,] occupied;              // placed buildings
     bool[,] inRange;               // within range of a constructor this frame
     Color[,] baseColour;           // cache of the colour each tile should have when *not* highlighted
-    SpriteRenderer[,] overlay;     // sprite for each cell
-    SpriteRenderer[,] energyOverlay; // sprite for each energy cell
+    SpriteRenderer[,] overlay;     // sprite for each cell (filled in progressively by BuildOverlayRoutine)
+
+    // Overlay squares are pooled and reused across grows so a rebuild instantiates only the *extra* cells
+    // and otherwise just repositions/recolours existing renderers — both spread over frames.
+    private readonly List<SpriteRenderer> squarePool = new List<SpriteRenderer>();
+    private Coroutine buildRoutine;
 
     Vector2Int lastAnchor = new(int.MinValue, int.MinValue);
     Vector2Int lastSize   = Vector2Int.one;
@@ -52,10 +57,26 @@ public class GridManager : MonoBehaviour
     void Awake()
     {
         i = this;
-        // Grid arrays + overlay squares are built lazily, sized to the map (see EnsureGridFitsMap), the
-        // first time build mode is entered — by then MapManager has built the (possibly scaled) boundary.
         buildingGrid.gameObject.SetActive(false);
     }
+
+    IEnumerator Start()
+    {
+        // Pre-warm the grid in the background once the map has been built + scaled (MapManager scales its
+        // boundary one frame into its own Start). Building it ahead of time, spread over frames, means the
+        // first time the player opens build mode there's nothing to instantiate — no hitch.
+        yield return null;
+        yield return null;
+        while (MapManager.MapBounds().size.x <= 0f) yield return null;
+        EnsureGridFitsMap();
+    }
+
+    void OnEnable()  { MapManager.OnUpdateMap += OnMapRebuilt; }
+    void OnDisable() { MapManager.OnUpdateMap -= OnMapRebuilt; }
+
+    // When the map grows (e.g. a new core expands the boundary), resize the grid in the background so it's
+    // ready before the player next enters build mode. No-op if the map still fits the current grid.
+    void OnMapRebuilt() { EnsureGridFitsMap(); }
 
     /// <summary>
     /// Size the grid to cover the whole map. Builds it on first use and grows it (never shrinks, so placed
@@ -96,7 +117,11 @@ public class GridManager : MonoBehaviour
         RebuildGrid(newOrigin, newW, newH);
     }
 
-    /// <summary>(Re)allocate the grid at a new origin/size, carrying placed-building occupancy across.</summary>
+    /// <summary>
+    /// (Re)allocate the grid at a new origin/size, carrying placed-building occupancy across. The logical
+    /// arrays are allocated immediately (cheap, so placement works right away), but the visual overlay
+    /// squares are (re)built over several frames by <see cref="BuildOverlayRoutine"/> to avoid a hitch.
+    /// </summary>
     void RebuildGrid(Vector2 newOrigin, int newW, int newH)
     {
         var newOccupied = new bool[newW, newH];
@@ -114,38 +139,60 @@ public class GridManager : MonoBehaviour
         }
 
         origin = newOrigin; width = newW; height = newH;
-        occupied      = newOccupied;
-        inRange       = new bool[width, height];
-        baseColour    = new Color[width, height];
-        overlay       = new SpriteRenderer[width, height];
-        energyOverlay = new SpriteRenderer[width, height];
+        occupied   = newOccupied;
+        inRange    = new bool[width, height];
+        baseColour = new Color[width, height];
+        overlay    = new SpriteRenderer[width, height];
 
-        for (int c = buildingGrid.childCount - 1; c >= 0; --c) Destroy(buildingGrid.GetChild(c).gameObject);
-        MakeOverlaySquares();
+        if (buildRoutine != null) StopCoroutine(buildRoutine);
+        buildRoutine = StartCoroutine(BuildOverlayRoutine());
     }
 
-    void MakeOverlaySquares()
+    /// <summary>
+    /// Assign a (pooled, reused) square renderer to every cell, position/scale/recolour it, spreading the
+    /// work across frames under a per-frame time budget. New squares are instantiated only when the pool
+    /// runs short (i.e. the grid grew past any previous size); otherwise existing ones are just moved.
+    /// </summary>
+    IEnumerator BuildOverlayRoutine()
     {
-        var square = Instantiate(block);
-        square.gameObject.SetActive(false);
-        var energySquare = Instantiate(energyBlock);
-        energySquare.gameObject.SetActive(false);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        int poolIndex = 0;
 
         for (int x = 0; x < width; ++x)
             for (int y = 0; y < height; ++y)
             {
-                var inst = Instantiate(square, GridToWorld(new Vector2Int(x, y)), Quaternion.identity, buildingGrid);
-                inst.transform.localScale = Vector3.one * cellSize * 0.99f;
-                inst.gameObject.SetActive(true);
-                overlay[x, y] = inst;
-                var eInst = Instantiate(energySquare, GridToWorld(new Vector2Int(x, y)), Quaternion.identity, buildingGrid);
-                eInst.transform.localScale = Vector3.one * cellSize * 0.99f;
-                eInst.gameObject.SetActive(false);                               // hidden until there is energy
-                //energyOverlay[x, y] = eInst;
+                SpriteRenderer sq;
+                if (poolIndex < squarePool.Count)
+                {
+                    sq = squarePool[poolIndex];
+                }
+                else
+                {
+                    sq = Instantiate(block, buildingGrid);
+                    squarePool.Add(sq);
+                }
+                poolIndex++;
+
+                var t = sq.transform;
+                t.position   = GridToWorld(new Vector2Int(x, y));
+                t.localScale = Vector3.one * cellSize * 0.99f;
+                sq.color = baseColour[x, y];
+                if (!sq.gameObject.activeSelf) sq.gameObject.SetActive(true);
+                overlay[x, y] = sq;
+
+                if (sw.Elapsed.TotalMilliseconds >= buildBudgetMs)
+                {
+                    yield return null;
+                    sw.Restart();
+                }
             }
 
-        Destroy(square);
-        Destroy(energySquare);
+        // Park any pooled squares left over from a previously larger grid (we currently only ever grow,
+        // so this is just defensive).
+        for (int k = poolIndex; k < squarePool.Count; ++k)
+            if (squarePool[k] != null) squarePool[k].gameObject.SetActive(false);
+
+        buildRoutine = null;
     }
 
     #endregion
@@ -194,9 +241,9 @@ public class GridManager : MonoBehaviour
                 if (!Inside(gx, gy)) continue;
 
                 occupied[gx, gy] = state;
-                baseColour[gx, gy] = overlay[gx, gy].color = state || !inRange[gx, gy]
-                    ? filledColour
-                    : clearColour;
+                Color c = state || !inRange[gx, gy] ? filledColour : clearColour;
+                baseColour[gx, gy] = c;
+                if (overlay[gx, gy] != null) overlay[gx, gy].color = c;
             }
         
         // Refresh energy cells when buildings are placed/removed
@@ -218,7 +265,7 @@ public class GridManager : MonoBehaviour
                 {
                     int gx = lastAnchor.x + x;
                     int gy = lastAnchor.y + y;
-                    if (Inside(gx, gy))
+                    if (Inside(gx, gy) && overlay[gx, gy] != null)
                     {
                         overlay[gx, gy].color = baseColour[gx, gy];
                         overlay[gx, gy].sortingLayerID = SortingLayer.NameToID("Default");
@@ -231,7 +278,7 @@ public class GridManager : MonoBehaviour
             for (int x = 0; x < size.x; ++x)
             {
                 int gx = anchor.x + x, gy = anchor.y + y;
-                if (!Inside(gx, gy)) continue;
+                if (!Inside(gx, gy) || overlay[gx, gy] == null) continue;
 
                 bool blocked = occupied[gx, gy] || !inRange[gx, gy];
 
@@ -334,21 +381,15 @@ public class GridManager : MonoBehaviour
 
                 inRange[gx, gy] = range;
                 bool blocked = occupied[gx, gy];
-                baseColour[gx, gy] = overlay[gx, gy].color = blocked ? filledColour : !range ? outColour : clearColour;
+                Color col = blocked ? filledColour : !range ? outColour : clearColour;
+                baseColour[gx, gy] = col;
+                if (overlay[gx, gy] != null) overlay[gx, gy].color = col;
             }
     }
 
     #endregion
-    
-    /// <summary>Show or hide the energy overlay on a single cell.</summary>
-    public void SetEnergy(int gx, int gy, bool hasEnergy)
-    {
-        // if (!Inside(gx, gy)) return;
-        // if (energyOverlay[gx, gy] != null)
-        //     energyOverlay[gx, gy].gameObject.SetActive(hasEnergy);
-    }
-    
-    /// <summary>Re‑computes which cells are inside any pylon's reach and toggles the energy overlay colours.</summary>
+
+    /// <summary>Re‑computes which cells are inside any pylon's reach and recolours the overlay.</summary>
     public void RefreshEnergyCells()
     {
         if (overlay == null) return; // grid not built yet; ActivateGrid will refresh once it is
@@ -356,10 +397,7 @@ public class GridManager : MonoBehaviour
             for (int gy = 0; gy < height; ++gy)
             {
                 bool freeAccess = inRange[gx, gy] && !occupied[gx, gy];
-                
-                SetEnergy(gx, gy, true);
 
-                // Decide the color
                 Color targetColour;
                 if (freeAccess)
                 {
@@ -378,15 +416,8 @@ public class GridManager : MonoBehaviour
                     targetColour = clearColour; // green - in range but no energy
                 }
 
-                // Apply color to both blocks
-                overlay[gx, gy].color = targetColour;
-                if (energyOverlay[gx, gy] != null)
-                {
-                    energyOverlay[gx, gy].color = targetColour;
-                }
-                
-                // Update base color cache
                 baseColour[gx, gy] = targetColour;
+                if (overlay[gx, gy] != null) overlay[gx, gy].color = targetColour;
             }
     }
 }

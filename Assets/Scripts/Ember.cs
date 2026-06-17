@@ -48,6 +48,7 @@ public class Ember : MonoBehaviour
     Vector3 spawnPos;
     Vector2 prevPos;                 // for heading
     private Vector2 current;
+    Coroutine flickerCo;             // the random-flicker loop, stopped when the flight ends
 
     // charEmber tracking: bump this to freeze all currently-tracking charEmbers
     public static int trackGen = 0;
@@ -102,6 +103,7 @@ public class Ember : MonoBehaviour
         if (++portalEmberBurstCount > MaxBurstFunnel) return;
 
         LeanTween.cancel(gameObject);
+        StopAllCoroutines();            // hand off from PlaySequenceI; it would otherwise still time out into Cease
 
         Vector3 corePos = EmbersEdge.mainCore != null ? (Vector3)EmbersEdge.mainCore.transform.position : Vector3.zero;
         Vector3 fromCore = transform.position - corePos;
@@ -142,6 +144,7 @@ public class Ember : MonoBehaviour
 
         Vector3 snapTo = returnPos;
         LeanTween.cancel(gameObject);
+        StopAllCoroutines();            // hand off from PlaySequenceI; it would otherwise still time out into Cease
         LeanTween.move(gameObject, burstTarget, outDur).setEase(LeanTweenType.easeOutExpo)
             .setOnComplete(() =>
             {
@@ -256,6 +259,13 @@ public class Ember : MonoBehaviour
     }
 
     // ──────────────────────────  MAIN SEQUENCE  ──────────────────────────
+    // Driven by a single coroutine rather than a LeanTween.sequence(). The old sequence allocated ~12
+    // tween slots per ember (a master + value-tweens for the emission ramps + value-tweens stepping the
+    // sprite sheets + several delayedCalls), all held for the ember's whole life. With embers emitted
+    // continuously and ~100 flung at once on a teleport, that spiked LeanTween's pool to exhaustion
+    // ("out of spaces"), after which new tweens silently failed and embers froze mid-animation. Only the
+    // bezier flight genuinely needs the tween engine, so that stays a LeanTween.move; the emission ramps,
+    // sprite frames and timing are plain coroutine work now. Same timeline + visuals, ~1 tween per ember.
     void PlaySequence()
     {
         trailPS[0]?.gameObject.SetActive(true);
@@ -267,73 +277,85 @@ public class Ember : MonoBehaviour
             return;
         }
 
-        // portalEmber has no main `ps` (it uses ps2 + trailPS), so guard the deref — em is only
-        // read on the !portalEmber paths below. Without this, ps.emission threw a NullReferenceException
-        // that aborted the whole sequence, leaving portal embers frozen/invisible.
-        var em = ps ? ps.emission : default;
         if (charEmber)
         {
             if (trailPS[0] != null) { var m = trailPS[0].main; m.loop = true; trailPS[0].Play(); }
             if (trailPS[1] != null) { var m = trailPS[1].main; m.loop = true; trailPS[1].Play(); }
         }
-        float speed = 1f + Random.Range(-0.3f,0.3f);
-        var seq = LeanTween.sequence();
-        if (!portalEmber)
+
+        StartCoroutine(PlaySequenceI());
+    }
+
+    IEnumerator PlaySequenceI()
+    {
+        // portalEmber has no main `ps` (it uses ps2 + trailPS), so guard the deref — em is only touched
+        // on the !portalEmber paths below.
+        var em = ps ? ps.emission : default;
+        float speed = 1f + Random.Range(-0.3f, 0.3f);
+        bool normal = !portalEmber && !charEmber;
+
+        // Emission ramps up while the rest plays out — the old code used seq.insert here, i.e. it
+        // overlapped and never gated the timeline, so we fire-and-forget it the same way.
+        if (!portalEmber && ps) StartCoroutine(RampEmission(em, 0f, 30f, loadTime));
+
+        // Load frames + flicker, normal embers only. quick embers overlap the load with the flight (no
+        // await, no pre-roll); the others let the load play out first, exactly as the sequence did.
+        if (normal)
         {
-            if (!quick)
-            {
-                seq.insert(LeanTween.value(gameObject, 0f, 30f, loadTime).setOnUpdate(t => em.rateOverTime = t));
-                if(!portalEmber && !charEmber) seq.append(sr.LeanAnimate(loadSprites, loadTime));
-            }
-            else
-            {
-                LeanTween.value(gameObject, 0f, 30f, loadTime).setOnUpdate(t => em.rateOverTime = t);
-                if(!portalEmber && !charEmber) sr.LeanAnimate(loadSprites, loadTime);
-            }
-            if(!portalEmber && !charEmber) seq.append(() => StartCoroutine(RandomFlicker()));
+            if (quick) StartCoroutine(GS.Animate(sr, loadSprites, loadTime, false));
+            else       yield return StartCoroutine(GS.Animate(sr, loadSprites, loadTime, false));
+            flickerCo = StartCoroutine(RandomFlicker());
         }
+
         Vector3 start = transform.position;
         Vector3 dirSide = ((Vector2)(to - start)).Rotated(90f);
-        Vector3 mid1 = Vector3.Lerp(spawnPos, to, 0.35f) + Random.Range(-0.6f,0.6f)*dirSide * arcHeight;
-        Vector3 mid2 = Vector3.Lerp(spawnPos, to, 0.7f) + Random.Range(-0.3f,0.3f)*dirSide * arcHeight;
+        Vector3 mid1 = Vector3.Lerp(spawnPos, to, 0.35f) + Random.Range(-0.6f, 0.6f) * dirSide * arcHeight;
+        Vector3 mid2 = Vector3.Lerp(spawnPos, to, 0.7f) + Random.Range(-0.3f, 0.3f) * dirSide * arcHeight;
         Vector3[] path;
         if (portalEmber)
-        {
-            if (reversePortalEmber)
-            {
-                path = new []{ start, mid1, mid2, to };
-            }
-            else if (Random.Range(0, 2) == 0)
-            {
-                path = new []{ start,  mid1, mid2, start };
-            }
-            else
-            {
-                path = new []{ start,  mid2, mid1, start };
-            }
-        }
+            path = Random.Range(0, 2) == 0 ? new[] { start, mid1, mid2, start }
+                                           : new[] { start, mid2, mid1, start };
         else
-        {
-            path = new []{ start, mid1, mid2, to };
-        }
-        if(!quick)seq.append(LeanTween.delayedCall(0.4f * speed, () => { }));
+            path = new[] { start, mid1, mid2, to };
+
+        if (!quick) yield return new WaitForSeconds(0.4f * speed);
+
         if (portalEmber)
         {
-            seq.append(LeanTween.move(gameObject, path, flightTime * speed).setEase(flightEase));
+            LeanTween.move(gameObject, path, flightTime * speed).setEase(flightEase);
+            yield return new WaitForSeconds(flightTime * speed);
         }
         else if (!charEmber)
         {
-            seq.append(LeanTween.move(gameObject, path, flightTime * speed).setEase(flightEase).setOnUpdate((Vector3 v) => FaceHeading()));
-            seq.append(LeanTween.delayedCall(gameObject,0f, StopAllCoroutines)).insert(LeanTween.value(gameObject, 30f, 0f, offTime).setOnUpdate(t => em.rateOverTime = t));
+            LeanTween.move(gameObject, path, flightTime * speed).setEase(flightEase)
+                .setOnUpdate((Vector3 v) => FaceHeading());
+            yield return new WaitForSeconds(flightTime * speed);
+
+            // Flight done: stop the flicker, ramp emission back to zero, hand off to ps2 + onComplete,
+            // then play the power-down frames.
+            if (flickerCo != null) { StopCoroutine(flickerCo); flickerCo = null; }
+            if (ps) StartCoroutine(RampEmission(em, 30f, 0f, offTime));
+            ps2.SetActive(true);
+            onComplete?.Invoke();
+            yield return StartCoroutine(GS.Animate(sr, offSprites, offTime, false));
         }
-        if (!portalEmber && !charEmber)
+        // charEmber has no flight tween — it rides the character in Update and just times out below.
+
+        float destroyDelay = charEmber ? flightTime : 1f;
+        yield return new WaitForSeconds(destroyDelay);
+        Cease();
+    }
+
+    // Drive a particle system's emission rate over time without a tween (was a LeanTween.value).
+    IEnumerator RampEmission(ParticleSystem.EmissionModule em, float from, float to, float dur)
+    {
+        if (dur <= 0f) { em.rateOverTime = to; yield break; }
+        for (float x = 0f; x < dur; x += Time.deltaTime)
         {
-            seq.append(()=> ps2.SetActive(true));
-            seq.append(()=>onComplete?.Invoke());
-            seq.append(sr.LeanAnimate(offSprites, offTime));
+            em.rateOverTime = Mathf.Lerp(from, to, x / dur);
+            yield return null;
         }
-        float destroyDelay = charEmber ? flightTime : reversePortalEmber ? 0f : 1f;
-        seq.append(LeanTween.delayedCall(gameObject, destroyDelay, Cease));
+        em.rateOverTime = to;
     }
 
     // The neat 4-point spline flight shared by the return-home embers (main core -> origin) and the

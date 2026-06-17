@@ -4903,6 +4903,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f5efd766fd11b4c67a17e530b4c2c06d, type: 2}
   - {fileID: 11400000, guid: d8961dcee932b4aa5804bb44fc75594f, type: 2}
   - {fileID: 11400000, guid: 18a1d7ccb4de243e69cc8de844681453, type: 2}
+  - {fileID: 11400000, guid: 1f7a92d6c04e483b8d25e9c7a3b0641b, type: 2}
+  - {fileID: 11400000, guid: c27b9124e98a4f108310539510f4952a, type: 2}
   - {fileID: 11400000, guid: 051c8c5535a5540a789dc9c12e460832, type: 2}
   - {fileID: 11400000, guid: 8f509c3edb56845c480c3c452ab5c94f, type: 2}
   - {fileID: 11400000, guid: 2999f85500575465b89a9d3636a09cb7, type: 2}
@@ -4976,6 +4978,9 @@ MonoBehaviour:
   - {fileID: 4116005223152699529, guid: 37e29239a76d04387ba6c330546719fb, type: 3}
   - {fileID: 4300919736548973067, guid: 56d28556c420d448bb94af695f3b216c, type: 3}
   - {fileID: 3123689578895915217, guid: f2c3eeb8321e4408a8ac2ce7e9b9a0d4, type: 3}
+  - {fileID: 5300000000012001, guid: 6a7b8c9d0e1f42539647585a6b7c8d14, type: 3}
+  - {fileID: 5400000000012001, guid: 1bc2ba9f1f71457ab2b669cadf1f70ad, type: 3}
+  - {fileID: 5400000000013001, guid: 64f005b434e746d9bee443e9913e2fbe, type: 3}
   baseBuildingSciences:
   - {fileID: 11400000, guid: 0266d0da96e3648c58cf205dd72b6bf2, type: 2}
   barons:
