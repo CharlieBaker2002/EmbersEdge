@@ -230,10 +230,12 @@ public class WeaponScript : Part
 
     void Update()
     {
-        attackTimer -= Time.deltaTime;
+        // stim speeds the player's gear: reload + attack recovery tick at the cooldown rate
+        float cdr = CharacterScript.CS != null ? CharacterScript.CS.cdRate : 1f;
+        attackTimer -= Time.deltaTime * cdr;
         if (reloadTimer > 0f)
         {
-            reloadTimer -= Time.deltaTime;
+            reloadTimer -= Time.deltaTime * cdr;
             if (reloadTimer <= 0f)
             {
                 AmmoSlider.i.UpdateSlider(ammoInClip); //set to full OR total ammo if out of "clips"

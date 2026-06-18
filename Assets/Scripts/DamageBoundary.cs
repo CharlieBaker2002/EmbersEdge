@@ -10,6 +10,8 @@ public class DamageBoundary : MonoBehaviour
     public int damageType;
     public float damageOverT;
     public float damageOverTtime;
+    [Tooltip("If true, the one-time DoT can reduce a target to 0 (kill it); otherwise it leaves them at 1 HP.")]
+    public bool dotKills = false;
     public bool hitImmaterial = false;
     public bool hitProjectiles = false;
     public bool reflectProjectiles = false;
@@ -80,7 +82,7 @@ public class DamageBoundary : MonoBehaviour
                         if (selfHarm!=null) { selfHarm.Change(-damage, damageType); }
                         if (damageOverT != 0f)
                         {
-                            ls.ChangeOverTime(-damageOverT, damageOverTtime, damageType);
+                            ls.ChangeOverTime(-damageOverT, damageOverTtime, damageType, !dotKills);
                         }
                         enemies.Add(coli.attachedRigidbody.GetEntityId(), ls);
                         StartCoroutine(RemoveAfterT(coli.attachedRigidbody.GetEntityId()));
@@ -123,7 +125,7 @@ public class DamageBoundary : MonoBehaviour
                         if (selfHarm!=null) { selfHarm.Change(-damage, damageType); }
                         if (damageOverT != 0f)
                         {
-                            ls.ChangeOverTime(-damageOverT, damageOverTtime, damageType);
+                            ls.ChangeOverTime(-damageOverT, damageOverTtime, damageType, !dotKills);
                         }
                         enemies.Add(coli.attachedRigidbody.GetEntityId(), ls);
                         StartCoroutine(RemoveAfterT(coli.attachedRigidbody.GetEntityId()));

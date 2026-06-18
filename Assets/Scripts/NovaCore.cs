@@ -59,9 +59,7 @@ public class NovaCore : MonoBehaviour
     [SerializeField] float channelDotInterval = 0.25f;
     [Tooltip("Damage-per-second under the vortex at full charge = damage × this.")]
     [SerializeField] float channelDotFraction = 0.5f;
-    [Tooltip("Inner suck-zone radius at full charge = baseRadius × this.")]
-    [SerializeField] float channelDotRadius = 0.28f;
-    [Tooltip("Channel radius & damage both grow from this fraction at charge start up to full at max charge.")]
+    [Tooltip("Channel damage grows from this fraction at charge start up to full at max charge (the radius follows the growing core knot).")]
     [SerializeField] float channelChargeFloor = 0.5f;
 
     [Header("Blast radius = baseRadius × (floor + gain × charge)")]
@@ -111,7 +109,8 @@ public class NovaCore : MonoBehaviour
     float atr;
     string casterTag = "Allies";
     float radius = 3.5f;   // full-charge blast radius (set by NovaSpell.Begin)
-    float damage = 6f;     // (set by NovaSpell.Begin)
+    float damage = 6f;     // full-charge core (centre) explosion damage (set by NovaSpell.Begin)
+    float channelDps = 3f; // full-charge channel DPS (set by NovaSpell.Begin)
     float maxRange = 4.5f; // (set by NovaSpell.Begin)
     Vector3 castOrigin;    // fixed point the nova roams around — captured at cast, not the player
     Vector3 followVel;     // SmoothDamp velocity state for the cursor follow
@@ -122,7 +121,7 @@ public class NovaCore : MonoBehaviour
     bool detonated;
     float brightness = 1f;
     float dotTimer;
-    float countMul = 1f;   // particle-count multiplier; doubles per level so the bigger blast stays full
+    float countMul = 1f;   // particle-count multiplier; grows 50% per level so the bigger blast stays full
 
     readonly List<Material> mats = new();
     ParticleSystem gather, burst, ember, core;
@@ -136,22 +135,27 @@ public class NovaCore : MonoBehaviour
 
     // ---- public API (called by NovaSpell) -------------------------------
 
-    public void Begin(Material particleMat, int lvl, float intellect, string tag, float baseRadius, float baseDamage, float range)
+    public void Begin(Material particleMat, int lvl, float intellect, string tag, float baseRadius, float baseDamage, float channelDpsFull, float range)
     {
         baseMat = particleMat != null ? particleMat : Resources.Load<Material>("Sprite-Unlit-Default");
         level = Mathf.Max(1, lvl);
-        level = 2;
         atr = intellect;
         casterTag = string.IsNullOrEmpty(tag) ? "Allies" : tag;
         radius = baseRadius;
         damage = baseDamage;
+        channelDps = channelDpsFull;
+        rimDamageFraction = 0.25f;          // rim explosion = 25% of the centre damage
         maxRange = range;
-        countMul = Mathf.Pow(2f, level - 1); // counts double per level to fill the doubled radius
+        maxCharge = level + 0.6f;           // max castable charge per level: lvl1/2/3 = 1.6/2.6/3.6 seconds
+        armsMax = 4 + level;                // max pinwheel arms per level: lvl1/2/3 = 5/6/7
+        countMul = 1f + 0.5f * (level - 1); // counts grow 50% per level to fill the larger radius
 
-        // place at the cursor (clamped to range from the player at cast time), then
-        // forget the player — from here we roam around this fixed origin.
+        // always spawn 0.5 units from the player (toward the aim), then forget the
+        // player — from here we roam around this fixed origin (eased toward the cursor).
         Vector3 anchor = CharacterScript.CS != null ? CharacterScript.CS.transform.position : transform.position;
-        castOrigin = ResolveCursor(anchor);
+        Vector3 toCursor = ResolveCursor(anchor) - anchor;
+        Vector3 aimDir = toCursor.sqrMagnitude > 0.0001f ? toCursor.normalized : Vector3.up;
+        castOrigin = anchor + aimDir * 0.5f;
         castOrigin.z = transform.position.z;
         transform.position = castOrigin;
 
@@ -240,7 +244,10 @@ public class NovaCore : MonoBehaviour
         if (IM.i == null) return;
         Vector3 target = ResolveCursor(castOrigin);
         target.z = transform.position.z;
-        float st = Mathf.Lerp(0.5f, 3.2f, Mathf.SmoothStep(0f, 1f, charge01));
+        // higher levels start quicker (smaller smooth-time early), still easing toward
+        // ~0 motion (locked) by full charge: lvl1/2/3 begin at 0.50/0.34/0.18.
+        float startSt = 0.5f - 0.16f * (level - 1);
+        float st = Mathf.Lerp(startSt, 3.2f, Mathf.SmoothStep(0f, 1f, charge01));
         transform.position = Vector3.SmoothDamp(transform.position, target, ref followVel, st, Mathf.Infinity, Time.deltaTime);
     }
 
@@ -283,19 +290,13 @@ public class NovaCore : MonoBehaviour
         FireEmbers(charge, r);
         FireFlash(power, r);
 
-        // screen-space shockwave ring — radius matches the blast/damage circle exactly
-        Shockwave.Spawn(transform.position, r, 0.05f + 0.03f * charge, 0.9f, 0.5f);
+        // hitbox/shockwave are 25% smaller than the visual spread (the VFX `r` stays full)
+        float hitR = r * 0.75f;
 
-        ApplyDamage(r, charge);
+        // screen-space shockwave ring — radius matches the (reduced) damage circle
+        Shockwave.Spawn(transform.position, hitR, 0.05f + 0.03f * charge, 0.9f, 0.5f);
 
-        // level 3: a second, smaller echo a beat later (shockwave matches the echo's radius)
-        if (level >= 3)
-        {
-            yield return new WaitForSeconds(0.45f);
-            Shockwave.Spawn(transform.position, r * 0.7f, 0.035f, 0.7f, 0.4f);
-            FireBurst(charge * 0.7f, power * 0.6f, r * 0.7f, novaness * 0.7f, spin);
-            ApplyDamage(r * 0.7f, charge * 0.6f);
-        }
+        ApplyDamage(hitR, charge);
 
         if (gather != null) gather.Stop(true, ParticleSystemStopBehavior.StopEmitting);
         yield return new WaitForSeconds(teardownDelay);
@@ -478,11 +479,20 @@ public class NovaCore : MonoBehaviour
         {
             if (f == null) continue;
             float dist = (f.position - transform.position).magnitude;
-            float falloff = Mathf.Clamp01(1f - dist / Mathf.Max(0.01f, r));
-            float curve = falloff * falloff;           // steep — concentrates damage in the centre
+            float r0 = Mathf.Max(0.01f, r);
+            // full-power grace zone (fraction of radius) per level: 60% / 47.25% / 35%,
+            // then fall off to the rim
+            float innerFrac = new[] { 0.60f, 0.4725f, 0.35f }[Mathf.Clamp(level, 1, 3) - 1];
+            float falloff = dist <= innerFrac * r0
+                ? 1f
+                : Mathf.Clamp01((r0 - dist) / (r0 * (1f - innerFrac)));
+            float curve = falloff * falloff;           // steep — concentrates damage toward the centre
+            // charge curve: insta-release = 60% of full, scaling up to 100% over the charge
+            float chargeMul = Mathf.Lerp(0.6f, 1f, charge);
             if (f.TryGetComponent<LifeScript>(out var ls) && !ls.hasDied)
             {
-                float dmg = damage * Mathf.Lerp(rimDamageFraction, 1f, curve) * (0.6f + 0.7f * charge) * (1f + 0.1f * atr);
+                // centre→rim falloff (rim = rimDamageFraction of centre) × charge curve × intellect.
+                float dmg = damage * Mathf.Lerp(rimDamageFraction, 1f, curve) * chargeMul * (1f + 0.1f * atr);
                 ls.Change(-dmg, 0);
             }
             if (f.TryGetComponent<ActionScript>(out var asc))
@@ -494,8 +504,9 @@ public class NovaCore : MonoBehaviour
             // EVERY enemy caught in the blast is stunned (no core-zone gate); the
             // duration scales linearly with distance — full at the centre, down to
             // stunRimFraction at the rim — and grows with charge.
+            // stun: insta-release = 60% of the full-charge stun, scaling up to 100%.
             if (f.TryGetComponent<Unit>(out var u))
-                GS.Stat(u, "stun", (stunBase + stunPerCharge * charge) * Mathf.Lerp(stunRimFraction, 1f, falloff));
+                GS.Stat(u, "stun", (stunBase + stunPerCharge) * chargeMul * Mathf.Pow(2f, level - 1) * Mathf.Lerp(stunRimFraction, 1f, falloff));
         }
     }
 
@@ -503,15 +514,21 @@ public class NovaCore : MonoBehaviour
     // the spell is held. Small inner radius, grows 50% → 100% with charge.
     void ChannelTick()
     {
-        float grow = Mathf.Lerp(channelChargeFloor, 1f, charge01); // both radius & damage ramp 50% → 100%
-        float tickR = radius * channelDotRadius * grow;
+        // the damage zone IS the growing core knot, so it grows with the charge over time
+        float tickR = radius * Mathf.Lerp(coreRadiusStart, coreRadiusEnd, charge01);
         var foes = GS.FindEnemies(casterTag, transform.position, tickR, false, false, s_overlap);
         if (foes == null) return;
-        float tickDmg = damage * channelDotFraction * channelDotInterval * grow * (1f + 0.1f * atr);
+        float grow = Mathf.Lerp(channelChargeFloor, 1f, charge01); // DPS ramps 50% → 100% with charge
+        float tickDmg = channelDps * grow * channelDotInterval * (1f + 0.1f * atr); // channelDps = DPS at full charge
+        // lvl2/3: the vortex also slows what it chews — 25% (×0.75) / 50% (×0.5). Refreshed
+        // every tick (duration a touch over the interval) so it persists while held.
+        float slowKeep = level >= 3 ? 0.5f : level >= 2 ? 0.75f : 1f;
         foreach (Transform f in foes)
         {
             if (f == null) continue;
             if (f.TryGetComponent<LifeScript>(out var ls) && !ls.hasDied) ls.Change(-tickDmg, 0);
+            if (slowKeep < 1f && f.TryGetComponent<Unit>(out var u))
+                GS.Stat(u, "slow", channelDotInterval * 1.5f, slowKeep);
         }
     }
 

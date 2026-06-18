@@ -6001,6 +6001,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 18a1d7ccb4de243e69cc8de844681453, type: 2}
   - {fileID: 11400000, guid: 1f7a92d6c04e483b8d25e9c7a3b0641b, type: 2}
   - {fileID: 11400000, guid: c27b9124e98a4f108310539510f4952a, type: 2}
+  - {fileID: 11400000, guid: 2814788f9283494fb8bf84a7316f92f8, type: 2}
   - {fileID: 11400000, guid: 051c8c5535a5540a789dc9c12e460832, type: 2}
   - {fileID: 11400000, guid: 8f509c3edb56845c480c3c452ab5c94f, type: 2}
   - {fileID: 11400000, guid: 2999f85500575465b89a9d3636a09cb7, type: 2}
@@ -10113,6 +10114,7 @@ MonoBehaviour:
   - 0
   - 0
   - 0
+  cdRate: 1
   manaCosts: 000000000000000000000000
   spellBools: 000000
   abilitySlot: 000000
@@ -35577,8 +35579,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 879c3d0ae92cc4c7f9773b0d875c136a, type: 2}
   - {fileID: 11400000, guid: 676256ca5880a49ea85a31a56f8b0a09, type: 2}
   - {fileID: 11400000, guid: c27b9124e98a4f108310539510f4952a, type: 2}
-  - {fileID: 11400000, guid: c27b9124e98a4f108310539510f4952a, type: 2}
-  - {fileID: 11400000, guid: c27b9124e98a4f108310539510f4952a, type: 2}
+  - {fileID: 11400000, guid: f5efd766fd11b4c67a17e530b4c2c06d, type: 2}
+  - {fileID: 11400000, guid: 2814788f9283494fb8bf84a7316f92f8, type: 2}
   seconds: []
   thirds: []
 --- !u!1 &1017569327
@@ -40570,6 +40572,63 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1276437070}
   m_CullTransparentMesh: 1
+--- !u!1001 &1279663989
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 6048577236590137735, guid: da9b2f2515998434dbcbd4cfcb06c7b5, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 8.202675
+      objectReference: {fileID: 0}
+    - target: {fileID: 6048577236590137735, guid: da9b2f2515998434dbcbd4cfcb06c7b5, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.12986767
+      objectReference: {fileID: 0}
+    - target: {fileID: 6048577236590137735, guid: da9b2f2515998434dbcbd4cfcb06c7b5, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6048577236590137735, guid: da9b2f2515998434dbcbd4cfcb06c7b5, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6048577236590137735, guid: da9b2f2515998434dbcbd4cfcb06c7b5, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6048577236590137735, guid: da9b2f2515998434dbcbd4cfcb06c7b5, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6048577236590137735, guid: da9b2f2515998434dbcbd4cfcb06c7b5, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6048577236590137735, guid: da9b2f2515998434dbcbd4cfcb06c7b5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6048577236590137735, guid: da9b2f2515998434dbcbd4cfcb06c7b5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6048577236590137735, guid: da9b2f2515998434dbcbd4cfcb06c7b5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6048577236590137741, guid: da9b2f2515998434dbcbd4cfcb06c7b5, type: 3}
+      propertyPath: m_Name
+      value: Waggler
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: da9b2f2515998434dbcbd4cfcb06c7b5, type: 3}
 --- !u!1 &1284349525
 GameObject:
   m_ObjectHideFlags: 0
@@ -73368,3 +73427,4 @@ SceneRoots:
   - {fileID: 852341381}
   - {fileID: 426265768}
   - {fileID: 472979625}
+  - {fileID: 1279663989}

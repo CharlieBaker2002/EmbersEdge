@@ -25,9 +25,12 @@ public class NovaSpell : Spell
         active = Instantiate(novaPrefab, CharacterScript.CS.transform.position, Quaternion.identity,
                              GS.FindParent(GS.Parent.fx));
 
-        float radius = baseRadius * Mathf.Pow(2f, level - 1); // size doubles every level
-        float dmg = baseDamage * (1f + 0.5f * (level - 1)) * (1f + 0.1f * atr);
-        active.Begin(novaParticleMat, level, atr, tag, radius, dmg, maxRange);
+        float radius = baseRadius * (1f + 0.5f * (level - 1)); // size grows 50% per level
+        int li = Mathf.Clamp(level, 1, 3) - 1;
+        float coreDmg = new[] { 8f, 22f, 50f }[li];   // full-charge core (centre) damage per level
+        float chanDps = new[] { 4f, 7f, 12f }[li]; // channel DPS at full charge per level
+        // NovaCore applies the charge curve, centre→rim falloff and intellect scaling.
+        active.Begin(novaParticleMat, level, atr, tag, radius, coreDmg, chanDps, maxRange);
     }
 
     public override void Performed(InputAction.CallbackContext ctx)
@@ -38,11 +41,12 @@ public class NovaSpell : Spell
             active.Detonate((float)ctx.duration);
             active = null;
         }
+        LevelUp();
     }
 
     public override Vector2 GetManaAndCd()
     {
-        return new Vector2(3 + level, 15 - 2 * level);
+        return new Vector2(3 + level, 4 - 2 * level);
     }
 
     public override void LevelUp()

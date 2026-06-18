@@ -56,6 +56,10 @@ public class CharacterScript : Unit
 
     public float[] spellCDs = new float[] { 0f, 0f, 0f };
     public float[] spellmaxCDs = new float[] { 0f, 0f, 0f };
+    // Cooldown rate = max(1, actRate): a stim makes the player's mechanisms (ability CDs,
+    // weapon reload/attack, dash) cool down faster; a slow never slows them. Cached here and
+    // refreshed in UpdateActRate so it isn't recomputed every tick. See [[firestorm-ability]].
+    public float cdRate = 1f;
     public int[] manaCosts = new int[] { 0, 0, 0 };
     public bool[] spellBools = new bool[] { false, false, false }; //for checking when performing binding
     public bool[] abilitySlot = new bool[] { false, false, false };
@@ -220,7 +224,7 @@ public class CharacterScript : Unit
         moving = direction != Vector2.zero;
         DoFans();
         float prev = dashTimer;
-        dashTimer -= Time.deltaTime;
+        dashTimer -= Time.deltaTime * cdRate;
         if(prev > 0f && dashTimer <= 0f)
         {
            RefreshKinematics();
@@ -297,7 +301,7 @@ public class CharacterScript : Unit
         }
         for (int i = 0; i < 3; i++)
         {
-            spellCDs[i] -= Time.deltaTime;
+            spellCDs[i] -= Time.deltaTime * cdRate;
         }
         for (int i = 0; i < 3; i++) 
         {
@@ -310,6 +314,26 @@ public class CharacterScript : Unit
 
     #region Movement
 
+    // Player override: whenever a stim/slow recomputes actRate, cache the cooldown rate too.
+    public override void UpdateActRate()
+    {
+        base.UpdateActRate();
+        cdRate = Mathf.Max(1f, actRate);
+    }
+
+    // Player-only: a stim doubles as haste — it grants movement force equal to N extra wheels,
+    // WITHOUT any wheel object/visual. 100% stim (actRate ×2 → value2 2.0) = 5 wheels, linearly,
+    // so 20% = 1 wheel and 30% = 1.5. Reads the live stim status' value2 (status ind 5 = stim).
+    float StimWheels()
+    {
+        foreach (Status s in stati)
+        {
+            if (s == null || !s.enabled) continue;
+            if (s.ind == 5) return Mathf.Max(0f, (s.value2 - 1f) * 5f);
+        }
+        return 0f;
+    }
+
     void DoJetsAndWheels()
     {
           if (moving)
@@ -319,6 +343,7 @@ public class CharacterScript : Unit
               {
                   n += 1;
               }
+              n += StimWheels();   // stim adds "virtual wheels" of movement force (player only)
               AS.TryAddForce(50f * Time.fixedDeltaTime * n * direction.normalized,true);
               if (speedy)
               {

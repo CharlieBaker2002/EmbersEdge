@@ -11,7 +11,7 @@ public class FireCannon : Spell
 
     public override void LevelUp()
     {
-        lvl++;
+        if(lvl<3)lvl++;
     }
 
     public override void Started(InputAction.CallbackContext ctx)
@@ -26,11 +26,12 @@ public class FireCannon : Spell
         base.Performed(ctx);
         if (fb == null) return;
         fb.Release((float)ctx.duration, transform.up);
+        LevelUp();
     }
 
     public override Vector2 GetManaAndCd()
     {
-        return new Vector2(3f + level, 8f);
+        return new Vector2(1f + level, 3f);
     }
 
     public override void StopPart(MechaSuit m)
