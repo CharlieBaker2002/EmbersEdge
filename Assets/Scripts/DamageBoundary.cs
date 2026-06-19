@@ -21,6 +21,7 @@ public class DamageBoundary : MonoBehaviour
     public float push = 0f;
     [Tooltip("~2 for one hit")]
     public float longPush = 0f;
+    public bool negativePush = true;
     public bool charOnly = false;
     public bool EE = false;
     [Tooltip("Inflicts 'damage' parameter on self")] public LifeScript selfHarm;
@@ -67,7 +68,7 @@ public class DamageBoundary : MonoBehaviour
                             {
                                 Vector3 dir = (coli.transform.position - transform.position).normalized;
                                 if (push != 0f)  AS.TryAddForce(push * dir, false);
-                                if (longPush != 0f)  AS.AddPush(1f, true, longPush * dir);
+                                if (longPush != 0f)  AS.AddPush(1f, negativePush, longPush * dir);
                             }
                         }
                     }

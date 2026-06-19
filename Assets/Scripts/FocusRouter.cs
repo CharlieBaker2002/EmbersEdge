@@ -36,6 +36,10 @@ public class FocusRouter : MonoBehaviour
     private readonly List<IHoverable> lastHover = new();
     private IHoverable[] copyArray;
 
+    /// <summary>While set, click dispatch is owned by a transient mode (e.g. Force Field "Move Field"
+    /// aiming) — the router ignores presses so the mode's own drag handler isn't fought over.</summary>
+    public static bool Suppressed;
+
     // -------- selection state --------
     private ISelectable currentSelection;
     public ISelectable Current => currentSelection;
@@ -47,6 +51,7 @@ public class FocusRouter : MonoBehaviour
     {
         if (i != null && i != this) { Destroy(this); return; }
         i = this;
+        Suppressed = false;   // never start a scene with click dispatch locked out
         deselectViaEscape = () => Clear();
         LeanTween.reset();
     }
@@ -67,6 +72,9 @@ public class FocusRouter : MonoBehaviour
 
     void Interact()
     {
+        // A transient aiming mode (e.g. Force Field "Move Field") owns the cursor — don't dispatch.
+        if (Suppressed) return;
+
         // While a building is being placed, the click belongs to placement only. Otherwise the
         // router (which runs on Interact.started, before BM's TryPlace on .performed) would select
         // or click an existing building under the cursor, masking the place — most noticeable when

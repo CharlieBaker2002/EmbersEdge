@@ -16963,7 +16963,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 506087443}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6d2c482c2fadf42ce97ebb8fb5f1451c, type: 3}
   m_Name: 
@@ -18143,7 +18143,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 574445789}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6d2c482c2fadf42ce97ebb8fb5f1451c, type: 3}
   m_Name: 
@@ -43699,7 +43699,7 @@ GameObject:
   - component: {fileID: 1466638126}
   - component: {fileID: 1466638125}
   m_Layer: 17
-  m_Name: MapBoundary (1)
+  m_Name: MapWaterfall
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

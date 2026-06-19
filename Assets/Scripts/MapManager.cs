@@ -1499,7 +1499,7 @@ public class MapManager : MonoBehaviour
             }
             else
             {
-                asses[i].AddPush((asses[i].CompareTag("Allies")? 2f : 0.25f) * Time.fixedDeltaTime , true, -asses[i].transform.position);
+                asses[i].AddPush((asses[i].CompareTag("Allies")? 2f : 0.25f) * Time.fixedDeltaTime , false, -asses[i].transform.position);
             }
         }
     }

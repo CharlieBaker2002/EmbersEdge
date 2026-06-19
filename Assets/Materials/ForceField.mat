@@ -25,15 +25,27 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
+    - _Aspect: 1.7777
+    - _Chroma: 0.35
     - _Intensity: 1
-    - _Speed: 1.1
-    - _SpeedVar: 0.5
-    - _StrandWidth: 0.55
-    - _StrandsPerUnit: 7
+    - _Mag: 1.2
+    - _NoiseAmt: 0.25
+    - _NoiseScale: 3
+    - _NoiseSpeed: 0.6
+    - _RidgeWidth: 0.16
+    - _RimWidth: 0.5
+    - _Speed: 0.7
+    - _SpeedVar: 0.4
+    - _Strength: 0.05
     - _Stripes: 2
+    - _Thick: 0.8
     - _WallLen: 2.4
     m_Colors:
-    - _Color: {r: 0.765, g: 1, b: 0.941, a: 1}
-    - _Color2: {r: 0.486, g: 0.635, b: 0.596, a: 1}
+    - _Color: {r: 0.78, g: 1, b: 0.95, a: 1}
+    - _Color2: {r: 0.4, g: 0.62, b: 0.6, a: 1}
+    - _Hit0: {r: 0, g: 0, b: 0, a: 0}
+    - _Hit1: {r: 0, g: 0, b: 0, a: 0}
+    - _Hit2: {r: 0, g: 0, b: 0, a: 0}
+    - _Hit3: {r: 0, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLockingProperties: 1

@@ -137,10 +137,10 @@ MonoBehaviour:
   connectable: {fileID: 5300000000012005}
   chargeRate: 0.25
   hpPerCharge: 10
-  maxReach: 3.5
-  minSeparation: 0.8
-  maxLength: 6
-  reshapeTime: 4
+  maxReach: 4.5
+  reshapeTime: 2.5
+  minWidth: 2
+  maxWidth: 4
   endA: {x: -1.2, y: 1.4}
   endB: {x: 1.2, y: 1.4}
 --- !u!114 &5300000000012005

@@ -361,7 +361,10 @@ public class ActionScript : MonoBehaviour
                                 }
                             }
                         }
-                        oAS.AddPush(0.6f, true, Vector2.zero);
+                        // Buildings (e.g. the Force Field wall) still shove bodies, but must NOT flag
+                        // them with the "push" CC: that CC is what lets a shoved enemy deal collision
+                        // damage to its own teammates. The wall should knock enemies around harmlessly.
+                        if (!building) oAS.AddPush(0.6f, true, Vector2.zero);
                     }
                 }
             }

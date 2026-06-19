@@ -46,7 +46,7 @@ public class NovaSpell : Spell
 
     public override Vector2 GetManaAndCd()
     {
-        return new Vector2(3 + level, 4 - 2 * level);
+        return new Vector2(0 + level, 4 - 2 * level);
     }
 
     public override void LevelUp()
