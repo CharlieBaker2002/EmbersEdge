@@ -1,16 +1,18 @@
 Shader "EmbersEdge/ForceField2D"
 {
-    // The Force Field wall as a TRIANGULAR-PRISM, light-bending barrier. Like EdgeWaterfall2D it samples
-    // the already-rendered scene (_CameraSortingLayerTexture) and pushes the sample along the surface
-    // normal, so the world behind the wall genuinely refracts. Rendered on a custom capsule ribbon mesh
+    // The Force Field wall as a PENTAGONAL, light-bending barrier. Like EdgeWaterfall2D it samples the
+    // already-rendered scene (_CameraSortingLayerTexture) and pushes the sample along the surface normal,
+    // so the world behind the wall genuinely refracts. Rendered on a custom capsule ribbon mesh
     // (EnergyWall.cs): uv.x = WORLD arc-length along the wall, uv.y = 0..1 across its thickness, normals
     // = the in-plane outward direction.
     //
-    //   • Prism cross-section: a sharp central RIDGE with two flat faces (not a round dome). The
-    //     refraction direction flips at the ridge so each face bends the scene outward.
-    //   • Waterfall copies: the refracted scene scrolls across the width as several crossfading copies
-    //     that loop seamlessly (multiple images animate through, even over static scenery).
-    //   • Surface noise: flowing fbm breaks up the faces so it reads as a live energy field.
+    //   • Pentagon cross-section: a flat top facet + two angled shoulders + two base sides (5 sides),
+    //     with bright crease lines at the facet breaks. The refraction direction is faceted (≈0 on the
+    //     flat top, bending outward on the shoulders/sides).
+    //   • Waterfall copies: the refracted scene scrolls INWARD toward the centre line as crossfading
+    //     copies (up below, down above) that loop seamlessly.
+    //   • Flowing Perlin: domain-warped gradient-noise fbm, animated and warped to the pentagon's height
+    //     profile, distorts the refraction AND is drawn as moving contour edge lines — a live field.
     // _Color/_Color2 + _Intensity are driven per-wall from health (translucent->bright, constant hue);
     // _Hit0.._Hit3 paint white pulses where it is struck.
     Properties
@@ -23,15 +25,18 @@ Shader "EmbersEdge/ForceField2D"
         _Aspect     ("Aspect (w/h)", Float) = 1.7777
         _Strength   ("Refraction strength (screen frac)", Float) = 0.05
         _Chroma     ("Chromatic aberration", Float) = 0.35
-        _Stripes    ("Refraction copies across width", Float) = 4
+        _Stripes    ("Refraction copies per half", Float) = 2
         _Speed      ("Copy scroll speed", Float) = 0.7
         _SpeedVar   ("Copy waviness along length", Range(0,1)) = 0.4
         _Mag        ("Edge pile-up of copies", Float) = 1.2
         _RimWidth   ("Base-edge rim start", Range(0,1)) = 0.5
-        _RidgeWidth ("Apex ridge width", Range(0.02,1)) = 0.16
+        _RidgeWidth ("Crease line width", Range(0.02,1)) = 0.06
         _NoiseScale ("Noise scale", Float) = 3
-        _NoiseAmt   ("Noise amount", Range(0,1)) = 0.25
-        _NoiseSpeed ("Noise flow speed", Float) = 0.6
+        _NoiseAmt   ("Noise brightness amount", Range(0,1)) = 0.3
+        _NoiseSpeed ("Noise flow speed", Float) = 0.5
+        _NoiseWarp  ("Noise refraction warp", Float) = 0.9
+        _NoiseLines ("Noise edge line count", Float) = 6
+        _EdgeAmt    ("Noise edge brightness", Range(0,2)) = 0.7
         _Hit0       ("Hit 0 (u, strength)", Vector) = (0,0,0,0)
         _Hit1       ("Hit 1 (u, strength)", Vector) = (0,0,0,0)
         _Hit2       ("Hit 2 (u, strength)", Vector) = (0,0,0,0)
@@ -82,6 +87,9 @@ Shader "EmbersEdge/ForceField2D"
                 float _NoiseScale;
                 float _NoiseAmt;
                 float _NoiseSpeed;
+                float _NoiseWarp;
+                float _NoiseLines;
+                float _EdgeAmt;
                 float4 _Hit0;
                 float4 _Hit1;
                 float4 _Hit2;
@@ -123,28 +131,28 @@ Shader "EmbersEdge/ForceField2D"
                 return h.y * exp(-d * d * 64.0);
             }
 
-            // ---- value-noise fbm ----
-            float hash21 (float2 p)
+            // ---- gradient (Perlin) noise + fbm + a tiny domain-warp helper ----
+            float2 hash22 (float2 p)
             {
-                p = frac(p * float2(123.34, 345.45));
-                p += dot(p, p + 34.345);
-                return frac(p.x * p.y);
+                p = float2(dot(p, float2(127.1, 311.7)), dot(p, float2(269.5, 183.3)));
+                return frac(sin(p) * 43758.5453) * 2.0 - 1.0;     // gradients in [-1,1]
             }
-            float vnoise (float2 p)
+            float perlin (float2 p)
             {
-                float2 i = floor(p);
-                float2 f = frac(p);
-                float2 u = f * f * (3.0 - 2.0 * f);
-                float a = hash21(i);
-                float b = hash21(i + float2(1, 0));
-                float c = hash21(i + float2(0, 1));
-                float d = hash21(i + float2(1, 1));
-                return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
+                float2 ip = floor(p);
+                float2 fp = frac(p);
+                float2 u = fp * fp * fp * (fp * (fp * 6.0 - 15.0) + 10.0);   // quintic
+                float a = dot(hash22(ip + float2(0, 0)), fp - float2(0, 0));
+                float b = dot(hash22(ip + float2(1, 0)), fp - float2(1, 0));
+                float c = dot(hash22(ip + float2(0, 1)), fp - float2(0, 1));
+                float d = dot(hash22(ip + float2(1, 1)), fp - float2(1, 1));
+                float v = lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
+                return v * 0.5 + 0.5;                              // ~0..1
             }
             float fbm (float2 p)
             {
                 float v = 0.0, amp = 0.5;
-                [unroll] for (int k = 0; k < 3; k++) { v += amp * vnoise(p); p *= 2.0; amp *= 0.5; }
+                [unroll] for (int k = 0; k < 3; k++) { v += amp * perlin(p); p = p * 2.03 + 19.1; amp *= 0.5; }
                 return v;
             }
 
@@ -152,7 +160,7 @@ Shader "EmbersEdge/ForceField2D"
             {
                 float alongW = IN.uv.x;                 // world arc length (negative / >len in the caps)
                 float vac    = IN.uv.y;                 // 0..1 across the thickness
-                float s      = vac * 2.0 - 1.0;         // -1..1, signed across position (0 = the ridge)
+                float s      = vac * 2.0 - 1.0;         // -1..1, signed across position (0 = the centre)
                 float aedge  = abs(s);
                 float halfT  = max(_Thick * 0.5, 1e-3);
                 float acrossW= (vac - 0.5) * _Thick;
@@ -164,28 +172,47 @@ Shader "EmbersEdge/ForceField2D"
                 float aa   = fwidth(dist) + 1e-4;
                 float mask = 1.0 - smoothstep(-aa, 0.0, dist);
 
-                // ---- flowing surface noise ----
-                float n = fbm(float2(alongW * _NoiseScale, vac * _NoiseScale * 2.0 + _Time.y * _NoiseSpeed));
+                // ---- PENTAGON cross-section: flat top + 2 shoulders + 2 base sides ----
+                const float aTop  = 0.34;               // half-width of the flat top facet
+                const float aSide = 0.80;               // shoulder -> base-side break
+                float e = 0.05;
+                float topF   = 1.0 - smoothstep(aTop - e, aTop + e, aedge);
+                float sideF  = smoothstep(aSide - e, aSide + e, aedge);
+                float shoulF = saturate(1.0 - topF - sideF);
+                float crease = saturate(exp(-pow((aedge - aTop)  / max(_RidgeWidth, 0.02), 2.0))
+                                      + exp(-pow((aedge - aSide) / max(_RidgeWidth, 0.02), 2.0)));
+                // pentagon height profile (1 flat top -> ~0 at the edges): warps the noise to the shape.
+                float hgt = topF
+                          + shoulF * (1.0 - 0.55 * saturate((aedge - aTop) / (aSide - aTop)))
+                          + sideF  * (0.45 * saturate((1.0 - aedge) / (1.0 - aSide)));
 
-                // ---- waterfall-style refraction: copies scroll INWARD to the ridge and loop seamlessly ----
-                // Phase runs on aedge (distance from the centre line), so copies travel toward the centre
-                // on both halves — up if you're below it, down if you're above it. The bend direction
-                // still flips at the ridge so each prism FACE refracts outward.
-                float face    = clamp(s / 0.05, -1.0, 1.0);          // ~sign(s), with a tiny soft apex
-                float edgeMag = 1.0 + _Mag * aedge;                  // copies pile up toward the base edges
+                // ---- flowing Perlin: domain-warped fbm, animated, sampled in pentagon-height space ----
+                float2 nc = float2(alongW * _NoiseScale, hgt * _NoiseScale * 1.5);
+                float2 warp = float2(fbm(nc + float2(0.0, _Time.y * _NoiseSpeed)),
+                                     fbm(nc + float2(4.3, -_Time.y * _NoiseSpeed * 0.8)));
+                float n = fbm(nc + 1.4 * warp + float2(_Time.y * _NoiseSpeed * 0.5, 0.0));
+                // flowing Perlin EDGES: anti-aliased contour lines of the warped noise drawn ONTO the
+                // wall. They move (n animates) and bend with the pentagon (n is sampled in facet-height
+                // space + domain-warped), echoing how the refracted reflections distort across the shape.
+                float nl    = n * _NoiseLines;
+                float nw    = fwidth(nl) + 1e-4;
+                float nf    = frac(nl);
+                float edges = 1.0 - smoothstep(0.0, nw * 1.5, min(nf, 1.0 - nf));
+
+                // ---- faceted refraction: copies scroll INWARD to the centre, loop seamlessly ----
+                float face    = sign(s) * (shoulF * 0.7 + sideF * 1.0 + topF * 0.12);
+                float edgeMag = 1.0 + _Mag * aedge;
                 float ph = aedge * _Stripes + _Time.y * _Speed + _SpeedVar * 0.5 * sin(alongW * 0.7);
                 float pA = frac(ph);
                 float pB = frac(ph + 0.5);
-                float wA = 1.0 - abs(2.0 * pA - 1.0);                // crossfade so the loop reset is invisible
+                float wA = 1.0 - abs(2.0 * pA - 1.0);             // crossfade so the loop reset is invisible
                 float wB = 1.0 - abs(2.0 * pB - 1.0);
                 float wsum = max(wA + wB, 1e-4);
 
                 float2 nrm = normalize(float2(IN.nWorld.x / _Aspect, IN.nWorld.y) + 1e-6);
-                float jitter = _Strength * 0.25 * (n - 0.5);         // noise wobble on the bend
-                float ampA = _Strength * edgeMag * pA + jitter;
-                float ampB = _Strength * edgeMag * pB + jitter;
-                float2 offA = nrm * face * ampA;
-                float2 offB = nrm * face * ampB;
+                float2 patWarp = (warp - 0.5) * _Strength * _NoiseWarp * 2.0;   // flowing perlin distortion
+                float2 offA = nrm * face * (_Strength * edgeMag * pA) + patWarp;
+                float2 offB = nrm * face * (_Strength * edgeMag * pB) + patWarp;
                 float2 ca   = nrm * face * _Strength * _Chroma * (0.35 + 0.65 * aedge);
                 float2 sUV  = IN.screenUV;
 
@@ -193,17 +220,15 @@ Shader "EmbersEdge/ForceField2D"
                 half3 colB = half3(SAMP(sUV + offB + ca).r, SAMP(sUV + offB).g, SAMP(sUV + offB - ca).b);
                 half3 scene = (colA * wA + colB * wB) / wsum;
 
-                // ---- triangular-prism shading: sharp apex ridge + two flat faces + base rim ----
-                float ridge = exp(-pow(s / max(_RidgeWidth, 0.02), 2.0));      // bright apex line (the ridge)
-                float faceTone = 0.4 + 0.35 * smoothstep(-0.2, 0.2, s);        // two flat faces, one lit brighter
+                // ---- shading: facet creases + base rim + flowing Perlin edge lines (kept tame) ----
                 float rim    = smoothstep(_RimWidth, 1.0, aedge);
                 float capRim = 1.0 - smoothstep(-halfT * 0.9, -halfT * 0.15, dist);
                 rim = saturate(max(rim, capRim));
-                float shimmer = (0.9 + 0.1 * sin(_Time.y * 1.5 + alongW * 0.5)) * (1.0 + _NoiseAmt * (n - 0.5));
+                float shimmer = (0.9 + 0.1 * sin(_Time.y * 1.5 + alongW * 0.5)) * (1.0 + _NoiseAmt * (n - 0.5) * 2.0);
 
-                half3 tint = lerp(_Color2.rgb, _Color.rgb, saturate(ridge * 0.9 + rim * 0.6 + faceTone * 0.2));
-                half3 col  = scene * lerp(0.95, 1.08, ridge);
-                col += tint * (ridge * 0.7 + rim * 0.5 + faceTone * 0.2) * _Intensity * shimmer;
+                half3 tint = lerp(_Color2.rgb, _Color.rgb, saturate(crease * 0.8 + rim * 0.5 + edges * _EdgeAmt * 0.5));
+                half3 col  = scene * lerp(0.96, 1.05, topF);                   // flat top reads as a clear pane
+                col += tint * (crease * 0.5 + rim * 0.4 + shoulF * 0.18 + edges * _EdgeAmt) * _Intensity * shimmer;
 
                 // ---- white pulses where the wall was struck ----
                 float white = HitWhite(_Hit0, u01) + HitWhite(_Hit1, u01)
@@ -212,7 +237,8 @@ Shader "EmbersEdge/ForceField2D"
                 col = lerp(col, half3(1.0, 1.0, 1.0), white * (0.6 + 0.4 * rim));
                 col += white * (0.5 + rim);
 
-                float a = mask * saturate(0.2 + rim * 0.8 + ridge * 0.4 + faceTone * 0.15 + white) * _Intensity;
+                float a = mask * saturate(0.2 + rim * 0.7 + crease * 0.4 + shoulF * 0.15 + topF * 0.1
+                                          + edges * _EdgeAmt * 0.6 + white) * _Intensity;
                 return half4(col, a);
             }
             ENDHLSL

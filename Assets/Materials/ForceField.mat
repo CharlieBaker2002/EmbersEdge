@@ -27,12 +27,15 @@ Material:
     m_Floats:
     - _Aspect: 1.7777
     - _Chroma: 0.35
+    - _EdgeAmt: 0.7
     - _Intensity: 1
     - _Mag: 1.2
     - _NoiseAmt: 0.25
+    - _NoiseLines: 6
     - _NoiseScale: 3
     - _NoiseSpeed: 0.6
-    - _RidgeWidth: 0.16
+    - _NoiseWarp: 0.9
+    - _RidgeWidth: 0.06
     - _RimWidth: 0.5
     - _Speed: 0.7
     - _SpeedVar: 0.4
