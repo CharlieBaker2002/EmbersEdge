@@ -977,17 +977,36 @@ public class SpawnManager : MonoBehaviour
     
     public GameObject NewP(GameObject proj, Transform t, string ta, Vector2 dir, float innaccuracy = 0f, float strength = 0f)
     {
-        if(dir == Vector2.zero && innaccuracy!=0)
+        if (proj == null || t == null) return null;
+
+        Vector2 dire;
+        if (dir == Vector2.zero && innaccuracy != 0)
         {
-            var p0 = Instantiate(proj, t.position, Quaternion.identity, GS.ProjectileParent(ta));
-            p0.GetComponent<ProjectileScript>().SetValues(Random.insideUnitCircle.normalized, ta, strength, t);
-            return p0;
+            dire = Random.insideUnitCircle.normalized;
         }
-        innaccuracy /= 2;
-        Vector2 perp = 0.5f* Random.Range(-innaccuracy, innaccuracy) * Vector2.Perpendicular(dir).normalized;
-        Vector2 dire = dir.normalized + perp;
+        else
+        {
+            innaccuracy /= 2;
+            Vector2 perp = 0.5f * Random.Range(-innaccuracy, innaccuracy) * Vector2.Perpendicular(dir).normalized;
+            dire = dir.normalized + perp;
+        }
+
         var p = Instantiate(proj, t.position, Quaternion.identity, GS.ProjectileParent(ta));
-        p.GetComponent<ProjectileScript>().SetValues(dire, ta, strength,t);
+
+        // Standard round: ProjectileScript owns launch + faction re-tag/layer.
+        if (p.TryGetComponent<ProjectileScript>(out var ps))
+        {
+            ps.SetValues(dire, ta, strength, t);
+            return p;
+        }
+
+        // Homing seeking round (HomingDart + Seeking, NO ProjectileScript): re-tag it to the faction so its
+        // Seeking hunts that faction's foes, give it an opening velocity along `dire`, and let Seeking
+        // auto-acquire the nearest target. Used by the Backlash Pods / Pelter Cache reusing the Pelter dart.
+        p.tag = ta;
+        if (p.TryGetComponent<Seeking>(out var seek)) seek.target = null;
+        if (p.TryGetComponent<Rigidbody2D>(out var rb))
+            rb.linearVelocity = dire.normalized * (strength > 0f ? strength * 5f : 5f);
         return p;
     }
 

@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 5189617424200109761}
   - component: {fileID: 912933022490997485}
   - component: {fileID: 4415813757055222707}
+  - component: {fileID: -9190071712436828314}
   m_Layer: 7
   m_Name: Wall
   m_TagString: Allies
@@ -110,11 +111,46 @@ MonoBehaviour:
   transientOrbs: 0
   n: 0
   orbType: 0
-  capacity: 10
+  capacity: 5
   siblingTs: []
   demand: 0
   init: 1
   initialMag: 0
+--- !u!114 &-9190071712436828314
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9010514658136673332}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 009d683987b2d4fa2be49a5099d60b06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Building
+  buildingBehaviours: []
+  sr: {fileID: 912933022490997485}
+  groundEdit: {fileID: 0}
+  tiles: []
+  UIParent: {fileID: 0}
+  canOpen: 1
+  hasExtraParent: 0
+  icon: {fileID: 0}
+  size: {x: 0.5, y: 0.5}
+  isWall: 1
+  multiDrag: 1
+  physic: {fileID: 6370745261915864127}
+  builtBlasts: 0
+  rebuildCost: 00000000000000000000000000000000
+  icons: []
+  prevN: 0
+  numIconsTrue: 0
+  maxHealth: 10
+  builtYet: 0
+  anchorCell: {x: 0, y: 0}
+  gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0, z: 0}
+  energyIconScale: 1
 --- !u!1001 &9069253873494908074
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -165,11 +201,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2158754612556006507, guid: 6983ac36324d94c788dbfa60cc00bc49, type: 3}
       propertyPath: m_Size.x
-      value: 0.25
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 2158754612556006507, guid: 6983ac36324d94c788dbfa60cc00bc49, type: 3}
       propertyPath: m_Size.y
-      value: 0.25
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 6154192166558978278, guid: 6983ac36324d94c788dbfa60cc00bc49, type: 3}
       propertyPath: m_Name
@@ -180,6 +216,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 6983ac36324d94c788dbfa60cc00bc49, type: 3}
+--- !u!114 &6370745261915864127 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2717105812471324821, guid: 6983ac36324d94c788dbfa60cc00bc49, type: 3}
+  m_PrefabInstance: {fileID: 9069253873494908074}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ccf6f3e31780c453382205851bc1d5d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!4 &7514924099617626070 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1555476899931933564, guid: 6983ac36324d94c788dbfa60cc00bc49, type: 3}

@@ -21,6 +21,18 @@ public class Unit : MonoBehaviour, IClickable
     
     [Tooltip("Status vulnerability effects duration stun, root, slow. It is a coefficient")]
     [SerializeField] public float statVulnerability = 1f;
+
+    [Tooltip("Body radius (circle approximation) for pathing: straight-line shortcuts are only taken when a corridor this wide is clear, so units stop grinding into cracks their bodies can't fit through.")]
+    public float size = 0.4f;
+    [Tooltip("Wall-detour willingness at the base: detour when detourDist <= wander × throughDist. 1 = go around whenever any route exists, 0 = always chew straight through, higher = detour further before resorting to chewing. Jittered per-instance into wanderEff.")]
+    public float wander = 1.5f;
+    [HideInInspector] public float wanderEff = 1.5f;
+    [Tooltip("Target-class priority at the base (absolute): when set, this unit hunts the nearest member of its preferred class(es) and ignores closer non-preferred targets, falling back to nearest-anything only when nothing preferred is reachable. Multiple flags = nearest among those classes. Wander still applies: obstructed with a low wander → the wall on the route becomes the target regardless of preference.")]
+    public bool preferCharacter = false;
+    public bool preferBuildings = false;
+    public bool preferWalls = false;
+    [Tooltip("Current objective (runtime): written by MinePathManager.Decide every think tick. May be a wall's LifeScript transform when the decision is to chew. Null only when nothing is left to fight.")]
+    public Transform target;
     //Lifescript max health sets the cap for dematerialise, leech, convert effects
     
     protected float defaultAnimSpeed = 1f;
@@ -49,6 +61,9 @@ public class Unit : MonoBehaviour, IClickable
     protected virtual void Start()
     {
         inDungeon = transform.InDungeon();
+        // per-instance jitter: units straddling the chew-vs-detour boundary split naturally,
+        // which also diversifies wall breach points (dog-pile avoidance, layer 1)
+        wanderEff = wander * UnityEngine.Random.Range(0.75f, 1.35f);
         if (anim != null)
         {
             defaultAnimSpeed = anim.speed;
@@ -641,6 +656,14 @@ public class Unit : MonoBehaviour, IClickable
     public virtual void OnClick()
     {
         //Debug.Log(description);
+    }
+
+    // Editor debugging: select an enemy in play mode (Scene-view Gizmos on) to see the route its
+    // fields will walk it along and the aim point of its current objective.
+    void OnDrawGizmosSelected()
+    {
+        if (!Application.isPlaying || !CompareTag("Enemies")) return;
+        MinePathManager.DrawRouteGizmo(this);
     }
 
     protected float ActRateProjectileStrength()

@@ -199,6 +199,10 @@ public class GridManager : MonoBehaviour
 
     #region Public API ––––––––––––––––––––––––––––––––––––––––––––
 
+    /// <summary>Has the grid been sized to the map yet (origin/width/height meaningful)? Pathfinding
+    /// (BasePathGrid) gates on this — before the pre-warm, base queries fall back to no-walls behavior.</summary>
+    public bool Built => occupied != null;
+
     public Vector2Int WorldToGrid(Vector3 worldPos)
     {
         var local = (Vector2)worldPos - origin;

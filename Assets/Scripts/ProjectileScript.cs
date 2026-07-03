@@ -68,6 +68,24 @@ public class ProjectileScript : MonoBehaviour, IOnCollide
         }
     }
 
+    void FixedUpdate()
+    {
+        // Reflect off the mine ore. Tiles carry no physics colliders (kinematic bodies ignore them), so
+        // the wall-bounce that OnCollide does for tagged "Walls" is polled in code here — over the
+        // segment the body is ABOUT to travel this step, so the bounce lands at the wall face (never a
+        // frame spent inside the rock) and fast rounds can't tunnel through thin walls.
+        if (MineField.i == null || AS == null || AS.ignoreWalls || rb == null) return;
+        Vector2 vel = rb.linearVelocity;
+        if (vel.sqrMagnitude < 0.000001f) return;
+        Vector2 from = rb.position;
+        Vector2 to = from + vel * Time.fixedDeltaTime;
+        if (MineField.i.TryReflectProjectile(from, to, vel, out Vector2 newDir, out Vector2 correctedPos))
+        {
+            rb.position = correctedPos;
+            ChangeDirection(newDir);
+        }
+    }
+
     public void SetValues(Vector2 direction, string tagP, float strength = 0, Transform t = null)
     {
         if (!gameObject.activeInHierarchy)

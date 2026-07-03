@@ -19,6 +19,7 @@ public class MapManager : MonoBehaviour
     public GameObject par;
     public RenderTexture homeTexture;
     [SerializeField] Camera[] cams;
+    bool dungeonCamRunning;
     public RawImage raw;
     [SerializeField] RectTransform[] mmt; //minimaptransform
     bool mapBigger = false;
@@ -56,6 +57,7 @@ public class MapManager : MonoBehaviour
     private const int splineSampleCount = 100;   // higher‑res sampling for tighter mask fit
     private bool awaitingReadback = false;       // guard to avoid overlapping GPU readbacks
     float maskSpan => 40f * Scale;               // world‑units the mask texture spans (was the 'scale' field)
+    public static float MaskSpan => 40f * Scale; // same span, exposed for the base ground tiler (BaseGroundTiler)
   // --- Area‑safety & smoothing constants ---
   private const float areaEpsilon        = 0.01f;  // Minimum extra area required for an expansion
   private const float minSmoothAngle     = 10f;   // Interior‑angle threshold (deg) – sharper angles will be softened
@@ -344,6 +346,15 @@ public class MapManager : MonoBehaviour
 
     public void SnapShotDungeon()
     {
+        if (MineDungeonManager.i != null)
+        {
+            // Mining dungeon: player-centric minimap (no discrete rooms).
+            CameraScript.i.characterIcon.transform.position = GS.CS().position;
+            CameraScript.i.characterIcon.transform.localScale = Vector2.one;
+            cams[1].gameObject.SetActive(true);
+            GS.QA(() => cams[1].gameObject.SetActive(false), 1);
+            return;
+        }
         CameraScript.i.characterIcon.transform.position = DM.i.activeRoom.transform.position;
         Vector2 bounds = DM.i.activeRoom.col.bounds.size;
         float standard = new float[] { 5f, 7f, 9f }[GS.era];
@@ -401,7 +412,19 @@ public class MapManager : MonoBehaviour
             }
             if (raw.texture == dungeonTex)
             {
-                if (PortalScript.i.canPortal && PortalScript.i.inDungeon && DM.i.activeRoom.defeated == true)
+                if (MineDungeonManager.i != null)
+                {
+                    // Tile-mining dungeon: the minimap camera is already fixed/fitted to the whole map
+                    // (see MapManager.FrameDungeonMap), so holding M is just a plain enlarge/shrink like
+                    // the base minimap — no room-jump camera scrolling needed.
+                    StartResize();
+                    while (IM.i.pi.Player.Map.ReadValue<float>() != 0f)
+                    {
+                        yield return null;
+                    }
+                    MakeSmaller();
+                }
+                else if (PortalScript.i.canPortal && PortalScript.i.inDungeon && DM.i.activeRoom.defeated == true)
                 {
                     cams[1].gameObject.SetActive(true);
                     StartResize();
@@ -566,6 +589,12 @@ public class MapManager : MonoBehaviour
     {
         i = this;
         fading = null;
+
+        // Guarantee a render target for the dungeon minimap so SetMap(true) always binds a real texture
+        // (a missing one is exactly the "grey, no data stream" symptom). cams[1] renders the live mining
+        // dungeon into this in LateUpdate.
+        if (dungeonTex == null)
+            dungeonTex = new RenderTexture(1024, 1024, 16) { name = "DungeonMinimapRT" };
 
         // Fix SpriteMask sorting layer range (back layer ID was orphaned after Unity 6 upgrade)
         sr.backSortingLayerID = SortingLayer.NameToID("Corruption");
@@ -918,6 +947,12 @@ public class MapManager : MonoBehaviour
     // Public, allocation-free point-in-polygon for a precomputed boundary (e.g. GetBuildableBoundary).
     public static bool PointInPoly(Vector2 p, Vector2[] poly) =>
         poly != null && poly.Length >= 3 && PointInPolygon(p, poly);
+
+    // The outer map boundary polygon (world space). NOTE: PolygonCollider2D.points allocates a copy
+    // per call — grab it once per pass (BasePathGrid caches a per-cell interior bitmap off it), not
+    // per cell. Null until the map is built.
+    public static Vector2[] GetOuterBoundary()
+        => i != null && i.poly != null && i.poly.points.Length >= 3 ? i.poly.points : null;
 
     // World-space bounding box of the current outer map boundary, so the build grid can size itself to
     // the map instead of a fixed cell count. Empty bounds if the map isn't built yet.
@@ -1443,6 +1478,7 @@ public class MapManager : MonoBehaviour
                 }
                 if (PortalScript.i.inDungeon)
                 {
+                    if (CharacterScript.CS == null) return;   // player gone (scene/dungeon teardown) — nothing to track
                     if(collision.attachedRigidbody.transform == CharacterScript.CS.transform)
                     {
                         return;
@@ -1499,9 +1535,63 @@ public class MapManager : MonoBehaviour
             }
             else
             {
-                asses[i].AddPush((asses[i].CompareTag("Allies")? 2f : 0.25f) * Time.fixedDeltaTime , false, -asses[i].transform.position);
+                // Spawned enemies ride the pull band IN ALONG THEIR ROUTE (flow field), not blindly
+                // at the origin — no more being spat with velocity into the middle of a wall line.
+                // Magnitude matches the old -position vector so the push strength is unchanged.
+                Vector2 pull = -asses[i].transform.position;
+                if (asses[i].CompareTag("Enemies") &&
+                    MinePathManager.DirToNearestAllyTarget(asses[i].transform.position, out Vector2 pathDir) &&
+                    pathDir != Vector2.zero)
+                {
+                    pull = pathDir * pull.magnitude;
+                }
+                asses[i].AddPush((asses[i].CompareTag("Allies")? 2f : 0.25f) * Time.fixedDeltaTime , false, pull);
             }
         }
+    }
+
+    // Live mining-dungeon minimap. The room-based dungeon snapshots cams[1] per room; the MINING dungeon is
+    // one continuous tunnel system, so here we keep cams[1] enabled and rendering into dungeonTex for as
+    // long as the dungeon map is on screen. Gated on MineDungeonManager so the room/home paths (which drive
+    // cams[1] via SnapShotDungeon / HoldMap themselves) are never disturbed.
+    //
+    // Unlike the old follow-the-player behaviour, the camera is framed ONCE (to the exact extent of the
+    // current dungeon's cell area) and then held fixed — it does not track the player.
+    private void LateUpdate()
+    {
+        if (MineDungeonManager.i == null || cams == null || cams.Length < 2 || cams[1] == null) return;
+
+        bool show = par != null && par.activeSelf && raw != null
+                    && dungeonTex != null && raw.texture == dungeonTex;
+        if (show)
+        {
+            if (cams[1].targetTexture != dungeonTex) cams[1].targetTexture = dungeonTex;
+            if (!cams[1].gameObject.activeSelf) cams[1].gameObject.SetActive(true);
+
+            if (MineField.i != null) FrameDungeonMap();   // re-fit every frame — cheap, and self-heals if the layout changes
+
+            dungeonCamRunning = true;
+        }
+        else if (dungeonCamRunning)
+        {
+            cams[1].gameObject.SetActive(false);
+            dungeonCamRunning = false;
+        }
+    }
+
+    // Sizes and centres cams[1] so its orthographic view exactly covers the current dungeon's cell area,
+    // accounting for the render texture's aspect ratio so nothing is cropped on either axis. Recomputed
+    // every frame (not cached) so it can never move — it lands on the same bounds every time — while still
+    // picking up a freshly-generated dungeon's new bounds immediately, with no player-following involved.
+    void FrameDungeonMap()
+    {
+        Bounds b = MineField.i.WorldBounds;
+        Vector3 cp = cams[1].transform.position;
+        cams[1].transform.position = new Vector3(b.center.x, b.center.y, cp.z);
+        float aspect = cams[1].aspect;
+        float halfH = b.size.y * 0.5f;
+        float halfW = (b.size.x * 0.5f) / Mathf.Max(0.0001f, aspect);
+        cams[1].orthographicSize = Mathf.Max(halfH, halfW);
     }
     #endregion
     

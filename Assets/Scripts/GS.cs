@@ -1239,12 +1239,8 @@ public static class GS
 
     public static bool InDungeon(this Transform t)
     {
-        if (t.position.sqrMagnitude > 600000)
-        {
-            return true;
-        }
-
-        return false;
+        // single source of truth for the base/dungeon split — pathfinding dispatch uses the same constant
+        return !PathZone.AtBase(t.position);
     }
 
     /// <summary>

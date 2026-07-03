@@ -13,7 +13,6 @@ public class NovaSpell : Spell
     [SerializeField] private Material novaParticleMat;
     [SerializeField] private float maxRange = 4.5f;
     [SerializeField] private float baseRadius = 3.5f;
-    [SerializeField] private float baseDamage = 6f;
 
     private NovaCore active;
     private float atr;
@@ -41,7 +40,6 @@ public class NovaSpell : Spell
             active.Detonate((float)ctx.duration);
             active = null;
         }
-        LevelUp();
     }
 
     public override Vector2 GetManaAndCd()

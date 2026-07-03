@@ -133,6 +133,11 @@ public class PortalScript : MonoBehaviour
 
     private void Update()
     {
+        // The dungeon minimap camera used to be repositioned by Room.OnEnter as the player moved
+        // between rooms. The mining dungeon has no rooms, so drive it here instead: keep the dungeon
+        // camera centred on the player every frame while underground.
+        if (inDungeon && dungeonCamera != null) UpdateCamera();
+
         emitTimer -= Time.deltaTime * emitRate;
         while (emitTimer <= 0f)
         {
@@ -215,10 +220,13 @@ public class PortalScript : MonoBehaviour
         return GS.CanAct() && i.canPortal && i.televal >= i.televalMax;
     }
 
-    // V key. At base with an armed wave, V SUMMONS the wave instead of charging a teleport (you
-    // can't go back to the dungeon until it's cleared). Otherwise it charges a teleport as before.
+    // V key. In the dungeon the ember tether gets first claim on the press (throw onto a passive
+    // core / untether — a core-locked line refuses and consumes the press). At base with an armed
+    // wave, V SUMMONS the wave instead of charging a teleport (you can't go back to the dungeon
+    // until it's cleared). Otherwise it charges a teleport as before.
     private void OnRecallPressed()
     {
+        if (EmberTether.HandleRecall()) return;
         if (!inDungeon && SpawnManager.instance.waveArmed)
         {
             SpawnManager.instance.TryStartWave();
@@ -273,6 +281,11 @@ public class PortalScript : MonoBehaviour
             SpawnManager.instance.HideWavePreview(); // drop the pre-dungeon forecast while we're away
             IM.i.pi.Player.Disable();
             UIManager.CloseAllUIs();
+            // Teleporting out from INSIDE the manifestor trigger skips its OnTriggerExit2D, leaking its
+            // key guides — a stale "V" would then block the dungeon's "Tether The Core" prompt.
+            UIManager.DeleteKey("V");
+            UIManager.DeleteKey("B");
+            UIManager.DeleteKey("SELECT");
 
             // Character bursts in same direction as VFX (away from base), then snaps to zero
             Vector3 charPos = CS.transform.position;
@@ -368,7 +381,8 @@ public class PortalScript : MonoBehaviour
    
         }
         
-        DM.i.activeRoom.ResetRoom();
+        if (MineDungeonManager.i != null) MineDungeonManager.i.ResetActivePocket();
+        else DM.i.activeRoom.ResetRoom();
         PortalTrigger.i.OffForT((20 - 4 * Mathf.Log(CS.attributes[2] + 1)) / 2);
         
         yield return null;
@@ -525,7 +539,7 @@ public class PortalScript : MonoBehaviour
         yield return new WaitForSeconds(0.25f);
         Ember.TriggerPortalEmberBurst();
         yield return new WaitForSeconds(0.5f);
-        CameraScript.Flip(DM.i.activeRoom.safeSpawn.position, 6f, 2f, reverse: true);
+        CameraScript.Flip(DungeonSpawn(), 6f, 2f, reverse: true);
         Shockwave.EEWave(Vector2.zero,12.5f);
         yield return new WaitForSeconds(1.75f);
         IncrementQuarters(increment); 
@@ -554,17 +568,21 @@ public class PortalScript : MonoBehaviour
             }
             else
             {
-                AI.transform.position = DM.i.activeRoom.safeSpawn.position + new Vector3(Random.Range(-2f, 2f), Random.Range(-2f, 2f), 0f);
+                AI.transform.position = DungeonSpawn() + new Vector3(Random.Range(-2f, 2f), Random.Range(-2f, 2f), 0f);
                 AI.targetPoint = AI.transform.position;
             }
         }
-        CS.transform.position = inDungeon ? DM.i.activeRoom.safeSpawn.position : transform.position;
+        CS.transform.position = inDungeon ? DungeonSpawn() : transform.position;
         CS.transform.position = new Vector3(CS.transform.position.x, CS.transform.position.y, -1);
         MechaSuit.m.TPFollowers();
         if (inDungeon)
         {
             MapManager.i.SetMap(true);
-            DM.i.activeRoom.OnEnter();
+            Melee.RefreshDurability();   // refill drill durability on each dive
+            // dungeon time RESUMES: thaw the frozen enemies, arm the in-range spawners (0–30s)
+            if (MineDungeonManager.i != null) MineDungeonManager.i.OnEnterDungeon();
+            if (MineDungeonManager.i == null) DM.i.activeRoom.OnEnter();
+            // (mining pockets self-activate when the player tunnels into them)
             foreach (OrbScript t in ResourceManager.instance.heldOrbs)
             {
                 t.transform.localScale = Vector3.one;
@@ -573,6 +591,9 @@ public class PortalScript : MonoBehaviour
         else
         {
             MapManager.i.SetMap(false);
+            // dungeon time FREEZES: pending spawner plans land instantly, then every enemy is
+            // disabled where it stands until the next dive
+            if (MineDungeonManager.i != null) MineDungeonManager.i.OnLeaveDungeon();
             // Dungeon run finished -> arm the next wave (absorbed cores are now included). The player
             // summons it with V / the Tele-Phone; teleport stays locked until it's cleared. On death
             // the punishment flag force-starts it immediately.
@@ -645,6 +666,12 @@ public class PortalScript : MonoBehaviour
         tsID = SpawnManager.instance.NewTS(0, Mathf.Infinity);
         IM.i.KeepControllerMoving();
     }
+
+    // Where the player/allies land on diving in — the mining entry if present, else the active room.
+    Vector3 DungeonSpawn()
+        => MineDungeonManager.i != null && MineDungeonManager.i.entryPoint != null
+            ? MineDungeonManager.i.entryPoint.position
+            : DM.i.activeRoom.safeSpawn.position;
 
     public void DefeatedBoss()
     {

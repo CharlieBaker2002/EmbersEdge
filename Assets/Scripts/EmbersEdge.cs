@@ -612,7 +612,13 @@ public class EmbersEdge : MonoBehaviour
                 l.onDeaths.Add(s);
             }
         }
-        g.transform.up = -g.transform.position;
+        // face the route they'll actually take (flow field), falling back to "toward the base"
+        Vector2 face = -g.transform.position;
+        if (MinePathManager.DirToNearestAllyTarget(g.transform.position, out Vector2 routeDir) && routeDir != Vector2.zero)
+        {
+            face = routeDir;
+        }
+        g.transform.up = face;
         return g;
         
     }

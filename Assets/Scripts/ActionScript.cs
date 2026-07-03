@@ -16,6 +16,11 @@ public class ActionScript : MonoBehaviour
     public float hitRate = 1.25f;
     [Tooltip("Influences lowest cap to take damage in collisions")]
     public float hardness = 1f;
+    [Header("Body-extension ram (e.g. the player's drill)")]
+    [Tooltip("Baseline ram speed so a body-extension hit still knocks the target back when standing still.")]
+    public float ramBaseSpeed = 1.5f;
+    [Tooltip("Fraction of the ram the wielder feels as recoil (0 = none, 1 = symmetric).")]
+    public float ramSelfRecoil = 0.5f;
     public float dragCoef = 0.98f;
     [HideInInspector]
     public ProjectileScript PS = null;
@@ -60,6 +65,18 @@ public class ActionScript : MonoBehaviour
 
 
     #region MonoFuncs
+    private void Start()
+    {
+        // Collide with the mine ore while in the dungeon. Kinematic bodies don't use physics colliders,
+        // so MineField does code-based collision against everything it knows about — registering here
+        // means any enemy that starts in the dungeon (spawned OR hand-dropped into the scene) collides.
+        // PROJECTILES must NOT register: Depenetrate would shove them out of the rock and kill their
+        // into-wall velocity every step (they'd slide along walls) before the reflection in
+        // ProjectileScript.FixedUpdate ever saw a solid cell — they bounce off the ore instead.
+        if (MineField.i != null && PortalScript.i != null && PortalScript.i.inDungeon && PS == null)
+            MineField.i.Register(rb);
+    }
+
     private void Awake()
     {
         sr = GetComponentsInChildren<SpriteRenderer>(true);
@@ -444,7 +461,17 @@ public class ActionScript : MonoBehaviour
                     wallNormals.Add(ID, (coli.GetContact(0).normal, Vector2.zero, true));
                 }
             }
-            TryAddForce(Reflect(mass * rb.linearVelocity.magnitude * 1.5f * coli.GetContact(0).normal), false);
+            // Bounce = mirror about the wall normal, never amplified, hard-capped at 3 u/s — and
+            // ENEMIES additionally lose half their speed (walls should absorb their momentum, not
+            // trampoline them): fast arrivals (pull-band spawns, charges) settle at the wall and
+            // keep re-triggering contact damage instead of ping-ponging across the map.
+            Vector2 n = coli.GetContact(0).normal;
+            n.Normalize();
+            Vector2 vel = rb.linearVelocity;
+            Vector2 outV = vel - 2f * (vel.x * n.x + vel.y * n.y) * n;
+            float damp = transform.CompareTag("Enemies") ? 0.5f : 1f;
+            float outSpeed = Mathf.Min(outV.magnitude * damp, 3f);
+            rb.linearVelocity = outSpeed > 0.001f ? outV.normalized * outSpeed : Vector2.zero;
         }
     }
 
@@ -577,6 +604,34 @@ public class ActionScript : MonoBehaviour
             TryAddForce(forceP,!negative);
             yield return new WaitForFixedUpdate();
         }
+    }
+
+    /// <summary>
+    /// Knock another body around as if THIS body had rammed it — same feel as a physical body
+    /// collision (shove the target along the contact line + flag the "push" CC, and recoil ourselves),
+    /// but deals NO damage to either side. Lets the player's drill act as an extension of the body:
+    /// enemies are bumped like the player walked into them, without the player taking contact damage.
+    /// </summary>
+    public void RamOther(ActionScript oAS, Vector2 fromPos)
+    {
+        if (oAS == null || oAS == this || rb == null || oAS.rb == null) return;
+        if (!interactive || !oAS.interactive || oAS.immaterial) return;
+
+        Vector2 normal = oAS.rb.position - fromPos;          // contact line: target away from the hit point
+        if (normal.sqrMagnitude < 0.0001f) normal = oAS.rb.position - rb.position;
+        if (normal.sqrMagnitude < 0.0001f) return;
+        normal.Normalize();
+
+        // baseline so a standing-still touch still knocks the target (real collisions lean on relative velocity)
+        float relVel = Mathf.Max(ramBaseSpeed, (rb.linearVelocity - oAS.rb.linearVelocity).magnitude);
+
+        // shove the target exactly like the non-PS body-collision path does (line ~315), minus the damage
+        oAS.TryAddForce(mass * relVel * normal * 30f, false);
+        if (!oAS.building) oAS.AddPush(0.6f, true, Vector2.zero);
+
+        // recoil the wielder a bit — the "bump" feel of ramming, but it takes no damage
+        if (ramSelfRecoil > 0f)
+            TryAddForce(oAS.mass * relVel * -normal * 30f * ramSelfRecoil, true);
     }
 
     //private void WallCollision(Collision2D collision, bool spring = false)

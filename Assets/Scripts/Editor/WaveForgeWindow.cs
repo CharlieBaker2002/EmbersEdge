@@ -148,6 +148,11 @@ public class WaveForgeWindow : EditorWindow
         EditorGUILayout.PropertyField(so.FindProperty("dungeon1Enemies"), true);
         EditorGUILayout.PropertyField(so.FindProperty("dungeon2Enemies"), true);
         EditorGUILayout.PropertyField(so.FindProperty("dungeon3Enemies"), true);
+        EditorGUILayout.Space(2);
+        EditorGUILayout.LabelField("Extra-interactive palettes (traps)", EditorStyles.boldLabel);
+        EditorGUILayout.PropertyField(so.FindProperty("dungeon1Extras"), true);
+        EditorGUILayout.PropertyField(so.FindProperty("dungeon2Extras"), true);
+        EditorGUILayout.PropertyField(so.FindProperty("dungeon3Extras"), true);
         if (so.ApplyModifiedProperties()) MarkDirty();
 
         if (GUILayout.Button("Import palettes from SpawnManager in open scene")) ImportPalettes();
@@ -211,6 +216,27 @@ public class WaveForgeWindow : EditorWindow
                 GUI.Label(new Rect(r.x + 1, r.yMax - 12, r.width - 2, 11), ((int)WaveAuthoringSO.EnemyPoints(so)).ToString(), tally);
             }
         }
+
+        // Extras (enemy-interactives / traps): a distinct, separately-labelled selection that paints
+        // onto the SAME grid (the brush is just a MarauderSO whose prefab is a SentryExtra).
+        var extras = data.ExtrasPalette(dungeon);
+        if (extras != null && extras.Length > 0)
+        {
+            GUILayout.Space(10);
+            GUI.Label(GUILayoutUtility.GetRect(46, 38, GUILayout.Width(46), GUILayout.Height(38)), "Extras", sub);
+            foreach (var so in extras)
+            {
+                if (so == null) continue;
+                bool seld = !eraser && brush == so;
+                GUI.backgroundColor = seld ? ColSel : ColPanel;
+                var r = GUILayoutUtility.GetRect(38, 38, GUILayout.Width(38), GUILayout.Height(38));
+                if (GUI.Button(r, GUIContent.none)) { brush = so; eraser = false; }
+                GUI.backgroundColor = Color.white;
+                DrawEnemyIcon(Inset(r, 3), so);
+                GUI.Label(new Rect(r.x + 1, r.yMax - 12, r.width - 2, 11), ((int)WaveAuthoringSO.EnemyPoints(so)).ToString(), tally);
+            }
+        }
+
         GUILayout.FlexibleSpace();
         EditorGUILayout.EndHorizontal();
         EditorGUILayout.EndVertical();

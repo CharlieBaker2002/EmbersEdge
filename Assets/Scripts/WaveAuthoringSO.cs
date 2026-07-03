@@ -28,6 +28,15 @@ public class WaveAuthoringSO : ScriptableObject
     public MarauderSO[] dungeon2Enemies;
     public MarauderSO[] dungeon3Enemies;
 
+    // Enemy-interactives / traps (the SentryExtra family). Authored on the same grid as enemies (each is a
+    // MarauderSO whose prefab carries a SentryExtra), so they flow through the ordinary wave spawn pipeline;
+    // they get their own palette row in the Wave Forge so they read as a distinct "extras" selection.
+    // Populated by Tools > Build Era-1 Extras.
+    [Header("Extra-interactive palettes (traps, per dungeon / era)")]
+    public MarauderSO[] dungeon1Extras;
+    public MarauderSO[] dungeon2Extras;
+    public MarauderSO[] dungeon3Extras;
+
     [Header("Authored content")]
     public List<DungeonWaves> dungeons = new List<DungeonWaves>();
 
@@ -42,6 +51,16 @@ public class WaveAuthoringSO : ScriptableObject
             case 0: return dungeon1Enemies;
             case 1: return dungeon2Enemies;
             default: return dungeon3Enemies;
+        }
+    }
+
+    public MarauderSO[] ExtrasPalette(int dungeon)
+    {
+        switch (Mathf.Clamp(dungeon, 0, 2))
+        {
+            case 0: return dungeon1Extras;
+            case 1: return dungeon2Extras;
+            default: return dungeon3Extras;
         }
     }
 

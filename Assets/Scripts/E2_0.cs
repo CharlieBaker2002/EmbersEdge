@@ -3,7 +3,6 @@ using UnityEngine;
 public class E2_0 : Unit, IOnCollide
 {
     private float timer = 2f;
-    private Transform target;
     private static readonly int Pounce1 = Animator.StringToHash("Pounce");
     private static readonly int Swipe1 = Animator.StringToHash("Swipe");
     private Collider2D[] cols = new Collider2D[5];

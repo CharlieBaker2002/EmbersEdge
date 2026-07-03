@@ -40,14 +40,12 @@ public class EmberStoreBuilding : Building
     
     protected override void BEnable()
     {
-        EnergyManager.i.emberStores.Add(this);
-        EnergyManager.i.CreateCableConnections();
+        EnergyManager.i.RegisterEmberStore(this);
     }
-    
+
     protected override void BDisable()
     {
-        EnergyManager.i.emberStores.Remove(this);
-        EnergyManager.i.CreateCableConnections();
+        EnergyManager.i.UnregisterEmberStore(this);
     }
 
 

@@ -49,7 +49,6 @@ public class FirestormSpell : Spell
             active.Release((float)ctx.duration);
             active = null;
         }
-        this.QA(LevelUp,5f);
     }
 
     public override Vector2 GetManaAndCd()

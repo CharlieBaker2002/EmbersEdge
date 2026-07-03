@@ -91,7 +91,25 @@ public class EnergyWall : MonoBehaviour, IOnCollide
         ls.maxHp = Mathf.Max(1f, maxHp);
         ls.hp = Mathf.Clamp(hp, 0.5f, ls.maxHp);
         SetShape(aWorld, bWorld);
+        RegisterPathCells();
     }
+
+    // Pathfinding: the span is a chewable wall priced by its charge (ls.hp). Registered while the
+    // collider is live; dropped during reshapes (enemies may cross the old line while it's down)
+    // and on teardown. Death needs no hook — dead walls read as open in the live-wall lookup.
+    // chewCostMult: ONE LifeScript covers the whole span (broken anywhere = broken everywhere) and
+    // crowds chew a shared bar together, so pricing every cell at the full bar wildly overstates
+    // the cost of going through — register well below the per-block Wall's 1.0.
+    public static float chewCostMult = 0.3f;
+    private void RegisterPathCells()
+    {
+        if (ls != null && shapePts != null && PathZone.AtBase(transform.position))
+            BaseBlockMap.RegisterWallPath(ls, shapePts, chewCostMult);
+    }
+
+    private void OnDestroy() => BaseBlockMap.UnregisterWall(ls);
+    private void OnDisable() => BaseBlockMap.UnregisterWall(ls);
+    private void OnEnable() { if (col != null && col.enabled) RegisterPathCells(); }
 
     /// <summary>Rescale the wall's max hp (e.g. after a width change). Clamps current hp into range.</summary>
     public void SetMaxHp(float maxHp)
@@ -116,6 +134,7 @@ public class EnergyWall : MonoBehaviour, IOnCollide
     {
         weaving = true;
         col.enabled = false;
+        BaseBlockMap.UnregisterWall(ls);   // the moving span blocks nothing until it re-lands
         Vector2 a0 = a, b0 = b;
         for (float f = 0f; f < 1f; f += Time.deltaTime / Mathf.Max(0.1f, t))
         {
@@ -126,6 +145,7 @@ public class EnergyWall : MonoBehaviour, IOnCollide
         SetShape(aWorld, bWorld);
         col.enabled = true;
         weaving = false;
+        RegisterPathCells();
     }
 
     // ---- geometry ----

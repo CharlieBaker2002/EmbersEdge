@@ -3,6 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+// Runs last so its position-follow reads the FINAL transform of whatever it tracks. The drill melee
+// sets its own position in LateUpdate; following in a normal Update would lag a frame behind it.
+[DefaultExecutionOrder(1000)]
 public class CD : MonoBehaviour
 {
     private static readonly int Spread = Shader.PropertyToID("_Spread");
@@ -35,7 +38,7 @@ public class CD : MonoBehaviour
         decay = 1f / t;
     }
     
-    void Update()
+    void LateUpdate()
     {
         if(follow == null) return;
         transform.position = follow.transform.position;

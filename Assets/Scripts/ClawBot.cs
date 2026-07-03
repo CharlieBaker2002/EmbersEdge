@@ -83,7 +83,13 @@ public class ClawBot : AllyAI, IOnCollide
                     if (claws[0] != null || claws[1] != null)
                     {
                         transform.Turn(e, 5f);
-                        AS.TryAddForce(moveForce * transform.V(e), true);
+                        // path around buildings/walls toward the fray
+                        Vector2 chaseDir = transform.V(e);
+                        if (MinePathManager.DirToNearestEnemy(transform.position, out Vector2 pathDir) && pathDir != Vector2.zero)
+                        {
+                            chaseDir = pathDir;
+                        }
+                        AS.TryAddForce(moveForce * chaseDir, true);
                     }
                     else
                     {
@@ -222,6 +228,9 @@ public class ClawBot : AllyAI, IOnCollide
         Vector2 point = new Vector2(targetPoint.x, targetPoint.y);
         float t2 = 2f;
         AS.FaceDirectionOverT(point - (Vector2)transform.position, 0.75f, 10f);
+        float repath = 0f;
+        Vector2 pathDir = Vector2.zero;
+        bool usePath = false;
         while ((transform.position - (Vector3)point).sqrMagnitude > 1f)
         {
             t2 -= Time.deltaTime;
@@ -229,7 +238,15 @@ public class ClawBot : AllyAI, IOnCollide
             {
                 break;
             }
-            AS.TryAddForce(moveForce * 0.1f * GS.VectInRange(point - (Vector2)transform.position, 3f, 7f), true);
+            repath -= Time.deltaTime;
+            if (repath <= 0f)
+            {
+                repath = 0.25f;   // cached A* around buildings/walls — not per frame
+                usePath = MinePath.StepToward(transform.position, point, out pathDir) && pathDir != Vector2.zero;
+            }
+            Vector2 steer = GS.VectInRange(point - (Vector2)transform.position, 3f, 7f);
+            if (usePath) steer = pathDir * steer.magnitude;
+            AS.TryAddForce(moveForce * 0.1f * steer, true);
             yield return null;
         }
     }

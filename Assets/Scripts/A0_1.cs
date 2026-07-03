@@ -62,7 +62,13 @@ public class A0_1 : AllyAI
                     {
                         break;
                     }
-                    AS.TryAddForce((detectionRange - 2) * 0.1f * GS.VectInRange(e.position - transform.position,1f,7f), true);
+                    // path around buildings/walls to reach the fight (same force budget as the direct chase)
+                    Vector2 steer = GS.VectInRange(e.position - transform.position, 1f, 7f);
+                    if (MinePathManager.DirToNearestEnemy(transform.position, out Vector2 pathDir) && pathDir != Vector2.zero)
+                    {
+                        steer = pathDir * steer.magnitude;
+                    }
+                    AS.TryAddForce((detectionRange - 2) * 0.1f * steer, true);
                     yield return null;
                 }
                 ps.Stop();
@@ -84,6 +90,9 @@ public class A0_1 : AllyAI
         if (detectionRange == 9) { ps.Play(); }
         float t2 = 2f;
         AS.FaceDirectionOverT(point - (Vector2)transform.position, 0.75f,10f);
+        float repath = 0f;
+        Vector2 pathDir = Vector2.zero;
+        bool usePath = false;
         while((transform.position - (Vector3)point).sqrMagnitude > 1f)
         {
             t2 -= Time.deltaTime;
@@ -91,7 +100,15 @@ public class A0_1 : AllyAI
             {
                 break;
             }
-            AS.TryAddForce((detectionRange - 2) * 0.1f * GS.VectInRange(point - (Vector2)transform.position,1f,7f), true);
+            repath -= Time.deltaTime;
+            if (repath <= 0f)
+            {
+                repath = 0.25f;   // cached A* around buildings/walls — not per frame
+                usePath = MinePath.StepToward(transform.position, point, out pathDir) && pathDir != Vector2.zero;
+            }
+            Vector2 steer = GS.VectInRange(point - (Vector2)transform.position, 1f, 7f);
+            if (usePath) steer = pathDir * steer.magnitude;
+            AS.TryAddForce((detectionRange - 2) * 0.1f * steer, true);
             yield return null;
         }
         ps.Stop();

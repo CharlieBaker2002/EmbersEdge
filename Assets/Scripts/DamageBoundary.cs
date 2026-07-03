@@ -25,7 +25,9 @@ public class DamageBoundary : MonoBehaviour
     public bool charOnly = false;
     public bool EE = false;
     [Tooltip("Inflicts 'damage' parameter on self")] public LifeScript selfHarm;
-    
+    [Tooltip("Set by Melee.StartPart on the player's drill collider; drains durability per enemy hit.")]
+    [HideInInspector] public Melee meleeOwner;
+
     private void OnTriggerEnter2D(Collider2D coli)
     {
         if (coli.isTrigger || !enabled)
@@ -71,6 +73,11 @@ public class DamageBoundary : MonoBehaviour
                                 if (longPush != 0f)  AS.AddPush(1f, negativePush, longPush * dir);
                             }
                         }
+                        // A physical melee acts as an extension of the body: bump the enemy back like a
+                        // body ram (and recoil the player), without the player taking contact damage. A
+                        // non-physical melee is just a damaging trigger (no knockback).
+                        if (meleeOwner != null && meleeOwner.Physical && GS.AS != null)
+                            GS.AS.RamOther(AS, transform.position);
                     }
                     if (coli.GetComponentInParent<LifeScript>()!=null)
                     {
@@ -80,6 +87,7 @@ public class DamageBoundary : MonoBehaviour
                             return;
                         }
                         ls.Change(-damage, damageType);
+                        if (meleeOwner != null) meleeOwner.NotifyEnemyHit();
                         if (selfHarm!=null) { selfHarm.Change(-damage, damageType); }
                         if (damageOverT != 0f)
                         {

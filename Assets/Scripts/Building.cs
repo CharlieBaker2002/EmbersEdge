@@ -22,7 +22,20 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     public Sprite icon;
     [Header("Size.X for circle physic DIAMETER")]
     public Vector2 size = Vector2.one;
+    [Tooltip("Pathfinding: a chewable WALL (HP-priced obstacle, never a target) instead of a normal building (impassable AND a first-class target).")]
+    public bool isWall = false;
+    [Tooltip("Placement: hold the place button and SWEEP to stamp many copies (walls). Each stamp charges the tile's orb cost. Pair with builtBlasts = 0 for orb-only construction (no ember needed).")]
+    public bool multiDrag = false;
     public LifeScript physic;
+    // pathfinding footprint bookkeeping — what we registered, so unregistration is exact
+    private bool footprintRegistered;
+    private Vector2Int regAnchor, regSize;
+    // authored (prefab-nested) physic collider dims, reapplied to runtime-instantiated physics
+    private Vector2 authoredBoxSize, authoredBoxOffset;
+    private float authoredCircleRadius;
+    private bool hasAuthoredCollider;
+    private bool regAsWall;
+    private LifeScript regWallLs;
     private bool box = true;
     [Header("Times & Costs")] 
     public int builtBlasts = 2;
@@ -37,7 +50,13 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     
     [Header("For init buildings set true")]
     public bool builtYet = false;
-    
+
+    // Start() populates spriterenderers/UIParent/etc. A freshly-instantiated building's orb magnet
+    // can complete synchronously (ReceiveOrb finishes with zero yields) within the SAME call stack
+    // as Instantiate/Commit, before Unity has invoked Start() on it — CompleteViaOrbs must not
+    // touch Start-initialized state until that's happened.
+    private bool startCalled;
+
     private bool repairing;
     Action upgradeAction;
     
@@ -100,7 +119,27 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
 
         if (physic != null)
         {
-            box = physic.GetComponent<BoxCollider2D>() != null;
+            // Remember the AUTHORED collider dims: runtime builds replace this nested physic with
+            // the generic Resources Physic (a standard 0.95×0.95 one-cell body), which would
+            // silently override a prefab-tuned collider (e.g. the 0.5×0.5 Wall).
+            var abc = physic.GetComponent<BoxCollider2D>();
+            box = abc != null;
+            if (box)
+            {
+                authoredBoxSize = abc.size;
+                authoredBoxOffset = abc.offset;
+                hasAuthoredCollider = true;
+            }
+            else
+            {
+                var acc = physic.GetComponent<CircleCollider2D>();
+                if (acc != null)
+                {
+                    authoredCircleRadius = acc.radius;
+                    authoredBoxOffset = acc.offset;
+                    hasAuthoredCollider = true;
+                }
+            }
         }
 
         if (!builtYet)
@@ -125,8 +164,83 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         if (builtYet)
         {
             RegisterGridOccupancy();
+            RegisterPathFootprint();   // pre-placed buildings block/chew from the start
             BEnable();
         }
+
+        startCalled = true;
+    }
+
+    /// <summary>
+    /// Tell the base pathfinding what this building blocks: a chewable wall footprint (keyed to the
+    /// live physic's HP) or a solid impassable one. Called whenever the building becomes physically
+    /// present (Start for pre-placed, SwitchMonos(true) after build/repair); idempotent.
+    /// </summary>
+    // The footprint's bottom-left cell, world-quantized STRAIGHT from the transform — deliberately
+    // not via GridManager.GridToWorld(anchorCell): anchorCell is a grid-frame coordinate that goes
+    // stale when the grid re-anchors its origin (map growth) or was computed against the pre-map
+    // authored grid, and a footprint registered from a stale frame lands cells away from the
+    // building — a phantom attack target the flow fields then route enemies to.
+    Vector2Int CurrentWorldAnchor(out Vector2Int sizeCells)
+    {
+        float cs = GridManager.i != null ? GridManager.i.cellSize : 1f;
+        sizeCells = new Vector2Int(
+            Mathf.Max(1, Mathf.RoundToInt(size.x / cs)),
+            Mathf.Max(1, Mathf.RoundToInt(size.y / cs)));
+        return BaseBlockMap.Cell(transform.position) - new Vector2Int(sizeCells.x / 2, sizeCells.y / 2);
+    }
+
+    void RegisterPathFootprint()
+    {
+        UnregisterPathFootprint();
+        if (GridManager.i == null || !PathZone.AtBase(transform.position)) return;
+        if (physic == null) return;   // no collider/life (pylons, plumbing) — blocks nothing, targeted by nothing
+        regAnchor = CurrentWorldAnchor(out Vector2Int sizeCells);
+        regSize = sizeCells;
+        regAsWall = isWall && physic != null;
+        if (regAsWall)
+        {
+            regWallLs = physic;
+            BaseBlockMap.RegisterWallRect(physic, regAnchor, regSize);
+        }
+        else
+        {
+            BaseBlockMap.RegisterSolid(regAnchor, regSize);
+        }
+        footprintRegistered = true;
+    }
+
+    void UnregisterPathFootprint()
+    {
+        if (!footprintRegistered) return;
+        footprintRegistered = false;
+        if (regAsWall) BaseBlockMap.UnregisterWall(regWallLs);
+        else BaseBlockMap.UnregisterSolid(regAnchor, regSize);
+        regWallLs = null;
+    }
+
+    /// <summary>
+    /// The registered pathfinding footprint of a live NON-WALL building (world-quantized cells —
+    /// immune to GridManager growth re-anchoring, unlike <see cref="anchorCell"/>). This is what
+    /// BasePathManager seeds as an attack target; false = not currently physically present, or a
+    /// wall (walls become targets via gate lookup, never seeds).
+    /// </summary>
+    public bool TryGetPathFootprint(out Vector2Int worldCellAnchor, out Vector2Int cells)
+    {
+        worldCellAnchor = regAnchor; cells = regSize;
+        return footprintRegistered && !regAsWall;
+    }
+
+    /// <summary>
+    /// Self-heal the pathfinding registration: if the building has MOVED since it registered (or
+    /// its registration came out of a stale grid frame), re-register from the live transform.
+    /// Called by BasePathManager on its seeding cadence, so a footprint can never disagree with
+    /// the building for more than a rebuild tick. Ghosts (unregistered) are left alone.
+    /// </summary>
+    public void EnsurePathFootprintCurrent()
+    {
+        if (!footprintRegistered) return;
+        if (CurrentWorldAnchor(out _) != regAnchor) RegisterPathFootprint();
     }
 
     public void UpdateUI()
@@ -187,22 +301,39 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         if (mode)
         {
             physic = Instantiate(Resources.Load<GameObject>(box?"Physic":"PhysicCircle"), transform.position, Quaternion.Euler(0f,0f,Random.Range(0f,360f)), transform).GetComponent<LifeScript>();
+            if (hasAuthoredCollider)
+            {
+                // restore the prefab-tuned collider dims over the generic one-cell body
+                if (box)
+                {
+                    var bc = physic.GetComponent<BoxCollider2D>();
+                    if (bc != null) { bc.size = authoredBoxSize; bc.offset = authoredBoxOffset; }
+                }
+                else
+                {
+                    var cc = physic.GetComponent<CircleCollider2D>();
+                    if (cc != null) { cc.radius = authoredCircleRadius; cc.offset = authoredBoxOffset; }
+                }
+            }
             physic.maxHp = maxHealth;
             physic.hp = maxHealth;
             physic.onDeaths.Add(this);
             physic.GetComponent<IClickableCarrier>().clickable = this;
             physic.gameObject.SetActive(true);
+            RegisterPathFootprint();   // collider is live again — block (or chew-price) the cells
         }
         else
         {
             UIParent.gameObject.SetActive(false);
             repairing = true;
+            UnregisterPathFootprint(); // ghost building blocks nothing — enemies walk the footprint
         }
     }
 
     public virtual void OnDestroy()
     {
         if(GS.qutting) return;
+        UnregisterPathFootprint();
         BDisable();
         GridManager.i.SetArea(anchorCell, gridSize, false);
         _power?.Detach();
@@ -274,7 +405,32 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     void BuildFirst()
     {
         SwitchMonos(false,true);
-        LoadWithEEs(builtBlasts);
+        if (builtBlasts > 0)
+        {
+            LoadWithEEs(builtBlasts);
+        }
+        else
+        {
+            // 0-blast building: no ember icons — construction completes when its orb task fills
+            // (BM wires CompleteViaOrbs into the orb magnets' action). Keep the registration
+            // LoadWithEEs would have done.
+            EnergyManager.i.AddBuilding(this);
+        }
+    }
+
+    /// <summary>Completion path for builtBlasts == 0 buildings: the orb task filling IS the build —
+    /// no ember blasts involved. Invoked from the orb magnets' completion action.</summary>
+    public void CompleteViaOrbs()
+    {
+        if (builtYet) return;
+        if (!startCalled)
+        {
+            // Start() hasn't run yet (fresh instance, synchronous orb-complete race) — retry next frame.
+            this.QA(CompleteViaOrbs, 0f);
+            return;
+        }
+        builtYet = true;
+        SwitchMonos(true);
     }
 
     protected virtual void Refund()

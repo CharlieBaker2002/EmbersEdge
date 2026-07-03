@@ -34,6 +34,10 @@ public class BM : MonoBehaviour //Building Manager
     [SerializeField] Vector2Int gridSize = new Vector2Int(1,1); // size in cells
     Vector2Int anchorCell;                                      // where we’re hovering
     int rotationStep;                                           // 0..3, each step = 90° clockwise
+    // multi-drag placement (Building.multiDrag): sweep with the button held to stamp copies
+    Vector2Int lastStampCell;
+    bool dragArmed;      // a deliberate click starts the sweep (guards against the menu click's held button)
+    bool upfrontSpent;   // the menu click pre-charged ONE copy; later stamps charge per placement
     
     private void Awake()
     {
@@ -162,6 +166,9 @@ public class BM : MonoBehaviour //Building Manager
         GridManager.i.ActivateGrid();
         ChangeBuildingColour(false);
         rotationStep = 0;
+        lastStampCell = new Vector2Int(int.MinValue, int.MinValue);
+        dragArmed = false;
+        upfrontSpent = false;
         RecomputeGridSize();
         IM.i.pi.Player.Interact.performed += clickAction;
         // Daddy delegate is already on the router; layer the placement-cancel handler on top.
@@ -196,10 +203,18 @@ public class BM : MonoBehaviour //Building Manager
 
             bool gridClear   = GridManager.i.AreaClear(anchorCell, gridSize);
             // Validity matches TryPlace() — both rely on AreaClear's inRange, which RebuildRangeCache now
-            // clips to the map's inner inset (pulled in by buildEdgeMargin), so cells near the edge are
+            // clips to the map's inner inset (pulled in by buildEdgeMargin), so cells near the edge is
             // already out-of-range and unbuildable. No per-frame bounds test needed.
             // colour overlay & sprite tint
             GridManager.i.PreviewArea(anchorCell, gridSize, gridClear);
+
+            // multi-drag sweep: with the place button held (after a deliberate first click), stamp a
+            // copy on every NEW clear cell the cursor passes over
+            if (dragArmed && rbb != null && rbb.multiDrag && gridClear &&
+                anchorCell != lastStampCell && IM.i.pi.Player.Interact.IsPressed())
+            {
+                StampMultiCopy();
+            }
         }
     }
 
@@ -251,79 +266,17 @@ public class BM : MonoBehaviour //Building Manager
         if (!GridManager.i.AreaClear(anchorCell, gridSize))
             return;
 
-        GridManager.i.SetArea(anchorCell, gridSize, true);
-        rbb.anchorCell = anchorCell;
-        rbb.gridSize = gridSize;
+        // multi-drag buildings (walls): stamp a copy and KEEP placing — the ghost stays on the
+        // cursor, the sweep poll in the follow coroutine stamps more, Escape ends the session.
+        if (rbb != null && rbb.multiDrag)
+        {
+            dragArmed = true;
+            StampMultiCopy();
+            return;
+        }
+
+        Commit(redBuilding, rbb, false);
         GridManager.i.DeactivateGrid();
-
-        if (rbb.hasExtraParent)
-        {
-            foreach (SpriteRenderer s in rbb.transform.parent.GetComponentsInChildren<SpriteRenderer>(true))
-            {
-                s.color = GS.ColFromEra();
-            }
-        }
-        else
-        {
-            foreach (SpriteRenderer s in rbb.GetComponentsInChildren<SpriteRenderer>(true))
-            {
-                s.color = GS.ColFromEra();
-            }
-        }
-
-        var ground = rbb.groundEdit;
-        if (ground != null) ground.SetActive((true));
-        foreach (FastSpriteDecompressor fsd in redBuilding.GetComponentsInChildren<FastSpriteDecompressor>(true))
-        {
-            fsd.enabled = true;
-        }
-
-        var bros = redBuilding.GetComponents<OrbMagnet>().Where(x => x.typ == OrbMagnet.OrbType.Task).ToArray();
-
-        redBuilding.transform.parent = GS.FindParent(GS.Parent.buildings);
-        buildings.Add(rbb);
-        var SD = redBuilding.GetComponentsInChildren<SpriteDecompressor>(true);
-        foreach (OrbMagnet om in bros)
-        {
-            if (om.typ == OrbMagnet.OrbType.Task)
-            {
-                foreach (var o in bros)
-                {
-                    if (o != om)
-                    {
-                        om.siblingTs.Add(o);
-                    }
-                }
-                om.action = delegate
-                {
-                    if (rbb == null) return;
-                    if (rbb.TryGetComponent<Collider2D>(out var col))
-                    {
-                        Destroy(rbb.GetComponent<Collider2D>());
-                    }
-                    // physic is created+activated by SwitchMonos(true) (the EE-icon build path),
-                    // which is QA-deferred and races this orb-task callback. If the orbs land
-                    // first, physic is still null here — skip; SwitchMonos will create AND
-                    // activate it a moment later (this SetActive is redundant with that). Without
-                    // the guard this NREs intermittently on build (BM.cs:312).
-                    if (rbb.physic != null) rbb.physic.gameObject.SetActive(true);
-                };
-                foreach (var spriteDecompressor in SD)
-                {
-                    spriteDecompressor.oms.Add(om);
-                }
-            }
-        }
-
-        foreach (OrbMagnet om in bros)
-        {
-            om.enabled = true;
-        }
-
-        foreach (var sd in SD)
-        {
-            sd.enabled = true;
-        }
 
         planting = false;
         redBuilding = null;
@@ -338,6 +291,128 @@ public class BM : MonoBehaviour //Building Manager
                 recent.OnClick();
             }
         }, 2);
+    }
+
+    /// <summary>One multi-drag stamp at the current (verified clear) anchor: charge, clone, commit.
+    /// The first stamp consumes the menu click's up-front charge; later ones pay per placement.</summary>
+    void StampMultiCopy()
+    {
+        if (upfrontSpent)
+        {
+            if (!ResourceManager.instance.CanAfford(recent.cost))
+            {
+                Escape();   // out of resources — close the placement session (cost already zeroed, so nothing refunds)
+                return;
+            }
+        }
+        else
+        {
+            upfrontSpent = true;
+            GS.CopyArray(ref cost, new int[4]);   // up-front charge is now consumed — Escape must not refund it
+        }
+
+        var built = Instantiate(redbuildingPrefab, redBuilding.transform.position, redBuilding.transform.rotation);
+        var bb = built.GetComponentInChildren<Building>(true);
+        Commit(built, bb, true);
+        lastStampCell = anchorCell;
+    }
+
+    /// <summary>Turn a placed instance into a live under-construction building at the current
+    /// anchor: grid occupancy, era tint, orb-task magnets (whose completion also FINISHES 0-blast
+    /// buildings — orb-only construction, no ember), decompressors, registry.</summary>
+    void Commit(GameObject built, Building bb, bool freshInstance)
+    {
+        GridManager.i.SetArea(anchorCell, gridSize, true);
+        bb.anchorCell = anchorCell;
+        bb.gridSize = gridSize;
+
+        if (bb.hasExtraParent)
+        {
+            foreach (SpriteRenderer s in bb.transform.parent.GetComponentsInChildren<SpriteRenderer>(true))
+            {
+                s.color = GS.ColFromEra();
+            }
+        }
+        else
+        {
+            foreach (SpriteRenderer s in bb.GetComponentsInChildren<SpriteRenderer>(true))
+            {
+                s.color = GS.ColFromEra();
+            }
+        }
+
+        var ground = bb.groundEdit;
+        if (ground != null) ground.SetActive((true));
+        foreach (FastSpriteDecompressor fsd in built.GetComponentsInChildren<FastSpriteDecompressor>(true))
+        {
+            fsd.enabled = true;
+        }
+
+        var bros = built.GetComponents<OrbMagnet>().Where(x => x.typ == OrbMagnet.OrbType.Task).ToArray();
+
+        built.transform.parent = GS.FindParent(GS.Parent.buildings);
+        buildings.Add(bb);
+        var SD = built.GetComponentsInChildren<SpriteDecompressor>(true);
+        foreach (OrbMagnet om in bros)
+        {
+            if (om.typ == OrbMagnet.OrbType.Task)
+            {
+                foreach (var o in bros)
+                {
+                    if (o != om)
+                    {
+                        om.siblingTs.Add(o);
+                    }
+                }
+                om.action = delegate
+                {
+                    if (bb == null) return;
+                    if (bb.TryGetComponent<Collider2D>(out var col))
+                    {
+                        Destroy(col);
+                    }
+                    if (bb.builtBlasts <= 0)
+                    {
+                        bb.CompleteViaOrbs();   // orb-only construction: the task filling IS the build
+                    }
+                    // physic is created+activated by SwitchMonos(true) (the EE-icon build path),
+                    // which is QA-deferred and races this orb-task callback. If the orbs land
+                    // first, physic is still null here — skip; SwitchMonos will create AND
+                    // activate it a moment later (this SetActive is redundant with that). Without
+                    // the guard this NREs intermittently on build.
+                    if (bb.physic != null) bb.physic.gameObject.SetActive(true);
+                };
+                foreach (var spriteDecompressor in SD)
+                {
+                    spriteDecompressor.oms.Add(om);
+                }
+            }
+        }
+
+        // A freshly-instantiated stamp hasn't run Building.Start yet — its ghost-init
+        // (SwitchMonos(false, init)) lands NEXT frame and would flip anything it owns back off.
+        // Defer the enables past it; the ghost-turned-building path enables immediately as before.
+        if (freshInstance)
+        {
+            GS.QA(() =>
+            {
+                if (built == null) return;
+                foreach (OrbMagnet om in bros) { if (om != null) om.enabled = true; }
+                foreach (var sd in SD) { if (sd != null) sd.enabled = true; }
+            }, 2);
+        }
+        else
+        {
+            foreach (OrbMagnet om in bros)
+            {
+                om.enabled = true;
+            }
+
+            foreach (var sd in SD)
+            {
+                sd.enabled = true;
+            }
+        }
     }
 
 

@@ -16,21 +16,16 @@ public class E1_7 : Unit
     public int maxSeeds = 3;
     public float orbitRadius = 2.4f;
 
-    private Transform t;
-    private Collider2D[] cols;
-    private float seekTimer = 1f;
     private float sowTimer;
     private float jinkTimer;
     private float panicReadyAt;
     private float animT;
     private float orbitSign = 1f;
     private bool sowing;
-    private Vector2 d = new Vector2(0f, -1f);
     private readonly List<GameObject> seeds = new List<GameObject>();
 
     private void Awake()
     {
-        cols = new Collider2D[2];
         AS = GetComponent<ActionScript>();
         sowTimer = Random.Range(2f, 3.5f);
         jinkTimer = Random.Range(1.1f, 1.9f);
@@ -38,7 +33,6 @@ public class E1_7 : Unit
         if (!transform.InDungeon())
         {
             transform.up = -((Vector2)transform.position).normalized;
-            d = transform.up * 2f;
         }
     }
 
@@ -60,20 +54,13 @@ public class E1_7 : Unit
 
         Move();
 
-        seekTimer -= Time.deltaTime * actRate;
-        if (seekTimer < 0f)
-        {
-            seekTimer = 1f;
-            t = GS.FindEnemy(transform, 6.5f, GS.searchType.allSearch, cols, t);
-        }
-
         if (sowing) return;
         sowTimer -= Time.deltaTime * actRate;
         if (sowTimer < 0f)
         {
             seeds.RemoveAll(x => x == null);
-            if (t != null && seeds.Count < maxSeeds &&
-                Vector2.Distance(t.position, transform.position) < orbitRadius + 2.5f)
+            if (target != null && seeds.Count < maxSeeds &&
+                Vector2.Distance(MinePath.AimPoint(target, transform.position), transform.position) < orbitRadius + 2.5f)
             {
                 StartCoroutine(SowI());
             }
@@ -86,38 +73,41 @@ public class E1_7 : Unit
 
     private void Move()
     {
-        if (t != null)
+        // the ONE decision: target + route from the same field snapshot — no range, no memory.
+        // Null only when nothing ally-side is left at all; then just hold position.
+        MinePathManager.Decide(this, out Vector2 pathDir);
+        if (target == null) return;
+        Vector2 aim = MinePath.AimPoint(target, transform.position);   // wall targets: nearest span point
+        Vector2 toT = aim - (Vector2)transform.position;
+        float dist = toT.magnitude;
+        // spring onto the orbit ring + tangential drift around it
+        Vector2 tang = new Vector2(-toT.y, toT.x).normalized * orbitSign;
+        Vector2 force = toT.normalized * Mathf.Clamp((dist - orbitRadius) * 0.05f, -0.09f, 0.09f) + tang * 0.065f;
+        // orbit only when the BODY has a clear line to the target (size-wide, not sight-wide) —
+        // else drift down the pathfinding route (which may deliberately head INTO a chewable wall)
+        if (!MinePath.LineOfSightWide(transform.position, aim, size) && pathDir != Vector2.zero)
         {
-            Vector2 toT = t.position - transform.position;
-            float dist = toT.magnitude;
-            // spring onto the orbit ring + tangential drift around it
-            Vector2 tang = new Vector2(-toT.y, toT.x).normalized * orbitSign;
-            Vector2 force = toT.normalized * Mathf.Clamp((dist - orbitRadius) * 0.05f, -0.09f, 0.09f) + tang * 0.065f;
-            if (!sowing)
+            force = pathDir * 0.09f;
+        }
+        if (!sowing)
+        {
+            AS.TryAddForce(actRate * force, true);
+            // evasive jink: quick sideways dart every couple of seconds
+            jinkTimer -= Time.deltaTime * actRate;
+            if (jinkTimer < 0f)
             {
-                AS.TryAddForce(actRate * force, true);
-                // evasive jink: quick sideways dart every couple of seconds
-                jinkTimer -= Time.deltaTime * actRate;
-                if (jinkTimer < 0f)
+                jinkTimer = Random.Range(1.1f, 1.9f);
+                if (GS.Chance(30f))
                 {
-                    jinkTimer = Random.Range(1.1f, 1.9f);
-                    if (GS.Chance(30f))
-                    {
-                        orbitSign = -orbitSign;
-                    }
-                    AS.TryAddForce(tang.normalized * Random.Range(60f, 90f), false); // ~1.2-1.8 u/s dart
+                    orbitSign = -orbitSign;
                 }
+                AS.TryAddForce(tang.normalized * Random.Range(60f, 90f), false); // ~1.2-1.8 u/s dart
             }
-            if (!sowing && AS.rb.linearVelocity.sqrMagnitude > 0.01f)
+            if (AS.rb.linearVelocity.sqrMagnitude > 0.01f)
             {
                 Quaternion q = Quaternion.Euler(0f, 0f, -Vector2.SignedAngle(AS.rb.linearVelocity, Vector2.up));
                 transform.rotation = Quaternion.Lerp(transform.rotation, q, 0.08f * actRate);
             }
-        }
-        else
-        {
-            transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(0f, 0f, -Vector2.SignedAngle(d, Vector2.up)), actRate * 0.05f);
-            AS.TryAddForce(d * (actRate * 0.07f), true);
         }
     }
 
@@ -127,13 +117,13 @@ public class E1_7 : Unit
         AS.Decelerate(0.5f, 0.5f);
         // one in three: lob the seed at the target instead of dropping it.
         // Telegraph the throw by swivelling to stare the victim down first.
-        bool lob = t != null && Random.Range(0, 3) == 0;
+        bool lob = target != null && Random.Range(0, 3) == 0;
         if (lob)
         {
             for (float f = 0f; f < 0.45f; f += Time.deltaTime)
             {
-                if (t == null) { lob = false; break; }
-                Quaternion q = Quaternion.Euler(0f, 0f, -Vector2.SignedAngle(t.position - transform.position, Vector2.up));
+                if (target == null) { lob = false; break; }
+                Quaternion q = Quaternion.Euler(0f, 0f, -Vector2.SignedAngle(MinePath.AimPoint(target, transform.position) - (Vector2)transform.position, Vector2.up));
                 transform.rotation = Quaternion.Lerp(transform.rotation, q, 0.22f * actRate);
                 yield return null;
             }
@@ -142,9 +132,9 @@ public class E1_7 : Unit
         yield return WFAS(0.22f);
         var s = Instantiate(seed, transform.position, Quaternion.identity, GS.FindParent(GS.Parent.enemyprojectiles));
         seeds.Add(s);
-        if (lob && t != null)
+        if (lob && target != null)
         {
-            Vector2 dest = (Vector2)t.position + Random.insideUnitCircle * 0.6f;
+            Vector2 dest = MinePath.AimPoint(target, transform.position) + Random.insideUnitCircle * 0.6f;
             s.GetComponent<EmberSeed>().Lob(dest);
         }
         yield return WFAS(0.25f);
@@ -159,7 +149,7 @@ public class E1_7 : Unit
     {
         if (value >= 0f || ls.hasDied || Time.time < panicReadyAt) return;
         panicReadyAt = Time.time + 7f;
-        Vector2 away = t != null ? (Vector2)(transform.position - t.position) : Random.insideUnitCircle;
+        Vector2 away = target != null ? (Vector2)(transform.position - target.position) : Random.insideUnitCircle;
         away.Normalize();
         Vector2 perp = new Vector2(-away.y, away.x);
         foreach (Vector2 dir in new[] { perp, -perp })

@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class E1_2 : Unit, IOnCollide
 {
-    private Transform target;
     public GameObject proj;
     public Transform shootP;
     private bool left = true;
@@ -24,38 +23,41 @@ public class E1_2 : Unit, IOnCollide
         {
             if (target)
             {
-                transform.up = Vector2.Lerp(transform.up,target.position - transform.position,actRate * Time.deltaTime * 3f); 
+                Vector2 aim = MinePath.AimPoint(target, transform.position);
+                transform.up = Vector2.Lerp(transform.up, aim - (Vector2)transform.position, actRate * Time.deltaTime * 6f);
             }
             else
             {
-                transform.up = Vector2.Lerp(transform.up, -AS.rb.linearVelocity, actRate *  Time.deltaTime * 3f);
+                transform.up = Vector2.Lerp(transform.up, -AS.rb.linearVelocity, actRate *  Time.deltaTime * 6f);
             }
         }
         else
         {
-            transform.up = Vector2.Lerp(transform.up, AS.rb.linearVelocity, actRate * Time.deltaTime * 3f);
+            transform.up = Vector2.Lerp(transform.up, AS.rb.linearVelocity, actRate * Time.deltaTime * 6f);
         }
     }
 
     public void TryFindNewTarget()
     {
-        target = GS.FindNearestEnemy(tag, transform.position, 7.5f, false, false);
+        // the ONE decision: whatever the fields say is the current best objective (no range, no
+        // memory) — nearest preferred thing, or the wall on the route when unwilling to detour
+        MinePathManager.Decide(this, out _);
     }
 
     public void Push()
     {
-        Vector2 y;
-        if (target != null)
+        MinePathManager.Decide(this, out Vector2 pathDir);
+        if (target == null)
         {
-            y = (target.position - transform.position).normalized;
+            left = !left;
+            return;   // nothing left to fight anywhere — hold position, no aimless waggling
         }
-        else if (left)
+        Vector2 aim = MinePath.AimPoint(target, transform.position);
+        Vector2 y = (aim - (Vector2)transform.position).normalized;
+        // straight-line waggle only when the BODY fits the line (size); else ride the field
+        if (!MinePath.LineOfSightWide(transform.position, aim, size) && pathDir != Vector2.zero)
         {
-            y = new Vector2(Random.value, Random.value);
-        }
-        else
-        {
-            y = transform.up;
+            y = pathDir;
         }
         Vector2 x = Vector3.Cross(y, Vector3.forward);
         x *= left ? -1 : 1;

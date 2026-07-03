@@ -3,7 +3,6 @@ using UnityEngine;
 
 public class E2_1 : Unit, IOnCollide
 {
-    private Transform target;
     private static readonly int Enrage = Animator.StringToHash("Enrage");
     private static readonly int Boom = Animator.StringToHash("Boom");
 

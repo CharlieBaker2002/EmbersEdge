@@ -1,9 +1,12 @@
 fileFormatVersion: 2
-guid: b918749f88ca74a27958b1d78f9a905f
+guid: 2c815b8c23e0e48b3a2d58cdabfbd5ee
 TextureImporter:
-  internalIDToNameTable: []
+  internalIDToNameTable:
+  - first:
+      213: 2763297441864900090
+    second: Floor0_0
   externalObjects: {}
-  serializedVersion: 12
+  serializedVersion: 13
   mipmaps:
     mipMapMode: 0
     enableMipMap: 0
@@ -67,7 +70,7 @@ TextureImporter:
   swizzle: 50462976
   cookieLightType: 0
   platformSettings:
-  - serializedVersion: 3
+  - serializedVersion: 4
     buildTarget: DefaultTexturePlatform
     maxTextureSize: 16384
     resizeAlgorithm: 0
@@ -80,7 +83,7 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
-  - serializedVersion: 3
+  - serializedVersion: 4
     buildTarget: Standalone
     maxTextureSize: 16384
     resizeAlgorithm: 0
@@ -93,8 +96,8 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
-  - serializedVersion: 3
-    buildTarget: iPhone
+  - serializedVersion: 4
+    buildTarget: iOS
     maxTextureSize: 16384
     resizeAlgorithm: 0
     textureFormat: -1
@@ -106,7 +109,7 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
-  - serializedVersion: 3
+  - serializedVersion: 4
     buildTarget: WebGL
     maxTextureSize: 16384
     resizeAlgorithm: 0
@@ -119,7 +122,7 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
-  - serializedVersion: 3
+  - serializedVersion: 4
     buildTarget: Android
     maxTextureSize: 16384
     resizeAlgorithm: 0
@@ -144,14 +147,15 @@ TextureImporter:
         width: 1300
         height: 1300
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: 0
+      tessellationDetail: -1
       bones: []
-      spriteID: f9775c400f1c34f25a0fb1d3c37072f6
-      internalID: 378654342
+      spriteID: afd5a1ff164395620800000000000000
+      internalID: 2763297441864900090
       vertices: []
       indices: 
       edges: []
@@ -165,14 +169,15 @@ TextureImporter:
         width: 1300
         height: 1300
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: c6afda8e2973e4d4196a81b677aac013
-      internalID: 851825708
+      spriteID: e821729ac128a4e8b95be51e4c782a4b
+      internalID: 1005558049
       vertices: []
       indices: 
       edges: []
@@ -186,19 +191,21 @@ TextureImporter:
         width: 1300
         height: 1300
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 968923b61faa6431dbc79e99919af96b
-      internalID: 1523329228
+      spriteID: ff69d7d6b6d4a44b898abe6913521c04
+      internalID: 216133649
       vertices: []
       indices: 
       edges: []
       weights: []
     outline: []
+    customData: 
     physicsShape: []
     bones: []
     spriteID: 5e97eb03825dee720800000000000000
@@ -208,10 +215,14 @@ TextureImporter:
     edges: []
     weights: []
     secondaryTextures: []
+    spriteCustomMetadata:
+      entries:
+      - key: SpriteEditor.SliceSettings
+        value: '{"sliceOnImport":false,"gridCellCount":{"x":3.0,"y":1.0},"gridSpriteSize":{"x":1300.0,"y":1300.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":2,"keepEmptyRects":false,"isAlternate":false}'
     nameFileIdTable:
-      Floor0_0: 378654342
-      Floor0_1: 851825708
-      Floor0_2: 1523329228
+      Floor0_0: 2763297441864900090
+      Floor0_1: 1005558049
+      Floor0_2: 216133649
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

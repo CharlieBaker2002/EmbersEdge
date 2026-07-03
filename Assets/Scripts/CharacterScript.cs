@@ -705,8 +705,11 @@ public class CharacterScript : Unit
             this.QA(() => MechaSuit.Announce(),2f);
             CS.ColourControllerDeath();
             PortalScript.i.Portal();
-            DM.i.activeRoom = DM.i.initR[GS.era];
-            PortalScript.i.dungeonCamera.position = new Vector3(DM.i.activeRoom.transform.position.x, DM.i.activeRoom.transform.position.y, PortalScript.i.dungeonCamera.position.z);
+            if (MineDungeonManager.i == null)
+            {
+                DM.i.activeRoom = DM.i.initR[GS.era];
+                PortalScript.i.dungeonCamera.position = new Vector3(DM.i.activeRoom.transform.position.x, DM.i.activeRoom.transform.position.y, PortalScript.i.dungeonCamera.position.z);
+            }
         }
         else
         {

@@ -5,7 +5,6 @@ using UnityEngine;
 public class E1_3 : Unit
 {
     public GameObject vulnerablePoint;
-    Transform t = null;
     private bool morphed = false;
     private bool notAgain = false;
     private bool launched = false;
@@ -35,13 +34,20 @@ public class E1_3 : Unit
     {
         while (true)
         {
-            while (t == null)
+            Transform launchT = null;   // the objective actually taken for a launch (close + visible)
+            while (launchT == null)
             {
+                if (!MinePathManager.Decide(this, out _) || target == null)
+                {
+                    AS.Stop();
+                    yield return new WaitForSeconds(0.5f);   // nothing to fight anywhere — hold still
+                    continue;
+                }
                 if(Random.Range(0,4) <= 2 || notAgain) //25% chance instant again
                 {
                     notAgain = false;
                     AS.Stop();
-                    transform.up = Random.insideUnitCircle;
+                    transform.up = RoamDir();
                     float x = 3.5f * (1 - RandomManager.Rand(1, new Vector2(0.3f, 1f)));
                     for (float i = x; i > 0f; i -= Time.fixedDeltaTime)
                     {
@@ -53,9 +59,21 @@ public class E1_3 : Unit
                 {
                     notAgain = true;
                 }
-                t = GS.FindNearestEnemy(tag, transform.position, 7.5f, false, false);
+                // re-decide at leg end (no range, no memory — the objective may have shifted while
+                // we travelled): the current objective, or the wall on the route when unwilling to
+                // detour. The launch itself is a straight charge, so only take it once it's close
+                // enough to hit AND actually visible; until then the legs travel toward it.
+                if (MinePathManager.Decide(this, out _) && target != null)
+                {
+                    Vector2 aim = MinePath.AimPoint(target, transform.position);
+                    if (Vector2.Distance(aim, transform.position) < 7.5f &&
+                        MinePath.LineOfSightWide(transform.position, aim, 0.1f))
+                    {
+                        launchT = target;
+                    }
+                }
             }
-            transform.up = (Vector2) (t.position - transform.position);
+            transform.up = (Vector2) MinePath.AimPoint(launchT, transform.position) - (Vector2) transform.position;
             morphed = true;
             AS.rb.linearVelocity *= 0.3f;
             anim.SetBool("Morph", true);
@@ -63,8 +81,23 @@ public class E1_3 : Unit
             {
                 yield return new WaitForFixedUpdate();
             }
-            t = null;
         }
+    }
+
+    // Leg heading. TRAVELLING (objective far or unseen): purposeful — follow the route, wobbling
+    // at most ~±35° off it, so patrols track their correct path around wall lines. ARRIVED
+    // (objective close AND in sight): playful — any direction; the leg-end acquisition takes it.
+    Vector2 RoamDir()
+    {
+        Vector2 rnd = Random.insideUnitCircle.normalized;
+        if (rnd == Vector2.zero) rnd = Vector2.up;
+        if (!MinePathManager.Decide(this, out Vector2 pathDir) || target == null) return rnd;
+        Vector2 aim = MinePath.AimPoint(target, transform.position);
+        if (Vector2.Distance(aim, transform.position) < 7.5f &&
+            MinePath.LineOfSightWide(transform.position, aim, 0.1f)) return rnd;   // eyes on it, close — dance about
+        Vector2 toward = pathDir != Vector2.zero ? pathDir : (aim - (Vector2)transform.position).normalized;
+        if (toward == Vector2.zero) return rnd;
+        return Quaternion.Euler(0f, 0f, Random.Range(-35f, 35f)) * toward;
     }
 
     public void Launch()

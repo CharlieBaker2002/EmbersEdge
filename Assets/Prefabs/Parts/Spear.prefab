@@ -81,8 +81,27 @@ MonoBehaviour:
   swingOmega: 0
   slashes: 1
   extraWait: 0.2
+  maxDurability: 100
+  durabilityPerEnemyHit: 4
+  durabilityPerChip: 0
+  drillHalfAngle: 32
+  idleDistance: 0.55
+  idleFanDegrees: 24
+  passiveMineRange: 0.4
+  drillRadius: 0.15
+  passiveMineInterval: 0.1
+  physical: 1
+  passiveHitDamage: 1
+  minRecollideTime: 0.5
+  followAngularMaxVel: 720
+  followAngularAccel: 4800
+  followAngularDecel: 4800
+  maxStamina: 100
+  staminaRegen: 25
+  staminaPerHit: 50
 --- !u!212 &4217176377496109533
 SpriteRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -98,6 +117,11 @@ SpriteRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -119,9 +143,11 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 955266357
   m_SortingLayer: 7
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_Sprite: {fileID: -1805650597, guid: daf9b5537a2fb4c1fba19168636f5928, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -131,7 +157,6 @@ SpriteRenderer:
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
-  m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!1 &7155042738295557178
 GameObject:
@@ -175,6 +200,7 @@ CircleCollider2D:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7155042738295557178}
   m_Enabled: 0
+  serializedVersion: 3
   m_Density: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -198,9 +224,9 @@ CircleCollider2D:
     m_Bits: 4294967295
   m_IsTrigger: 1
   m_UsedByEffector: 0
-  m_UsedByComposite: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  serializedVersion: 2
   m_Radius: 0.3
 --- !u!114 &8663154196560896927
 MonoBehaviour:
@@ -218,6 +244,7 @@ MonoBehaviour:
   damageType: 0
   damageOverT: 0
   damageOverTtime: 0
+  dotKills: 0
   hitImmaterial: 0
   hitProjectiles: 1
   reflectProjectiles: 0
@@ -225,12 +252,14 @@ MonoBehaviour:
   refreshCollideTimer: 0.5
   push: 0
   longPush: 0
+  negativePush: 1
   charOnly: 0
   EE: 0
   selfHarm: {fileID: 0}
+  meleeOwner: {fileID: 0}
 --- !u!96 &7767730440712692092
 TrailRenderer:
-  serializedVersion: 3
+  serializedVersion: 4
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -246,6 +275,11 @@ TrailRenderer:
   m_ReflectionProbeUsage: 0
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -267,9 +301,11 @@ TrailRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 899417529
   m_SortingLayer: 8
   m_SortingOrder: -30
+  m_MaskInteraction: 0
   m_Time: 0.3
   m_PreviewTimeScale: 1
   m_Parameters:
@@ -346,7 +382,6 @@ TrailRenderer:
     shadowBias: 0.5
     generateLightingData: 0
   m_MinVertexDistance: 0.1
-  m_MaskInteraction: 0
   m_Autodestruct: 0
   m_Emitting: 1
   m_ApplyActiveColorSpace: 1

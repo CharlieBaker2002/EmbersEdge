@@ -26,7 +26,6 @@ public class FireCannon : Spell
         base.Performed(ctx);
         if (fb == null) return;
         fb.Release((float)ctx.duration, transform.up);
-        LevelUp();
     }
 
     public override Vector2 GetManaAndCd()

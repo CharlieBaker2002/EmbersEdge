@@ -8,23 +8,42 @@ public class E1_1 : Unit
     public GameObject proj;
     public Transform sp; //shoot point
     private float timer = 1.5f;
-    private Transform t = null;
-    private Vector2 d = new Vector2(0,-1f); //direction
     private Quaternion qSave;
     private float attackRange;
-    private Collider2D[] cols;
+    private bool losToTarget = true;
+    private Collider2D tCol;          // target's collider, cached per target
+    private Transform tColOf;
     int n;
+
+    private Vector2 aimPos;           // where on the target to look/shoot (wall targets: nearest span point)
+    private bool wallAim;
+
+    // Distance to the target's SURFACE, not its centre — a big building's transform sits cells deep
+    // inside its own hull (and a wall's transform can sit at its tower), so centre distance never
+    // satisfies attackRange when touching it.
+    float DistToTarget()
+    {
+        if (wallAim)
+        {
+            return Mathf.Max(0f, Vector2.Distance(aimPos, transform.position) - 0.5f);   // span cell centre -> face
+        }
+        float dist = Vector2.Distance(target.position, transform.position);
+        if (tColOf != target) { tColOf = target; tCol = target.GetComponent<Collider2D>(); }
+        if (tCol != null)
+        {
+            dist = Mathf.Max(0f, dist - Mathf.Min(tCol.bounds.extents.x, tCol.bounds.extents.y));
+        }
+        return dist;
+    }
     
     private void Awake()
     {
-        cols = new Collider2D[2];
         attackRange = Random.Range(1.25f, 4f);
         anim = GetComponent<Animator>();
         AS = GetComponent<ActionScript>();
         if (!transform.InDungeon())
         {
             transform.up = -((Vector2)transform.position).normalized;
-            d = transform.up * 2;
         }
     }
 
@@ -32,58 +51,57 @@ public class E1_1 : Unit
     protected override void Update()
     {
         base.Update();
-        if(t!= null)
+        // the ONE decision: target + route from the same field snapshot — no range, no memory,
+        // no physics overlap. Reprioritising onto closer things happens by itself; the target is
+        // null only when nothing ally-side is left at all (then just hold position).
+        MinePathManager.Decide(this, out Vector2 pathDir);
+        if(target != null)
         {
+            aimPos = MinePath.AimPoint(target, transform.position);
+            wallAim = aimPos != (Vector2)target.position;   // AimPoint returns position verbatim for non-walls
+            losToTarget = MinePath.LineOfSightWide(transform.position, aimPos, 0.1f);
+            Vector2 approach = (aimPos - (Vector2)transform.position).normalized;
+            // walk straight only if the BODY fits the straight line (size), not just the bullet —
+            // otherwise follow the field, which prices cracks as the walls that pinch them
+            if (!MinePath.LineOfSightWide(transform.position, aimPos, size) && pathDir != Vector2.zero)
+            {
+                approach = pathDir;
+            }
             qSave = transform.rotation;
-            transform.up = t.position - transform.position;
+            transform.up = losToTarget ? (aimPos - (Vector2)transform.position) : approach;
             transform.rotation = Quaternion.Euler(0, 0, transform.rotation.eulerAngles.z);
             transform.rotation = Quaternion.Lerp(qSave, transform.rotation, 0.05f * actRate);
-            float dist = Vector2.Distance(t.position, transform.position);
-            if (dist > attackRange)
+            float dist = DistToTarget();
+            if (dist > attackRange || !losToTarget)
             {
-                AS.TryAddForce(actRate * 0.04f * (7f - 0.5f * attackRange) * (t.position - transform.position).normalized, true);
+                AS.TryAddForce(actRate * 0.04f * (7f - 0.5f * attackRange) * approach, true);
             }
-            else 
+            else
             {
                 if (canRetreat)
                 {
-                    AS.TryAddForce(actRate * -0.07f * (4.5f - attackRange) * (t.position - transform.position).normalized, true);
+                    AS.TryAddForce(actRate * -0.07f * (4.5f - attackRange) * (aimPos - (Vector2)transform.position).normalized, true);
                 }
                 else
                 {
-                    AS.TryAddForce(actRate * -0.02f * (t.position - transform.position).normalized, true);
+                    AS.TryAddForce(actRate * -0.02f * (aimPos - (Vector2)transform.position).normalized, true);
                 }
             }
-        }
-        else
-        {
-            transform.rotation = Quaternion.Lerp(transform.rotation,Quaternion.Euler(0f,0f,-Vector2.SignedAngle(d, Vector2.up)),actRate * 0.05f);
-            AS.TryAddForce(d * (actRate * 0.1f), true);
         }
         timer -= Time.deltaTime * actRate;
         if(timer < 0f)
         {
-            if (t != null)
-            {
-                if(Vector2.Distance(t.position,transform.position) < attackRange + 1f)
-                {
-                    canRetreat = false;
-                    anim.SetBool("Trigger", true);
-                    AS.maxVelocity = 2f;
-                    n = 1 + Mathf.FloorToInt(0.1f + 4f* RandomManager.Rand(2));
-                    timer = Random.Range(4f, 6f);
-                    timer += 2 * (n-1);
-                    AS.Decelerate(0.5f, 0.5f);
-                    return;
-                }
-            }
-            t = GS.FindEnemy(transform, 5f, GS.searchType.allSearch,cols, t);
             timer = 1f;
-            if (t != null) { return; }
-            float rot = transform.rotation.eulerAngles.z * Random.Range(0.95238095238f, 1.05f) * Mathf.Deg2Rad;
-            d = new Vector2(-Mathf.Sin(rot), Mathf.Cos(rot));
-            AS.maxVelocity = 1f;
-            AS.Stop();
+            if (target != null && DistToTarget() < attackRange + 1f && losToTarget)
+            {
+                canRetreat = false;
+                anim.SetBool("Trigger", true);
+                AS.maxVelocity = 2f;
+                n = 1 + Mathf.FloorToInt(0.1f + 4f* RandomManager.Rand(2));
+                timer = Random.Range(4f, 6f);
+                timer += 2 * (n-1);
+                AS.Decelerate(0.5f, 0.5f);
+            }
         }
     }
 

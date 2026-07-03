@@ -54,13 +54,22 @@ public class E1_4 : Unit, IOnCollide
 
     IEnumerator E1_4_Main()
     {
-        Transform enemy = GS.FindNearestEnemy(tag, transform.position, 6f, false, false);
-        AS.FaceEnemyOverT(1.5f,5 * actRate, enemy, true);
+        // the ONE decision, everywhere in this loop: Unit.target + route from the fields — no
+        // range, no memory, no physics overlap. Reprioritising onto closer things happens by itself.
+        MinePathManager.Decide(this, out _);
+        AS.FaceEnemyOverT(1.5f,5 * actRate, target, true);
         yield return StartCoroutine(WaitForActSeconds(1.5f));
         while (true)
         {
-            enemy = GS.FindNearestEnemy(tag, transform.position, 10f, false, false);
-            AS.FaceEnemyOverT(2f, 3.5f * actRate, enemy, true);
+            MinePathManager.Decide(this, out _);
+            if (target == null)
+            {
+                // nothing left to fight anywhere — hold position instead of charging at nothing
+                AS.Stop();
+                yield return new WaitForSeconds(0.5f);
+                continue;
+            }
+            AS.FaceEnemyOverT(2f, 3.5f * actRate, target, true);
             yield return new WaitForSeconds(1.25f);
             if (Random.Range(0, 2) == 0)
             {
@@ -69,30 +78,53 @@ public class E1_4 : Unit, IOnCollide
             engine.SetBool("Ignite", true);
             timer = 2f;
             charging = true;
+            float refetch = 0f;
             while (timer >= 0f)
             {
+                if ((refetch -= Time.fixedDeltaTime) <= 0f)
+                {
+                    refetch = 0.25f;   // re-decide on a throttle, not once per FixedUpdate
+                    MinePathManager.Decide(this, out _);
+                }
+                if (target != null)
+                {
+                    // steer mid-charge: keep swinging the nose onto the target as it moves
+                    // (wall targets aim at their nearest span point, not the owning tower)
+                    Vector2 want = ((Vector2)MinePath.AimPoint(target, transform.position) - (Vector2)transform.position).normalized;
+                    transform.up = Vector2.Lerp(transform.up, want, Mathf.Min(1, 2.5f * Time.fixedDeltaTime * actRate));
+                }
                 dir = transform.up;
                 AS.TryAddForce(9 * timer * actRate * dir, true);
-                transform.up = Vector2.Lerp(transform.up, dir, Mathf.Min(1, 5 * Time.deltaTime));
                 timer -= Time.fixedDeltaTime * actRate;
                 yield return new WaitForFixedUpdate();
             }
             charging = false;
             AS.Decelerate(1.5f, 0.935f);
             engine.SetBool("Ignite", false);
-            timer = 2.25f;
-            StartCoroutine(ShootSpin());
-            while(timer > 0f)
+            MinePathManager.Decide(this, out _);
+            // volley only when the objective is actually close — otherwise charge/rest toward it
+            if (target != null && Vector2.Distance(MinePath.AimPoint(target, transform.position), transform.position) < 12f)
             {
-                transform.rotation = Quaternion.Euler(0f, 0f, transform.rotation.eulerAngles.z + 280f * Time.deltaTime * actRate);
-                timer -= Time.deltaTime * actRate;
-                yield return null;
+                timer = 2.25f;
+                StartCoroutine(ShootSpin());
+                while(timer > 0f)
+                {
+                    transform.rotation = Quaternion.Euler(0f, 0f, transform.rotation.eulerAngles.z + 280f * Time.deltaTime * actRate);
+                    timer -= Time.deltaTime * actRate;
+                    yield return null;
+                }
+                MinePathManager.Decide(this, out _);
+                AS.FaceEnemyOverT(1.5f, 5, target, true);
+                body.SetBool("Charge", true);
+                MakeVps();
+                yield return StartCoroutine(WaitForActSeconds(1.25f));
             }
-            enemy = GS.FindNearestEnemy(tag, transform.position, 10f, false, false);
-            AS.FaceEnemyOverT(1.5f, 5, enemy, true);
-            body.SetBool("Charge", true);
-            MakeVps();
-            yield return StartCoroutine(WaitForActSeconds(1.25f));
+            else
+            {
+                // objective far — don't waste the volley, just rest and wind up the next charge
+                body.SetBool("Charge", true);
+                yield return StartCoroutine(WaitForActSeconds(1.5f));
+            }
         }
     }
 

@@ -308,6 +308,9 @@ public class EnergyManager : MonoBehaviour
     private List<Building> bs = new();
     private readonly Dictionary<Building,int> emberCount = new();
     public List<EmberStoreBuilding> emberStores;
+    /// <summary>The first Ember Store to come online — the small store already built at base. Dungeon
+    /// ember (<see cref="EmberStore.Bank"/>) lands here by default; see <see cref="DepositDungeonEmber"/>.</summary>
+    public EmberStoreBuilding defaultEmberStore;
     public static List<Constructor> constructors;
     public static List<Constructor> toBeBuilt;
     /// <summary>Ember generators participating in the cable network as sinks (they burn delivered ember into energy).</summary>
@@ -323,7 +326,71 @@ public class EnergyManager : MonoBehaviour
         SpawnManager.instance.onWaveComplete += () => GS.QA(UpdateEmber, 3);
         GS.OnNewEra += _ => RegenerateCables();
     }
-    
+
+    /// <summary>An Ember Store came online. The first one registered (the small store already
+    /// built at base) becomes the default landing spot for dungeon ember.</summary>
+    public void RegisterEmberStore(EmberStoreBuilding b)
+    {
+        if (defaultEmberStore == null) defaultEmberStore = b;
+        emberStores.Add(b);
+        CreateCableConnections();
+    }
+
+    public void UnregisterEmberStore(EmberStoreBuilding b)
+    {
+        emberStores.Remove(b);
+        if (defaultEmberStore == b) defaultEmberStore = emberStores.FirstOrDefault();
+        CreateCableConnections();
+    }
+
+    /// <summary>
+    /// Ember earned in the dungeon (<see cref="EmberStore.Bank"/>) lands in the default base store
+    /// first. If that store is full, the overflow spills into whichever other Ember Store buildings
+    /// in the network still have room (smallest capacity first, same ordering the cable network
+    /// already uses). If every store is full, the remainder is banked on the default store anyway
+    /// so dungeon ember is never lost.
+    /// </summary>
+    public void DepositDungeonEmber(int n)
+    {
+        if (n <= 0) return;
+        int remaining = n;
+
+        if (defaultEmberStore != null && defaultEmberStore.connect != null)
+            remaining = FillStore(defaultEmberStore, remaining);
+
+        if (remaining > 0 && emberStores.Count > 1)
+        {
+            UpdateEmberStores();   // smallest-capacity stores first
+            foreach (EmberStoreBuilding store in emberStores)
+            {
+                if (remaining <= 0) break;
+                if (store == defaultEmberStore) continue;
+                remaining = FillStore(store, remaining);
+            }
+        }
+
+        if (remaining > 0)
+        {
+            EmberStoreBuilding fallback = defaultEmberStore != null ? defaultEmberStore : emberStores.FirstOrDefault();
+            if (fallback != null && fallback.connect != null)
+            {
+                fallback.connect.ember += remaining;
+                fallback.Refresh();
+            }
+        }
+    }
+
+    int FillStore(EmberStoreBuilding store, int n)
+    {
+        EmberConnector c = store.connect;
+        int room = Mathf.Max(0, c.maxEmber - c.ember);
+        int add = Mathf.Min(room, n);
+        if (add <= 0) return n;
+        c.ember += add;
+        store.Refresh();
+        return n - add;
+    }
+
     public void UpdateEmberStores()
     {
         constructors = constructors.OrderByDescending(x => x.tasks.Sum(z => z.numIconsTrue)).ThenBy(y=>y.connect.ember).ToList();

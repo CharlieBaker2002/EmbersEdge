@@ -57,8 +57,6 @@ public class NovaCore : MonoBehaviour
     [Header("Channel damage-over-time (vortex chews what's underneath)")]
     [Tooltip("Seconds between channel damage ticks.")]
     [SerializeField] float channelDotInterval = 0.25f;
-    [Tooltip("Damage-per-second under the vortex at full charge = damage × this.")]
-    [SerializeField] float channelDotFraction = 0.5f;
     [Tooltip("Channel damage grows from this fraction at charge start up to full at max charge (the radius follows the growing core knot).")]
     [SerializeField] float channelChargeFloor = 0.5f;
 
