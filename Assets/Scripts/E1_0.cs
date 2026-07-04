@@ -34,6 +34,23 @@ public class E1_0 : Unit, IOnCollide, IOnDeath
     {
         rb.angularVelocity = 50f * GS.PlusMinus();
         base.Start();
+        direction = SemiRandomDir();
+    }
+
+    // semi-random drift: the field says where the fight is, the roll keeps the tumble —
+    // anywhere within ±80° of the right direction counts as "roughly right"
+    private Vector2 SemiRandomDir()
+    {
+        MinePathManager.Decide(this, out Vector2 baseDir);
+        if (baseDir == Vector2.zero && target != null)
+        {
+            baseDir = ((Vector2)target.position - (Vector2)transform.position).normalized;
+        }
+        if (baseDir == Vector2.zero)
+        {
+            baseDir = direction == Vector2.zero ? Random.insideUnitCircle.normalized : direction.normalized;
+        }
+        return Quaternion.Euler(0f, 0f, Random.Range(-80f, 80f)) * baseDir;
     }
 
     protected override void Update()
@@ -51,7 +68,7 @@ public class E1_0 : Unit, IOnCollide, IOnDeath
     public void MakeProjectiles()
     {
         anim.SetBool("Trigger", false);
-        direction = Random.insideUnitCircle.normalized * Random.Range(0.6f,1f);
+        direction = SemiRandomDir() * Random.Range(0.6f,1f);
         if (actRate == 0f) return;
         foreach(Transform t in spawnPoints)
         {

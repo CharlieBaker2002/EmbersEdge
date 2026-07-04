@@ -20,7 +20,6 @@ public class Pocket : MonoBehaviour
     float unspawnedPoints;                               // authored points not yet spawned
     float darkness = 1f;
     EmbersEdge EE;          // core/boss pockets only
-    PocketConfinement confinement;
     Coroutine spawnRoutine;
     EmberTether tether;     // the harvesting leash cast into this pocket on discovery
     bool corePassive;       // a dormant core is sitting in the room, waiting for the tether
@@ -165,11 +164,6 @@ public class Pocket : MonoBehaviour
         if (promptShown) { UIManager.DeleteKey("V"); promptShown = false; }
 
         EE.Activate(1f, SampleSOs());
-        if (MineField.i != null)
-        {
-            confinement = gameObject.AddComponent<PocketConfinement>();
-            confinement.Begin(WorldPolygon(), transform.position);
-        }
         if (PortalScript.i != null) PortalScript.i.NoPortal();
         if (tether != null) tether.AttachToCore(EE.transform.position,
             Mathf.Max(FurthestCavityDist(EE.transform.position),
@@ -213,11 +207,6 @@ public class Pocket : MonoBehaviour
         EE.Activate(T.isBoss ? 3f : 1f, SampleSOs());
         coreActivated = true;
 
-        if (MineField.i != null)
-        {
-            confinement = gameObject.AddComponent<PocketConfinement>();
-            confinement.Begin(WorldPolygon(), transform.position);
-        }
         if (PortalScript.i != null) PortalScript.i.NoPortal();
         // The core owns the tether from the start of a boss fight: era colour + unbreakable.
         if (tether != null) tether.AttachToCore(EE.transform.position,
@@ -363,7 +352,6 @@ public class Pocket : MonoBehaviour
     {
         if (Cleared) return;
         Cleared = true;
-        if (confinement != null) confinement.End();
         if (tether != null) tether.NotifyCleared();   // fuelled by every soul — send the ember home
         if (T.hasCore && EE != null)
         {

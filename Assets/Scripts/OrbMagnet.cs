@@ -71,6 +71,16 @@ public class OrbMagnet : MonoBehaviour
         o.transform.position = CharacterScript.CS.transform.position + GS.RandCircle(0.1f,0.3f);
         float thet = GS.FixedAngle(Mathf.PI + Mathf.Atan2(o.transform.localPosition.y, o.transform.localPosition.x), false);
         o.theta = thet;
+        // Seed the glide: longer trips get a touch more time. The two wiggle amplitudes are random
+        // per orb (either sign) and scaled to the trip length, so each orb curves differently along
+        // an otherwise-straight central beam without ever bowing consistently to one side.
+        float d = o.transform.localPosition.magnitude;
+        o.depStart = o.transform.localPosition;
+        o.depT = 0f;
+        o.depDur = Mathf.Clamp(0.5f + d * 0.03f, 0.6f, 1.3f);
+        float amp = Mathf.Clamp(d * 0.10f, 0.15f, 1.2f);
+        o.depWig1 = UnityEngine.Random.Range(-1f, 1f) * amp;
+        o.depWig2 = UnityEngine.Random.Range(-1f, 1f) * amp * 0.55f;
         o.gameObject.SetActive(true);
         transientOrbs++;
         n = orbs.Count + transientOrbs;

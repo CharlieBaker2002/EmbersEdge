@@ -71,16 +71,26 @@ public class OrbManager : MonoBehaviour
                         if (OrbScript.canAttract[o.orbType])
                         {
                             dist = dir.sqrMagnitude;
-                            if (dist < Mathf.Pow(disperseSpeeds[o.orbType] * Time.deltaTime, 2))
+                            if (dist < 0.2f)
                             {
                                 PlayerCollide(o);
                                 continue;
                             }
-                            if (dist < 5f + o.orbType)
+                            if (dist < 16f + o.orbType)   // wider collection radius (~4 units, was ~2.2)
                             {
-                                o.transform.position += disperseSpeeds[o.orbType] * Time.deltaTime * (Vector3)dir.normalized / Mathf.Max(0.25f, dist);
+                                o.chaseT += Time.deltaTime;
+                                // Spring-like pull: base speed PLUS a term that grows with distance, so
+                                // distant orbs rush in instead of crawling. (The old 1/dist² falloff made
+                                // far orbs the slowest — the opposite of what we want.) On top of that, a
+                                // ramp that builds the LONGER an orb has been chasing and bites hardest up
+                                // CLOSE, so a near orb doesn't dawdle — it accelerates in the last stretch.
+                                float d = Mathf.Sqrt(dist);
+                                float ramp = Mathf.Min(o.chaseT, 3f) / (0.5f + d);
+                                o.transform.position += disperseSpeeds[o.orbType] * Time.deltaTime * (2f + 2f * d + ramp) * (Vector3)dir.normalized;
                             }
+                            else o.chaseT = 0f;   // drifted out of range — reset the chase ramp
                         }
+                        else o.chaseT = 0f;
                     }
                     break;
                 case OrbScript.OrbState.collect:
@@ -145,11 +155,19 @@ public class OrbManager : MonoBehaviour
                     }
                     break;
                 case OrbScript.OrbState.deposit:
-                    float r = o.transform.localPosition.magnitude;
-                    r = Mathf.Lerp(r, 0f, Time.deltaTime * disperseSpeeds[o.orbType]);
-                    float radtheta = Mathf.Atan2(o.transform.localPosition.y, o.transform.localPosition.x);
-                    radtheta = Mathf.Lerp(radtheta, o.theta, Time.deltaTime * 0.3f * disperseSpeeds[o.orbType]);
-                    o.transform.localPosition = new Vector3(Mathf.Cos(radtheta) * r, Mathf.Sin(radtheta) * r);
+                    o.depT += Time.deltaTime / o.depDur;
+                    float t = Mathf.Clamp01(o.depT);
+                    float e = t * t * (3f - 2f * t);                       // smoothstep ease-in-out
+                    Vector3 s0 = o.depStart;                              // start (local to the pylon)
+                    // Straight eased travel along start -> pylon(0), plus a perpendicular wiggle. The
+                    // two harmonics are both zero at the ends and each crosses the axis, so the sideways
+                    // wander is balanced: a straight beam that snakes with random curves on the way in.
+                    Vector3 line = s0 * (1f - e);
+                    Vector3 perp = new Vector3(-s0.y, s0.x, 0f).normalized;
+                    float wig = o.depWig1 * Mathf.Sin(2f * Mathf.PI * t) + o.depWig2 * Mathf.Sin(3f * Mathf.PI * t);
+                    o.transform.localPosition = line + perp * wig;
+                    o.transform.localScale = Vector3.one * (1f + 0.28f * Mathf.Sin(t * Mathf.PI));  // swell, settle
+                    if (t >= 1f) { o.transform.localPosition = Vector3.zero; o.transform.localScale = Vector3.one; }
                     continue;
             }
         }
@@ -162,6 +180,14 @@ public class OrbManager : MonoBehaviour
             o.state = OrbScript.OrbState.follow;
             ResourceManager.instance.heldOrbs.Add(o);
             o.gameObject.SetActive(false);
+            // Auto-bank, but ONLY at base — never ship resources back to base while diving. In the
+            // dungeon the orb stays held on the player (deposited on portal return). At base, anything
+            // the bank has room for flows in right away; only overflow stays held. DropResources
+            // rebuilds heldOrbs and re-opens attraction, so collecting never stalls with space free.
+            if (PortalScript.i == null || !PortalScript.i.inDungeon)
+            {
+                ResourceManager.instance.DropResources(o.orbType);
+            }
         }
         else
         {

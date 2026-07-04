@@ -80,14 +80,18 @@ public class E1_7 : Unit
         Vector2 aim = MinePath.AimPoint(target, transform.position);   // wall targets: nearest span point
         Vector2 toT = aim - (Vector2)transform.position;
         float dist = toT.magnitude;
-        // spring onto the orbit ring + tangential drift around it
         Vector2 tang = new Vector2(-toT.y, toT.x).normalized * orbitSign;
-        Vector2 force = toT.normalized * Mathf.Clamp((dist - orbitRadius) * 0.05f, -0.09f, 0.09f) + tang * 0.065f;
+        // orbit behaviour (ring spring + tangential drift) only near the ring; far out it just
+        // closes in flat-out, else the shallow spiral reads as hanging back from the objective
+        float near = Mathf.Clamp01(1f - (dist - orbitRadius - 1f) / 2f);
+        Vector2 force = toT.normalized * Mathf.Lerp(0.09f, Mathf.Clamp((dist - orbitRadius) * 0.05f, -0.09f, 0.09f), near)
+                      + tang * (0.065f * near);
         // orbit only when the BODY has a clear line to the target (size-wide, not sight-wide) —
         // else drift down the pathfinding route (which may deliberately head INTO a chewable wall)
         if (!MinePath.LineOfSightWide(transform.position, aim, size) && pathDir != Vector2.zero)
         {
             force = pathDir * 0.09f;
+            near = 0f;
         }
         if (!sowing)
         {
@@ -101,7 +105,10 @@ public class E1_7 : Unit
                 {
                     orbitSign = -orbitSign;
                 }
-                AS.TryAddForce(tang.normalized * Random.Range(60f, 90f), false); // ~1.2-1.8 u/s dart
+                if (near > 0.5f) // jinks are an orbit habit — don't dart off-route while closing in
+                {
+                    AS.TryAddForce(tang.normalized * Random.Range(60f, 90f), false); // ~1.2-1.8 u/s dart
+                }
             }
             if (AS.rb.linearVelocity.sqrMagnitude > 0.01f)
             {

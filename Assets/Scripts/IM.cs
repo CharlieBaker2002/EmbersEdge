@@ -102,7 +102,7 @@ public class IM : MonoBehaviour //Input Manager
         {
             if (aimIfController && IM.controller)
             {
-                return (Vector2)cam.transform.position + CameraScript.i.correctScale * i.pi.Player.Aim.ReadValue<Vector2>();
+                return (Vector2)cam.transform.position + CameraScript.i.DimScale * i.pi.Player.Aim.ReadValue<Vector2>();
             }
             return cam.ScreenToWorldPoint(Mouse.current.position.ReadValue());
         }

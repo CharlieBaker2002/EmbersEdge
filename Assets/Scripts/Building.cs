@@ -115,7 +115,20 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         };
 
         spriterenderers = hasExtraParent ? transform.parent.GetComponentsInChildren<SpriteRenderer>(true) : GetComponentsInChildren<SpriteRenderer>(true);
-    
+
+        // Repair price: authored rebuildCost when set, else derived as HALF the build cost (the
+        // prefab's authored Task orb magnets, read before any runtime task adds its own). Never
+        // free — a zero cost would make ResourceManager.NewTask complete instantly and ghosts
+        // would auto-repair without orbs.
+        if (Mathf.Max(rebuildCost) == 0)
+        {
+            GameObject costRoot = hasExtraParent ? transform.parent.gameObject : gameObject;
+            foreach (OrbMagnet om in costRoot.GetComponents<OrbMagnet>())
+                if (om.typ == OrbMagnet.OrbType.Task && om.capacity > 0)
+                    rebuildCost[om.orbType] += Mathf.Max(1, Mathf.CeilToInt(om.capacity * 0.5f));
+            if (Mathf.Max(rebuildCost) == 0) rebuildCost[0] = 1;   // last resort: one white orb
+        }
+
 
         if (physic != null)
         {
@@ -239,8 +252,22 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     /// </summary>
     public void EnsurePathFootprintCurrent()
     {
-        if (!footprintRegistered) return;
-        if (CurrentWorldAnchor(out _) != regAnchor) RegisterPathFootprint();
+        if (!footprintRegistered)
+        {
+            // Registration can be MISSED entirely, not just stale: on scene load Building.Start
+            // races GridManager sizing itself (a coroutine) — RegisterPathFootprint early-returns
+            // and nothing retried, so every pre-placed wall was invisible to pathfinding for the
+            // whole session. Heal here on the seeding cadence. Ghosts (inactive physic) stay out.
+            if (builtYet && physic != null && !physic.hasDied && physic.gameObject.activeInHierarchy)
+                RegisterPathFootprint();
+            return;
+        }
+        if (CurrentWorldAnchor(out _) != regAnchor) { RegisterPathFootprint(); return; }
+        // A registration can also be HOLLOW: every cell shadowed by a stale session's leaked
+        // entries (domain reload is off), so we believe we're registered while the registry
+        // answers "open ground". Dead incumbents are stealable now — re-register to reclaim.
+        if (regAsWall && (!BaseBlockMap.TryGetWallCells(regWallLs, out List<Vector2Int> wcells, out _) || wcells.Count == 0))
+            RegisterPathFootprint();
     }
 
     public void UpdateUI()
@@ -298,6 +325,11 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
                 s.color = mode ? Color.white : GS.ColFromEra();
             }
         }
+        if (mode && sr != null)
+        {
+            LeanTween.cancel(sr.gameObject);   // kill any lingering ghost/repair tint tween
+            sr.color = Color.white;
+        }
         if (mode)
         {
             physic = Instantiate(Resources.Load<GameObject>(box?"Physic":"PhysicCircle"), transform.position, Quaternion.Euler(0f,0f,Random.Range(0f,360f)), transform).GetComponent<LifeScript>();
@@ -333,6 +365,8 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     public virtual void OnDestroy()
     {
         if(GS.qutting) return;
+        if (pendingRepair != null && SpawnManager.instance != null)
+            SpawnManager.instance.onWaveComplete -= pendingRepair;
         UnregisterPathFootprint();
         BDisable();
         GridManager.i.SetArea(anchorCell, gridSize, false);
@@ -399,7 +433,38 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             OnClose.Invoke();
         }
         SwitchMonos(false);
-        LoadWithEEs(1, true);
+        // Repairs need no ember shot any more: the ghost tints immediately and the orb rebuild
+        // task is queued for the END of the round — dead walls stay open while enemies remain.
+        sr.LeanSRColor(new Color(1f, 0.5f, 0.5f, 0.5f), 0.2f).setEaseOutCubic();
+        QueueRoundEndRepair();
+    }
+
+    // One-shot hook onto the wave-complete signal; deaths outside a wave repair immediately.
+    Action pendingRepair;
+
+    void QueueRoundEndRepair()
+    {
+        if (pendingRepair != null) return;
+        var sm = SpawnManager.instance;
+        if (sm == null || sm.waveCompleted || sm.dayState == SpawnManager.DayState.Day)
+        {
+            StartRepairTask();   // peaceful death — no round to wait out
+            return;
+        }
+        pendingRepair = () =>
+        {
+            sm.onWaveComplete -= pendingRepair;
+            pendingRepair = null;
+            if (this != null && repairing) StartRepairTask();
+        };
+        sm.onWaveComplete += pendingRepair;
+    }
+
+    void StartRepairTask()
+    {
+        if (!repairing) return;
+        repairing = false;
+        ResourceManager.instance.NewTask(gameObject, rebuildCost, () => SwitchMonos(true), false);
     }
 
     void BuildFirst()

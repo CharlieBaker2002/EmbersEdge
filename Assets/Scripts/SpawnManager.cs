@@ -98,7 +98,7 @@ public class SpawnManager : MonoBehaviour
         EmbersEdge.warmUpTime = 20f;
         day = 0;
         daySinceNewEra = 0;
-        OnNewDay += delegate {day++; daySinceNewEra++; Debug.Log("Day: " + day); UIManager.i.UpdateDayText(day);};
+        OnNewDay += delegate {day++; daySinceNewEra++; UIManager.i.UpdateDayText(day);};
         Random.InitState((int)System.DateTime.Now.Ticks);
         orbPools[0] = new ObjectPool<GameObject>(() =>
         {

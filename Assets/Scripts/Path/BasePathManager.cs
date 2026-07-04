@@ -25,6 +25,15 @@ using UnityEngine;
 ///
 /// Dog-pile variety comes from per-unit wander jitter (Unit.wanderEff) plus per-seed crowding
 /// penalties (targets already claimed by many enemies read as a few cells further away).
+///
+/// PER-UNIT coefficients over shared fields (Unit.crowdAversion, Unit.wallExploitIQ): a penalty
+/// baked into a shared field can't be rescaled per querier, so each biased lookup keeps a small
+/// set of ANCHOR views — the penalty baked at coefficient 0 (blind), 1 (baseline) and 3.5 (extremist)
+/// — and a unit's coefficient rescores the two bracketing anchors' candidates as
+/// walk + coeff × penalty, taking the better. Exact on any anchor, a tight two-real-candidate
+/// bracket in between; beyond 3.5 the top two anchors still rank correctly against each other.
+/// Anchor views are query-gated like everything else, so an all-default population (coeff 1
+/// everywhere) never builds or pays for the extra views.
 /// </summary>
 public class BasePathManager : MonoBehaviour
 {
@@ -33,29 +42,57 @@ public class BasePathManager : MonoBehaviour
     [Tooltip("Stop rebuilding a field this long after its last query.")]
     public float idleTimeout = 1.5f;
 
-    /// <summary>Dog-pile avoidance: penalize seeds by how many enemies already routed to them.</summary>
+    /// <summary>
+    /// Dog-pile avoidance: penalize seeds by how many enemies already routed to them. This is THE
+    /// swarm-vs-spread dial (wander is unrelated — it only picks chew-vs-detour). These knobs set
+    /// the WORLD's census; each unit scales its own reaction via Unit.crowdAversion. More swarming
+    /// = raise crowdDivisor / lower crowdMaxPenalty / crowding = false; more spreading = reverse.
+    /// </summary>
     public static bool crowding = true;
     /// <summary>+1 cell of seed cost per this many enemies already assigned to a target.</summary>
-    public static int crowdDivisor = 2;
-    public static int crowdMaxPenalty = 8;
+    public static int crowdDivisor = 4;
+    public static int crowdMaxPenalty = 3;
 
-    // One W/D pair per target class. Deliberately different rebuild periods so the classes drift
-    // out of phase instead of all rebuilding on the same frame.
+    enum Fam { All, Char, Bld }
+
+    // One W/D pair per VIEW: a target family × a baked crowd-penalty coefficient (its anchor).
+    // Deliberately different rebuild periods so live views drift out of phase instead of all
+    // rebuilding on the same frame.
     class TargetClass
     {
         public readonly MineFlowField W = new MineFlowField();   // walls chewable (through view)
         public readonly MineFlowField D = new MineFlowField();   // walls blocked (detour view)
         public readonly float interval;
+        public readonly float penCoeff;   // crowd penalty baked into seeds = round(penCoeff × base)
+        public readonly Fam fam;
         public float builtT = float.NegativeInfinity, queryT = float.NegativeInfinity;
-        public TargetClass(float intervalP) { interval = intervalP; }
+        // BASE (coefficient-1) crowd penalty per owner this rebuild — lets decide-time rescoring
+        // un-bake the view's own coefficient and re-apply the unit's: walk + aversion × base
+        public readonly Dictionary<Transform, int> penApplied = new Dictionary<Transform, int>();
+        public TargetClass(float intervalP, float penCoeffP, Fam famP)
+        { interval = intervalP; penCoeff = penCoeffP; fam = famP; }
     }
 
-    readonly TargetClass all = new TargetClass(0.15f);
-    readonly TargetClass character = new TargetClass(0.17f);
-    readonly TargetClass buildingsC = new TargetClass(0.19f);
-    readonly MineFlowField toWalls = new MineFlowField();     // walls blocked; wall cells are the seeds
+    // Wall-hunting views: seeds are the wall cells themselves, handicapped by remaining HP at the
+    // view's anchor coefficient (0 = pure nearest, 1 = valued like the chew router, 3 = weakness
+    // hunter). Shares the walls-blocked grid; steering never chews.
+    class WallView
+    {
+        public readonly MineFlowField F = new MineFlowField();
+        public readonly float hCoeff;
+        public float builtT = float.NegativeInfinity, queryT = float.NegativeInfinity;
+        public WallView(float c) { hCoeff = c; }
+    }
+
+    // anchor views per family, indexed 0 → coeff 0 (blind), 1 → coeff 1 (baseline), 2 → coeff 3.5.
+    // character is census-free (single seed), so one view fills all three slots.
+    TargetClass[] allViews;
+    TargetClass[] charViews;
+    TargetClass[] buildingViews;
+    WallView[] wallViews;
+
     readonly MineFlowField toEnemies = new MineFlowField();   // walls blocked
-    float builtWallsT = float.NegativeInfinity, queryWallsT = float.NegativeInfinity;
+    readonly Dictionary<Transform, int> wallPen = new Dictionary<Transform, int>();  // base HP handicap per wall
     float builtEnemyT = float.NegativeInfinity, queryEnemyT = float.NegativeInfinity;
     const float WallsInterval = 0.23f, EnemiesInterval = 0.21f;
 
@@ -74,6 +111,21 @@ public class BasePathManager : MonoBehaviour
     void Awake()
     {
         if (i == null) i = this;
+        allViews = new[]
+        {
+            new TargetClass(0.16f, 0f, Fam.All),
+            new TargetClass(0.15f, 1f, Fam.All),
+            new TargetClass(0.18f, 3.5f, Fam.All),
+        };
+        var ch = new TargetClass(0.17f, 1f, Fam.Char);
+        charViews = new[] { ch, ch, ch };
+        buildingViews = new[]
+        {
+            new TargetClass(0.2f, 0f, Fam.Bld),
+            new TargetClass(0.19f, 1f, Fam.Bld),
+            new TargetClass(0.22f, 3.5f, Fam.Bld),
+        };
+        wallViews = new[] { new WallView(0f), new WallView(1f), new WallView(3.5f) };
         MapManager.OnUpdateMap += BasePathGrid.InvalidateMapCache;
     }
 
@@ -96,9 +148,10 @@ public class BasePathManager : MonoBehaviour
     /// direction steers into its face. dir == zero means arrived (or boxed in) — approach the
     /// target directly. False = position off-grid or nothing reachable at all.
     /// </summary>
-    public static bool Decide(Vector2 pos, float wander, bool preferCharacter, bool preferBuildings,
-        bool preferWalls, out Transform target, out Vector2 dir)
-        => Choose(pos, wander, preferCharacter, preferBuildings, preferWalls, out target, out dir, out _, out _);
+    public static bool Decide(Vector2 pos, float wander, float crowdAversion, float wallExploitIQ,
+        bool preferCharacter, bool preferBuildings, bool preferWalls, out Transform target, out Vector2 dir)
+        => Choose(pos, wander, crowdAversion, wallExploitIQ, preferCharacter, preferBuildings, preferWalls,
+            out target, out dir, out _, out _);
 
     /// <summary>
     /// <see cref="Decide"/> plus WHICH field won and the evaluation position it was read at —
@@ -107,8 +160,9 @@ public class BasePathManager : MonoBehaviour
     /// to their nearest in-rect cell so newborns still pick their true best target by preference;
     /// their dir then marches them at that entry point until the grid governs them.
     /// </summary>
-    public static bool Choose(Vector2 pos, float wander, bool preferCharacter, bool preferBuildings,
-        bool preferWalls, out Transform target, out Vector2 dir, out MineFlowField field, out Vector2 evalPos)
+    public static bool Choose(Vector2 pos, float wander, float crowdAversion, float wallExploitIQ,
+        bool preferCharacter, bool preferBuildings, bool preferWalls,
+        out Transform target, out Vector2 dir, out MineFlowField field, out Vector2 evalPos)
     {
         target = null;
         dir = Vector2.zero;
@@ -117,12 +171,12 @@ public class BasePathManager : MonoBehaviour
         if (!Ready) return false;
         var m = Ensure();
         bool offGrid = BasePathGrid.ClampToGrid(pos, out evalPos);
-        int bestEff = int.MaxValue;
+        float bestEff = float.MaxValue;
         bool any = false;
-        if (preferCharacter) any |= m.EvalClass(m.character, evalPos, wander, ref bestEff, ref target, ref dir, ref field);
-        if (preferBuildings) any |= m.EvalClass(m.buildingsC, evalPos, wander, ref bestEff, ref target, ref dir, ref field);
-        if (preferWalls) any |= m.EvalWalls(evalPos, ref bestEff, ref target, ref dir, ref field);
-        if (!any) any = m.EvalClass(m.all, evalPos, wander, ref bestEff, ref target, ref dir, ref field);
+        if (preferCharacter) any |= m.EvalClass(m.charViews, evalPos, wander, crowdAversion, ref bestEff, ref target, ref dir, ref field);
+        if (preferBuildings) any |= m.EvalClass(m.buildingViews, evalPos, wander, crowdAversion, ref bestEff, ref target, ref dir, ref field);
+        if (preferWalls) any |= m.EvalWalls(evalPos, wallExploitIQ, ref bestEff, ref target, ref dir, ref field);
+        if (!any) any = m.EvalClass(m.allViews, evalPos, wander, crowdAversion, ref bestEff, ref target, ref dir, ref field);
         if (!any || target == null) return false;
         if (offGrid)
         {
@@ -132,9 +186,57 @@ public class BasePathManager : MonoBehaviour
         return true;
     }
 
-    // Evaluate one class as a candidate answer; claims the ref slots only when it beats bestEff.
-    bool EvalClass(TargetClass tc, Vector2 pos, float wander, ref int bestEff, ref Transform target, ref Vector2 dir, ref MineFlowField field)
+    // The two anchor views bracketing this coefficient. Exact on an anchor (second view dropped);
+    // beyond the top anchor the top two still rank correctly against each other. Single-view
+    // families (character) collapse to one evaluation.
+    static void PickViews(TargetClass[] views, float c, out TargetClass v1, out TargetClass v2)
     {
+        if (c <= 0.001f) { v1 = views[0]; v2 = null; return; }
+        if (c <= 1f) { v1 = views[1]; v2 = Mathf.Approximately(c, 1f) ? null : views[0]; }
+        else if (c <= 3.5f) { v1 = views[2]; v2 = Mathf.Approximately(c, 3.5f) ? null : views[1]; }
+        else { v1 = views[2]; v2 = views[1]; }
+        if (v2 == v1) v2 = null;
+    }
+
+    // Evaluate one class as a candidate answer; claims the ref slots only when it beats bestEff.
+    // Each bracketing anchor view yields a real candidate (target + route from its own field),
+    // rescored as walk + aversion × penalty; the unit adopts the better one wholesale — nothing
+    // is ever interpolated into a position or target that doesn't exist.
+    bool EvalClass(TargetClass[] views, Vector2 pos, float wander, float aversion,
+        ref float bestEff, ref Transform target, ref Vector2 dir, ref MineFlowField field)
+    {
+        PickViews(views, aversion, out TargetClass v1, out TargetClass v2);
+        if (!EvalScored(v1, pos, wander, aversion, out Transform t1, out float s1, out Vector2 d1, out MineFlowField f1))
+            return false;   // identical seeds & reachability across views — none can succeed if this failed
+        // second anchor only matters when something is actually crowded
+        if (v2 != null && v1.penApplied.Count > 0 &&
+            EvalScored(v2, pos, wander, aversion, out Transform t2, out float s2, out Vector2 d2, out MineFlowField f2) &&
+            s2 < s1)
+        { t1 = t2; s1 = s2; d1 = d2; f1 = f2; }
+        if (s1 >= bestEff) return false;
+        bestEff = s1; target = t1; dir = d1; field = f1;
+        return true;
+    }
+
+    // One view's candidate, rescored under the unit's own coefficient: un-bake the view's baked
+    // penalty (walk = eff - round(viewCoeff × basePen)) and re-apply at the unit's strength.
+    bool EvalScored(TargetClass tc, Vector2 pos, float wander, float aversion,
+        out Transform tgt, out float score, out Vector2 sd, out MineFlowField f)
+    {
+        score = float.MaxValue;
+        if (!EvalVariant(tc, pos, wander, out Transform own, out tgt, out int eff, out sd, out f)) return false;
+        int pen = PenOf(tc, own);
+        score = eff - Mathf.RoundToInt(tc.penCoeff * pen) + aversion * pen;
+        return true;
+    }
+
+    // One view of one class: the wander decision picks chew-vs-detour, and the answer comes back
+    // as (seed owner, attack target, effective distance, steering, winning field). Target differs
+    // from owner only in the chew case, where the gate wall is what actually gets attacked.
+    bool EvalVariant(TargetClass tc, Vector2 pos, float wander,
+        out Transform owner, out Transform target, out int eff, out Vector2 dir, out MineFlowField field)
+    {
+        owner = null; target = null; eff = -1; dir = Vector2.zero; field = null;
         Touch(tc);
         int dW = tc.W.DistanceCells(pos);
         int dD = tc.D.DistanceCells(pos);
@@ -142,35 +244,125 @@ public class BasePathManager : MonoBehaviour
         // route exists (sealed in, or standing ON a wall cell mid-chew — free hysteresis) -> chew
         if (dD >= 0 && dW >= 0 && dD <= wander * dW)
         {
-            if (dD >= bestEff) return false;
-            if (!tc.D.TryGetNearestSeed(pos, out Transform o, out _) || o == null) return false;
-            tc.D.TryGetStepDir(pos, out Vector2 sd);
-            bestEff = dD; target = o; dir = sd; field = tc.D;
+            if (!tc.D.TryGetNearestSeed(pos, out owner, out _) || owner == null) return false;
+            target = owner;
+            tc.D.TryGetStepDir(pos, out dir);
+            eff = dD; field = tc.D;
             return true;
         }
         // chew (or no wall intervenes): the first wall on the route is the target — ranged enemies
         // volley the wall they're breaking instead of chasing a ghost behind it
-        if (dW < 0 || dW >= bestEff) return false;
-        Transform tgt = tc.W.TryGetGate(pos, out LifeScript wall)
-            ? wall.transform
-            : (tc.W.TryGetNearestSeed(pos, out Transform o2, out _) ? o2 : null);
-        if (tgt == null) return false;
-        tc.W.TryGetStepDir(pos, out Vector2 sd2);
-        bestEff = dW; target = tgt; dir = sd2; field = tc.W;
+        if (dW < 0) return false;
+        tc.W.TryGetNearestSeed(pos, out owner, out _);
+        // RULER CANDIDATE — what makes low wander CONTINUOUS instead of a cliff at 0: the straight
+        // line to the owner is priced as EUCLIDEAN length plus the grid's surcharges, with the
+        // unit's wander discounting the chew part: rulerWalk + wander × rulerChew vs dW. The
+        // euclidean base is deliberate: the field's 4-connected metric prices a diagonal and the
+        // staircase AROUND a wall end identically, so a walk-vs-walk comparison would call the
+        // detour free and diagonal attackers would never chew (they'd orbit the wall tip). Pricing
+        // the line at what it truly measures gives straightness an inherent edge that chew cost
+        // (× wander) must beat — at 0 the line always wins: dead straight at the target, attacking
+        // the first wall geometrically in the way. At wander ≥ 1 the ruler isn't considered at
+        // all (the field is the sanctioned optimum), keeping default units untouched; near the
+        // seam the two only disagree when a wall's remaining chew is smaller than the staircase
+        // slack, where both routes chew the same dying wall anyway.
+        if (wander < 1f && owner != null &&
+            RulerRoute(pos, owner.position, out float rWalk, out float rChew, out LifeScript sWall) &&
+            rWalk + Mathf.Max(wander, 0f) * rChew < dW)
+        {
+            target = sWall != null ? sWall.transform : owner;
+            Vector2 aim = owner.position;
+            if (sWall != null) BaseBlockMap.TryGetNearestWallPoint(sWall, pos, out aim);
+            Vector2 dv = aim - pos;
+            if (dv.sqrMagnitude > 1e-4f) dir = dv.normalized;
+            eff = dW; field = tc.W;   // class scoring stays on the field snapshot — the ruler only replaces steering + gate
+            return true;
+        }
+        target = tc.W.TryGetGate(pos, out LifeScript wall) ? wall.transform : owner;
+        if (target == null) return false;
+        tc.W.TryGetStepDir(pos, out dir);
+        eff = dW; field = tc.W;
         return true;
     }
 
-    // The walls class: nearest wall span cell is the destination itself (siege units).
-    bool EvalWalls(Vector2 pos, ref int bestEff, ref Transform target, ref Vector2 dir, ref MineFlowField field)
+    // The straight segment a→b priced for the ruler-vs-field comparison: walk = EUCLIDEAN length
+    // in cell units (a straight line's true cost — the 4-metric would price diagonals ~1.4× dearer
+    // and make around-the-end staircases read as free) plus the ground surcharges of crossed cells
+    // (aperture/padding/off-map premiums, EnterCost - 1); chew = the wall surcharge of wall and
+    // filled-crack cells, with the first such wall coming back as the gate. Ends on b's cell — or,
+    // target's-own-mass style (the LineOfSight solid-tail rule), by staying solid from first solid
+    // contact to b. Solid-then-passable means an unchewable building stands in the way: no ruler
+    // route (false).
+    static bool RulerRoute(Vector2 a, Vector2 b, out float walk, out float chew, out LifeScript firstWall)
     {
-        queryWallsT = Time.time;
-        if (Time.time - builtWallsT > WallsInterval) RebuildWalls();
-        int d = toWalls.DistanceCells(pos);
-        if (d < 0 || d >= bestEff) return false;
-        if (!toWalls.TryGetNearestSeed(pos, out Transform o, out _) || o == null) return false;
-        toWalls.TryGetStepDir(pos, out Vector2 sd);
-        bestEff = d; target = o; dir = sd; field = toWalls;
+        chew = 0f; firstWall = null;
+        var g = BasePathGrid.chewable;
+        float cs = g.CellSize;
+        walk = (b - a).magnitude / cs;
+        Vector3Int c = g.WorldToCell(a), cEnd = g.WorldToCell(b);
+        int c0 = g.EnterCost(c);   // the querier's own cell surcharge, as the field pays it
+        if (c0 != PathGrid.BLOCKED) { if (g.WallIdAt(c) >= 0) chew += c0 - 1; else walk += c0 - 1; }
+        if (c == cEnd) return true;
+        Vector2 d = b - a;
+        int stepX = d.x > 0f ? 1 : -1, stepY = d.y > 0f ? 1 : -1;
+        Vector2 cellMin = new Vector2(c.x * cs, c.y * cs);
+        float tMaxX = d.x != 0f ? (((d.x > 0f ? cellMin.x + cs : cellMin.x) - a.x) / d.x) : float.PositiveInfinity;
+        float tMaxY = d.y != 0f ? (((d.y > 0f ? cellMin.y + cs : cellMin.y) - a.y) / d.y) : float.PositiveInfinity;
+        float tDeltaX = d.x != 0f ? cs / Mathf.Abs(d.x) : float.PositiveInfinity;
+        float tDeltaY = d.y != 0f ? cs / Mathf.Abs(d.y) : float.PositiveInfinity;
+        bool solidRun = false;
+        int guard = 4096;
+        while (guard-- > 0)
+        {
+            if (tMaxX < tMaxY) { tMaxX += tDeltaX; c.x += stepX; }
+            else               { tMaxY += tDeltaY; c.y += stepY; }
+            if (c == cEnd) return true;   // arrived — the end cell is the seed, never paid for
+            int cost = g.EnterCost(c);
+            if (cost == PathGrid.BLOCKED) { solidRun = true; continue; }   // possibly the target's own hull
+            if (solidRun) return false;   // solid then passable — something unchewable blocks the line
+            int wallId = g.WallIdAt(c);
+            if (wallId >= 0)
+            {
+                chew += cost - 1;
+                if (firstWall == null) BaseBlockMap.TryGetWallBySlot(wallId, out firstWall, out _);
+            }
+            else walk += cost - 1;
+        }
+        return false;
+    }
+
+    static int PenOf(TargetClass tc, Transform owner)
+        => owner != null && tc.penApplied.TryGetValue(owner, out int p) ? p : 0;
+
+    // The walls class: nearest wall span cell is the destination itself (siege units). iq rescales
+    // how strongly a wall's remaining HP attracts, via the same anchor-view bracketing.
+    bool EvalWalls(Vector2 pos, float iq, ref float bestEff, ref Transform target, ref Vector2 dir, ref MineFlowField field)
+    {
+        WallView w1, w2;
+        if (iq <= 0.001f) { w1 = wallViews[0]; w2 = null; }
+        else if (iq <= 1f) { w1 = wallViews[1]; w2 = Mathf.Approximately(iq, 1f) ? null : wallViews[0]; }
+        else if (iq <= 3.5f) { w1 = wallViews[2]; w2 = Mathf.Approximately(iq, 3.5f) ? null : wallViews[1]; }
+        else { w1 = wallViews[2]; w2 = wallViews[1]; }
+        float sBest = float.MaxValue;
+        Transform o = null;
+        MineFlowField f = null;
+        ScoreWallView(w1, pos, iq, ref sBest, ref o, ref f);
+        if (w2 != null) ScoreWallView(w2, pos, iq, ref sBest, ref o, ref f);
+        if (o == null || sBest >= bestEff) return false;
+        f.TryGetStepDir(pos, out Vector2 sd);
+        bestEff = sBest; target = o; dir = sd; field = f;
         return true;
+    }
+
+    void ScoreWallView(WallView v, Vector2 pos, float iq, ref float sBest, ref Transform o, ref MineFlowField f)
+    {
+        v.queryT = Time.time;
+        if (Time.time - v.builtT > WallsInterval) RebuildWallView(v);
+        int d = v.F.DistanceCells(pos);
+        if (d < 0 || !v.F.TryGetNearestSeed(pos, out Transform ow, out _) || ow == null) return;
+        int h = wallPen.TryGetValue(ow, out int hh) ? hh : 0;
+        float s = d - Mathf.RoundToInt(v.hCoeff * h) + iq * h;
+        if (s < sBest) { sBest = s; o = ow; f = v.F; }
     }
 
     // ------------------------------------------------------------------ steering-only API
@@ -185,12 +377,13 @@ public class BasePathManager : MonoBehaviour
         dir = Vector2.zero;
         if (!Ready) return false;
         var m = Ensure();
-        m.Touch(m.all);
+        var all = m.allViews[1];   // baseline view
+        m.Touch(all);
         bool offGrid = BasePathGrid.ClampToGrid(pos, out Vector2 evalPos);
-        int dW = m.all.W.DistanceCells(evalPos);
-        int dD = m.all.D.DistanceCells(evalPos);
+        int dW = all.W.DistanceCells(evalPos);
+        int dD = all.D.DistanceCells(evalPos);
         bool detour = dD >= 0 && dW >= 0 && dD <= wander * dW;
-        if (!(detour ? m.all.D : m.all.W).TryGetStepDir(evalPos, out dir)) return false;
+        if (!(detour ? all.D : all.W).TryGetStepDir(evalPos, out dir)) return false;
         if (offGrid)
         {
             Vector2 d = evalPos - pos;
@@ -233,10 +426,17 @@ public class BasePathManager : MonoBehaviour
     {
         if (!Ready) return;
         float now = Time.time;
-        MaybeRebuild(all, now);
-        MaybeRebuild(character, now);
-        MaybeRebuild(buildingsC, now);
-        if (now - queryWallsT < idleTimeout && now - builtWallsT > WallsInterval) RebuildWalls();
+        for (int k = 0; k < 3; k++)
+        {
+            MaybeRebuild(allViews[k], now);
+            MaybeRebuild(buildingViews[k], now);
+        }
+        MaybeRebuild(charViews[0], now);
+        for (int k = 0; k < wallViews.Length; k++)
+        {
+            var v = wallViews[k];
+            if (now - v.queryT < idleTimeout && now - v.builtT > WallsInterval) RebuildWallView(v);
+        }
         if (now - queryEnemyT < idleTimeout && now - builtEnemyT > EnemiesInterval) RebuildEnemies();
     }
 
@@ -247,15 +447,17 @@ public class BasePathManager : MonoBehaviour
 
     void RebuildClass(TargetClass tc)
     {
-        bool incChar = tc == all || tc == character;
-        bool incUnits = tc == all;
-        bool incBuildings = tc == all || tc == buildingsC;
+        bool incChar = tc.fam != Fam.Bld;
+        bool incUnits = tc.fam == Fam.All;
+        bool incBuildings = tc.fam != Fam.Char;
 
-        // crowding census against the class's OLD W field, before reseeding: how many enemies are
-        // currently routed to each owner? Their seed reads as a few cells further this rebuild.
+        // crowding census against the view's OWN old W field, before reseeding: how many enemies
+        // are currently routed to each owner? Every view censuses (its base penalties feed the
+        // decide-time rescoring) but bakes round(penCoeff × base) into the seeds — 0 for blind.
         // (Pointless for the single-seed character class — every route shifts equally.)
         crowd.Clear();
-        if (crowding && tc != character && tc.W.IsBuilt)
+        tc.penApplied.Clear();
+        if (crowding && tc.fam != Fam.Char && tc.W.IsBuilt)
         {
             var enemies = GS.FindParent(GS.Parent.enemies);
             if (enemies != null)
@@ -273,7 +475,7 @@ public class BasePathManager : MonoBehaviour
 
         if (incChar && CharacterScript.CS != null && PathZone.AtBase(CharacterScript.CS.transform.position))
             seedScratch.Add(new MineFlowField.Seed(CharacterScript.CS.transform.position,
-                CrowdCost(CharacterScript.CS.transform), CharacterScript.CS.transform));
+                SeedCost(tc, CharacterScript.CS.transform), CharacterScript.CS.transform));
 
         if (incUnits)
         {
@@ -283,7 +485,7 @@ public class BasePathManager : MonoBehaviour
                 {
                     var ch = allies.GetChild(k);
                     if (ch.gameObject.activeInHierarchy)
-                        seedScratch.Add(new MineFlowField.Seed(ch.position, CrowdCost(ch), ch));
+                        seedScratch.Add(new MineFlowField.Seed(ch.position, SeedCost(tc, ch), ch));
                 }
         }
 
@@ -301,7 +503,7 @@ public class BasePathManager : MonoBehaviour
                 if (bld == null || !bld.gameObject.activeInHierarchy) continue;
                 bld.EnsurePathFootprintCurrent();   // moved / stale-frame registrations re-anchor here
                 if (!bld.TryGetPathFootprint(out Vector2Int anchor, out Vector2Int cells)) continue;
-                int cost = CrowdCost(bld.transform);
+                int cost = SeedCost(tc, bld.transform, Mathf.Max(1, (cells.x + cells.y) / 2));
                 for (int x = 0; x < cells.x; x++)
                     for (int y = 0; y < cells.y; y++)
                         seedScratch.Add(new MineFlowField.Seed(
@@ -314,14 +516,31 @@ public class BasePathManager : MonoBehaviour
         tc.D.Rebuild(BasePathGrid.blocked, seedScratch);   // identical seeds, one collection pass
     }
 
-    int CrowdCost(Transform t)
+    // capacity ~ side length (half-perimeter of the footprint): a bigger hull hosts proportionally
+    // more attackers before its seeds start reading further away. Player/ally units = 1.
+    int CrowdCost(Transform t, int capacity = 1)
         => crowding && t != null && crowd.TryGetValue(t, out int n)
-            ? Mathf.Min(crowdMaxPenalty, n / Mathf.Max(1, crowdDivisor)) : 0;
+            ? Mathf.Min(crowdMaxPenalty, n / Mathf.Max(1, crowdDivisor * capacity)) : 0;
 
-    void RebuildWalls()
+    // seed cost for this owner in this rebuild: the BASE penalty is recorded per owner (for
+    // decide-time rescoring) and the view's anchor coefficient is what actually gets baked
+    int SeedCost(TargetClass tc, Transform t, int capacity = 1)
     {
-        builtWallsT = Time.time;
+        int c = CrowdCost(t, capacity);
+        if (c <= 0) return 0;
+        tc.penApplied[t] = c;
+        return Mathf.RoundToInt(tc.penCoeff * c);
+    }
+
+    // Wall-hunting view: every live wall's span cells seed at round(hCoeff × handicap), where the
+    // handicap prices remaining HP exactly like the chew router (hp × costPerHp × registered mult)
+    // — so damaged walls attract wall-hunters from proportionally further away. Base handicaps are
+    // recorded per wall for decide-time rescoring.
+    void RebuildWallView(WallView v)
+    {
+        v.builtT = Time.time;
         seedScratch.Clear();
+        wallPen.Clear();
         float cs = BaseBlockMap.CellSize;
         var owners = BaseBlockMap.WallOwners;
         for (int w = 0; w < owners.Count; w++)
@@ -329,11 +548,22 @@ public class BasePathManager : MonoBehaviour
             var ls = owners[w];
             if (ls == null || ls.hasDied) continue;
             if (!BaseBlockMap.TryGetWallCells(ls, out List<Vector2Int> cells, out Transform tf)) continue;
+            BaseBlockMap.TryGetWallBySlot(w, out _, out float mult);
+            int h = Mathf.Clamp(Mathf.CeilToInt(ls.hp * BasePathGrid.costPerHp * mult), 0, 63);
+            // cavity-edge walls read as weaker: HP-weighted wall-hunters join the widening effort
+            for (int k = 0; k < cells.Count; k++)
+                if (BasePathGrid.IsCavityEdge(cells[k]))
+                {
+                    h = Mathf.CeilToInt(h * BasePathGrid.breachEdgeChewMult);
+                    break;
+                }
+            wallPen[tf] = h;
+            int baked = Mathf.RoundToInt(v.hCoeff * h);
             for (int k = 0; k < cells.Count; k++)
                 seedScratch.Add(new MineFlowField.Seed(
-                    new Vector2((cells[k].x + 0.5f) * cs, (cells[k].y + 0.5f) * cs), 0, tf));
+                    new Vector2((cells[k].x + 0.5f) * cs, (cells[k].y + 0.5f) * cs), baked, tf));
         }
-        toWalls.Rebuild(BasePathGrid.blocked, seedScratch);
+        v.F.Rebuild(BasePathGrid.blocked, seedScratch);
     }
 
     void RebuildEnemies()

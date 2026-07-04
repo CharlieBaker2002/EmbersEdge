@@ -41,6 +41,7 @@ public class ResourceManager : MonoBehaviour
     public Sprite[] shieldRegenSprites;
     private float shieldAnimTimer = 0f;
     private int shieldAnimInd = 0;
+    private float autoBankTimer = 0f;
     
     private void Awake()
     {
@@ -136,6 +137,23 @@ public class ResourceManager : MonoBehaviour
 
     private void Update()
     {
+        // Auto-bank held orbs the moment the bank has room — no portal touch or fresh pickup
+        // needed. Covers space that opens up while at base (spending on builds, a new pylon
+        // raising capacity): held orbs on the player flow into the pylon on their own. Never while
+        // diving, though — dungeon hauls ride on the player until the portal home.
+        autoBankTimer -= Time.deltaTime;
+        if (autoBankTimer <= 0f)
+        {
+            autoBankTimer = 0.25f;
+            if (heldOrbs.Count > 0 && (PortalScript.i == null || !PortalScript.i.inDungeon))
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    if (held[i] > 0 && orbs[i] < orbCaps[i]) { DropResources(); break; }
+                }
+            }
+        }
+
         energy = EnergyPart.energies.Sum(x => x.energy);
         fuel = EnergyPart.fuels.Sum(x => x.energy);
         energySlider.UpdateSlider(energy);

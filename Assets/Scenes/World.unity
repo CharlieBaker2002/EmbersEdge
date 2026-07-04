@@ -5067,8 +5067,8 @@ Transform:
   - {fileID: 1692510400}
   - {fileID: 321278174}
   - {fileID: 1184484308}
-  - {fileID: 132109072}
   - {fileID: 489841281}
+  - {fileID: 132109072}
   - {fileID: 1789819616}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -9996,8 +9996,11 @@ MonoBehaviour:
   iconPlacer: {x: 0, y: 0.4, z: 0}
   stati: []
   statVulnerability: 1
+  size: 0.4
   wander: 1.5
   wanderEff: 1.5
+  wallExploitIQ: 1
+  crowdAversion: 1
   preferCharacter: 0
   preferBuildings: 0
   preferWalls: 0
@@ -16628,7 +16631,7 @@ MonoBehaviour:
   floorSortingOrder: -1
   lightColor: {r: 1, g: 1, b: 1, a: 1}
   lightIntensity: 0.85
-  wallPadding: 300
+  wallPadding: 2.5
   lightRebuildInterval: 0.12
   hardnessNoiseScale: 0.12
   depthHardness: 0.32
@@ -17448,7 +17451,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   character: {fileID: 463123316}
   cam: {fileID: 0}
-  correctScale: 4
+  correctScaleBase: 6
+  correctScaleDungeon: 4
   locked: 0
   noMove: 0
   v: {fileID: 2095639061}
@@ -17496,7 +17500,7 @@ Camera:
   far clip plane: 20
   field of view: 60
   orthographic: 1
-  orthographic size: 4
+  orthographic size: 6
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -35775,7 +35779,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 879c3d0ae92cc4c7f9773b0d875c136a, type: 2}
   - {fileID: 11400000, guid: 879c3d0ae92cc4c7f9773b0d875c136a, type: 2}
   - {fileID: 11400000, guid: 879c3d0ae92cc4c7f9773b0d875c136a, type: 2}
-  - {fileID: 11400000, guid: 676256ca5880a49ea85a31a56f8b0a09, type: 2}
+  - {fileID: 11400000, guid: ed61f6ebd03f24a0580cbb4b6cd6a69a, type: 2}
   - {fileID: 11400000, guid: c27b9124e98a4f108310539510f4952a, type: 2}
   - {fileID: 11400000, guid: f5efd766fd11b4c67a17e530b4c2c06d, type: 2}
   - {fileID: 11400000, guid: 2814788f9283494fb8bf84a7316f92f8, type: 2}

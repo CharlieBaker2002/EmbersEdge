@@ -596,6 +596,15 @@ public class MapManager : MonoBehaviour
         if (dungeonTex == null)
             dungeonTex = new RenderTexture(1024, 1024, 16) { name = "DungeonMinimapRT" };
 
+        // The map RawImage samples the RT bilinearly, so the RGB of EMPTY (alpha-0) texels bleeds into
+        // the map silhouette. The scene camera clears to white/alpha-0, which paints a ~1-texel white
+        // outline around the dungeon boundary. Clear to black so the blend is invisible.
+        if (cams != null && cams.Length > 1 && cams[1] != null)
+        {
+            cams[1].clearFlags = CameraClearFlags.SolidColor;
+            cams[1].backgroundColor = new Color(0f, 0f, 0f, 0f);
+        }
+
         // Fix SpriteMask sorting layer range (back layer ID was orphaned after Unity 6 upgrade)
         sr.backSortingLayerID = SortingLayer.NameToID("Corruption");
         sr.backSortingOrder = -1000;
@@ -1392,7 +1401,7 @@ public class MapManager : MonoBehaviour
         // Settle the camera back on the player and restore normal control (the no-return-to-dungeon tail).
         CameraScript.i.locked = true;
         UIManager.i.FadeInCanvas();
-        CameraScript.ZoomPermanent(CameraScript.i.correctScale, 0.01f);
+        CameraScript.ZoomPermanent(CameraScript.i.DimScale, 0.01f);
         CameraScript.i.StartCoroutine(CameraScript.i.ReturnToPlayer());
         PortalScript.i.QuickOffSlider();
         yield return new WaitForSeconds(0.5f);
@@ -1441,7 +1450,7 @@ public class MapManager : MonoBehaviour
             yield return new WaitForSeconds(2.5f);
             CameraScript.i.locked = true;
             PortalScript.goingToDungeon = true;
-            yield return StartCoroutine(CameraScript.i.DiveThrough(GS.CS().position,CameraScript.i.correctScale,true));
+            yield return StartCoroutine(CameraScript.i.DiveThrough(GS.CS().position,CameraScript.i.DimScale,true));
             if (id != 0 || SetM.quickTransition)
             {
                 SpawnManager.instance.CancelTS(id);
@@ -1452,7 +1461,7 @@ public class MapManager : MonoBehaviour
         {
             CameraScript.i.locked = true;
             UIManager.i.FadeInCanvas();
-            CameraScript.ZoomPermanent(CameraScript.i.correctScale,0.01f);
+            CameraScript.ZoomPermanent(CameraScript.i.DimScale,0.01f);
         }
         CameraScript.i.StartCoroutine(CameraScript.i.ReturnToPlayer());
         PortalScript.i.QuickOffSlider();

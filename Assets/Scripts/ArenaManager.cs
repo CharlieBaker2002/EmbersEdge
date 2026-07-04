@@ -103,7 +103,7 @@ public class ArenaManager : MonoBehaviour
         {
             MechaSuit.MakeHappy();
             CameraScript.i.StopShake();
-            CameraScript.ZoomPermanent(CameraScript.i.correctScale,0.02f);
+            CameraScript.ZoomPermanent(CameraScript.i.DimScale,0.02f);
         }
         yield return new WaitForSeconds(2f);
         if (current.rewards.Length > 0)

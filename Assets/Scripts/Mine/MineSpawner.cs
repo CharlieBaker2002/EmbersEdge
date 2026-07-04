@@ -15,7 +15,8 @@ using UnityEngine;
 /// </summary>
 public class MineSpawner : MonoBehaviour, IOnDeath
 {
-    const float WAKE_MAX = 30f;       // armed plans fire 0..this many seconds after arrival
+    const float WAKE_MIN = 5f;        // ...but never in the first few seconds — give the player a beat
+    const float WAKE_MAX = 30f;       // armed plans fire WAKE_MIN..this many seconds after arrival
     const float ACTIVE_POLL = 0.5f;   // seconds between excavation-distance checks
 
     MineSpawnerTemplate template;
@@ -98,7 +99,7 @@ public class MineSpawner : MonoBehaviour, IOnDeath
     }
 
     /// <summary>Teleported into the dungeon (or a new day rolled mid-dive): if the dig is ALREADY
-    /// within range, today's plan fires at a random 0–30s. Digging into range later does not count.</summary>
+    /// within range, today's plan fires at a random 5–30s. Digging into range later does not count.</summary>
     public void OnEnterDungeon()
     {
         if (ranToday || armed || running != null || template == null) return;
@@ -106,7 +107,7 @@ public class MineSpawner : MonoBehaviour, IOnDeath
         if (MineField.i == null ||
             !MineField.i.AnyExcavatedWithin(transform.position, template.activationRange)) return;
         armed = true;
-        wake = Random.Range(0f, WAKE_MAX);
+        wake = Random.Range(WAKE_MIN, WAKE_MAX);
     }
 
     /// <summary>Teleported back to base: dungeon time freezes, so an armed-but-unfired or mid-run plan

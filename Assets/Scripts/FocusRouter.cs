@@ -75,13 +75,9 @@ public class FocusRouter : MonoBehaviour
         // A transient aiming mode (e.g. Force Field "Move Field") owns the cursor — don't dispatch.
         if (Suppressed) return;
 
-        // While a building is being placed, the click belongs to placement only. Otherwise the
-        // router (which runs on Interact.started, before BM's TryPlace on .performed) would select
-        // or click an existing building under the cursor, masking the place — most noticeable when
-        // dropping a building right next to others.
-        if (BM.i != null && BM.i.planting) return;
+        bool planting = BM.i != null && BM.i.planting;
 
-        if (IM.controller && !TutorialManager.tutorial)
+        if (!planting && IM.controller && !TutorialManager.tutorial)
         {
             if (!IM.i.CActive())
             {
@@ -106,6 +102,14 @@ public class FocusRouter : MonoBehaviour
                 }
             }
         }
+
+        // From here on the click is a world click. While a building is being placed, that click
+        // belongs to placement only — BM's TryPlace runs on Interact.performed, just after this
+        // (Interact.started) handler. Dispatching a world IClickable here would select or click an
+        // existing building under the cursor, masking the place (most noticeable when dropping a
+        // building right next to others). UI clicks above are still honoured, so the build menu's
+        // Back arrow works mid-placement — clicking it cancels planting before TryPlace fires.
+        if (planting) return;
 
         // World — 2D physics raycast. Coincident 2D hits have no stable order, so a cable's
         // EdgeCollider2D (CableLink) — which starts at its pylon and shares the pylon's layer —

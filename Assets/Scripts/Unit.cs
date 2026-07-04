@@ -24,9 +24,13 @@ public class Unit : MonoBehaviour, IClickable
 
     [Tooltip("Body radius (circle approximation) for pathing: straight-line shortcuts are only taken when a corridor this wide is clear, so units stop grinding into cracks their bodies can't fit through.")]
     public float size = 0.4f;
-    [Tooltip("Wall-detour willingness at the base: detour when detourDist <= wander × throughDist. 1 = go around whenever any route exists, 0 = always chew straight through, higher = detour further before resorting to chewing. Jittered per-instance into wanderEff.")]
+    [Tooltip("Wall-detour willingness at the base: detour when detourDist <= wander × throughDist. 1 = go around whenever any route exists, higher = detour further before resorting to chewing. Below 1 the chew route itself also straightens CONTINUOUSLY: chew time is discounted by this factor when routing, so ever-lower values ignore soft-wall shortcuts more, until 0 walks a dead-straight line and attacks the first wall geometrically in the way. Jittered per-instance into wanderEff.")]
     public float wander = 1.5f;
     [HideInInspector] public float wanderEff = 1.5f;
+    [Tooltip("How much damaged walls attract this unit when walls are its goal (preferWalls): 0 = nearest wall regardless of damage, 1 = weigh remaining HP exactly like the chew router does, higher = detour further to hit nearly-dead walls.")]
+    public float wallExploitIQ = 1f;
+    [Tooltip("Anti-grouping influence: how strongly the crowding census repels this unit from targets already under attack. 0 = happily piles on regardless, 1 = standard, 10 = HATES attacking anything already swarmed.")]
+    public float crowdAversion = 1f;
     [Tooltip("Target-class priority at the base (absolute): when set, this unit hunts the nearest member of its preferred class(es) and ignores closer non-preferred targets, falling back to nearest-anything only when nothing preferred is reachable. Multiple flags = nearest among those classes. Wander still applies: obstructed with a low wander → the wall on the route becomes the target regardless of preference.")]
     public bool preferCharacter = false;
     public bool preferBuildings = false;

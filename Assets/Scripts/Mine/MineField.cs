@@ -477,10 +477,6 @@ public class MineField : MonoBehaviour
         // 5. reveal the entry and build the initial frontier shell
         FloodExplore(layout.entryCell);
         RebuildDungeonLight();     // light the entry cavity immediately (FloodExplore marked it dirty)
-
-        Debug.Log($"[MineField] built {w}x{h} cells; entry cavity at {layout.entryCell}. " +
-                  $"Collision on layer '{LayerMask.LayerToName(collisionMap.gameObject.layer)}'. Frontier colliders " +
-                  $"ring the OPEN space only — the player must start INSIDE the entry cavity (red tiles when Debug Show Colliders is on).");
     }
 
     void EnsureSetup()
@@ -720,7 +716,10 @@ public class MineField : MonoBehaviour
                 voidCount++;
                 continue;
             }
-            floor[k] = RandomFloorTile();   // floor lies UNDER everything (walls + pockets); revealed as cells are mined
+            // floor only under OPEN cells — SetFloor paints it the moment a wall is mined / a pocket
+            // breached. Pre-painting it under every wall left unlit-bright floor edges peeking past the
+            // fog at the boundary ring (the jagged outline artifact on the minimap).
+            if (!data[k].IsSolid) floor[k] = RandomFloorTile();
             if (data[k].IsSolid)
             {
                 // Base wall look = the cell's own hardness (NOT random).
@@ -838,7 +837,12 @@ public class MineField : MonoBehaviour
     {
         for (int y = rect.yMin; y < rect.yMax; y++)
             for (int x = rect.xMin; x < rect.xMax; x++)
-                renderMap.SetTile(new Vector3Int(x, y, 0), null);
+            {
+                var c = new Vector3Int(x, y, 0);
+                renderMap.SetTile(c, null);
+                // keep floor visible around the spawner PNG (walls no longer carry pre-painted floor)
+                if (floorMap.GetTile(c) == null) floorMap.SetTile(c, RandomFloorTile());
+            }
     }
 
     // The Dome-Keeper-style hardness roll: a Perlin score (two octaves — big veins + rough edges),
@@ -1063,6 +1067,9 @@ public class MineField : MonoBehaviour
         return cellsChipped > 0;
     }
 
+    // Orbs granted per broken ore cell, by element index (0 white, 1 green, 2 blue, 3 red).
+    static readonly int[] OreYield = { 12, 6, 3, 1 };
+
     /// <summary>Grind <paramref name="amount"/> MILLISECONDS of contact off a cell's remaining
     /// excavation time; break it (and drop ore) when it reaches 0. Returns 1 if it broke.</summary>
     public int ChipCell(Vector3Int cell, int amount)
@@ -1089,8 +1096,9 @@ public class MineField : MonoBehaviour
         int orb = data[idx].ore;   // -1 = no ore; else orb index
         if (orb >= 0)
         {
+            // Per-element yield: rarer elements (higher index) drop fewer per ore.
             var drop = new int[4];
-            drop[orb] = 1;
+            drop[orb] = OreYield[orb];
             GS.CallSpawnOrbs(grid.GetCellCenterWorld(cell), drop);
         }
 
@@ -1196,15 +1204,11 @@ public class MineField : MonoBehaviour
     // re-clearing). Used by real breaches (OpenPocket) and the showPockets cheat alike.
     void ClearPocketCellsBatch(List<int> pids)
     {
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        long tCollect, tData, tMaps, tFog, tFrontier;
-
         var cells = new List<Vector3Int>(256);
         foreach (int pi in pids)
             foreach (var cell in pocketCells[pi])
                 if (InBounds(cell)) cells.Add(cell);
         if (cells.Count == 0) return;
-        tCollect = sw.ElapsedMilliseconds;
 
         // flat data writes + light registration — no engine calls in this loop
         foreach (var cell in cells)
@@ -1218,16 +1222,18 @@ public class MineField : MonoBehaviour
             if (floorGlow) litCells.Add(new Vector2Int(cell.x, cell.y));
         }
         if (floorGlow) lightDirty = true;
-        tData = sw.ElapsedMilliseconds;
 
         // one batched clear per map
         var arr = cells.ToArray();
         var nulls = new TileBase[arr.Length];
+        var floorTiles = new TileBase[arr.Length];
+        for (int k = 0; k < arr.Length; k++)
+            floorTiles[k] = floorMap.GetTile(arr[k]) ?? RandomFloorTile();
+        floorMap.SetTiles(arr, floorTiles);   // cells become open here — give them their floor
         renderMap.SetTiles(arr, nulls);
         if (oreOverlayMaps != null)
             for (int e = 0; e < oreOverlayMaps.Length; e++) oreOverlayMaps[e].SetTiles(arr, nulls);
         collisionMap.SetTiles(arr, nulls);
-        tMaps = sw.ElapsedMilliseconds;
 
         // fog: the cavity dilated by the reveal radius (== wallPadding), grown as a RING-BFS on the mark
         // grid — cost scales with the AREA actually touched, never with wallPadding² per cell (a
@@ -1295,7 +1301,6 @@ public class MineField : MonoBehaviour
                 fogMap.SetTilesBlock(new BoundsInt(xMin + bx0, yMin + by0, 0, bw, bh, 1), block);
             }
         }
-        tFog = sw.ElapsedMilliseconds;
 
         // frontier: solid neighbours of the new cavity become collision frontier, deduped the same way
         markVersion++;
@@ -1316,11 +1321,6 @@ public class MineField : MonoBehaviour
             for (int k = 0; k < ft.Length; k++) ft[k] = collisionTile;
             collisionMap.SetTiles(frontier.ToArray(), ft);
         }
-        tFrontier = sw.ElapsedMilliseconds;
-
-        Debug.Log($"[RevealTiming] batched-v4(bfsfog) pockets={pids.Count} cells={arr.Length} fog={fogged} frontier={frontier.Count} | " +
-                  $"collect={tCollect}ms data={tData - tCollect}ms setTiles={tMaps - tData}ms " +
-                  $"fog={tFog - tMaps}ms frontier={tFrontier - tFog}ms TOTAL={tFrontier}ms");
     }
 
     // =====================================================================================
@@ -1335,10 +1335,11 @@ public class MineField : MonoBehaviour
     //  the excavated shape — identical no matter the order or timing of how it was mined.
     // =====================================================================================
 
-    // The floor tile itself is already painted under every cell by PaintAllBlocks (revealed as walls are
-    // mined); this just registers the cell as excavated so the light cookie covers it.
+    // Paints the floor under a cell the moment it becomes open (PaintAllBlocks only pre-paints floor
+    // under cells that START open) and registers it as excavated so the light cookie covers it.
     void SetFloor(Vector3Int cell)
     {
+        if (floorMap.GetTile(cell) == null) floorMap.SetTile(cell, RandomFloorTile());
         if (!floorGlow) return;
         litCells.Add(new Vector2Int(cell.x, cell.y));   // this cell now belongs to the lit outline
         lightDirty = true;

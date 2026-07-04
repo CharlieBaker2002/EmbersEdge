@@ -418,14 +418,14 @@ public class MechaSuit : MonoBehaviour
     {
         m.sr.sprite = m.happysad[0];
         lastlife = false;
-        CameraScript.i.correctScale = 4f;
+        CameraScript.ZoomPermanent(CameraScript.i.DimScale, 0.02f, false);   // zoom back to this dimension's normal, not a hardcoded 4
     }
 
     public static void MakeSad()
     {
         m.sr.sprite = m.happysad[1];
         lastlife = true;
-        CameraScript.ZoomPermanent(2.5f, 0.02f);
+        CameraScript.ZoomPermanent(2.5f, 0.02f, false);   // temporary last-life zoom; don't redefine normal
     }
 
     public void RotatePowered(Transform t)

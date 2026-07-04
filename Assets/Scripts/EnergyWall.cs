@@ -101,10 +101,16 @@ public class EnergyWall : MonoBehaviour, IOnCollide
     // crowds chew a shared bar together, so pricing every cell at the full bar wildly overstates
     // the cost of going through — register well below the per-block Wall's 1.0.
     public static float chewCostMult = 0.3f;
+    /// <summary>Extra rings of path cells around the rastered centerline (1 = 3 cells thick, ends
+    /// extended 1 cell). The physical capsule has real width + rounded caps — a bare 1-cell line
+    /// lets routes thread past it where bodies can't actually fit.</summary>
+    public static int pathInflateCells = 1;
     private void RegisterPathCells()
     {
         if (ls != null && shapePts != null && PathZone.AtBase(transform.position))
-            BaseBlockMap.RegisterWallPath(ls, shapePts, chewCostMult);
+            // crossing the inflated span traverses ~(1+2r) wall cells instead of 1 — divide the
+            // per-cell mult back down so the total chew price of going through stays calibrated
+            BaseBlockMap.RegisterWallPath(ls, shapePts, chewCostMult / (1 + 2 * pathInflateCells), pathInflateCells);
     }
 
     private void OnDestroy() => BaseBlockMap.UnregisterWall(ls);

@@ -748,7 +748,7 @@ public class CharacterScript : Unit
         GS.AS.interactive = true;
         respawnText.text = "";
         MechaSuit.MakeHappy();
-        CameraScript.ZoomPermanent(CameraScript.i.correctScale,0.01f);
+        CameraScript.ZoomPermanent(CameraScript.i.DimScale,0.01f);
     }
 
     protected override void PlaceStats()

@@ -232,6 +232,15 @@ MonoBehaviour:
   iconPlacer: {x: 0, y: 0.3, z: 0}
   stati: []
   statVulnerability: 2
+  size: 0.4
+  wander: 0
+  wanderEff: 1.5
+  wallExploitIQ: 1
+  crowdAversion: 1
+  preferCharacter: 0
+  preferBuildings: 0
+  preferWalls: 0
+  target: {fileID: 0}
   defaultActRate: 1
   actRate: 1
   juggernaut: 0

@@ -40,6 +40,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &5300000000002003
 SpriteRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -55,6 +56,11 @@ SpriteRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -76,9 +82,11 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 899417529
   m_SortingLayer: 8
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_Sprite: {fileID: 2880043553756803692, guid: 386da02136e6491a8ea6bd560cd715f9, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -88,7 +96,6 @@ SpriteRenderer:
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
-  m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!114 &5300000000002004
 MonoBehaviour:
@@ -110,7 +117,7 @@ MonoBehaviour:
   spark: {fileID: 5300000000001001, guid: 4c6f18a2d93e47b5a01d8e3f7c25b907, type: 3}
   glow: {fileID: 5300000000002011}
   armTime: 2.8
-  sparkCount: 4
+  sparkCount: 12
 --- !u!114 &5300000000002005
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -129,7 +136,8 @@ MonoBehaviour:
   sharpness: 0
   hitRate: 1.25
   hardness: 1
-  shockResistanceCoef: 1
+  ramBaseSpeed: 1.5
+  ramSelfRecoil: 0.5
   dragCoef: 0.9
   PS: {fileID: 0}
   onCollides: []
@@ -143,6 +151,7 @@ MonoBehaviour:
   velCap: 1
   rooted: 1
   wall: 0
+  building: 0
   ignoreWalls: 0
   convertProjectiles: 0
   absorbProjectiles: 0
@@ -174,7 +183,7 @@ MonoBehaviour:
   bloodHold: {fileID: 0}
   isCharacter: 0
   hasDied: 0
-  dodging: 0
+  invulnerable: 0
   animateBeforeDie: 0
   orbSpawnPlace: {fileID: 0}
   dmgsrs: []
@@ -188,6 +197,7 @@ CircleCollider2D:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5300000000002001}
   m_Enabled: 1
+  serializedVersion: 3
   m_Density: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -211,13 +221,13 @@ CircleCollider2D:
     m_Bits: 4294967295
   m_IsTrigger: 0
   m_UsedByEffector: 0
-  m_UsedByComposite: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  serializedVersion: 2
   m_Radius: 0.11
 --- !u!50 &5300000000002008
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -228,8 +238,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 1
   m_UseAutoMass: 0
   m_Mass: 1
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -286,14 +296,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 073797afb82c5a1438f328866b10b3f0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_ComponentVersion: 1
+  m_ComponentVersion: 2
   m_LightType: 2
   m_BlendStyleIndex: 0
   m_FalloffIntensity: 0.5
   m_Color: {r: 1, g: 0.78, b: 0.45, a: 1}
   m_Intensity: 0.25
   m_LightVolumeIntensity: 1
-  m_LightVolumeIntensityEnabled: 0
+  m_LightVolumeEnabled: 0
   m_ApplyToSortingLayers: 00000000c3f6f8bed3182e633535f038b9059c35b94e3c0519396211bf7a45e7
   m_LightCookieSprite: {fileID: 2880043553756803692, guid: 386da02136e6491a8ea6bd560cd715f9, type: 3}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
@@ -303,8 +313,10 @@ MonoBehaviour:
   m_NormalMapDistance: 3
   m_NormalMapQuality: 2
   m_UseNormalMap: 0
-  m_ShadowIntensityEnabled: 0
+  m_ShadowsEnabled: 0
   m_ShadowIntensity: 0.75
+  m_ShadowSoftness: 0
+  m_ShadowSoftnessFalloffIntensity: 0.5
   m_ShadowVolumeIntensityEnabled: 0
   m_ShadowVolumeIntensity: 0.75
   m_LocalBounds:

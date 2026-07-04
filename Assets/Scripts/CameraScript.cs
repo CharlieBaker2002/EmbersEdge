@@ -10,7 +10,11 @@ public class CameraScript : MonoBehaviour
 {
     public Transform character;
     public Camera cam;
-    public float correctScale = 4f;
+    // The standing "normal" zoom, kept SEPARATELY per dimension so base and dungeon can each have
+    // their own. Set by permanent zooms so a chosen scale STICKS per dimension. The single active
+    // scale is DimScale (whichever matches the current dimension) — there is no separate correctScale.
+    public float correctScaleBase = 4f;
+    public float correctScaleDungeon = 4f;
     public bool locked = true;
     //private bool isZooming = false;
     private Vector2 direction;
@@ -77,7 +81,7 @@ public class CameraScript : MonoBehaviour
             transform.position = Vector3.zero;
             locked = true;
             DM.finishDungeon = true;
-            cam.orthographicSize = correctScale;
+            cam.orthographicSize = DimScale;
         }
         
         direction = new Vector2();
@@ -121,13 +125,13 @@ public class CameraScript : MonoBehaviour
         float dir = reverse ? -1f : 1f;
         for (float i = 0f; i < duration; i += Time.deltaTime)
         {
-            cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, correctScale + scaleUp, Time.deltaTime * 6f/duration * i);
+            cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, DimScale + scaleUp, Time.deltaTime * 6f/duration * i);
             //transform.rotation = Quaternion.Euler(dir * i * i * 90f / Mathf.Pow(duration, 2), 0f, dir * Mathf.SmoothStep(0f,180f,i/duration));
             transform.rotation = Quaternion.Euler(dir * i * i * 90f / Mathf.Pow(duration, 2), 0f, 0f);
             yield return null;
         }
         transform.position = new Vector3(p.x, p.y, -10f);
-        cam.orthographicSize = correctScale + scaleUp;
+        cam.orthographicSize = DimScale + scaleUp;
         PortalScript.i.MakeSpawnFX(GS.CS().position);
         for (float i = duration; i > duration * 0.4f; i -= Time.deltaTime)
         {
@@ -140,15 +144,16 @@ public class CameraScript : MonoBehaviour
         {
             //CameraScript.i.transform.rotation = Quaternion.Euler(dir * i * i * 90f / Mathf.Pow(duration, 2), 0f, dir * i * i * 90f / Mathf.Pow(duration, 2));
             CameraScript.i.transform.rotation = Quaternion.Euler(-dir * i * i * 90f / Mathf.Pow(duration, 2), 0f,0f);
-            cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, CameraScript.i.correctScale, Time.deltaTime * 6f/duration * (duration - (i + duration * 0.6f)));
+            cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, CameraScript.i.DimScale, Time.deltaTime * 6f/duration * (duration - (i + duration * 0.6f)));
             yield return null;
         }
         DistortLens(false, false, true);
         for (float i = duration * 0.6f; i > 0f; i -= Time.deltaTime)
         {
-            cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, CameraScript.i.correctScale, Time.deltaTime * 6f/duration * (duration - i));
+            cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, CameraScript.i.DimScale, Time.deltaTime * 6f/duration * (duration - i));
             yield return null;
         }
+        cam.orthographicSize = CameraScript.i.DimScale;   // snap exact — the lerps above are asymptotic (left ~6.11 instead of 6)
         yield return new WaitForSeconds(0.25f);
         StartCoroutine(ReturnToPlayer());
         yield return new WaitForSeconds(2f);
@@ -307,7 +312,7 @@ public class CameraScript : MonoBehaviour
     /// <param name="t2"> lerp coef2</param>
     public Coroutine StartTemporaryZoom(float multiplier, float delay, float t1, float t2)
     {
-        return StartCoroutine(TemporaryZoom(correctScale * multiplier, delay, t1, t2));
+        return StartCoroutine(TemporaryZoom(DimScale * multiplier, delay, t1, t2));
     }
     
     public Coroutine StartTemporaryZoomRegular(float val, float delay, float t1, float t2)
@@ -333,21 +338,34 @@ public class CameraScript : MonoBehaviour
     {
         yield return StartCoroutine(Zoom(scale, false, t1));
         yield return new WaitForSeconds(delay);
-        yield return StartCoroutine(Zoom(correctScale, false, t2));
+        yield return StartCoroutine(Zoom(DimScale, false, t2));
     }
 
-    public static void ZoomPermanent(float scale, float tValue)
+    /// <summary>The standing zoom for whichever dimension we're currently in — THE single active scale.</summary>
+    public float DimScale => (PortalScript.i != null && PortalScript.i.inDungeon) ? correctScaleDungeon : correctScaleBase;
+
+    /// <summary>Re-settle the camera onto the current dimension's standing zoom (e.g. right after a
+    /// teleport flips dimension, so the size lands on the correct per-dimension scale).</summary>
+    public void ApplyDimensionScale() => ZoomPermanent(DimScale, 0.02f, false);
+
+    /// <summary>Zoom to a scale and make it the standing scale. <paramref name="updateBase"/> also
+    /// records it as the new "normal" for the CURRENT dimension (returned to after shakes/teleports) —
+    /// pass false for a TEMPORARY permanent-style zoom (e.g. last-life) that shouldn't redefine normal.</summary>
+    public static void ZoomPermanent(float scale, float tValue, bool updateBase = true)
     {
+        if (updateBase)
+        {
+            if (PortalScript.i != null && PortalScript.i.inDungeon) i.correctScaleDungeon = scale;
+            else i.correctScaleBase = scale;
+        }
         i.StartCoroutine(i.Zoom(scale, true, tValue));
     }
 
     IEnumerator Zoom(float scale, bool permanent, float tvalue)
     {
+        // NOTE: the per-dimension standing scale is recorded by ZoomPermanent (into correctScaleBase/
+        // correctScaleDungeon) before this runs — Zoom itself just drives the orthographic size.
         tvalue *= 100;
-        if (permanent)
-        {
-            correctScale = scale;
-        }
         float currentScale = cam.orthographicSize;
         if(scale > currentScale)
         {
@@ -357,7 +375,6 @@ public class CameraScript : MonoBehaviour
                 cam.orthographicSize = currentScale;
                 yield return null;
             }
-            //cam.orthographicSize = scale;
         }
         else
         {
@@ -367,8 +384,8 @@ public class CameraScript : MonoBehaviour
                 cam.orthographicSize = currentScale;
                 yield return null;
             }
-            //cam.orthographicSize = scale;
         }
+        cam.orthographicSize = scale;   // snap exact — the loop stops ~1% short (this was the 6.11-not-6 drift)
     }
 
     public IEnumerator GoTo(Vector2 p)
@@ -468,7 +485,7 @@ public class CameraScript : MonoBehaviour
 
     public void StopShake()
     {
-        correctScale = 4f;
+        ZoomPermanent(DimScale, 0.02f, false);   // re-settle to this dimension's standing zoom
         LeanTween.cancel(gameObject);
         shakeStrength = 0f;
         redWarning.color = new Color(0f, 0f, 0f, 0f);

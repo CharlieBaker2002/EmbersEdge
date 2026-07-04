@@ -173,6 +173,26 @@ public class EnergyPad : Building, IEnergyAccumulator
         base.OnClick();
     }
 
+    /// <summary>Buildings ghost-tint reddish while awaiting repair, which makes the pad's battery
+    /// housing (and the batteries sitting in it) read as dead-red. A pad/hub is a passive store, so
+    /// give it a neutral "powered-down" dim instead: cancel the base's red tint tween on the body and
+    /// keep the slotted batteries at their normal colour.</summary>
+    public override void OnDeath()
+    {
+        base.OnDeath();
+        if (sr != null)
+        {
+            LeanTween.cancel(sr.gameObject);   // kill the reddish ghost tween base just started
+            sr.color = new Color(0.55f, 0.55f, 0.55f, 0.6f);
+        }
+        foreach (var b in slots)
+        {
+            if (b == null || b.sr == null) continue;
+            LeanTween.cancel(b.sr.gameObject);
+            b.sr.color = Color.white;
+        }
+    }
+
     public void UnslotBattery(Battery b)
     {
         if (b == null) return;

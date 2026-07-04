@@ -33,32 +33,51 @@ public class E2_4 : Unit, IRoomUnit
     {
         yield return null;
         yield return null;
-        if (bounds == null)
+        // steer at the roam point when the body fits the straight line, else ride the field
+        void Steer(Vector3 point, Vector2 pathDir)
         {
-            bounds  = GS.bounds;
-            goTo = Vector3.zero;
+            Vector2 dir = ((Vector2)(point - transform.position)).normalized;
+            if (!MinePath.LineOfSightWide(transform.position, point, size) && pathDir != Vector2.zero)
+            {
+                dir = pathDir;
+            }
+            AS.rb.linearVelocity = Vector3.Lerp(AS.rb.linearVelocity, 4f * actRate * dir, 0.5f);
         }
         while (true)
         {
             for(int i = Random.Range(0,3); i < 3; i++)
             {
-                if (col.bounds.Intersects(bounds.bounds))
+                MinePathManager.Decide(this, out Vector2 pathDir);
+                if (target == null)
                 {
+                    // nothing to fight anywhere — aimless drift
                     AS.rb.linearVelocity = Vector3.Lerp(AS.rb.linearVelocity,2f * actRate * Random.Range(1f, 1.5f) * Random.insideUnitCircle.normalized, 0.5f);
                     yield return new WaitForSeconds(1f);
                     AS.Stop();
                 }
                 else
                 {
-                    Vector3 point = goTo + GS.RandCircle(1, 4);
-                    AS.rb.linearVelocity = Vector3.Lerp(AS.rb.linearVelocity, 4f * actRate * (Vector2)(point - transform.position).normalized, 0.5f);
-                    while ((transform.position - point).sqrMagnitude > 1)
+                    // unanchored: flit between points in a wide band around the current objective
+                    Vector3 point = target.position + GS.RandCircle(2f, 7f);
+                    Steer(point, pathDir);
+                    float guard = 5f;    // roam points can be inside geometry — give up rather than grind
+                    float steerT = 0.4f;
+                    while ((transform.position - point).sqrMagnitude > 1 && guard > 0f)
                     {
                         yield return new WaitForFixedUpdate();
-                        if(Random.Range(0,100) == 0)
+                        guard -= Time.fixedDeltaTime;
+                        steerT -= Time.fixedDeltaTime;
+                        if(Random.Range(0,100) == 0 && target != null)
                         {
-                            point = goTo + GS.RandCircle(1, 4);
-                            AS.rb.linearVelocity = Vector3.Lerp(AS.rb.linearVelocity,4f * actRate * (Vector2)(point - transform.position).normalized, 0.5f);
+                            point = target.position + GS.RandCircle(2f, 7f);
+                            steerT = 0f;
+                        }
+                        if (steerT <= 0f)
+                        {
+                            steerT = 0.4f;
+                            MinePathManager.Decide(this, out pathDir);
+                            if (target == null) break;
+                            Steer(point, pathDir);
                         }
                     }
                 }

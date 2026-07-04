@@ -487,8 +487,6 @@ public class EnergyManager : MonoBehaviour
         {
             return; // no ember to transfer
         }
-        Debug.Log(starts.Count);
-        Debug.Log(ends.Count);
         List<List<EmberConnector>> paths = CalculateShortestRoutes(starts,ends); //for each start, find the shortest path to each end, returns a list ordered by shortest distance (evaluating inter-connector distance sums)
         // foreach(List<EmberConnector> path in paths)
         // {

@@ -733,8 +733,8 @@ public class MinePathManager : MonoBehaviour
 
         if (PathZone.AtBase(pos))
         {
-            if (BasePathManager.Decide(pos, u.wanderEff, u.preferCharacter, u.preferBuildings,
-                    u.preferWalls, out Transform tgt, out dir))
+            if (BasePathManager.Decide(pos, u.wanderEff, u.crowdAversion, u.wallExploitIQ,
+                    u.preferCharacter, u.preferBuildings, u.preferWalls, out Transform tgt, out dir))
             {
                 u.target = tgt;
                 return true;
@@ -791,8 +791,8 @@ public class MinePathManager : MonoBehaviour
 
         if (PathZone.AtBase(pos))
         {
-            BasePathManager.Choose(pos, u.wanderEff, u.preferCharacter, u.preferBuildings,
-                u.preferWalls, out tgt, out _, out field, out evalPos);
+            BasePathManager.Choose(pos, u.wanderEff, u.crowdAversion, u.wallExploitIQ,
+                u.preferCharacter, u.preferBuildings, u.preferWalls, out tgt, out _, out field, out evalPos);
         }
         else if (DungeonReady && i != null)
         {

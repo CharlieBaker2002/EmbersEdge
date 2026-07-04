@@ -13,7 +13,10 @@ public class TestScript : MonoBehaviour
     {
         foreach(Transform t in GS.FindEnemies(tag, transform.position, 10f, false))
         {
-            GS.Stat(t.GetComponent<Unit>(), "static", 1f);
+            // FindEnemies hands back collider transforms — the Unit can live on the rigidbody/parent,
+            // so resolve upward and skip anything without one (else GS.Stat NREs on a null unit).
+            var u = t.GetComponentInParent<Unit>();
+            if (u != null) GS.Stat(u, "static", 1f);
         }
     }
 }

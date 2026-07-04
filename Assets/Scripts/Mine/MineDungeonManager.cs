@@ -391,6 +391,10 @@ public class MineDungeonManager : MonoBehaviour
         int minR = entryClear + 4;
         maxR = Mathf.Max(minR, maxR);
 
+        // Smallest-footprint-first fallback pool used to make up points from any pocket that fails to place.
+        var bySize = new List<PocketTemplate>(nonBoss);
+        bySize.Sort((a, b) => (a.width * a.height).CompareTo(b.width * b.height));
+
         for (int idx = 0; idx < chosen.Count; idx++)
         {
             var inst = chosen[idx];
@@ -408,6 +412,8 @@ public class MineDungeonManager : MonoBehaviour
             else
             {
                 Debug.LogWarning($"MineDungeonManager: could not place pocket '{inst.template.name}' ({pw}x{ph}); skipped.");
+                pointsUsed -= inst.normalizedPoints;   // its points were never actually spent
+                MakeUpLostPoints(em, era, bySize, inst.normalizedPoints, targetR, W, H, entryClear, budget, ref pointsUsed, result);
             }
         }
 
@@ -466,6 +472,46 @@ public class MineDungeonManager : MonoBehaviour
     {
         var c = p.CentreCell;   // entry cavity is at the origin
         return c.x * (float)c.x + c.y * (float)c.y;
+    }
+
+    // A pocket that failed to fit gets its point value backfilled with smaller pocket(s) instead, so a
+    // skip doesn't just silently shrink the dungeon's content below budget. Tries the smallest-footprint
+    // templates first (best odds of actually fitting the gap), cycling the pool until the lost points are
+    // recovered or a generous attempt cap is hit (leftover space may simply be too fragmented to fill).
+    void MakeUpLostPoints(EraMine em, int era, List<PocketTemplate> bySize, float lostPoints, int targetR,
+                          int W, int H, int entryClear, float budget, ref float pointsUsed, List<PocketInstance> result)
+    {
+        if (bySize.Count == 0 || lostPoints <= 0f) return;
+
+        float recovered = 0f;
+        int placedCount = 0;
+        int attempts = 0, maxAttempts = bySize.Count * 3;
+        int i = 0;
+        while (recovered < lostPoints && attempts++ < maxAttempts)
+        {
+            var template = bySize[i % bySize.Count]; i++;
+            var inst = MakeInst(template);
+            ApplyCombisAndBudget(em, era, inst, budget, ref pointsUsed);
+            int pw = Mathf.Max(2, inst.template.width);
+            int ph = Mathf.Max(2, inst.template.height);
+
+            if (TryPlaceRing(inst, pw, ph, targetR, W, H, entryClear, result) ||
+                ScanPlace(inst, pw, ph, W, H, entryClear, result))
+            {
+                result.Add(inst);
+                recovered += inst.normalizedPoints;
+                placedCount++;
+            }
+            else
+            {
+                pointsUsed -= inst.normalizedPoints;   // this substitute didn't fit either; points not spent
+            }
+        }
+
+        if (placedCount > 0)
+            Debug.Log($"MineDungeonManager: backfilled {recovered:0}/{lostPoints:0} lost points with {placedCount} smaller pocket(s).");
+        else
+            Debug.LogWarning($"MineDungeonManager: could not backfill any of the {lostPoints:0} lost points — no smaller pocket fit either.");
     }
 
     // Remove one random enemy placement from a pocket; returns its point cost (0 if it had none).

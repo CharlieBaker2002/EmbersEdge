@@ -38,7 +38,7 @@ public class E1_1 : Unit
     
     private void Awake()
     {
-        attackRange = Random.Range(1.25f, 4f);
+        attackRange = Random.Range(1.25f, 2.5f);
         anim = GetComponent<Animator>();
         AS = GetComponent<ActionScript>();
         if (!transform.InDungeon())
@@ -68,23 +68,27 @@ public class E1_1 : Unit
                 approach = pathDir;
             }
             qSave = transform.rotation;
-            transform.up = losToTarget ? (aimPos - (Vector2)transform.position) : approach;
+            // Always face the current objective — the thing MinePath chose to go for (a building we're
+            // detouring toward, or a wall we've switched to chewing), NOT the way we happen to be
+            // stepping around obstacles. So while moving it stares down its ultimate target, and the
+            // instant that target becomes a wall it looks there instead.
+            transform.up = aimPos - (Vector2)transform.position;
             transform.rotation = Quaternion.Euler(0, 0, transform.rotation.eulerAngles.z);
             transform.rotation = Quaternion.Lerp(qSave, transform.rotation, 0.05f * actRate);
             float dist = DistToTarget();
             if (dist > attackRange || !losToTarget)
             {
-                AS.TryAddForce(actRate * 0.04f * (7f - 0.5f * attackRange) * approach, true);
+                AS.TryAddForce(actRate * 0.1f * (7f - 0.5f * attackRange) * approach, true);
             }
             else
             {
                 if (canRetreat)
                 {
-                    AS.TryAddForce(actRate * -0.07f * (4.5f - attackRange) * (aimPos - (Vector2)transform.position).normalized, true);
+                    AS.TryAddForce(actRate * -0.1f * (4.5f - attackRange) * (aimPos - (Vector2)transform.position).normalized, true);
                 }
                 else
                 {
-                    AS.TryAddForce(actRate * -0.02f * (aimPos - (Vector2)transform.position).normalized, true);
+                    AS.TryAddForce(actRate * -0.04f * (aimPos - (Vector2)transform.position).normalized, true);
                 }
             }
         }
@@ -92,7 +96,7 @@ public class E1_1 : Unit
         if(timer < 0f)
         {
             timer = 1f;
-            if (target != null && DistToTarget() < attackRange + 1f && losToTarget)
+            if (target != null && DistToTarget() < attackRange && losToTarget)
             {
                 canRetreat = false;
                 anim.SetBool("Trigger", true);
