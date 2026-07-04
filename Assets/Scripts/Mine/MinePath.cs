@@ -726,6 +726,10 @@ public class MinePathManager : MonoBehaviour
     /// targetless (something is returned while any ally-side thing lives) and reprioritise by
     /// themselves (a closer thing simply becomes the answer). At the base the wander decision
     /// applies per class: obstructed and unwilling to detour → the wall on the route IS the target.
+    /// Phase-walkers (<see cref="Unit.PhasesWalls"/> — immaterial, or about to be) skip the base
+    /// fields entirely: straight line at the nearest candidate, walls never returned as targets
+    /// (preferWalls still hunts them); only an immaterial wall (Force Field) refuses the line.
+    /// In the dungeon phasing changes nothing — ore blocks immaterial bodies like everything else.
     /// Off the field's rect (map-edge spawn), the fields are read from the nearest in-rect cell —
     /// newborns still pick their true best target by their own criteria and march at that entry
     /// point. dir == zero = arrived — approach the target straight. False = nothing left to fight
@@ -742,7 +746,8 @@ public class MinePathManager : MonoBehaviour
         if (PathZone.AtBase(pos))
         {
             if (BasePathManager.Decide(pos, u.wanderEff, u.crowdAversion, u.wallExploitIQ,
-                    u.preferCharacter, u.preferBuildings, u.preferWalls, out Transform tgt, out dir))
+                    u.preferCharacter, u.preferBuildings, u.preferWalls, out Transform tgt, out dir,
+                    u.PhasesWalls))
             {
                 u.target = tgt;
                 return true;
@@ -800,7 +805,8 @@ public class MinePathManager : MonoBehaviour
         if (PathZone.AtBase(pos))
         {
             BasePathManager.Choose(pos, u.wanderEff, u.crowdAversion, u.wallExploitIQ,
-                u.preferCharacter, u.preferBuildings, u.preferWalls, out tgt, out _, out field, out evalPos);
+                u.preferCharacter, u.preferBuildings, u.preferWalls, out tgt, out _, out field, out evalPos,
+                u.PhasesWalls);   // phased answer has no field — the magenta straight line IS the route
         }
         else if (DungeonReady && i != null)
         {

@@ -128,6 +128,8 @@ public class PelterTurret : Building
 
     private void Update()
     {
+        // Completely drained: the turret goes dormant — stop tracking/looking and hold its last pose.
+        if (!HasEnergy) return;
         if (target != null)
         {
             cannon.transform.rotation = Quaternion.RotateTowards(cannon.transform.rotation,

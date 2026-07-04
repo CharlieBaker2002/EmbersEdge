@@ -25,7 +25,7 @@ public class E1_4 : Unit, IOnCollide
     protected override void Start()
     {
         base.Start();
-        StartCoroutine(E1_4_Main());
+        RunPersistent(E1_4_Main);
     }
 
     // Every shot is gated on projectile-width LOS to the target — the volley loop, spin sprays and

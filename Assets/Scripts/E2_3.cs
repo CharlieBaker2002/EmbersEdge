@@ -19,7 +19,7 @@ public class E2_3 : Unit //Either shoots down-grav proj or up-grav projectiles b
     protected override void Start()
     {
         base.Start();
-        StartCoroutine(E2_3Cycle());
+        RunPersistent(E2_3Cycle);
         transform.localRotation = Quaternion.identity;
     }
 

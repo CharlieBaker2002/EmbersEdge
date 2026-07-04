@@ -16,7 +16,7 @@ public class E2_7 : Unit
     protected override void Start()
     {
         base.Start();
-        StartCoroutine(Loop());
+        RunPersistent(Loop);
     }
 
     IEnumerator Loop()

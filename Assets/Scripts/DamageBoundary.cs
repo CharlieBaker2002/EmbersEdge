@@ -40,9 +40,13 @@ public class DamageBoundary : MonoBehaviour
             {
                 if (RBNotIn(coli))
                 {
-                    if (coli.GetComponentInParent<ActionScript>()!= null)
+                    ActionScript AS = coli.GetComponentInParent<ActionScript>();
+                    // A carried melee is immaterial while its wielder is: like meets like, so it can
+                    // then touch immaterial enemies — and its hits on MATERIAL enemies are ghost
+                    // hits (they wear the drill but don't tire it, see NotifyEnemyHit).
+                    bool wielderGhost = meleeOwner != null && GS.AS != null && GS.AS.immaterial;
+                    if (AS != null)
                     {
-                        ActionScript AS = coli.GetComponentInParent<ActionScript>();
                         if (!AS.interactive)
                         {
                             return;
@@ -51,7 +55,7 @@ public class DamageBoundary : MonoBehaviour
                         {
                             return;
                         }
-                        if (!hitImmaterial && AS.immaterial)
+                        if (!hitImmaterial && AS.immaterial && !wielderGhost)
                         {
                             return;
                         }
@@ -87,7 +91,7 @@ public class DamageBoundary : MonoBehaviour
                             return;
                         }
                         ls.Change(-damage, damageType);
-                        if (meleeOwner != null) meleeOwner.NotifyEnemyHit();
+                        if (meleeOwner != null) meleeOwner.NotifyEnemyHit(wielderGhost && AS != null && !AS.immaterial);
                         if (selfHarm!=null) { selfHarm.Change(-damage, damageType); }
                         if (damageOverT != 0f)
                         {

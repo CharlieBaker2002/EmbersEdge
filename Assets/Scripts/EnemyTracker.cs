@@ -127,9 +127,13 @@ public class EnemyTracker : MonoBehaviour
         // Director for EVERY spawn — including on-screen ones — so the forecast doesn't vanish when
         // you walk up to a spawn point (Director then hugs it and points at (0,0)).
         const float MARGIN = -0.05f;
+        // Only track enemies in the dimension the player is currently standing in — a frozen dungeon
+        // patroller (disabled, or just off in the other half of the world) must not raise a Director
+        // while you're back at base, and vice-versa.
+        bool playerInDungeon = CharacterScript.CS != null && CharacterScript.CS.transform.InDungeon();
         foreach (var t in en)
         {
-            if (t == null) continue;
+            if (t == null || !t.gameObject.activeInHierarchy || t.InDungeon() != playerInDungeon) continue;
             if (alwaysShow)
             {
                 pts.Add(t);

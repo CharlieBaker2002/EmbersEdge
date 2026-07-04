@@ -61,6 +61,12 @@ public class EnergyWall : MonoBehaviour, IOnCollide
     public float Hp => ls.hp;
     public float MaxHp => ls.maxHp;
     public bool Weaving => weaving;
+    /// <summary>Live span polyline (world-space bezier samples) — placement checks read it to keep
+    /// new spans clear of standing walls. Null until the first weave.</summary>
+    public IReadOnlyList<Vector3> ShapePoints => shapePts;
+    /// <summary>Physically present: collider live and charge not emptied. Dead or mid-reshape
+    /// walls block nothing — matching their path registration.</summary>
+    public bool Standing => col != null && col.enabled && ls != null && !ls.hasDied;
 
     private void Awake()
     {
@@ -107,10 +113,23 @@ public class EnergyWall : MonoBehaviour, IOnCollide
     public static int pathInflateCells = 1;
     private void RegisterPathCells()
     {
-        if (ls != null && shapePts != null && PathZone.AtBase(transform.position))
-            // crossing the inflated span traverses ~(1+2r) wall cells instead of 1 — divide the
-            // per-cell mult back down so the total chew price of going through stays calibrated
-            BaseBlockMap.RegisterWallPath(ls, shapePts, chewCostMult / (1 + 2 * pathInflateCells), pathInflateCells);
+        if (ls == null || shapePts == null || shapePts.Length < 2 || !PathZone.AtBase(transform.position)) return;
+        // Register the VISUAL capsule, not the bare centerline: the rendered wall ends in rounded
+        // caps ~halfT past each endpoint, so two spans placed "almost touching" look sealed to the
+        // player long before their centerlines meet — but a centerline raster leaves a body-wide
+        // corridor there and routes thread the joint. Extend the raster line so the TOTAL tip
+        // reach (extension + the inflate ring, which already pokes ~1 cell past the end) matches
+        // the visual cap radius — no more, or routes give the tips a wider berth than the drawn
+        // wall justifies. Aperture pricing then fills anything narrower than a body between hulls.
+        int n = shapePts.Length;
+        float cap = Mathf.Max(0f, thickness * 0.5f - BaseBlockMap.CellSize * pathInflateCells);
+        var pts = new Vector3[n + 2];
+        pts[0] = shapePts[0] + (shapePts[0] - shapePts[1]).normalized * cap;
+        for (int i = 0; i < n; i++) pts[i + 1] = shapePts[i];
+        pts[n + 1] = shapePts[n - 1] + (shapePts[n - 1] - shapePts[n - 2]).normalized * cap;
+        // crossing the inflated span traverses ~(1+2r) wall cells instead of 1 — divide the
+        // per-cell mult back down so the total chew price of going through stays calibrated
+        BaseBlockMap.RegisterWallPath(ls, pts, chewCostMult / (1 + 2 * pathInflateCells), pathInflateCells);
     }
 
     private void OnDestroy() => BaseBlockMap.UnregisterWall(ls);

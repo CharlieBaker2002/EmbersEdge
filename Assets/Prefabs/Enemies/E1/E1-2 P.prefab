@@ -39,6 +39,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &9126984509086520960
 SpriteRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -54,6 +55,11 @@ SpriteRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -75,9 +81,11 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 899417529
   m_SortingLayer: 8
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_Sprite: {fileID: -6709098720291893202, guid: 71f339258bca7426599e40ae118672d0, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -87,11 +95,10 @@ SpriteRenderer:
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
-  m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!50 &9126984509086520990
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -102,8 +109,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 1
   m_UseAutoMass: 0
   m_Mass: 1
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -129,13 +136,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   damage: 3
-  pierce: 5
+  pierce: 3
   speed: 10
   timer: 1.5
   push: 6
   angle: 0
   angVel: 0
-  enemiesHit: 8cae00000000000000000000
+  enemiesHit: []
   father: {fileID: 0}
   startDirection: {x: 0, y: 0}
   onlyChar: 0
@@ -155,8 +162,10 @@ MonoBehaviour:
   maxVelocity: 6.25
   turniness: 0
   sharpness: 1
+  hitRate: 1.25
   hardness: 1
-  shockResistanceCoef: 1
+  ramBaseSpeed: 1.5
+  ramSelfRecoil: 0.5
   dragCoef: 1
   PS: {fileID: 0}
   onCollides: []
@@ -170,6 +179,7 @@ MonoBehaviour:
   velCap: 1
   rooted: 0
   wall: 0
+  building: 0
   ignoreWalls: 1
   convertProjectiles: 0
   absorbProjectiles: 0
@@ -192,18 +202,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   race: 3
   onDeaths: []
-  shield: 0
+  shields: []
   maxHp: 1
   hp: 1
   orbs: []
   blood: {fileID: 0}
+  shieldBlood: {fileID: 0}
   bloodHold: {fileID: 0}
+  isCharacter: 0
   hasDied: 0
-  dodging: 0
+  invulnerable: 0
   animateBeforeDie: 0
   orbSpawnPlace: {fileID: 0}
   dmgsrs: []
   thicknesses: 01000000
+  overrideCol: {r: 0, g: 0, b: 0, a: 0}
 --- !u!58 &-8885308107965371083
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -212,6 +225,7 @@ CircleCollider2D:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 9126984509086520989}
   m_Enabled: 1
+  serializedVersion: 3
   m_Density: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -235,7 +249,7 @@ CircleCollider2D:
     m_Bits: 4294967295
   m_IsTrigger: 0
   m_UsedByEffector: 0
-  m_UsedByComposite: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0.033180833}
-  serializedVersion: 2
   m_Radius: 0.09537828

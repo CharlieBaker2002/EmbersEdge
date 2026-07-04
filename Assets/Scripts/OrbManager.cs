@@ -86,7 +86,11 @@ public class OrbManager : MonoBehaviour
                                 // CLOSE, so a near orb doesn't dawdle — it accelerates in the last stretch.
                                 float d = Mathf.Sqrt(dist);
                                 float ramp = Mathf.Min(o.chaseT, 3f) / (0.5f + d);
-                                o.transform.position += disperseSpeeds[o.orbType] * Time.deltaTime * (2f + 2f * d + ramp) * (Vector3)dir.normalized;
+                                // The whole pull compounds the longer an orb has been chasing: a fresh orb
+                                // starts at 1× and winds up to ~7× after ~5s, so orbs that keep failing to
+                                // reach you accelerate hard and quickly close the gap instead of trailing.
+                                float chaseBoost = 1f + 1.2f * Mathf.Min(o.chaseT, 5f);
+                                o.transform.position += chaseBoost * disperseSpeeds[o.orbType] * Time.deltaTime * (2f + 2f * d + ramp) * (Vector3)dir.normalized;
                             }
                             else o.chaseT = 0f;   // drifted out of range — reset the chase ramp
                         }

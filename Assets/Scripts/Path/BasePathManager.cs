@@ -147,11 +147,16 @@ public class BasePathManager : MonoBehaviour
     /// the detour is cheap enough, otherwise the wall on the route becomes the target and the
     /// direction steers into its face. dir == zero means arrived (or boxed in) — approach the
     /// target directly. False = position off-grid or nothing reachable at all.
+    /// phase = a phase-walker (immaterial, or committed to it): material walls are air to it, so
+    /// its answer is the nearest candidate by straight line with the line itself as steering, and
+    /// walls are never returned as chew targets (preferWalls still hunts them); only an immaterial
+    /// wall (Force Field) refuses the line, and a fully refused phaser routes like matter.
     /// </summary>
     public static bool Decide(Vector2 pos, float wander, float crowdAversion, float wallExploitIQ,
-        bool preferCharacter, bool preferBuildings, bool preferWalls, out Transform target, out Vector2 dir)
+        bool preferCharacter, bool preferBuildings, bool preferWalls, out Transform target, out Vector2 dir,
+        bool phase = false)
         => Choose(pos, wander, crowdAversion, wallExploitIQ, preferCharacter, preferBuildings, preferWalls,
-            out target, out dir, out _, out _);
+            out target, out dir, out _, out _, phase);
 
     /// <summary>
     /// <see cref="Decide"/> plus WHICH field won and the evaluation position it was read at —
@@ -162,7 +167,8 @@ public class BasePathManager : MonoBehaviour
     /// </summary>
     public static bool Choose(Vector2 pos, float wander, float crowdAversion, float wallExploitIQ,
         bool preferCharacter, bool preferBuildings, bool preferWalls,
-        out Transform target, out Vector2 dir, out MineFlowField field, out Vector2 evalPos)
+        out Transform target, out Vector2 dir, out MineFlowField field, out Vector2 evalPos,
+        bool phase = false)
     {
         target = null;
         dir = Vector2.zero;
@@ -173,6 +179,23 @@ public class BasePathManager : MonoBehaviour
         bool offGrid = BasePathGrid.ClampToGrid(pos, out evalPos);
         float bestEff = float.MaxValue;
         bool any = false;
+        if (phase)
+        {
+            // PHASE-WALKERS: material walls and solid footprints are air to this body, so no field
+            // is read — the nearest preferred candidate wins by straight line (from the TRUE
+            // position, no grid clamp: rulers work off-grid too) and the steering IS that line.
+            // Walls never come back as chew targets. The one thing that still refuses a line is an
+            // IMMATERIAL wall (the Force Field's span — immaterial-vs-immaterial stays solid); with
+            // every candidate's line refused the phaser falls through to the material logic below
+            // and deals with the field wall like everyone else (detour or chew). preferWalls is
+            // honoured unchanged — a wall-hunting phaser keeps hunting walls.
+            if (preferCharacter) any |= m.EvalPhaseFam(Fam.Char, pos, ref bestEff, ref target, ref dir);
+            if (preferBuildings) any |= m.EvalPhaseFam(Fam.Bld, pos, ref bestEff, ref target, ref dir);
+            if (preferWalls) any |= m.EvalWalls(evalPos, wallExploitIQ, ref bestEff, ref target, ref dir, ref field);
+            if (!any) any = m.EvalPhaseFam(Fam.All, pos, ref bestEff, ref target, ref dir);
+            if (any && target != null) return true;
+            bestEff = float.MaxValue; any = false; target = null; dir = Vector2.zero; field = null;
+        }
         if (preferCharacter) any |= m.EvalClass(m.charViews, evalPos, wander, crowdAversion, ref bestEff, ref target, ref dir, ref field);
         if (preferBuildings) any |= m.EvalClass(m.buildingViews, evalPos, wander, crowdAversion, ref bestEff, ref target, ref dir, ref field);
         if (preferWalls) any |= m.EvalWalls(evalPos, wallExploitIQ, ref bestEff, ref target, ref dir, ref field);
@@ -364,6 +387,65 @@ public class BasePathManager : MonoBehaviour
         float s = d - Mathf.RoundToInt(v.hCoeff * h) + iq * h;
         if (s < sBest) { sBest = s; o = ow; f = v.F; }
     }
+
+    // ------------------------------------------------------------------ phase-walkers
+
+    readonly List<(float d2, Transform t)> phaseScratch = new List<(float, Transform)>();
+    /// <summary>How many nearest candidates get a line test before the phased answer gives up —
+    /// past that, being walled off from everything near means the material fallback should run.</summary>
+    const int PhaseLineChecks = 6;
+
+    // One family's phased answer: the nearest candidate by STRAIGHT LINE whose segment crosses no
+    // immaterial wall. No field, no wander, no crowding — a phaser's metric is the ruler, and its
+    // walls-are-air answer must not inherit chew-priced field distances. Candidates mirror
+    // RebuildClass's seed enumeration (walls have no path footprint, so they can never appear).
+    // Claims the ref slots only when it beats bestEff; score = euclidean cells, the same unit the
+    // field distances are in.
+    bool EvalPhaseFam(Fam fam, Vector2 pos, ref float bestEff, ref Transform target, ref Vector2 dir)
+    {
+        var list = phaseScratch;
+        list.Clear();
+        if (fam != Fam.Bld && CharacterScript.CS != null && PathZone.AtBase(CharacterScript.CS.transform.position))
+            AddPhaseCandidate(pos, CharacterScript.CS.transform);
+        if (fam == Fam.All)
+        {
+            var allies = GS.FindParent(GS.Parent.allies);
+            if (allies != null)
+                for (int k = 0; k < allies.childCount; k++)
+                {
+                    var ch = allies.GetChild(k);
+                    if (ch.gameObject.activeInHierarchy) AddPhaseCandidate(pos, ch);
+                }
+        }
+        if (fam != Fam.Char)
+            for (int b = 0; b < Building.buildings.Count; b++)
+            {
+                var bld = Building.buildings[b];
+                if (bld == null || !bld.gameObject.activeInHierarchy) continue;
+                bld.EnsurePathFootprintCurrent();
+                if (!bld.TryGetPathFootprint(out _, out _)) continue;
+                AddPhaseCandidate(pos, bld.transform);
+            }
+        if (list.Count == 0) return false;
+        list.Sort((x, y) => x.d2.CompareTo(y.d2));
+        int checks = Mathf.Min(list.Count, PhaseLineChecks);
+        for (int k = 0; k < checks; k++)
+        {
+            Vector2 to = list[k].t.position;
+            if (BaseBlockMap.SegmentCrossesImmaterialWall(pos, to)) continue;   // force-field span in the way
+            float score = Mathf.Sqrt(list[k].d2) / BaseBlockMap.CellSize;
+            if (score >= bestEff) return false;   // sorted — no later candidate can beat this either
+            bestEff = score;
+            target = list[k].t;
+            Vector2 d = to - pos;
+            dir = d.sqrMagnitude > 1e-4f ? d.normalized : Vector2.zero;
+            return true;
+        }
+        return false;
+    }
+
+    void AddPhaseCandidate(Vector2 pos, Transform t)
+        => phaseScratch.Add((((Vector2)t.position - pos).sqrMagnitude, t));
 
     // ------------------------------------------------------------------ steering-only API
 

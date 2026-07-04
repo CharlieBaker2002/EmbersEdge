@@ -385,6 +385,12 @@ public class PortalScript : MonoBehaviour
    
         }
         
+        // The pocket ember the player is carrying home pays out as they rematerialise: it charges up
+        // at the arrival point (inside the converging reverse-ember VFX) so the final landing
+        // shockwave at (0,0) reads as the blast that launches it out into the base.
+        if (EmberStore.pending > 0)
+            this.QA(() => StartCoroutine(PayOutPendingEmber()), noDistort ? 0.75f : 1.1f);
+
         if (MineDungeonManager.i != null) MineDungeonManager.i.ResetActivePocket();
         else DM.i.activeRoom.ResetRoom();
         PortalTrigger.i.OffForT((20 - 4 * Mathf.Log(CS.attributes[2] + 1)) / 2);
@@ -418,6 +424,42 @@ public class PortalScript : MonoBehaviour
     public void StopEmitting()
     {
         emitRate = 0f;
+    }
+
+    static Ember extractEmberPrefab;   // the extractor's collect-ember (Resources/ExtractEmber)
+
+    // The dungeon harvest arriving home: every ember held from completed pockets charges up at the
+    // arrival point and shoots out of (0,0) into a building that wants it — the extractor's collect
+    // animation (same prefab: charge-up, flicker, bezier flight, landing burst) run in reverse,
+    // outward from the player instead of in from the map edge. Targets come from the cable network's
+    // own demand order (constructors → ember generators → stores); each landing deposits for real.
+    private IEnumerator PayOutPendingEmber()
+    {
+        int n = EmberStore.TakePending();
+        if (n <= 0) yield break;
+        if (EnergyManager.i == null) { EmberStore.Bank(n); yield break; }
+
+        List<EmberConnector> targets = EnergyManager.i.ResolveEmberDemand(n);
+        if (targets.Count < n) EmberStore.Bank(n - targets.Count);   // no store anywhere: tally the rest
+        if (targets.Count == 0) yield break;
+
+        if (extractEmberPrefab == null) extractEmberPrefab = Resources.Load<Ember>("ExtractEmber");
+        if (extractEmberPrefab == null)
+        {
+            foreach (EmberConnector t in targets) EmberStore.Deliver(t, Vector3.zero);
+            yield break;
+        }
+
+        float stagger = Mathf.Min(0.15f, 2f / targets.Count);
+        foreach (EmberConnector target in targets)
+        {
+            EmberConnector c = target;
+            var e = Instantiate(extractEmberPrefab, (Vector3)(Random.insideUnitCircle * 0.35f),
+                GS.RandRot(), GS.FindParent(GS.Parent.fx));
+            e.to = c.transform.position + (Vector3)(Random.insideUnitCircle * 0.2f);
+            e.onComplete += () => EmberStore.Deliver(c, e.transform.position);
+            yield return new WaitForSeconds(stagger);
+        }
     }
 
     public void MakeSpawnFX(Vector2 centre)

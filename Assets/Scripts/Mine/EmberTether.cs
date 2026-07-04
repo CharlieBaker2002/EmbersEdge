@@ -10,8 +10,9 @@ using UnityEngine;
 /// further than maxLen from the disc. Killing the pocket's enemies feeds their souls into the disc (it spins fast through its
 /// frames on every kill) and drains the era-coloured progress bar floating above it — the bar shows
 /// how much is LEFT until the room is complete, its bleeding edge flaring bright on each kill. Once
-/// EVERY enemy is dead the disc sends the pocket's EMBER home (EmberStore.Bank — a new currency, NOT
-/// orbs; 1 per pocket by default) and the tether releases. Tapping V unteth ers early (PortalScript
+/// EVERY enemy is dead the disc sends the pocket's EMBER off with the player (EmberStore.Hold — a new
+/// currency, NOT orbs; 1 per pocket by default) and the tether releases. The held ember pays out
+/// visibly on the return teleport (PortalScript), flying into whichever buildings want it. Tapping V unteth ers early (PortalScript
 /// routes the V press here first), forfeiting the ember. When thrown onto a CORE the line turns
 /// era-colour and CANNOT be broken until the core is claimed.
 /// </summary>
@@ -259,14 +260,15 @@ public class EmberTether : MonoBehaviour
     void SpinDisc() => discSpeed = DISC_KILL_SPEED;
 
     /// <summary>
-    /// Pocket fully cleared while still tethered: the disc fires the pocket's EMBER home (a new
-    /// currency, banked in EmberStore — orbs are untouched), then the tether releases.
+    /// Pocket fully cleared while still tethered: the pocket's EMBER (a new currency — orbs are
+    /// untouched) joins the player for the ride home. It lands at base on the return teleport,
+    /// each unit flying into a building that wants it. Then the tether releases.
     /// </summary>
     public void NotifyCleared()
     {
         if (released) return;
         coreLocked = false;
-        EmberStore.Bank(emberValue);
+        EmberStore.Hold(emberValue);
         StartCoroutine(CompleteFX());
     }
 

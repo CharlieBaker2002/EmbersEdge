@@ -78,6 +78,7 @@ public class Melee : Part
     private float durability;
     private bool broken;
     private bool attacking;
+    private bool ghosted;   // sprite faded while the wielder (and so the carried drill) is immaterial
 
     // "Ready" governs COMBAT — passive enemy damage, mouse-tracking, and activation: blocked mid-attack,
     // while cooling down, broken, or stamina-drained. Mining/drilling is governed by HEALTH only (see
@@ -170,6 +171,16 @@ public class Melee : Part
     // drills fan out around the aim. While attacking, the AttackSequence owns the transform instead.
     private void LateUpdate()
     {
+        // The carried drill is immaterial while its wielder is (its hits become ghost hits — see
+        // DamageBoundary/NotifyEnemyHit): fade the sprite while phased, restore on return.
+        bool ghost = GS.AS != null && GS.AS.immaterial;
+        if (ghost != ghosted && sr != null)
+        {
+            ghosted = ghost;
+            Color c = sr.color;
+            sr.color = new Color(c.r, c.g, c.b, ghost ? 0.45f : 1f);
+        }
+
         // Passive enemy damage: the collider is live only while the drill is ready. During an active
         // thrust the AttackSequence owns the collider, so don't touch it here (and re-sync the follow
         // angle on resume so the drill swings smoothly from wherever the thrust left it).
@@ -304,10 +315,13 @@ public class Melee : Part
         StartCoroutine(AttackSequence());
     }
 
-    public void NotifyEnemyHit()
+    /// <summary>An enemy hit registered by the drill's DamageBoundary. `ghostHit` marks an IMMATERIAL
+    /// drill (wielder phased) striking a MATERIAL enemy: it still wears the drill (durability) but a
+    /// hit that phases through doesn't tire it (no stamina drain).</summary>
+    public void NotifyEnemyHit(bool ghostHit = false)
     {
         DrainDurability(durabilityPerEnemyHit);
-        DrainStamina(staminaPerHit);
+        if (!ghostHit) DrainStamina(staminaPerHit);
         bobT = 0f;   // same collision bob as a mining bite
     }
 

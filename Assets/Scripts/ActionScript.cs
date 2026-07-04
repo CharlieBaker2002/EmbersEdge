@@ -73,8 +73,8 @@ public class ActionScript : MonoBehaviour
         // PROJECTILES must NOT register: Depenetrate would shove them out of the rock and kill their
         // into-wall velocity every step (they'd slide along walls) before the reflection in
         // ProjectileScript.FixedUpdate ever saw a solid cell — they bounce off the ore instead.
-        // ignoreWalls bodies (ghost-drifters like the Spinner) phase through the ore exactly like
-        // they phase through base walls — never registered, never depenetrated.
+        // ignoreWalls bodies (ghost-drifters) phase through the ore exactly like they phase
+        // through base walls — never registered, never depenetrated.
         if (MineField.i != null && PortalScript.i != null && PortalScript.i.inDungeon && PS == null && !ignoreWalls)
             MineField.i.Register(rb);
     }
@@ -621,7 +621,9 @@ public class ActionScript : MonoBehaviour
     public void RamOther(ActionScript oAS, Vector2 fromPos)
     {
         if (oAS == null || oAS == this || rb == null || oAS.rb == null) return;
-        if (!interactive || !oAS.interactive || oAS.immaterial) return;
+        // Same asymmetry as the body-collision push rules: a material rammer can't shove an
+        // immaterial target, but an immaterial rammer meets an immaterial target like solids do.
+        if (!interactive || !oAS.interactive || (oAS.immaterial && !immaterial)) return;
 
         Vector2 normal = oAS.rb.position - fromPos;          // contact line: target away from the hit point
         if (normal.sqrMagnitude < 0.0001f) normal = oAS.rb.position - rb.position;

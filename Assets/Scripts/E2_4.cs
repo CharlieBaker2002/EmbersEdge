@@ -21,26 +21,28 @@ public class E2_4 : Unit, IRoomUnit
     private void Awake()
     {
         anim.speed = 1f;
-        // Ghost-drifter: never avoids or collides with terrain — phases straight through rock,
-        // walls and buildings (set before ActionScript.Start so it skips MineField registration).
-        GetComponent<ActionScript>().ignoreWalls = true;
     }
 
     protected override void Start()
     {
         base.Start();
-        StartCoroutine(E2_4I());
+        RunPersistent(E2_4I);
     }
 
     private IEnumerator E2_4I()
     {
         yield return null;
         yield return null;
-        // ghost drift: straight at the point, through whatever terrain is in the way — the spinner
-        // never walks routes (Decide is used for TARGETING only) and never avoids walls
+        // drift: straight at the point only when the body fits the straight line — otherwise
+        // follow the field toward the current objective instead of grinding into the wall
         void Steer(Vector3 point)
         {
             Vector2 dir = ((Vector2)(point - transform.position)).normalized;
+            if (!MinePath.LineOfSightWide(transform.position, point, size))
+            {
+                MinePathManager.Decide(this, out Vector2 pathDir);
+                if (pathDir != Vector2.zero) dir = pathDir;
+            }
             AS.rb.linearVelocity = Vector3.Lerp(AS.rb.linearVelocity, 4f * actRate * dir, 0.5f);
         }
         while (true)
@@ -60,7 +62,7 @@ public class E2_4 : Unit, IRoomUnit
                     // unanchored: flit between points in a wide band around the current objective
                     Vector3 point = target.position + GS.RandCircle(2f, 7f);
                     Steer(point);
-                    float guard = 5f;    // roam points can sit in solid rock — that's fine, it phases through
+                    float guard = 5f;    // roam points can sit in solid rock — the guard abandons a leg it can't reach
                     float steerT = 0.4f;
                     while ((transform.position - point).sqrMagnitude > 1 && guard > 0f)
                     {
@@ -93,10 +95,8 @@ public class E2_4 : Unit, IRoomUnit
             T = GS.FindNearestEnemy(tag, transform.position, 6.5f, false);
             if (T != null)
             {
-                // attacking = phased: immaterial for the WHOLE engage (approach through lunge), so
-                // it slips through terrain and bodies while striking. Re-applied per phase — GS.Stat
-                // merges into the existing status, so the windows chain without a gap.
-                GS.Stat(this, "immaterial", 1.6f);
+                // the chase is MATERIAL — bodies and buildings shove back while it closes in.
+                // It only turns immaterial for the strike itself, per branch below.
                 float t = 1.5f;
                 while (t > 0f)
                 {
@@ -111,7 +111,10 @@ public class E2_4 : Unit, IRoomUnit
                 if(Random.Range(0,5) < 2) //40% chance
                 {
                     anim.SetBool("Teleport", true);
-                    GS.Stat(this, "immaterial", 5f);   // 1s windup + 2s chase + 0.35s pause + 1.5s lunge
+                    // Immaterial ONLY for the 1s windup telegraph — the dodge dash below is evasive
+                    // (dodging already sets interactive=false so it phases through bodies) but stays
+                    // HITTABLE, so the player can still damage the spinner while it's dodging.
+                    GS.Stat(this, "immaterial", 1f);
                     yield return new WaitForSeconds(1f);
                     GS.Stat(this,"dodging",1.5f);
                     t = 2f;
@@ -129,6 +132,9 @@ public class E2_4 : Unit, IRoomUnit
                     yield return new WaitForSeconds(0.35f);
                     if (T != null)
                     {
+                        // the post-dodge strike is the phased window: immaterial for the lunge's
+                        // whole 1.5s travel, so it slips through bodies and buildings mid-strike
+                        GS.Stat(this, "immaterial", 1.6f);
                         AS.AddPush(1f, false, actRate * ((T.position - transform.position).normalized * 4f + (Vector3)GS.VectInRange(Vector2.Distance(transform.position, T.position) * T.GetComponentInParent<Rigidbody2D>().linearVelocity, 0.25f, 2f)));
                     }
                     yield return new WaitForSeconds(1.5f);

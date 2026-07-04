@@ -12,7 +12,7 @@ public class E2_2 : Unit
     protected override void Start()
     {
         base.Start();
-        StartCoroutine(E2_2Cycle());
+        RunPersistent(E2_2Cycle);
         transform.localRotation = Quaternion.identity;
     }
 

@@ -333,7 +333,14 @@ public class MineDungeonManager : MonoBehaviour
     /// already has the dig in range arm its day plan (fires 0–30s from now).</summary>
     public void OnEnterDungeon()
     {
-        foreach (var g in frozen) if (g != null) g.SetActive(true);
+        foreach (var g in frozen)
+        {
+            if (g == null) continue;
+            g.SetActive(true);
+            // Re-enabling doesn't re-run Start(), and SetActive(false) killed each enemy's brain
+            // coroutine on the way out — relaunch it so frozen patrollers resume chasing.
+            if (g.TryGetComponent<Unit>(out var u)) u.OnThaw();
+        }
         frozen.Clear();
         foreach (var s in spawners) if (s != null) s.OnEnterDungeon();
     }
@@ -367,7 +374,7 @@ public class MineDungeonManager : MonoBehaviour
         foreach (var p in em.pockets) if (!p.isBoss && p.enabled) nonBoss.Add(p);
 
         // There is NO pocket count — keep sampling non-boss pockets until their authored points fill the
-        // budget (the boss is placed separately, last, furthest from the entry). The boss's own points count
+        // budget (the boss is placed separately, FIRST, furthest from the entry). The boss's own points count
         // toward the budget, so the non-boss fill stops a boss's-worth short. TrimToBudget reconciles the rest.
         float maxPocketPts = 0f;
         foreach (var p in nonBoss) maxPocketPts = Mathf.Max(maxPocketPts, MineAuthoringSO.PocketAutoPoints(p));
@@ -391,19 +398,48 @@ public class MineDungeonManager : MonoBehaviour
         int minR = entryClear + 4;
         maxR = Mathf.Max(minR, maxR);
 
+        // The boss ALWAYS exists: placed FIRST, into the empty map, at the valid spot furthest from
+        // the entry cavity — first pick of space means it can never be crowded out by lesser pockets
+        // (placed last it could genuinely find no hole and get skipped, breaking era progression).
+        // Everything after routes around it. The only way this can fail is a map too small for the
+        // boss footprint at all — a setup error, not a layout roll.
+        if (boss != null)
+        {
+            var bossInst = MakeInst(boss);
+            ApplyCombisAndBudget(em, era, bossInst, budget, ref pointsUsed);
+            int bw = Mathf.Max(2, bossInst.template.width), bh = Mathf.Max(2, bossInst.template.height);
+            if (FurthestPlace(bossInst, bw, bh, W, H, entryClear, result))
+                result.Add(bossInst);
+            else
+                Debug.LogError($"MineDungeonManager: boss pocket '{boss.name}' ({bw}x{bh}) cannot fit the " +
+                               $"{W}x{H} map at all (margin {areaMargin}, entry clearance {entryClear}) — " +
+                               "era cannot be completed. Enlarge the map or shrink the boss pocket.");
+        }
+
         // Smallest-footprint-first fallback pool used to make up points from any pocket that fails to place.
         var bySize = new List<PocketTemplate>(nonBoss);
         bySize.Sort((a, b) => (a.width * a.height).CompareTo(b.width * b.height));
 
+        // Each pocket's target ring comes from its authored WEIGHT rank (small weight = near the entry,
+        // large = toward the edge — the designer's difficulty-by-depth dial). The PLACEMENT ORDER is
+        // separate: biggest merged footprint first, so large rooms get first pick of the space in their
+        // band while small rooms can still squeeze in anywhere later. Combis merge before sizing so the
+        // order sees true footprints.
+        var toPlace = new List<(PocketInstance inst, int targetR)>();
         for (int idx = 0; idx < chosen.Count; idx++)
         {
             var inst = chosen[idx];
             ApplyCombisAndBudget(em, era, inst, budget, ref pointsUsed);   // merge combis BEFORE placement
+            float rank = chosen.Count <= 1 ? 0f : (float)idx / (chosen.Count - 1);
+            toPlace.Add((inst, Mathf.RoundToInt(Mathf.Lerp(minR, maxR, rank))));
+        }
+        toPlace.Sort((a, b) => (b.inst.template.width * b.inst.template.height)
+            .CompareTo(a.inst.template.width * a.inst.template.height));
+
+        foreach (var (inst, targetR) in toPlace)
+        {
             int pw = Mathf.Max(2, inst.template.width);
             int ph = Mathf.Max(2, inst.template.height);
-            float rank = chosen.Count <= 1 ? 0f : (float)idx / (chosen.Count - 1);
-            int targetR = Mathf.RoundToInt(Mathf.Lerp(minR, maxR, rank));
-
             if (TryPlaceRing(inst, pw, ph, targetR, W, H, entryClear, result) ||
                 ScanPlace(inst, pw, ph, W, H, entryClear, result))
             {
@@ -415,19 +451,6 @@ public class MineDungeonManager : MonoBehaviour
                 pointsUsed -= inst.normalizedPoints;   // its points were never actually spent
                 MakeUpLostPoints(em, era, bySize, inst.normalizedPoints, targetR, W, H, entryClear, budget, ref pointsUsed, result);
             }
-        }
-
-        // The boss ALWAYS goes furthest from the entry: placed last, at the valid spot whose centre is
-        // the most distant from the entry cavity (accounts for the pockets already placed).
-        if (boss != null)
-        {
-            var bossInst = MakeInst(boss);
-            ApplyCombisAndBudget(em, era, bossInst, budget, ref pointsUsed);
-            int pw = Mathf.Max(2, bossInst.template.width), ph = Mathf.Max(2, bossInst.template.height);
-            if (FurthestPlace(bossInst, pw, ph, W, H, entryClear, result))
-                result.Add(bossInst);
-            else
-                Debug.LogWarning($"MineDungeonManager: could not place boss pocket '{boss.name}' ({pw}x{ph}); skipped.");
         }
 
         TrimToBudget(result, budget);
@@ -769,15 +792,16 @@ public class MineDungeonManager : MonoBehaviour
         }
     }
 
-    // Scan every in-bounds origin for this size and keep the valid one whose centre is FURTHEST from
-    // the entry (origin). Guarantees the boss is the deepest pocket regardless of the random layout.
+    // Scan every in-bounds origin for this size and place at a RANDOM spot among the deepest valid
+    // ones. A strict argmax pinned the boss to the same corner of every map once it started placing
+    // first: an empty map's exact-furthest spots are its four corners (which tie), and first-found
+    // always won — bottom-left, every generation. Sampling the deep band keeps the boss essentially
+    // the deepest pocket while varying WHERE along the far arc it lands.
     bool FurthestPlace(PocketInstance inst, int pw, int ph, int W, int H, int entryClear, List<PocketInstance> existing)
     {
         int oxMin = -W / 2 + areaMargin, oxMax = W / 2 - areaMargin - pw;
         int oyMin = -H / 2 + areaMargin, oyMax = H / 2 - areaMargin - ph;
         float best = -1f;
-        RectInt bestRect = default;
-        bool found = false;
         for (int ox = oxMin; ox <= oxMax; ox++)
             for (int oy = oyMin; oy <= oyMax; oy++)
             {
@@ -785,10 +809,26 @@ public class MineDungeonManager : MonoBehaviour
                 if (!Fits(rect, W, H, entryClear, existing)) continue;
                 float cx = ox + pw / 2f, cy = oy + ph / 2f;   // centre vs entry at (0,0)
                 float d = cx * cx + cy * cy;
-                if (d > best) { best = d; bestRect = rect; found = true; }
+                if (d > best) best = d;
             }
-        if (found) inst.cellRect = bestRect;
-        return found;
+        if (best < 0f) return false;
+        // deep band: squared distance ≥ 80% of the max ⇒ centre radius ≥ ~89% of the furthest
+        // possible — reservoir-sample uniformly among every valid origin in the band
+        float cutoff = best * 0.8f;
+        int seen = 0;
+        RectInt pick = default;
+        for (int ox = oxMin; ox <= oxMax; ox++)
+            for (int oy = oyMin; oy <= oyMax; oy++)
+            {
+                var rect = new RectInt(ox, oy, pw, ph);
+                if (!Fits(rect, W, H, entryClear, existing)) continue;
+                float cx = ox + pw / 2f, cy = oy + ph / 2f;
+                if (cx * cx + cy * cy < cutoff) continue;
+                seen++;
+                if (Random.Range(0, seen) == 0) pick = rect;
+            }
+        inst.cellRect = pick;
+        return true;
     }
 
     PocketInstance MakeInst(PocketTemplate t)

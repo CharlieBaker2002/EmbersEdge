@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -40,10 +41,17 @@ public class ForceField : Building
     private Coroutine loop;
     private float rebuildCharge;
 
+    /// <summary>This tower's wall — other towers' placement checks keep clear of it.</summary>
+    public EnergyWall Wall => wall;
+    // Two capsules "touch" once their centerlines come within a cap radius each (~0.4 + 0.4);
+    // a hair more keeps the rendered glows from kissing. Centerline-to-centerline, world units.
+    private const float wallClearance = 0.85f;
+
     // ---- Move Field mode ----
     private bool moveMode, armed, dragging;
     private Vector2 dragStart;
     private LineRenderer reachLR, ghostLR;
+    private readonly List<LineRenderer> noGoLRs = new List<LineRenderer>();
     private TextMeshPro moveText;
     private Action<InputAction.CallbackContext> pressDel, releaseDel;
     private Action escDel;
@@ -211,8 +219,57 @@ public class ForceField : Building
         if ((p1 - p0).magnitude < 0.15f) { ExitMoveMode(false); return; }   // a click, not a drag -> cancel
 
         ComputeEndpoints(p0, p1, out Vector2 na, out Vector2 nb);
+        if (SpanBlocked(na, nb)) return;   // refused — stay in move mode: redraw or Esc out
         PlaceWall(na, nb);
         ExitMoveMode(true);
+    }
+
+    // A span may not be woven OVER a Force Field tower (its own included) — the wall raster would
+    // stamp chewable wall cells across the tower's solid BLOCKED footprint and the capsule would
+    // cut straight through the building — and may not TOUCH another tower's standing wall (two
+    // capsules merging into one visual barrier hide where one ends and its weaknesses sit).
+    // Tested on the same bezier the wall will weave: producer footprints grown by the capsule's
+    // half-bulk, other spans by centerline distance under wallClearance. The tower's OWN wall is
+    // exempt — that's the span being replaced.
+    private bool SpanBlocked(Vector2 na, Vector2 nb)
+    {
+        const int n = 20;
+        const float bulk = 0.25f;
+        var pts = EnergyWall.BuildBezier(na, nb, (Vector2)transform.position, n, out _);
+        float cs = BaseBlockMap.CellSize;
+        for (int b = 0; b < Building.buildings.Count; b++)
+        {
+            var bld = Building.buildings[b];
+            if (!(bld is ForceField ff) || !bld.gameObject.activeInHierarchy) continue;
+            bld.EnsurePathFootprintCurrent();
+            if (bld.TryGetPathFootprint(out Vector2Int anchor, out Vector2Int cells))
+            {
+                float xMin = anchor.x * cs - bulk, xMax = (anchor.x + cells.x) * cs + bulk;
+                float yMin = anchor.y * cs - bulk, yMax = (anchor.y + cells.y) * cs + bulk;
+                for (int k = 0; k < pts.Length; k++)
+                    if (pts[k].x > xMin && pts[k].x < xMax && pts[k].y > yMin && pts[k].y < yMax)
+                        return true;
+            }
+            if (ff == this || ff.Wall == null || !ff.Wall.Standing) continue;
+            var span = ff.Wall.ShapePoints;
+            if (span == null || span.Count < 2) continue;
+            for (int k = 0; k < pts.Length; k++)
+                if (DistToPolyline(pts[k], span) < wallClearance) return true;
+        }
+        return false;
+    }
+
+    private static float DistToPolyline(Vector2 p, IReadOnlyList<Vector3> line)
+    {
+        float best = float.MaxValue;
+        for (int s = 0; s < line.Count - 1; s++)
+        {
+            Vector2 a = line[s], b = line[s + 1], ab = b - a;
+            float t = ab.sqrMagnitude > 1e-6f ? Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude) : 0f;
+            Vector2 q = a + ab * t;
+            best = Mathf.Min(best, (p - q).sqrMagnitude);
+        }
+        return Mathf.Sqrt(best);
     }
 
     private Vector2 Cursor() => IM.controller ? (Vector2)IM.i.CWorldPoint() : IM.i.MousePosition();
@@ -254,13 +311,14 @@ public class ForceField : Building
         if (dragging)
         {
             ComputeEndpoints(dragStart, cur, out Vector2 na, out Vector2 nb);
-            UpdateGhost(na, nb, true);
-            UpdateText(na, nb, true);
+            bool blocked = SpanBlocked(na, nb);
+            UpdateGhost(na, nb, true, blocked);
+            UpdateText(na, nb, true, blocked);
         }
         else
         {
-            UpdateGhost(cur, cur, false);
-            UpdateText(cur, cur, false);
+            UpdateGhost(cur, cur, false, false);
+            UpdateText(cur, cur, false, false);
         }
     }
 
@@ -270,6 +328,7 @@ public class ForceField : Building
     {
         reachLR = MakeLR(0.05f, new Color(0.55f, 0.95f, 1f, 0.22f), 4);
         DrawReach();
+        DrawNoGo();
         ghostLR = MakeLR(0.16f, new Color(0.6f, 1f, 0.95f, 0.85f), 6);
         ghostLR.enabled = false;
 
@@ -291,8 +350,49 @@ public class ForceField : Building
         if (reachLR != null) Destroy(reachLR.gameObject);
         if (ghostLR != null) Destroy(ghostLR.gameObject);
         if (moveText != null) Destroy(moveText.gameObject);
+        for (int k = 0; k < noGoLRs.Count; k++)
+            if (noGoLRs[k] != null) Destroy(noGoLRs[k].gameObject);
+        noGoLRs.Clear();
         reachLR = ghostLR = null;
         moveText = null;
+    }
+
+    // Paint every region the span may not touch, so the no-go zones are visible WHILE drawing:
+    // a red outline over each producer footprint (own tower included) and a translucent red band
+    // over every other standing wall at the full keep-clear width — the ghost centerline entering
+    // a band is exactly the SpanBlocked condition. Snapshot at mode entry; walls reshaped by other
+    // towers mid-mode repaint on the next entry.
+    private void DrawNoGo()
+    {
+        const float bulk = 0.25f;
+        float cs = BaseBlockMap.CellSize;
+        for (int b = 0; b < Building.buildings.Count; b++)
+        {
+            var bld = Building.buildings[b];
+            if (!(bld is ForceField ff) || !bld.gameObject.activeInHierarchy) continue;
+            bld.EnsurePathFootprintCurrent();
+            if (bld.TryGetPathFootprint(out Vector2Int anchor, out Vector2Int cells))
+            {
+                float xMin = anchor.x * cs - bulk, xMax = (anchor.x + cells.x) * cs + bulk;
+                float yMin = anchor.y * cs - bulk, yMax = (anchor.y + cells.y) * cs + bulk;
+                var rect = MakeLR(0.06f, new Color(1f, 0.4f, 0.35f, 0.55f), 5);
+                rect.loop = true;
+                rect.positionCount = 4;
+                rect.SetPosition(0, new Vector3(xMin, yMin));
+                rect.SetPosition(1, new Vector3(xMax, yMin));
+                rect.SetPosition(2, new Vector3(xMax, yMax));
+                rect.SetPosition(3, new Vector3(xMin, yMax));
+                noGoLRs.Add(rect);
+            }
+            if (ff == this || ff.Wall == null || !ff.Wall.Standing) continue;
+            var span = ff.Wall.ShapePoints;
+            if (span == null || span.Count < 2) continue;
+            var band = MakeLR(wallClearance * 2f, new Color(1f, 0.4f, 0.35f, 0.16f), 3);
+            band.numCapVertices = 8;
+            band.positionCount = span.Count;
+            for (int k = 0; k < span.Count; k++) band.SetPosition(k, span[k]);
+            noGoLRs.Add(band);
+        }
     }
 
     private LineRenderer MakeLR(float width, Color col, int order)
@@ -326,7 +426,7 @@ public class ForceField : Building
         }
     }
 
-    private void UpdateGhost(Vector2 na, Vector2 nb, bool show)
+    private void UpdateGhost(Vector2 na, Vector2 nb, bool show, bool blocked)
     {
         if (ghostLR == null) return;
         ghostLR.enabled = show;
@@ -336,19 +436,23 @@ public class ForceField : Building
         ghostLR.positionCount = n;
         ghostLR.SetPositions(pts);
         float width = Vector2.Distance(na, nb);
-        Color c = width <= minWidth + 0.05f
-            ? new Color(1f, 0.82f, 0.45f, 0.85f)     // at the minimum span -> amber
-            : new Color(0.6f, 1f, 0.95f, 0.9f);
+        Color c = blocked
+            ? new Color(1f, 0.35f, 0.3f, 0.9f)       // over a producer -> red, release will refuse
+            : width <= minWidth + 0.05f
+                ? new Color(1f, 0.82f, 0.45f, 0.85f) // at the minimum span -> amber
+                : new Color(0.6f, 1f, 0.95f, 0.9f);
         ghostLR.startColor = ghostLR.endColor = c;
     }
 
-    private void UpdateText(Vector2 na, Vector2 nb, bool dragingNow)
+    private void UpdateText(Vector2 na, Vector2 nb, bool dragingNow, bool blocked)
     {
         if (moveText == null) return;
         if (dragingNow)
         {
             float w = Vector2.Distance(na, nb);
-            moveText.text = $"Width {w:0.0}   HP {MaxHpForWidth(w):0}";
+            moveText.text = blocked
+                ? "Can't place over towers or other fields"
+                : $"Width {w:0.0}   HP {MaxHpForWidth(w):0}";
             moveText.transform.position = (na + nb) * 0.5f + Vector2.up * 0.45f;
         }
         else

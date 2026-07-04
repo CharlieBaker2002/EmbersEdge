@@ -18,7 +18,7 @@ public class E1_3 : Unit
     protected override void Start()
     {
         base.Start();
-        StartCoroutine(E1_3_Main());
+        RunPersistent(E1_3_Main);
     }
 
     protected override void Update()

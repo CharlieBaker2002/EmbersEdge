@@ -240,7 +240,11 @@ public class E1_Boss : Unit, IOnDeath, IRoomUnit
         if (!hasDied)
         {
             hasDied = true;
-            GS.KillNonAlloc(DM.i.activeRoom.transform.position, 20f, new string[] { "Enemy Units", "Enemy Projectiles" });
+            // Arena centre: the mine's active pocket when fought in the tile-mining dungeon, else the old DM room.
+            Vector3 arena = MineDungeonManager.i != null && MineDungeonManager.i.activePocket != null
+                ? (Vector3)MineDungeonManager.i.activePocket.WorldCenter()
+                : DM.i.activeRoom.transform.position;
+            GS.KillNonAlloc(arena, 20f, new string[] { "Enemy Units", "Enemy Projectiles" });
             if (GS.era == 0)
             {
                 PortalScript.i.DefeatedBoss();

@@ -7,6 +7,6 @@ public class ProgressEEEventButton : MonoBehaviour, IClickable
 {
     public void OnClick()
     {
-        this.QA(()=> MapManager.i.NewCoreDebug(),0.1f);
+        this.QA(()=> GS.CallSpawnOrbs(Vector2.zero, new float[]{100,30,10,3}, null, true), 0f);
     }
 }

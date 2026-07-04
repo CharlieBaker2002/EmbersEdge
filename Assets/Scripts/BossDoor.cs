@@ -52,6 +52,7 @@ public class BossDoor : Door
 
     public static void AddRaw(RenderTexture rt)
     {
+        if (i == null) return;   // tile-mining dungeon has no boss door
         foreach(RawImage r in i.raws)
         {
             if(r.texture == null)

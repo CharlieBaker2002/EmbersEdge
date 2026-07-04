@@ -60,7 +60,7 @@ public class E1_8 : Unit, IRoomUnit, IOnDeath
         base.Start();
         cs = GS.CS();
         ls.onDamageDelegate += OnDamaged;
-        StartCoroutine(Brain());
+        RunPersistent(Brain);
     }
 
     public void RecieveRoom(Collider2D bounds, Vector2 pos)

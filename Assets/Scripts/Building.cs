@@ -71,6 +71,10 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     /// <summary>Aggregate view onto adjacent EnergyPads. Use Power.Use/Add/Energy from consumer scripts.</summary>
     public BuildingPower Power => _power ??= new BuildingPower(this);
 
+    /// <summary>True while the grid this building draws from still has any energy. Aiming towers gate
+    /// their tracking rotation on this so a fully-drained tower goes dormant (stops moving/looking).</summary>
+    public bool HasEnergy => Power.Energy > 1e-3f;
+
     public enum EnergyStatus { Powered, Throttled, Unpowered }
     [Header("Energy status overlay (power-consuming buildings)")]
     [Tooltip("World-space placement of the energy-status icon above this building.")]
@@ -200,7 +204,12 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         sizeCells = new Vector2Int(
             Mathf.Max(1, Mathf.RoundToInt(size.x / cs)),
             Mathf.Max(1, Mathf.RoundToInt(size.y / cs)));
-        return BaseBlockMap.Cell(transform.position) - new Vector2Int(sizeCells.x / 2, sizeCells.y / 2);
+        // nearest-lattice bottom-left corner, so the quantized rect stays CENTRED on the building
+        // (flooring the centre cell biased the whole footprint up to a full cell down-left:
+        // blocked cells hung past the collider on one side, and anything drawn from the
+        // registered rect sat visibly off-centre against the sprite)
+        Vector2 bl = (Vector2)transform.position - 0.5f * cs * (Vector2)sizeCells;
+        return new Vector2Int(Mathf.RoundToInt(bl.x / cs), Mathf.RoundToInt(bl.y / cs));
     }
 
     void RegisterPathFootprint()

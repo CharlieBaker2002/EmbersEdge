@@ -63,6 +63,7 @@ public class Pocket : MonoBehaviour
     {
         if (Discovered) return;
         Discovered = true;
+        Debug.Log($"[Pocket] discovered '{T.name}'{(T.isBoss ? " (BOSS)" : T.hasCore ? " (core)" : "")}");
         MineDungeonManager.i.activePocket = this;
         CastTether();                  // the ember tether shoots into the room centre, fishing-rod style
         SpawnExtras();                 // per-pocket props/obstacles appear at once on discovery
@@ -357,13 +358,15 @@ public class Pocket : MonoBehaviour
         Vector2 c = WorldCenter();
         GS.CollectOrbs(c, FurthestCavityDist(c));
         if (tether != null) tether.NotifyCleared();   // fuelled by every soul — send the ember home
-        if (T.hasCore && EE != null)
+        if (T.hasCore && !T.isBoss && EE != null)
         {
             // Claim the Ember core: dive to base and place it (the old absorb-core -> place-at-base loop).
             EE.transform.parent = GS.FindParent(GS.Parent.ee);
             MapManager.BeginPlace(EE, MechaSuit.lastlife);
         }
-        // Boss pocket additionally advances the era via the boss enemy's own PortalScript.DefeatedBoss().
+        // The BOSS pocket claims nothing here: the boss's own death runs PortalScript.DefeatedBoss()
+        // (return home + Ember's-Edge-deconstructing transition + era advance) — placing its arena
+        // core would fight that camera/portal sequence, and era regeneration rebuilds the mine anyway.
     }
 
     /// <summary>Stop spawning when leaving the dungeon. Live enemies are NOT destroyed any more —

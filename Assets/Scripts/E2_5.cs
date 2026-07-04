@@ -53,7 +53,7 @@ public class E2_5 : Unit, IOnCollide, IRoomUnit, IOnDeath
     protected override void Start()
     {
         base.Start();
-        StartCoroutine(E2_5I());
+        RunPersistent(E2_5I);
     }
 
     public void OnCollide(Collision2D collision)

@@ -288,6 +288,57 @@ public static class BaseBlockMap
         cells.Add(c);
     }
 
+    // ------------------------------------------------------------------ phase-walker line test
+
+    /// <summary>
+    /// Does the straight segment a→b cross any LIVE wall whose body is IMMATERIAL (the Force
+    /// Field's EnergyWall)? Phase-walkers (immaterial enemies) pass through every material wall
+    /// and building, so this is the only registered geometry that can refuse their straight line —
+    /// immaterial-vs-immaterial collides like matter (ActionScript's wall branch). Immateriality
+    /// is resolved once per wall slot (same-GO ActionScript) and cached against Version.
+    /// </summary>
+    public static bool SegmentCrossesImmaterialWall(Vector2 a, Vector2 b)
+    {
+        float cs = CellSize;
+        var c = Cell(a);
+        var cEnd = Cell(b);
+        if (ImmaterialWallAt(c)) return true;
+        if (c == cEnd) return false;
+        Vector2 d = b - a;
+        int stepX = d.x > 0f ? 1 : -1;
+        int stepY = d.y > 0f ? 1 : -1;
+        Vector2 cellMin = new Vector2(c.x * cs, c.y * cs);
+        float tMaxX = d.x != 0f ? (((d.x > 0f ? cellMin.x + cs : cellMin.x) - a.x) / d.x) : float.PositiveInfinity;
+        float tMaxY = d.y != 0f ? (((d.y > 0f ? cellMin.y + cs : cellMin.y) - a.y) / d.y) : float.PositiveInfinity;
+        float tDeltaX = d.x != 0f ? cs / Mathf.Abs(d.x) : float.PositiveInfinity;
+        float tDeltaY = d.y != 0f ? cs / Mathf.Abs(d.y) : float.PositiveInfinity;
+        int guard = 4096;
+        while (c != cEnd && guard-- > 0)
+        {
+            if (tMaxX < tMaxY) { tMaxX += tDeltaX; c.x += stepX; }
+            else               { tMaxY += tDeltaY; c.y += stepY; }
+            if (ImmaterialWallAt(c)) return true;
+        }
+        return false;
+    }
+
+    static readonly Dictionary<int, bool> immaterialBySlot = new Dictionary<int, bool>();
+    static int immaterialVersion = int.MinValue;
+
+    static bool ImmaterialWallAt(Vector2Int cell)
+    {
+        if (!wallIdOfCell.TryGetValue(cell, out ushort slot)) return false;
+        var ls = slot < wallOwners.Count ? wallOwners[slot] : null;
+        if (ls == null || ls.hasDied) return false;
+        if (immaterialVersion != Version) { immaterialBySlot.Clear(); immaterialVersion = Version; }
+        if (!immaterialBySlot.TryGetValue(slot, out bool im))
+        {
+            im = ls.TryGetComponent<ActionScript>(out var body) && body.immaterial;
+            immaterialBySlot.Add(slot, im);
+        }
+        return im;
+    }
+
     // supercover DDA over the world-quantized lattice — claims every cell the segment touches
     static void RasterSegment(Vector2 a, Vector2 b, ushort id, List<Vector2Int> cells)
     {

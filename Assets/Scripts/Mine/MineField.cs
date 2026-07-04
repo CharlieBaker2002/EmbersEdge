@@ -95,15 +95,21 @@ public class MineField : MonoBehaviour
     //  soft; toward the rim the noise blobs cross the Hard threshold and their cores go VeryHard.
     //  Durability scales with the tier (excavateSeconds of drill contact), same tiers the authored pocket walls use.
     // -------------------------------------------------------------------------------------------------
-    [Header("Rock hardness pattern")]
-    [Tooltip("Perlin feature scale in CELLS — smaller = bigger hard-rock veins/blobs.")]
-    public float hardnessNoiseScale = 0.09f;
-    [Tooltip("How strongly distance from the entry hardens the rock (adds 0..this to the noise score at the rim).")]
-    public float depthHardness = 0.55f;
-    [Tooltip("Score (noise*0.65 + depth) above this = Hard rock.")]
-    public float hardThreshold = 0.78f;
-    [Tooltip("Score above this = VeryHard rock (the cores of the deepest veins).")]
-    public float veryHardThreshold = 0.97f;
+    [Header("Rock hardness pattern (index = era)")]
+    [Tooltip("Per-era hardness pattern. Era 1 = the original tuning (soft field, moderate veins); era 2 = " +
+             "broad hard slabs that WALL OFF regions (drill through or detour); era 3 = fine dense " +
+             "threading — hard rock everywhere, VeryHard cores common at depth.")]
+    public HardnessEraConfig[] hardnessEras =
+    {
+        new HardnessEraConfig(0.12f, 0.32f, 0.49f, 0.62f),   // era 1: the original scene tuning
+        new HardnessEraConfig(0.06f, 0.40f, 0.46f, 0.56f),   // era 2: bigger blobs -> continuous slab walls
+        new HardnessEraConfig(0.18f, 0.45f, 0.43f, 0.52f),   // era 3: fine threads, hard almost everywhere deep
+    };
+
+    HardnessEraConfig HardnessCfg(int era)
+        => (hardnessEras != null && hardnessEras.Length > 0)
+            ? hardnessEras[Mathf.Clamp(era, 0, hardnessEras.Length - 1)]
+            : new HardnessEraConfig(0.12f, 0.32f, 0.49f, 0.62f);
 
     // -------------------------------------------------------------------------------------------------
     //  Dungeon boundary — the field ends on a smooth RING, not the square rect. The ring is a radial
@@ -206,6 +212,7 @@ public class MineField : MonoBehaviour
     // Pocket cells stay SOLID ORE (indistinguishable from the surrounding rock) until the player mines
     // into one of them; then the whole pocket opens to empty space and its enemies spawn.
     int[] pocketIdOfCell;                 // -1 = no pocket, else index into pocketCells
+    int[] wallPocketOfCell;               // -1 = none, else the pocket whose AUTHORED wall stamped this cell (boss ring etc.)
     List<List<Vector3Int>> pocketCells;   // per-pocket cell list
     bool[] pocketOpened;
     bool[] pocketRevealed;                // showPockets cheat: geometry already open, still waiting on real excavation to spawn
@@ -424,6 +431,8 @@ public class MineField : MonoBehaviour
         //    is the pocket's cells; otherwise the whole rect.
         pocketIdOfCell = new int[w * h];
         for (int k = 0; k < pocketIdOfCell.Length; k++) pocketIdOfCell[k] = -1;
+        wallPocketOfCell = new int[w * h];
+        for (int k = 0; k < wallPocketOfCell.Length; k++) wallPocketOfCell[k] = -1;
         pocketCells = new List<List<Vector3Int>>();
         pocketOpened = new bool[layout.pockets.Count];
         pocketRevealed = new bool[layout.pockets.Count];
@@ -454,6 +463,9 @@ public class MineField : MonoBehaviour
                 int idx = Idx(cell);
                 if (data[idx].voidCell) continue;                 // beyond the boundary ring — void wins
                 if (pocketIdOfCell[idx] != -1) continue;          // a pocket cavity claims it — empty wins
+                // The wall belongs to this pocket: drilling THROUGH it counts as excavating into the
+                // room (BreakCell), so a fully-ringed pocket (the boss room) always discovers on entry.
+                if (wallPocketOfCell[idx] == -1) wallPocketOfCell[idx] = pi;
                 int hard = PocketTiles.Hardness(wt.type);
                 ushort dur = ExcavateMs(hard);
                 if (dur > data[idx].durability)                   // tougher than the ore / a softer overlapping wall
@@ -850,13 +862,14 @@ public class MineField : MonoBehaviour
     // the starter pocket; deeper, the noise blobs cross into Hard and their cores into VeryHard.
     CellType RollHardnessAt(int x, int y, float nx, float ny)
     {
+        var hc = HardnessCfg(currentEra);
         float cx = xMin + x, cy = yMin + y;   // entry cavity is at the origin
         float d = Mathf.Clamp01(Mathf.Sqrt(cx * cx + cy * cy) / (0.5f * Mathf.Min(w, h)));
-        float n = Mathf.PerlinNoise(x * hardnessNoiseScale + nx, y * hardnessNoiseScale + ny);
-        n = n * 0.85f + 0.15f * Mathf.PerlinNoise(x * hardnessNoiseScale * 3.7f + ny, y * hardnessNoiseScale * 3.7f + nx);
-        float score = n * 0.65f + d * depthHardness;
-        if (score > veryHardThreshold) return CellType.VeryHard;
-        if (score > hardThreshold) return CellType.Hard;
+        float n = Mathf.PerlinNoise(x * hc.noiseScale + nx, y * hc.noiseScale + ny);
+        n = n * 0.85f + 0.15f * Mathf.PerlinNoise(x * hc.noiseScale * 3.7f + ny, y * hc.noiseScale * 3.7f + nx);
+        float score = n * 0.65f + d * hc.depthHardness;
+        if (score > hc.veryHardThreshold) return CellType.VeryHard;
+        if (score > hc.hardThreshold) return CellType.Hard;
         return CellType.Regular;
     }
 
@@ -1151,6 +1164,43 @@ public class MineField : MonoBehaviour
             pocketOpened[borderingRevealedPocket] = true;
             OnCavityBreached?.Invoke(borderingPocketCell);
         }
+        else
+        {
+            // Breaking a pocket's AUTHORED wall (the boss room's ring) is also excavating into it —
+            // without this, a fully-ringed room whose cavity is already open (showPockets) never
+            // fires discovery. But ONLY when this break actually CONNECTS to the cavity (the broken
+            // cell touches a cavity cell face-on): the first pick into a thick ring, or a graze
+            // along its outer face, must not start the room while it's still sealed. Report a
+            // CAVITY cell (the ring sits outside cellRect, so the raw break cell wouldn't match
+            // the pocket in MineDungeonManager).
+            int wpid = wallPocketOfCell != null ? wallPocketOfCell[idx] : -1;
+            if (wpid >= 0 && !pocketOpened[wpid] && TouchesPocketCavity(wpid, cell))
+                OpenPocket(wpid, NearestCavityCell(wpid, cell));
+        }
+    }
+
+    // Does this (just-broken) cell open face-on into one of the pocket's cavity cells? Diagonal
+    // contact doesn't count — no body fits through a corner touch, so the room isn't really open.
+    bool TouchesPocketCavity(int pi, Vector3Int cell)
+    {
+        foreach (var d in N4)
+        {
+            var n = cell + d;
+            if (InBounds(n) && pocketIdOfCell[Idx(n)] == pi) return true;
+        }
+        return false;
+    }
+
+    Vector3Int NearestCavityCell(int pi, Vector3Int from)
+    {
+        Vector3Int best = from;
+        float bd = float.MaxValue;
+        foreach (var c in pocketCells[pi])
+        {
+            float d = (c - from).sqrMagnitude;
+            if (d < bd) { bd = d; best = c; }
+        }
+        return best;
     }
 
     void TagPocketCell(List<Vector3Int> cells, int pi, Vector3Int c)
@@ -1671,8 +1721,21 @@ public class MineField : MonoBehaviour
 
     public bool IsSolid(Vector3Int c) => InBounds(c) && data[Idx(c)].IsSolid;
 
-    /// <summary>Is this cell part of the excavated dungeon (open AND explored)?</summary>
-    public bool IsExcavated(Vector3Int c) => InBounds(c) && !data[Idx(c)].IsSolid && data[Idx(c)].explored;
+    /// <summary>Is this cell part of the dungeon the PLAYER actually excavated (open AND explored)?
+    /// showPockets-revealed pocket cells (geometry opened by the cheat but never really breached) are
+    /// deliberately excluded — the spawner queries route through here, so a revealed-but-undug pocket
+    /// neither arms a spawner nor gives it a cell to materialise enemies into until you mine in.</summary>
+    public bool IsExcavated(Vector3Int c)
+    {
+        if (!InBounds(c)) return false;
+        int idx = Idx(c);
+        if (data[idx].IsSolid || !data[idx].explored) return false;
+        // A pocket that's only cheat-revealed (RevealPocketGeometry) is revealed but not opened — its
+        // cells are open geometry the player never dug, so they don't count as your excavation.
+        int pid = pocketIdOfCell != null ? pocketIdOfCell[idx] : -1;
+        if (pid >= 0 && pocketRevealed[pid] && !pocketOpened[pid]) return false;
+        return true;
+    }
 
     /// <summary>
     /// Any excavated cell within <paramref name="range"/> world units of a point? (Spawner activation
@@ -1828,6 +1891,27 @@ public class OreElementConfig
     public OreElementConfig() { }
     public OreElementConfig(Vector2 rangeP, int clustersP, Vector2 cellsP)
     { range = rangeP; clusters = clustersP; clusterCells = cellsP; }
+}
+
+/// <summary>
+/// Per-era rock hardness pattern tuning (lives on MineField in the scene — NOT in the authoring asset).
+/// Same knobs the old flat fields carried; defaults = the original scene tuning.
+/// </summary>
+[System.Serializable]
+public class HardnessEraConfig
+{
+    [Tooltip("Perlin feature scale in CELLS — smaller = bigger hard-rock veins/blobs.")]
+    public float noiseScale = 0.12f;
+    [Tooltip("How strongly distance from the entry hardens the rock (adds 0..this to the noise score at the rim).")]
+    public float depthHardness = 0.32f;
+    [Tooltip("Score (noise*0.65 + depth) above this = Hard rock.")]
+    public float hardThreshold = 0.49f;
+    [Tooltip("Score above this = VeryHard rock (the cores of the deepest veins).")]
+    public float veryHardThreshold = 0.62f;
+
+    public HardnessEraConfig() { }
+    public HardnessEraConfig(float scale, float depth, float hard, float veryHard)
+    { noiseScale = scale; depthHardness = depth; hardThreshold = hard; veryHardThreshold = veryHard; }
 }
 
 /// <summary>

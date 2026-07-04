@@ -35,6 +35,16 @@ public class Unit : MonoBehaviour, IClickable
     public bool preferCharacter = false;
     public bool preferBuildings = false;
     public bool preferWalls = false;
+    // Set by the unit's own AI while it is committed to turning immaterial for its next move (the
+    // windup before the status actually lands) — live immaterial counts automatically via
+    // PhasesWalls. Scripts own this flag: set it when the phase window is decided, clear it when
+    // the window ends.
+    [HideInInspector] public bool phasing = false;
+    /// <summary>Walk-through-walls pathing applies: immaterial right now, or declared about to be.
+    /// Base pathfinding then steers the straight line through material walls and never hands back
+    /// a wall as a chew target (preferWalls still hunts them); the Force Field's wall is itself
+    /// immaterial, so it still blocks — sealed in by one, the unit routes like matter again.</summary>
+    public bool PhasesWalls => phasing || (AS != null && AS.immaterial);
     [Tooltip("Current objective (runtime): written by MinePathManager.Decide every think tick. May be a wall's LifeScript transform when the decision is to chew. Null only when nothing is left to fight.")]
     public Transform target;
     //Lifescript max health sets the cap for dematerialise, leech, convert effects
@@ -93,6 +103,26 @@ public class Unit : MonoBehaviour, IClickable
                 list.Add(transform);
             }
         }
+    }
+
+    // Persistent behaviour loops (the enemy's "brain"). SetActive(false) — how the dungeon freeze
+    // sleeps enemies while you're away — kills every running coroutine, and the object re-enables
+    // WITHOUT re-running Start(). Any brain loop registered here is relaunched by OnThaw so frozen
+    // patrollers resume instead of standing still. Use RunPersistent instead of StartCoroutine for
+    // a loop that must survive a freeze; transient/animation-event coroutines keep using StartCoroutine.
+    readonly List<Func<IEnumerator>> persistentRoutines = new List<Func<IEnumerator>>();
+
+    protected Coroutine RunPersistent(Func<IEnumerator> routine)
+    {
+        persistentRoutines.Add(routine);
+        return StartCoroutine(routine());
+    }
+
+    /// <summary>Relaunch every persistent brain loop. Called by the dungeon freeze system after it
+    /// re-enables a previously-frozen enemy (whose coroutines were killed by SetActive(false)).</summary>
+    public void OnThaw()
+    {
+        foreach (var r in persistentRoutines) StartCoroutine(r());
     }
     
    

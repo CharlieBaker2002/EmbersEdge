@@ -394,6 +394,49 @@ public class EnergyManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Plan where n incoming dungeon embers should land: one connector per ember, assigned to the
+    /// buildings that want them in the same priority order the cable network fills (constructors →
+    /// ember generators → stores), one each round-robin. Whatever nothing has room for piles onto
+    /// the default store anyway — dungeon ember is never lost. The result is only short when there
+    /// are no stores at all.
+    /// </summary>
+    public List<EmberConnector> ResolveEmberDemand(int n)
+    {
+        var result = new List<EmberConnector>(Mathf.Max(0, n));
+        if (n <= 0) return result;
+        var room = new Dictionary<EmberConnector, int>();
+
+        void Fill(IEnumerable<EmberConnector> source)
+        {
+            var list = source.Where(c => c != null).Distinct().ToList();
+            foreach (EmberConnector c in list)
+                if (!room.ContainsKey(c)) room[c] = Mathf.Max(0, c.maxEmber - c.ember - c.emberTravel);
+            bool assigned = true;
+            while (result.Count < n && assigned)
+            {
+                assigned = false;
+                foreach (EmberConnector c in list)
+                {
+                    if (result.Count >= n) break;
+                    if (room[c] <= 0) continue;
+                    room[c]--;
+                    result.Add(c);
+                    assigned = true;
+                }
+            }
+        }
+
+        if (constructors != null) Fill(constructors.Where(x => x != null).Select(x => x.connect));
+        Fill(emberGens.Where(g => g != null).Select(g => g.connect));
+        Fill(emberStores.Where(s => s != null).Select(s => s.connect));
+
+        EmberConnector fallback = defaultEmberStore != null ? defaultEmberStore.connect
+            : emberStores.Where(s => s != null && s.connect != null).Select(s => s.connect).FirstOrDefault();
+        while (result.Count < n && fallback != null) result.Add(fallback);
+        return result;
+    }
+
     int FillStore(EmberStoreBuilding store, int n)
     {
         EmberConnector c = store.connect;
