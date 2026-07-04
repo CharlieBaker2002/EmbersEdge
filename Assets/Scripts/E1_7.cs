@@ -59,7 +59,7 @@ public class E1_7 : Unit
         if (sowTimer < 0f)
         {
             seeds.RemoveAll(x => x == null);
-            if (target != null && seeds.Count < maxSeeds &&
+            if (target != null && seeds.Count < maxSeeds && WorthSeeding(target) &&
                 Vector2.Distance(MinePath.AimPoint(target, transform.position), transform.position) < orbitRadius + 2.5f)
             {
                 StartCoroutine(SowI());
@@ -118,31 +118,37 @@ public class E1_7 : Unit
         }
     }
 
+    // Never seed at something that can't be hurt (walls with effectively infinite hp, e.g. dungeon
+    // walls registered as targets) — the burst would be wasted on them.
+    private static bool WorthSeeding(Transform t)
+    {
+        var tls = t.GetComponent<LifeScript>();
+        return tls != null && !tls.invulnerable && !float.IsInfinity(tls.maxHp);
+    }
+
     private IEnumerator SowI()
     {
         sowing = true;
         AS.Decelerate(0.5f, 0.5f);
-        // one in three: lob the seed at the target instead of dropping it.
-        // Telegraph the throw by swivelling to stare the victim down first.
-        bool lob = target != null && Random.Range(0, 3) == 0;
-        if (lob)
+        // always THROWN, never dropped at its feet. Telegraph by swivelling to stare the victim down.
+        for (float f = 0f; f < 0.45f; f += Time.deltaTime)
         {
-            for (float f = 0f; f < 0.45f; f += Time.deltaTime)
-            {
-                if (target == null) { lob = false; break; }
-                Quaternion q = Quaternion.Euler(0f, 0f, -Vector2.SignedAngle(MinePath.AimPoint(target, transform.position) - (Vector2)transform.position, Vector2.up));
-                transform.rotation = Quaternion.Lerp(transform.rotation, q, 0.22f * actRate);
-                yield return null;
-            }
+            if (target == null) break;
+            Quaternion q = Quaternion.Euler(0f, 0f, -Vector2.SignedAngle(MinePath.AimPoint(target, transform.position) - (Vector2)transform.position, Vector2.up));
+            transform.rotation = Quaternion.Lerp(transform.rotation, q, 0.22f * actRate);
+            yield return null;
         }
         StartCoroutine(GS.Animate(sr, sowSprs, 0.5f, false)); // coroutine, not LeanTween (pool pressure)
         yield return WFAS(0.22f);
-        var s = Instantiate(seed, transform.position, Quaternion.identity, GS.FindParent(GS.Parent.enemyprojectiles));
-        seeds.Add(s);
-        if (lob && target != null)
+        if (target != null)
         {
-            Vector2 dest = MinePath.AimPoint(target, transform.position) + Random.insideUnitCircle * 0.6f;
-            s.GetComponent<EmberSeed>().Lob(dest);
+            Vector2 pos = transform.position;
+            // near / towards the victim, never dead-on — and a throw carries at most 3 units
+            Vector2 to = MinePath.AimPoint(target, pos) + Random.insideUnitCircle * 0.6f - pos;
+            Vector2 dest = pos + (to.sqrMagnitude > 1e-4f ? to.normalized : (Vector2)transform.up) * Mathf.Min(to.magnitude, 3f);
+            var s = Instantiate(seed, transform.position, Quaternion.identity, GS.FindParent(GS.Parent.enemyprojectiles));
+            seeds.Add(s);
+            s.GetComponent<EmberSeed>().Throw(dest);
         }
         yield return WFAS(0.25f);
         sowing = false;

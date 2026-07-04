@@ -142,6 +142,20 @@ public class EnergyManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>The grid re-anchored its origin (map growth): every registered cell moves by one
+    /// uniform offset. Remap both cell maps and let consumers re-resolve their adjacency.</summary>
+    public void ShiftFrame(Vector2Int d)
+    {
+        if (d == Vector2Int.zero) return;
+        var shiftedSources = new List<KeyValuePair<Vector2Int, List<IEnergyAccumulator>>>(sourcesAt);
+        sourcesAt.Clear();
+        foreach (var kv in shiftedSources) sourcesAt[kv.Key + d] = kv.Value;
+        var shiftedPads = new List<KeyValuePair<Vector2Int, EnergyPad>>(padFootprintAt);
+        padFootprintAt.Clear();
+        foreach (var kv in shiftedPads) padFootprintAt[kv.Key + d] = kv.Value;
+        OnPadsChanged?.Invoke();
+    }
+
     /// <summary>All sources claiming this cell (pads, generators, pylons, …). Read-only.</summary>
     public IReadOnlyList<IEnergyAccumulator> SourcesAt(Vector2Int cell)
     {

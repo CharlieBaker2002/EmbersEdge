@@ -73,7 +73,9 @@ public class ActionScript : MonoBehaviour
         // PROJECTILES must NOT register: Depenetrate would shove them out of the rock and kill their
         // into-wall velocity every step (they'd slide along walls) before the reflection in
         // ProjectileScript.FixedUpdate ever saw a solid cell — they bounce off the ore instead.
-        if (MineField.i != null && PortalScript.i != null && PortalScript.i.inDungeon && PS == null)
+        // ignoreWalls bodies (ghost-drifters like the Spinner) phase through the ore exactly like
+        // they phase through base walls — never registered, never depenetrated.
+        if (MineField.i != null && PortalScript.i != null && PortalScript.i.inDungeon && PS == null && !ignoreWalls)
             MineField.i.Register(rb);
     }
 
@@ -381,7 +383,11 @@ public class ActionScript : MonoBehaviour
                         // Buildings (e.g. the Force Field wall) still shove bodies, but must NOT flag
                         // them with the "push" CC: that CC is what lets a shoved enemy deal collision
                         // damage to its own teammates. The wall should knock enemies around harmlessly.
-                        if (!building) oAS.AddPush(0.6f, true, Vector2.zero);
+                        // Same for ordinary bodies: only a body that is ITSELF under a harmful push
+                        // hands the CC on (an ability shove cascading through a crowd). A casual
+                        // walk-bump or a wall-bounce into a neighbour flags nothing — flagging every
+                        // contact made crowds chain friendly-fire damage out of nowhere.
+                        if (!building && CheckCCs(new string[] { "push" })) oAS.AddPush(0.6f, true, Vector2.zero);
                     }
                 }
             }
@@ -625,9 +631,11 @@ public class ActionScript : MonoBehaviour
         // baseline so a standing-still touch still knocks the target (real collisions lean on relative velocity)
         float relVel = Mathf.Max(ramBaseSpeed, (rb.linearVelocity - oAS.rb.linearVelocity).magnitude);
 
-        // shove the target exactly like the non-PS body-collision path does (line ~315), minus the damage
+        // shove the target exactly like the non-PS body-collision path does (line ~315), minus the
+        // damage — and minus the push CC unless WE are under a harmful push ourselves: a drill bump
+        // is locomotion, and flagging its victims let them chain friendly-fire into their teammates
+        if (!oAS.building && CheckCCs(new string[] { "push" })) oAS.AddPush(0.6f, true, Vector2.zero);
         oAS.TryAddForce(mass * relVel * normal * 30f, false);
-        if (!oAS.building) oAS.AddPush(0.6f, true, Vector2.zero);
 
         // recoil the wielder a bit — the "bump" feel of ramming, but it takes no damage
         if (ramSelfRecoil > 0f)

@@ -296,6 +296,14 @@ public static class MinePath
         return BasePathGrid.Ready ? BasePathGrid.blocked : null;
     }
 
+    /// <summary>Is this point inside a solid cell (dungeon rock / a registered base wall)? Point
+    /// query for things that must never pass through walls (e.g. lobbed projectiles in flight).</summary>
+    public static bool IsWallAt(Vector2 p)
+    {
+        var g = GridFor(p);
+        return g != null && g.IsSolid(g.WorldToCell(p));
+    }
+
     // ---------------------------------------------------------------- line of sight
 
     /// <summary>

@@ -22,6 +22,7 @@ public class PortalScript : MonoBehaviour
 
     [SerializeField] float televal;
     [SerializeField] float televalMax;
+    const float CHANNEL_TIME = 0.6f;   // how long you hold V to teleport — short so it's easy to trigger
     [SerializeField] RectTransform slrt;
     [SerializeField] Camera slCam;
     [SerializeField] RawImage ri;
@@ -71,6 +72,7 @@ public class PortalScript : MonoBehaviour
     private void Awake()
     {
         i = this;
+        televalMax = CHANNEL_TIME;
         UpdateSlider(televalMax);
         charEmitRate = 0f;
     }
@@ -158,7 +160,7 @@ public class PortalScript : MonoBehaviour
             Vector3 origin = target + (Vector3)Random.insideUnitCircle.normalized * Random.Range(0f, 0.25f);
             var cemb = Instantiate(characterEmber, origin, GS.RandRot(), GS.FindParent(GS.Parent.fx));
             cemb.to = target;
-            cemb.flightTime = 3f;
+            cemb.flightTime = 0.6f;   // short — so letting go mid-channel doesn't leave embers streaming in for seconds
         }
         
         if (cd)
@@ -217,7 +219,9 @@ public class PortalScript : MonoBehaviour
         // armed/pending or actively attacking. (Returning FROM the dungeon is always allowed.)
         if (!i.inDungeon && (SpawnManager.instance.waveArmed || SpawnManager.instance.dayState != SpawnManager.DayState.Day))
             return false;
-        return GS.CanAct() && i.canPortal && i.televal >= i.televalMax;
+        // No charge-up gate: you can (re)channel at any time — right after a wave ends, or even the
+        // instant you let go and the slider is still recovering. The slider is now just feedback.
+        return GS.CanAct() && i.canPortal;
     }
 
     // V key. In the dungeon the ember tether gets first claim on the press (throw onto a passive
@@ -241,7 +245,7 @@ public class PortalScript : MonoBehaviour
         {
             cd = false;
             charEmitRate = inDungeon ? 6f : 3f;
-            televalMax = 2f;
+            televalMax = CHANNEL_TIME;
             timer = televalMax;
             UpdateSlider(televalMax);
             if (inDungeon)
@@ -321,7 +325,7 @@ public class PortalScript : MonoBehaviour
         {
             canPortal = true;
             ri.color = Color.green;
-            UpdateSlider(0f,true);
+            UpdateSlider(televalMax,true);   // show the portal READY (bar empty) — no wait after a wave
         }
     }
 

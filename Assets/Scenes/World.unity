@@ -5782,7 +5782,7 @@ MonoBehaviour:
   DAMAGEPROTECTION: 0
   DAILYORBBOUNTY: 0
   IGNOREEFFICIENCY: 0
-  DIFFICULTY: 1.5
+  DIFFICULTY: 2
   ARENAMODE: 0
   INSTASPAWN: 1
   QuickTeleport: 1
@@ -17451,8 +17451,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   character: {fileID: 463123316}
   cam: {fileID: 0}
-  correctScaleBase: 6
+  correctScaleBase: 5
   correctScaleDungeon: 4
+  correctScaleWave: 6
   locked: 0
   noMove: 0
   v: {fileID: 2095639061}
@@ -17500,7 +17501,7 @@ Camera:
   far clip plane: 20
   field of view: 60
   orthographic: 1
-  orthographic size: 6
+  orthographic size: 5
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2

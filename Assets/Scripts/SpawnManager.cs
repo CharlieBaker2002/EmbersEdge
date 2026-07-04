@@ -588,6 +588,7 @@ public class SpawnManager : MonoBehaviour
             EE.StartCoroutine(EE.Acco(activityLevel + EE.bias));
         }
         dayState = DayState.PreAttack;
+        CameraScript.i?.ApplyDimensionScale();   // enemies imminent — adopt the wave zoom
         timer = EmbersEdge.warmUpTime;
         UpdateActivitySlider(activityLevel);
     }
@@ -762,6 +763,7 @@ public class SpawnManager : MonoBehaviour
             }
             waveCompleted = false;
             dayState = DayState.Day;
+            CameraScript.i?.ApplyDimensionScale();   // wave over — back to the peaceful base zoom
             waveArmed = false;      // wave defeated -> peaceful & disarmed; player dungeon-runs (V) or skips (Tele-Phone)
             currentPlan = null;     // start a fresh forecast for the new cycle
             activityRolled = false;

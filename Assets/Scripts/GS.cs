@@ -659,6 +659,25 @@ public static class GS
         }
     }
 
+    /// <summary>Pull every wild orb within <paramref name="radius"/> of <paramref name="center"/> toward
+    /// the player (collect state). Used e.g. when a pocket clears, to sweep up whatever it dropped.</summary>
+    public static void CollectOrbs(Vector2 center, float radius)
+    {
+        var orbs = OrbManager.allOrbs;
+        if (orbs == null) return;
+        float r2 = radius * radius;
+        for (int i = 0; i < orbs.Count; i++)
+        {
+            OrbScript o = orbs[i];
+            if (o == null || o.state != OrbScript.OrbState.wild) continue;
+            if (((Vector2)o.transform.position - center).sqrMagnitude <= r2)
+            {
+                o.state = OrbScript.OrbState.collect;
+                o.transform.parent = SpawnManager.instance.orbParent;
+            }
+        }
+    }
+
     public static void DestroyResources(Transform t)
     {
         foreach (Transform c in t)

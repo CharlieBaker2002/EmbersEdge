@@ -136,6 +136,19 @@ public class GridManager : MonoBehaviour
                     int nx = x + ox, ny = y + oy;
                     if (nx >= 0 && ny >= 0 && nx < newW && ny < newH) newOccupied[nx, ny] = true;
                 }
+
+            // anchorCell is a grid-frame coordinate: re-anchoring the origin moves EVERY placed
+            // building's frame. Carry the anchors (and the energy grid's registered cells) across
+            // like the occupancy remap above — otherwise a building placed before a grow and one
+            // placed after live in different frames, and energy adjacency (plus the OnDestroy
+            // cell-free at anchorCell) misses by exactly the origin shift.
+            if (ox != 0 || oy != 0)
+            {
+                var d = new Vector2Int(ox, oy);
+                for (int i = 0; i < Building.buildings.Count; i++)
+                    if (Building.buildings[i] != null) Building.buildings[i].anchorCell += d;
+                EnergyManager.i?.ShiftFrame(d);
+            }
         }
 
         origin = newOrigin; width = newW; height = newH;

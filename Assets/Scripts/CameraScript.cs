@@ -10,11 +10,15 @@ public class CameraScript : MonoBehaviour
 {
     public Transform character;
     public Camera cam;
-    // The standing "normal" zoom, kept SEPARATELY per dimension so base and dungeon can each have
-    // their own. Set by permanent zooms so a chosen scale STICKS per dimension. The single active
-    // scale is DimScale (whichever matches the current dimension) — there is no separate correctScale.
+    // The standing "normal" zoom, kept SEPARATELY per context so each can have its own. Set by
+    // permanent zooms so a chosen scale STICKS per context. The single active scale is DimScale
+    // (whichever matches the current context) — there is no separate correctScale.
+    //   • Dungeon  — while diving.
+    //   • Wave     — at base while a wave is imminent/underway (PreAttack or Attack).
+    //   • Base     — at base, peaceful.
     public float correctScaleBase = 4f;
     public float correctScaleDungeon = 4f;
+    public float correctScaleWave = 4f;
     public bool locked = true;
     //private bool isZooming = false;
     private Vector2 direction;
@@ -28,6 +32,9 @@ public class CameraScript : MonoBehaviour
     
     public float shakeStrength;
     [SerializeField] int shakeInd = 0;
+    // Bumped whenever a new zoom (or a manual zoom owner like FlipI) takes over. Any eased zoom whose
+    // generation is stale bails without touching orthographicSize, so two zooms never fight over it.
+    int zoomGen;
     
     [SerializeField] private TilemapRenderer floor;
     [SerializeField] private Material floormat;
@@ -81,7 +88,9 @@ public class CameraScript : MonoBehaviour
             transform.position = Vector3.zero;
             locked = true;
             DM.finishDungeon = true;
-            cam.orthographicSize = DimScale;
+            // Always open on the peaceful base zoom — DimScale can momentarily read the wave scale here
+            // because SpawnManager boots in a transient Attack state that immediately completes.
+            cam.orthographicSize = correctScaleBase;
         }
         
         direction = new Vector2();
@@ -122,7 +131,10 @@ public class CameraScript : MonoBehaviour
 
     IEnumerator FlipI(Vector2 p, float scaleUp, float duration, bool reverse = false)
     {
+        SeizeZoom();   // this routine drives orthographicSize itself — stop any eased Zoom fighting it
         float dir = reverse ? -1f : 1f;
+        // The dungeon entry (the only reverse flip) wants a snappier zoom DOWN out of the distortion.
+        float zoomDownSpeed = reverse ? 1.6f : 1f;
         for (float i = 0f; i < duration; i += Time.deltaTime)
         {
             cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, DimScale + scaleUp, Time.deltaTime * 6f/duration * i);
@@ -144,16 +156,18 @@ public class CameraScript : MonoBehaviour
         {
             //CameraScript.i.transform.rotation = Quaternion.Euler(dir * i * i * 90f / Mathf.Pow(duration, 2), 0f, dir * i * i * 90f / Mathf.Pow(duration, 2));
             CameraScript.i.transform.rotation = Quaternion.Euler(-dir * i * i * 90f / Mathf.Pow(duration, 2), 0f,0f);
-            cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, CameraScript.i.DimScale, Time.deltaTime * 6f/duration * (duration - (i + duration * 0.6f)));
+            cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, CameraScript.i.DimScale, zoomDownSpeed * Time.deltaTime * 6f/duration * (duration - (i + duration * 0.6f)));
             yield return null;
         }
         DistortLens(false, false, true);
         for (float i = duration * 0.6f; i > 0f; i -= Time.deltaTime)
         {
-            cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, CameraScript.i.DimScale, Time.deltaTime * 6f/duration * (duration - i));
+            cam.orthographicSize = Mathf.Lerp(cam.orthographicSize, CameraScript.i.DimScale, zoomDownSpeed * Time.deltaTime * 6f/duration * (duration - i));
             yield return null;
         }
-        cam.orthographicSize = CameraScript.i.DimScale;   // snap exact — the lerps above are asymptotic (left ~6.11 instead of 6)
+        // No hard snap here on purpose — the flip's asymptotic settle IS the old dungeon-entry feel; a
+        // snap put a small pop at the end. (Base-return precision is handled separately via Zoom, which
+        // FlipI doesn't drive — ToHomeSequence settles through StopShake, not this flip.)
         yield return new WaitForSeconds(0.25f);
         StartCoroutine(ReturnToPlayer());
         yield return new WaitForSeconds(2f);
@@ -322,15 +336,17 @@ public class CameraScript : MonoBehaviour
 
     public IEnumerator DiveThrough(Vector2 newPos, float otherScale, bool special = false)
     {
+        // Lower tvalues = longer eased duration. Used only by the core-placement dive (out to the map
+        // overview and back) — kept gentle so placing a core and returning doesn't snap-zoom.
         noMove = true;
-        yield return StartCoroutine(Zoom(0.25f, false, 0.08f));
+        yield return StartCoroutine(Zoom(0.25f, false, 0.055f));
         transform.position = new Vector3(newPos.x, newPos.y, transform.position.z);
         if (special)
         {
             DistortLens(false, true,true);
 
         }
-        yield return StartCoroutine(Zoom(otherScale, false, 0.12f));
+        yield return StartCoroutine(Zoom(otherScale, false, 0.08f));
         noMove = false;
     }
 
@@ -341,8 +357,18 @@ public class CameraScript : MonoBehaviour
         yield return StartCoroutine(Zoom(DimScale, false, t2));
     }
 
-    /// <summary>The standing zoom for whichever dimension we're currently in — THE single active scale.</summary>
-    public float DimScale => (PortalScript.i != null && PortalScript.i.inDungeon) ? correctScaleDungeon : correctScaleBase;
+    /// <summary>The standing zoom for the current context — THE single active scale. Dungeon while
+    /// diving; at base, the wave scale while enemies are imminent/attacking, else the peaceful base scale.</summary>
+    public float DimScale
+    {
+        get
+        {
+            if (PortalScript.i != null && PortalScript.i.inDungeon) return correctScaleDungeon;
+            if (SpawnManager.instance != null && SpawnManager.instance.dayState != SpawnManager.DayState.Day)
+                return correctScaleWave;
+            return correctScaleBase;
+        }
+    }
 
     /// <summary>Re-settle the camera onto the current dimension's standing zoom (e.g. right after a
     /// teleport flips dimension, so the size lands on the correct per-dimension scale).</summary>
@@ -356,6 +382,7 @@ public class CameraScript : MonoBehaviour
         if (updateBase)
         {
             if (PortalScript.i != null && PortalScript.i.inDungeon) i.correctScaleDungeon = scale;
+            else if (SpawnManager.instance != null && SpawnManager.instance.dayState != SpawnManager.DayState.Day) i.correctScaleWave = scale;
             else i.correctScaleBase = scale;
         }
         i.StartCoroutine(i.Zoom(scale, true, tValue));
@@ -363,30 +390,29 @@ public class CameraScript : MonoBehaviour
 
     IEnumerator Zoom(float scale, bool permanent, float tvalue)
     {
-        // NOTE: the per-dimension standing scale is recorded by ZoomPermanent (into correctScaleBase/
-        // correctScaleDungeon) before this runs — Zoom itself just drives the orthographic size.
-        tvalue *= 100;
-        float currentScale = cam.orthographicSize;
-        if(scale > currentScale)
+        // NOTE: the per-context standing scale is recorded by ZoomPermanent before this runs — Zoom
+        // itself just drives the orthographic size, smoothly, over a fixed duration with an ease
+        // (framerate-independent; no per-frame exponential lerp that stalls ~1% short and then pops).
+        int myGen = ++zoomGen;                       // claim ownership; older zooms will see a stale gen and bail
+        float from = cam.orthographicSize;
+        if (Mathf.Approximately(from, scale)) { cam.orthographicSize = scale; yield break; }
+
+        // Map the legacy speed coefficient to a comparable duration, then ease it in-out.
+        float duration = Mathf.Clamp(0.05f / Mathf.Max(tvalue, 0.0001f), 0.2f, 3.5f);
+        for (float t = 0f; t < duration; t += Time.deltaTime)
         {
-            while (currentScale < 0.99f * scale)
-            {
-                currentScale = Mathf.Lerp(currentScale, scale, tvalue * Mathf.Min(Time.deltaTime,0.02f));
-                cam.orthographicSize = currentScale;
-                yield return null;
-            }
+            if (myGen != zoomGen) yield break;       // a newer zoom (or FlipI) took over — don't compete
+            float k = Mathf.SmoothStep(0f, 1f, t / duration);
+            cam.orthographicSize = Mathf.Lerp(from, scale, k);
+            yield return null;
         }
-        else
-        {
-            while (currentScale > 1.01f * scale)
-            {
-                currentScale = Mathf.Lerp(currentScale, scale, tvalue * Mathf.Min(Time.deltaTime, 0.02f));
-                cam.orthographicSize = currentScale;
-                yield return null;
-            }
-        }
-        cam.orthographicSize = scale;   // snap exact — the loop stops ~1% short (this was the 6.11-not-6 drift)
+        if (myGen != zoomGen) yield break;
+        cam.orthographicSize = scale;                // land exactly on target
     }
+
+    /// <summary>Take over the orthographic size from any in-flight eased Zoom (they bail on the next
+    /// frame). Call before a routine that drives the zoom itself (e.g. FlipI) so they don't compete.</summary>
+    void SeizeZoom() => zoomGen++;
 
     public IEnumerator GoTo(Vector2 p)
     {

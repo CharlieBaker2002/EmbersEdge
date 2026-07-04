@@ -28,8 +28,14 @@ public class E1_4 : Unit, IOnCollide
         StartCoroutine(E1_4_Main());
     }
 
+    // Every shot is gated on projectile-width LOS to the target — the volley loop, spin sprays and
+    // animation events all funnel through here, so none of them can fire into a wall the target is
+    // hiding behind (no target at all also means no shot).
+    private bool CanHitTarget(Vector2 muzzle) => MinePath.CanSee(muzzle, target, 0.15f);
+
     public void ShootSmall(int ind)
     {
+        if (!CanHitTarget(ts[ind].position)) return;
         for(int i = Random.Range(0,4); i < 4; i++)
         {
             GS.NewP(p0, ts[ind], tag, 0.4f, 2*Random.value + ActRateProjectileStrength());
@@ -38,6 +44,7 @@ public class E1_4 : Unit, IOnCollide
 
     public void ShootBig()
     {
+        if (!CanHitTarget(transform.position)) return;
         GS.NewP(p1, transform,tag, 0.1f, ActRateProjectileStrength());
     }
 
@@ -79,18 +86,26 @@ public class E1_4 : Unit, IOnCollide
             timer = 2f;
             charging = true;
             float refetch = 0f;
+            Vector2 pathDir = Vector2.zero;
             while (timer >= 0f)
             {
                 if ((refetch -= Time.fixedDeltaTime) <= 0f)
                 {
                     refetch = 0.25f;   // re-decide on a throttle, not once per FixedUpdate
-                    MinePathManager.Decide(this, out _);
+                    MinePathManager.Decide(this, out pathDir);
                 }
                 if (target != null)
                 {
-                    // steer mid-charge: keep swinging the nose onto the target as it moves
-                    // (wall targets aim at their nearest span point, not the owning tower)
-                    Vector2 want = ((Vector2)MinePath.AimPoint(target, transform.position) - (Vector2)transform.position).normalized;
+                    // steer mid-charge: swing the nose onto the target while the BODY has a clear
+                    // line to it (wall targets aim at their nearest span point). No line — charge
+                    // down the pathfinding route instead (which may deliberately head INTO a
+                    // chewable wall), never nose-first into rock the route walks around.
+                    Vector2 aim = MinePath.AimPoint(target, transform.position);
+                    Vector2 want = (aim - (Vector2)transform.position).normalized;
+                    if (!MinePath.LineOfSightWide(transform.position, aim, size) && pathDir != Vector2.zero)
+                    {
+                        want = pathDir;
+                    }
                     transform.up = Vector2.Lerp(transform.up, want, Mathf.Min(1, 2.5f * Time.fixedDeltaTime * actRate));
                 }
                 dir = transform.up;
@@ -102,8 +117,10 @@ public class E1_4 : Unit, IOnCollide
             AS.Decelerate(1.5f, 0.935f);
             engine.SetBool("Ignite", false);
             MinePathManager.Decide(this, out _);
-            // volley only when the objective is actually close — otherwise charge/rest toward it
-            if (target != null && Vector2.Distance(MinePath.AimPoint(target, transform.position), transform.position) < 12f)
+            // volley only when the objective is close AND the shots can actually reach it —
+            // never spray-and-spin at a wall the target is hiding behind
+            if (target != null && Vector2.Distance(MinePath.AimPoint(target, transform.position), transform.position) < 12f
+                && MinePath.CanSee(transform.position, target, 0.15f))
             {
                 timer = 2.25f;
                 StartCoroutine(ShootSpin());
