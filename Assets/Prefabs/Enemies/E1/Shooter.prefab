@@ -207,13 +207,14 @@ MonoBehaviour:
   stati: []
   statVulnerability: 3
   size: 0.4
-  wander: 0.25
+  wander: 0
   wanderEff: 1.5
   wallExploitIQ: 1
   crowdAversion: 0
   preferCharacter: 0
   preferBuildings: 0
   preferWalls: 0
+  phasing: 0
   target: {fileID: 0}
   defaultActRate: 1
   actRate: 1

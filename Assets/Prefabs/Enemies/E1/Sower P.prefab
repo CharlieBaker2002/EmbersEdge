@@ -193,9 +193,9 @@ MonoBehaviour:
   startDirection: {x: 0, y: 0}
   onlyChar: 0
   CC: Stun
-  val: 1
+  val: 0.25
   val2: 0
-  CC2:
+  CC2: 
   val21: 0.5
   val22: 0
   burstCap: 3

@@ -41,6 +41,8 @@ public class MineForgeWindow : EditorWindow
     int tileBrushSize = 1;    // Tiles brush footprint, square: 1 / 2 / 4 / 8 cells
     bool snapToGrid = true;   // snap free-form enemy/object placement to the nearest 0.5-cell grid point
     float brushChance = 1f;   // spawn chance written onto each EXTRA (Object brush) placed — enemies have none
+    bool symX;                // mirror every placement/paint left↔right (across the vertical centre line)
+    bool symY;                // mirror every placement/paint top↕bottom (across the horizontal centre line)
 
     // Which category a brush mode belongs to (Object/Core/Combi are all "Extras").
     BrushCategory Cat =>
@@ -263,6 +265,14 @@ public class MineForgeWindow : EditorWindow
         CategoryTab("Extras", BrushCategory.Extras, 64);
         CategoryTab("Enemies", BrushCategory.Enemies, 72);
         GUILayout.FlexibleSpace();
+        // Symmetry: every paint/placement is mirrored across the pocket's centre line(s). Both on = 4-way.
+        symX = GUILayout.Toggle(symX, new GUIContent("Sym ↔",
+            "Mirror painting & placement left↔right (across the vertical centre line). Combine with Sym ↕ for 4-way."),
+            EditorStyles.miniButton, GUILayout.Width(56), GUILayout.Height(28));
+        symY = GUILayout.Toggle(symY, new GUIContent("Sym ↕",
+            "Mirror painting & placement top↕bottom (across the horizontal centre line). Combine with Sym ↔ for 4-way."),
+            EditorStyles.miniButton, GUILayout.Width(56), GUILayout.Height(28));
+        GUILayout.Space(6);
         // Free-form placement snap (enemies + objects) — lands them on the nearest 0.5-cell grid point.
         snapToGrid = GUILayout.Toggle(snapToGrid, new GUIContent("Snap ½",
             "Snap placed/dragged enemies & objects to the nearest 0.5×0.5 grid point. Off = fully free-form."),
@@ -740,6 +750,18 @@ public class MineForgeWindow : EditorWindow
                 GUI.Label(new Rect(rr.x, rr.y - 2, es, 10), (i + 1).ToString(), orderLabel);
             }
 
+        // Tiles brush ghost: outline the exact n×n footprint under the cursor (plus its symmetry mirrors).
+        if (Event.current.type == EventType.Repaint && Cat == BrushCategory.Tiles && area.Contains(Event.current.mousePosition))
+        {
+            Vector2 bc = MouseCell(area, cols, rows, cellPx, Event.current.mousePosition);
+            int n = Mathf.Max(1, tileBrushSize);
+            Vector2Int o = BrushOrigin(bc, n);
+            DrawBrushGhost(area, cols, rows, cellPx, o.x, o.y, n);
+            if (symX) DrawBrushGhost(area, cols, rows, cellPx, cols - o.x - n, o.y, n);
+            if (symY) DrawBrushGhost(area, cols, rows, cellPx, o.x, rows - o.y - n, n);
+            if (symX && symY) DrawBrushGhost(area, cols, rows, cellPx, cols - o.x - n, rows - o.y - n, n);
+        }
+
         // Hover tooltip: name the obj / enemy / core / tile under the cursor.
         if (Event.current.type == EventType.Repaint && area.Contains(Event.current.mousePosition))
         {
@@ -796,7 +818,10 @@ public class MineForgeWindow : EditorWindow
                     {
                         Vector2 pos = Place(cell, cols, rows);
                         wv.placed.Add(new PlacedObject { enemy = brushEnemy, pos = pos });
-                        dragKind = DragKind.Enemy; dragIdx = wv.placed.Count - 1; MarkDirty();
+                        dragKind = DragKind.Enemy; dragIdx = wv.placed.Count - 1;
+                        foreach (var mp in MirrorPositions(pos, cols, rows))
+                            if (p.InSpace(mp)) wv.placed.Add(new PlacedObject { enemy = brushEnemy, pos = mp });
+                        MarkDirty();
                     }
                     break;
                 }
@@ -828,7 +853,13 @@ public class MineForgeWindow : EditorWindow
                     {
                         Vector2 pos = Place(cell, cols, rows);
                         if (brushMode == BrushMode.Object && brushObject != null)
-                        { p.extras.Add(new PlacedObject { prefab = brushObject, pos = pos, chance = brushChance }); dragKind = DragKind.Extra; dragIdx = p.extras.Count - 1; MarkDirty(); }
+                        {
+                            p.extras.Add(new PlacedObject { prefab = brushObject, pos = pos, chance = brushChance });
+                            dragKind = DragKind.Extra; dragIdx = p.extras.Count - 1;
+                            foreach (var mp in MirrorPositions(pos, cols, rows))
+                                if (p.InSpace(mp)) p.extras.Add(new PlacedObject { prefab = brushObject, pos = mp, chance = brushChance });
+                            MarkDirty();
+                        }
                         else if (brushMode == BrushMode.Core)
                         { p.core = new CorePlacement { present = true, pos = pos }; MarkDirty(); }
                     }
@@ -1077,31 +1108,62 @@ public class MineForgeWindow : EditorWindow
     }
 
     // ---- tile helpers ---------------------------------------------------------------------
-    // Paint an n×n block (tileBrushSize) of `type` centred on `cell` (Empty clears them). One entry per cell;
-    // a new WALL evicts anything standing on the painted cells.
+    // Bottom-left cell of an n×n block centred on the CONTINUOUS cursor position — for even sizes the
+    // block shifts with which half of the tile the mouse is in (a 2×2 paints the 4 cells around the
+    // nearest corner), instead of always anchoring off the hovered tile.
+    static Vector2Int BrushOrigin(Vector2 cell, int n)
+        => new Vector2Int(Mathf.RoundToInt(cell.x - n * 0.5f), Mathf.RoundToInt(cell.y - n * 0.5f));
+
+    // Paint an n×n block (tileBrushSize) of `type` centred on the cursor (Empty clears them), mirrored by
+    // the symmetry toggles. One entry per cell; a new WALL evicts anything standing on the painted cells.
     void PaintTile(PocketTemplate p, Vector2 cell, PocketTileType type)
     {
-        int cx = Mathf.FloorToInt(cell.x), cy = Mathf.FloorToInt(cell.y);
         int n = Mathf.Max(1, tileBrushSize);
-        int o = n / 2;                         // centre the block on the cursor
-        bool changed = false, anyWall = false;
+        Vector2Int o = BrushOrigin(cell, n);
+        var cells = new HashSet<Vector2Int>();
         for (int dx = 0; dx < n; dx++)
             for (int dy = 0; dy < n; dy++)
             {
-                int x = cx - o + dx, y = cy - o + dy;
-                if (x < 0 || x >= p.width || y < 0 || y >= p.height) continue;
-                var c = new Vector2Int(x, y);
-                int removed = p.tiles.RemoveAll(t => t.cell == c);
-                if (type != PocketTileType.Empty)
-                {
-                    p.tiles.Add(new PocketTile(c, type));
-                    changed = true;
-                    if (PocketTiles.IsWall(type)) anyWall = true;
-                }
-                else if (removed > 0) changed = true;   // erased back to Empty cavity
+                int x = o.x + dx, y = o.y + dy;
+                if (x >= 0 && x < p.width && y >= 0 && y < p.height) cells.Add(new Vector2Int(x, y));
+                if (symX && p.width - 1 - x >= 0 && p.width - 1 - x < p.width && y >= 0 && y < p.height)
+                    cells.Add(new Vector2Int(p.width - 1 - x, y));
+                if (symY && x >= 0 && x < p.width && p.height - 1 - y >= 0 && p.height - 1 - y < p.height)
+                    cells.Add(new Vector2Int(x, p.height - 1 - y));
+                if (symX && symY && p.width - 1 - x >= 0 && p.width - 1 - x < p.width && p.height - 1 - y >= 0 && p.height - 1 - y < p.height)
+                    cells.Add(new Vector2Int(p.width - 1 - x, p.height - 1 - y));
             }
+        bool changed = false, anyWall = false;
+        foreach (var c in cells)
+        {
+            int removed = p.tiles.RemoveAll(t => t.cell == c);
+            if (type != PocketTileType.Empty)
+            {
+                p.tiles.Add(new PocketTile(c, type));
+                changed = true;
+                if (PocketTiles.IsWall(type)) anyWall = true;
+            }
+            else if (removed > 0) changed = true;   // erased back to Empty cavity
+        }
         if (anyWall) PrunePlacementsToSpace(p);
         if (changed) MarkDirty();
+    }
+
+    // Mirrored copies of a free-form position under the active symmetry toggles (original excluded;
+    // degenerate mirrors on the centre line dedupe away).
+    List<Vector2> MirrorPositions(Vector2 pos, int cols, int rows)
+    {
+        var outp = new List<Vector2>(3);
+        void Add(Vector2 v)
+        {
+            if ((v - pos).sqrMagnitude < 1e-4f) return;
+            foreach (var q in outp) if ((q - v).sqrMagnitude < 1e-4f) return;
+            outp.Add(v);
+        }
+        if (symX) Add(new Vector2(cols - pos.x, pos.y));
+        if (symY) Add(new Vector2(pos.x, rows - pos.y));
+        if (symX && symY) Add(new Vector2(cols - pos.x, rows - pos.y));
+        return outp;
     }
 
     // Fill the pocket with solid Wall, then carve a centred empty cavity (up to 10×10) to start from. Used for
@@ -1175,6 +1237,17 @@ public class MineForgeWindow : EditorWindow
     {
         if (snapToGrid) cell = new Vector2(Mathf.Round(cell.x * 2f) * 0.5f, Mathf.Round(cell.y * 2f) * 0.5f);
         return ClampToCanvas(cell, cols, rows);
+    }
+
+    // Translucent highlight over an n×n block of cells (clipped to the canvas) — the Tiles brush preview.
+    static void DrawBrushGhost(Rect area, int cols, int rows, float cellPx, int x0, int y0, int n)
+    {
+        int xa = Mathf.Max(0, x0), xb = Mathf.Min(cols, x0 + n);
+        int ya = Mathf.Max(0, y0), yb = Mathf.Min(rows, y0 + n);
+        if (xa >= xb || ya >= yb) return;
+        var r = new Rect(area.x + xa * cellPx, area.y + (rows - yb) * cellPx,
+                         (xb - xa) * cellPx - 1, (yb - ya) * cellPx - 1);
+        EditorGUI.DrawRect(r, new Color(1f, 1f, 1f, 0.16f));
     }
 
     int HitMarker(List<PlacedObject> list, Rect area, int rows, float cellPx, float mk, Vector2 m)

@@ -9,7 +9,8 @@ using UnityEngine;
 /// the player's hand — into the pocket centre, and the player is bound to the pocket: they can't move
 /// further than maxLen from the disc. Killing the pocket's enemies feeds their souls into the disc (it spins fast through its
 /// frames on every kill) and drains the era-coloured progress bar floating above it — the bar shows
-/// how much is LEFT until the room is complete, its bleeding edge flaring bright on each kill. Once
+/// how much is LEFT until the room is complete, its bleeding edge flaring bright on each kill.
+/// In a BOSS room the same bar is the boss's HP bar instead (Pocket.BossLife), draining hit by hit. Once
 /// EVERY enemy is dead the disc sends the pocket's EMBER off with the player (EmberStore.Hold — a new
 /// currency, NOT orbs; 1 per pocket by default) and the tether releases. The held ember pays out
 /// visibly on the return teleport (PortalScript), flying into whichever buildings want it. Tapping V unteth ers early (PortalScript
@@ -153,7 +154,7 @@ public class EmberTether : MonoBehaviour
         Color era = GS.ColFromEra();
         barFill = MakeBarPart("fill", 42, new Color(era.r, era.g, era.b, 0.95f));
         barBleed = MakeBarPart("bleed", 43, Color.white);
-        barRoot.gameObject.SetActive(totalPoints > 0f);
+        barRoot.gameObject.SetActive(totalPoints > 0f || (pocket != null && pocket.IsBossRoom));
         UpdateBar(anchor);   // initial full-bar layout
     }
 
@@ -250,10 +251,18 @@ public class EmberTether : MonoBehaviour
         StartCoroutine(WispsTo(from));
     }
 
-    // Live "left until the room is complete" fraction, straight from the pocket.
+    // Live "left until the room is complete" fraction, straight from the pocket. In a BOSS room the
+    // bar is the boss's HP bar instead — full until the boss appears, draining with its health.
     float Frac()
     {
-        if (totalPoints <= 0f || pocket == null) return 0f;
+        if (pocket == null) return 0f;
+        if (pocket.IsBossRoom)
+        {
+            var boss = pocket.BossLife;
+            if (boss == null) return 1f;   // not on the field yet — nothing drained
+            return boss.hasDied ? 0f : Mathf.Clamp01(boss.hp / Mathf.Max(0.0001f, boss.maxHp));
+        }
+        if (totalPoints <= 0f) return 0f;
         return Mathf.Clamp01(pocket.RemainingPoints() / totalPoints);
     }
 

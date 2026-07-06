@@ -25,6 +25,7 @@ public class D0_6 : Unit, IOnDeath, IOnCollide
             cs = GS.CS();
             convertTime = 5f;
             maxTime = 13f;
+            preferCharacter = true;   // converted homing hunts the PLAYER, like the straight-line version did
         }
         base.Start();
         ShieldUtility.DecayInShield(this,3f,maxTime,999f);
@@ -45,7 +46,29 @@ public class D0_6 : Unit, IOnDeath, IOnCollide
             l.FadeInSlow();
         }
         rot.omega = 30f * fear;
-        AS.TryAddForce(fear*(!inDungeon ? transform.position.normalized : -(cs.position - transform.position).normalized), true);
+        Vector2 push;
+        if (!inDungeon)
+        {
+            push = fear * (Vector2)transform.position.normalized;
+        }
+        else if (fear >= 0f)
+        {
+            // still cooking — drifting away from the player, straight is fine
+            push = fear * ((Vector2)transform.position - (Vector2)cs.position).normalized;
+        }
+        else
+        {
+            // converted: hunt along the fields' route, not through rock; zero route means
+            // arrived/unreachable — fall back to the straight line
+            MinePathManager.Decide(this, out Vector2 route);
+            if (route == Vector2.zero)
+            {
+                Vector2 at = target != null ? (Vector2)target.position : (Vector2)cs.position;
+                route = (at - (Vector2)transform.position).normalized;
+            }
+            push = -fear * route;
+        }
+        AS.TryAddForce(push, true);
     }
     
     public void OnDeath()

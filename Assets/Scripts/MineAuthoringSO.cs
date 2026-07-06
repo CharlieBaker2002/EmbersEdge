@@ -249,9 +249,20 @@ public class PocketTemplate
     public bool InSpace(Vector2 cellPos)
         => InSpace(new Vector2Int(Mathf.FloorToInt(cellPos.x), Mathf.FloorToInt(cellPos.y)));
 
-    /// <summary>The carved cavity = every rect cell that ISN'T a solid wall (Empty + status tiles).</summary>
+    /// <summary>Runtime-merged templates (root + combis) record their EXACT open cells here: an L-shaped
+    /// merge's bounding rect contains plain rock that must NOT count as cavity. Never serialized —
+    /// authored templates leave it null and fall back to rect-minus-walls.</summary>
+    [System.NonSerialized] public HashSet<Vector2Int> runtimeCavity;
+
+    /// <summary>The carved cavity = every rect cell that ISN'T a solid wall (Empty + status tiles) —
+    /// or the exact merged cell set when this is a runtime-merged template.</summary>
     public IEnumerable<Vector2Int> Cells()
     {
+        if (runtimeCavity != null)
+        {
+            foreach (var c in runtimeCavity) yield return c;
+            yield break;
+        }
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
             {

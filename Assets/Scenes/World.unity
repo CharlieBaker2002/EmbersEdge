@@ -16558,7 +16558,7 @@ MonoBehaviour:
   areaMargin: 3
   overBudgetFactor: 1.15
   generateOnStart: 1
-  showPockets: 0
+  showPockets: 1
 --- !u!114 &489841283
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -16632,7 +16632,7 @@ MonoBehaviour:
   floorSortingOrder: -1
   lightColor: {r: 1, g: 1, b: 1, a: 1}
   lightIntensity: 0.85
-  wallPadding: 2.5
+  wallPadding: 300
   lightRebuildInterval: 0.12
   hardnessEras:
   - noiseScale: 0.12
@@ -16650,7 +16650,7 @@ MonoBehaviour:
   boundaryAllowance: 2
   oreEras:
   - white:
-      range: {x: 0.25, y: 0.9}
+      range: {x: 0.2, y: 0.9}
       clusters: 8
       clusterCells: {x: 4, y: 11}
     green:
@@ -16697,7 +16697,7 @@ MonoBehaviour:
       range: {x: 0.7, y: 1}
       clusters: 8
       clusterCells: {x: 5, y: 14}
-  oreFairness: 0.6
+  oreFairness: 0.3
   era1Points: {x: 200, y: 200}
   era2Points: {x: 600, y: 600}
   era3Points: {x: 1800, y: 1800}
@@ -16705,9 +16705,9 @@ MonoBehaviour:
   era2SpawnerPoints: {x: 90, y: 180}
   era3SpawnerPoints: {x: 270, y: 540}
   excavateSeconds:
-  - 0.5
-  - 1
-  - 2
+  - 0.2
+  - 0.2
+  - 0.2
   playerRadius: 0.25
   bodyRadius: 0.25
   buildOnStart: 0

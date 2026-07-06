@@ -577,7 +577,7 @@ public class MineDungeonManager : MonoBehaviour
 
     // 10% (era 1) → 50% (last era) chance per combi-tile.
     float CombiChance(int era)
-        => Mathf.Lerp(0.1f, 0.5f, MineAuthoringSO.ERAS <= 1 ? 0f : (float)era / (MineAuthoringSO.ERAS - 1));
+        => Mathf.Lerp(0.5f, 0.5f, MineAuthoringSO.ERAS <= 1 ? 0f : (float)era / (MineAuthoringSO.ERAS - 1));
 
     // Build a runtime template = root pocket plus recursively-attached combi-pockets (base -> combi ->
     // combi-combi; depth capped at 2). Each combi is ROTATED so its top inlet faces its host and it grows
@@ -624,6 +624,10 @@ public class MineDungeonManager : MonoBehaviour
         foreach (var kv in tileMap)
             if (kv.Value != PocketTileType.Empty)
                 merged.tiles.Add(new PocketTile(kv.Key + shift, kv.Value));
+        // Record the EXACT open cells: an L-shaped merge's bounding rect contains plain rock between
+        // the root and its combis, which must neither tag as pocket cavity nor clear on breach.
+        merged.runtimeCavity = new HashSet<Vector2Int>();
+        foreach (var c in cavity) merged.runtimeCavity.Add(c + shift);
         ShiftPlaced(waves, fshift);
         ShiftList(extras, fshift);
         merged.waves = waves;
@@ -651,7 +655,24 @@ public class MineDungeonManager : MonoBehaviour
                 if (tt != PocketTileType.Empty) tileMap[rc] = tt;
             }
         var toff = new Vector2(offset.x, offset.y);
-        waves.AddRange(CloneWavesRot(t.waves, k, t.width, t.height, toff));
+        var clones = CloneWavesRot(t.waves, k, t.width, t.height, toff);
+        if (depth == 0)
+        {
+            waves.AddRange(clones);
+        }
+        else
+        {
+            // A combi's waves ALIGN with the host's by index — its wave 1 spawns together with the
+            // room's wave 1 (host timing/clear-gate rules the merged wave), not queued up after the
+            // host finishes. Only surplus combi waves append and run at the end.
+            for (int wi = 0; wi < clones.Count; wi++)
+            {
+                if (wi < waves.Count && clones[wi]?.placed != null)
+                    (waves[wi].placed ??= new List<PlacedObject>()).AddRange(clones[wi].placed);
+                else if (clones[wi] != null)
+                    waves.Add(clones[wi]);
+            }
+        }
         extras.AddRange(ClonePlacedRot(t.extras, k, t.width, t.height, toff));
 
         // base(0) -> combi(1) -> combi-combi(2); no children past depth 2
@@ -669,13 +690,24 @@ public class MineDungeonManager : MonoBehaviour
                 if (cp != null && cp.enabled && MineAuthoringSO.PocketAutoPoints(cp) <= remaining) options.Add(cp);
             if (options.Count == 0) continue;
             var pick = options[Random.Range(0, options.Count)];
+            // Coin-flip mirror variant: the combi's position (its combi-tile) and rotation (inlet must
+            // face the host) are locked, so a pre-rotation flip across local X is the one symmetry left
+            // — same footprint, same inlet, mirrored innards.
+            if (Random.value < 0.5f) pick = FlippedX(pick);
 
             Vector2Int tileW = RotCell(tile, k, t.width, t.height) + offset;
             Vector2Int dirW = RotDir(OutwardDir(tile, tCentre), k);   // this tile's outward dir in working coords
 
+            // Combi-tiles are painted INSIDE the cavity pointing into the pocket's wall — walk outward
+            // along the ray to the LAST host-footprint cell, so the child always lands beyond the wall
+            // instead of overlapping it (which silently skipped every interior-painted combi).
+            Vector2Int exitW = tileW;
+            for (int g = Mathf.Max(t.width, t.height) + 4; g > 0 && full.Contains(exitW + dirW); g--)
+                exitW += dirW;
+
             int ck = RotForDir(dirW);                                  // rotate the child so its top inlet faces here
             int crw = pick.width, crh = pick.height; RotDims(ck, ref crw, ref crh);
-            Vector2Int coff = CombiOffset(tileW, dirW, crw, crh);
+            Vector2Int coff = CombiOffset(exitW, dirW, crw, crh);
 
             bool overlap = false;
             for (int x = 0; x < pick.width && !overlap; x++)
@@ -683,20 +715,69 @@ public class MineDungeonManager : MonoBehaviour
                     if (full.Contains(RotCell(new Vector2Int(x, y), ck, pick.width, pick.height) + coff)) { overlap = true; break; }
             if (overlap) continue;
 
-            AddStrip(cavity, full, tileW, dirW);                       // 5-wide open connection
+            // 5-wide open connection carved from the authored tile THROUGH the host wall to the child
+            int steps = Mathf.Abs(exitW.x - tileW.x) + Mathf.Abs(exitW.y - tileW.y);
+            for (int s = 0; s <= steps; s++)
+                AddStrip(cavity, full, tileW + dirW * s, dirW, tileMap);
             used += MineAuthoringSO.PocketAutoPoints(pick);
             AttachRecursive(pick, ck, coff, depth + 1, em, era, combiBudget, ref used, cavity, full, tileMap, waves, extras);
         }
     }
 
+    // Mirror a combi template across its local X axis. Applied BEFORE RotForDir, so the top inlet
+    // still faces the host and the footprint/attach cell are unchanged — only the room's internal
+    // handedness randomises. Deep-copies every collection placement reads (the authored asset is
+    // never mutated). Cells mirror as width-1-x, free-form points as width-x.
+    static PocketTemplate FlippedX(PocketTemplate src)
+    {
+        var f = new PocketTemplate
+        {
+            name = src.name, enabled = src.enabled, width = src.width, height = src.height,
+            isBoss = src.isBoss, weightRange = src.weightRange, ember = src.ember,
+            costOverridden = src.costOverridden, costOverride = src.costOverride,
+            tiles = new List<PocketTile>(), extras = new List<PlacedObject>(),
+            combiTiles = new List<Vector2Int>(), waves = new List<PocketWave>(),
+        };
+        if (src.core.present)
+            f.core = new CorePlacement { present = true, pos = new Vector2(src.width - src.core.pos.x, src.core.pos.y) };
+        if (src.tiles != null)
+            foreach (var t in src.tiles)
+                f.tiles.Add(new PocketTile(new Vector2Int(src.width - 1 - t.cell.x, t.cell.y), t.type));
+        if (src.extras != null)
+            foreach (var e in src.extras)
+            { var c = e; c.pos = new Vector2(src.width - c.pos.x, c.pos.y); f.extras.Add(c); }
+        if (src.combiTiles != null)
+            foreach (var c in src.combiTiles)
+                f.combiTiles.Add(new Vector2Int(src.width - 1 - c.x, c.y));
+        if (src.waves != null)
+            foreach (var w in src.waves)
+            {
+                if (w == null) continue;
+                var nw = new PocketWave
+                {
+                    spawnDuration = w.spawnDuration, delayAfter = w.delayAfter,
+                    waitForClear = w.waitForClear, randomOrder = w.randomOrder,
+                    placed = new List<PlacedObject>(),
+                };
+                if (w.placed != null)
+                    foreach (var p in w.placed)
+                    { var c = p; c.pos = new Vector2(src.width - c.pos.x, c.pos.y); nw.placed.Add(c); }
+                f.waves.Add(nw);
+            }
+        return f;
+    }
+
     // A combi-tile / connection edge is 5 cells wide (perpendicular to its outward direction).
-    static void AddStrip(HashSet<Vector2Int> cavity, HashSet<Vector2Int> full, Vector2Int centre, Vector2Int dir)
+    // Clears any painted wall on the strip cells — the corridor punches through the host's own wall.
+    static void AddStrip(HashSet<Vector2Int> cavity, HashSet<Vector2Int> full, Vector2Int centre, Vector2Int dir,
+                         Dictionary<Vector2Int, PocketTileType> tileMap)
     {
         var perp = new Vector2Int(-dir.y, dir.x);
         for (int k = -CombiHalf; k <= CombiHalf; k++)
         {
             var c = new Vector2Int(centre.x + perp.x * k, centre.y + perp.y * k);
             cavity.Add(c); full.Add(c);
+            tileMap.Remove(c);
         }
     }
 

@@ -3,8 +3,10 @@ using UnityEngine;
 using UnityEngine.Rendering.Universal;
 
 // A seed-mine thrown by the Sower (E1_7) as a straight projectile at a spot —
+// a real rigidbody throw like any other round (collider live, physics velocity),
 // it only starts arming once it lands. Walls stop it dead: it erupts on
-// impact instead of bouncing like a normal round. Pulses faster and brighter
+// impact instead of bouncing like a normal round — and so does slamming into
+// the character or an ally unit mid-flight. Pulses faster and brighter
 // as it arms, then erupts into a radial spark burst — instantly, if the
 // character or an ally unit steps on it. Shooting it before it arms snuffs
 // it quietly (projectiles don't set it off).
@@ -19,8 +21,8 @@ public class EmberSeed : MonoBehaviour, IOnCollide
 
     private SpriteRenderer sr;
     private LifeScript ls;
-    private Collider2D col;
     private Rigidbody2D rb;
+    private ActionScript AS;
     private int allyUnitsLayer;
     private int characterLayer;
     private float t;
@@ -28,63 +30,73 @@ public class EmberSeed : MonoBehaviour, IOnCollide
     private bool erupted;
     private bool flying;
     private Vector2 flightEnd;
-    private Vector2 flightVel;
+    private float flightTimeLeft;
 
     private void Awake()
     {
         sr = GetComponent<SpriteRenderer>();
         ls = GetComponent<LifeScript>();
-        col = GetComponent<Collider2D>();
         rb = GetComponent<Rigidbody2D>();
         allyUnitsLayer = LayerMask.NameToLayer("Ally Units");
         characterLayer = LayerMask.NameToLayer("Character");
-        var AS = GetComponent<ActionScript>();
+        AS = GetComponent<ActionScript>();
         if (AS != null && !AS.onCollides.Contains(this))
         {
             AS.onCollides.Add(this);
         }
     }
 
-    // stepping on a seed sets it off — units and the character only, never projectiles
+    // Stepping on a seed sets it off — units and the character only, never projectiles.
+    // In flight the same contacts count as a direct bomb hit, and slamming into a physics
+    // wall (base walls / buildings tagged Walls) goes off instead of bouncing.
     public void OnCollide(Collision2D c)
     {
-        if (erupted || flying || ls.hasDied || c.collider == null) return;
+        if (erupted || ls.hasDied || c.collider == null) return;
         int l = c.collider.gameObject.layer;
         if (l == allyUnitsLayer || l == characterLayer)
+        {
+            Erupt();
+            return;
+        }
+        if (flying && (c.collider.CompareTag("Walls") ||
+            (c.rigidbody != null && c.rigidbody.TryGetComponent<ActionScript>(out var oas) && oas.wall)))
         {
             Erupt();
         }
     }
 
-    // Throw the seed at a spot as a straight projectile. Flight is a fixed-step march (mine tiles
-    // carry no physics colliders, so walls are polled in code like ProjectileScript does) — but
-    // where a normal round bounces off a wall, the seed ERUPTS on contact.
+    // Throw the seed at a spot the way a normal round is fired: a real rigidbody velocity with the
+    // collider live (ProjectileScript.SetValues does the same), so in the base it collides like any
+    // projectile. It stops and starts arming when it reaches the landing spot; dungeon ore carries no
+    // physics colliders, so those walls are polled in code — but where a normal round bounces off a
+    // wall, the seed ERUPTS on contact.
     public void Throw(Vector2 dest)
     {
         flying = true;
-        col.enabled = false;
         flightEnd = dest;
         Vector2 to = dest - (Vector2)transform.position;
-        flightVel = (to.sqrMagnitude > 1e-4f ? to.normalized : Vector2.up) * throwSpeed;
+        Vector2 dir = to.sqrMagnitude > 1e-4f ? to.normalized : Vector2.up;
+        flightTimeLeft = to.magnitude / throwSpeed + 0.5f;   // deflection backstop — never flies forever
+        if (AS != null) AS.maxVelocity = Mathf.Max(AS.maxVelocity, throwSpeed);   // prefab clamp is walk-speed
+        rb.linearVelocity = dir * throwSpeed;
+        transform.up = dir;
     }
 
     private void FixedUpdate()
     {
         if (!flying || erupted) return;
-        Vector2 pos = rb != null ? rb.position : (Vector2)transform.position;
-        Vector2 next = pos + flightVel * Time.fixedDeltaTime;
-        if (MinePath.IsWallAt(next))   // slammed into a wall — never skips through, goes off on impact
+        Vector2 vel = rb.linearVelocity;
+        Vector2 next = rb.position + vel * Time.fixedDeltaTime;
+        if (MinePath.IsWallAt(next))   // slammed into mine ore — never skips through, goes off on impact
         {
             flying = false;
             Erupt();
             return;
         }
-        bool arrived = Vector2.Dot(flightEnd - next, flightVel) <= 0f;
-        if (arrived) next = flightEnd;
-        if (rb != null) rb.position = next; else transform.position = next;
-        if (arrived)
+        flightTimeLeft -= Time.fixedDeltaTime;
+        if (Vector2.Dot(flightEnd - next, vel) <= 0f || flightTimeLeft <= 0f)   // landed
         {
-            col.enabled = true;
+            rb.linearVelocity = Vector2.zero;
             flying = false;
         }
     }

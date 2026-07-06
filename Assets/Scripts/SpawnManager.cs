@@ -569,9 +569,18 @@ public class SpawnManager : MonoBehaviour
 
     void SetPreAttack()
     {
-        if (!RefreshManager.i.CASUALNOTREALTIME) //IF REGULAR MODE, WE DON'T SET PRE-ATTACK WHEN DYING TO EE... BECAUSE IT JUST HAPPENS ANYWAY FOR SOME REASON?
+        if (!RefreshManager.i.CASUALNOTREALTIME && PortalScript.i.inDungeon) //IF REGULAR MODE, WE DON'T SET PRE-ATTACK WHEN DYING TO EE... BECAUSE IT JUST HAPPENS ANYWAY FOR SOME REASON?
         {
-            if(!DM.i.activeRoom.defeated && DM.i.activeRoom.EE!=null && PortalScript.i.inDungeon) return;
+            // Mid-core-arena fights don't launch the base wave. Mine dungeon: an active, uncleared
+            // core pocket. Old DM dungeon: an undefeated room with a live EE. (The old unguarded
+            // DM.i.activeRoom dereference NRE'd in the mine world, killing the death-return chain —
+            // no accelerated wave, and the aborted ToHomeSequence left the arrival half-finished.)
+            if (MineDungeonManager.i != null)
+            {
+                var ap = MineDungeonManager.i.activePocket;
+                if (ap != null && !ap.Cleared && ap.Instance != null && ap.Instance.template.hasCore) return;
+            }
+            else if (DM.i != null && DM.i.activeRoom != null && !DM.i.activeRoom.defeated && DM.i.activeRoom.EE != null) return;
         }
         eeactive = true;
         realWaveThisCycle = true;    // a genuine wave (not the start-up phantom) -> advances eraWaveIndex on completion

@@ -392,12 +392,14 @@ public sealed class BasePathGrid : IPathGrid
     public static int offMapCost = 16;
 
     /// <summary>
-    /// Extra cost of walking a cell that TOUCHES a wall/solid (8-neighbour). Together with crack
-    /// filling this is obstacle padding (~0.25u at cellSize 1) quantized to the grid: cracks
-    /// narrower than a body are blocked outright, and routes prefer to keep one cell of daylight
-    /// when rounding walls — but hugging stays possible where it's needed (chewing a wall face,
-    /// squeezing a doorway, reaching a target parked against a building) at a small premium.
-    /// 0 disables. Keep small: it should bias corners, never dominate route choice.
+    /// Extra cost of walking a cell that TOUCHES a wall/solid/filled cell (ring 1 of the distance
+    /// transform). Together with crack filling this is obstacle padding (~0.25u) quantized to the
+    /// grid: routes prefer one cell of daylight rounding walls, but hugging stays possible at a
+    /// small premium (chew faces, doorways, targets parked against buildings). DELIBERATELY not
+    /// the dungeon's size-driven graded rings (<see cref="PathPadding"/> / MineGridAdapter): the
+    /// base's chew-vs-detour economy is tuned around real obstacle costs, and deep rings taxed
+    /// wall CROSSINGS (both aprons) into detours — the base stays on this original single ring,
+    /// decoupled from body-size tiers, so tier changes never rebuild base caches or fields.
     /// </summary>
     public static int wallPaddingCost = 1;
 
@@ -509,8 +511,10 @@ public sealed class BasePathGrid : IPathGrid
             return chew ? WallCost(fls, fmult, true) : PathGrid.BLOCKED;
         if (fill == FillSolid) return PathGrid.BLOCKED;
         int cost = InMap(c) ? 1 : offMapCost;
-        int prem = NarrowPremium(c);                 // aperture pricing: thin gaps/corridors are dear
-        cost += prem > 0 ? prem : (NearSolid(c) ? wallPaddingCost : 0);
+        // aperture premium and graded padding: the LARGER wins — never both, but padding must not
+        // vanish inside premium-priced corridors (a flat premium has no centring gradient, so
+        // routes hugged the wall side of snug lanes for free)
+        cost += Mathf.Max(NarrowPremium(c), PadCost(c));
         return cost;
     }
 
@@ -581,7 +585,7 @@ public sealed class BasePathGrid : IPathGrid
 
     const int FillNone = -2, FillSolid = -1;
     static int[] squeezeFill;
-    static bool[] nearSolidCells;   // open cell 8-adjacent to a wall/solid — the padding ring
+    static byte[] padRingCells;     // chebyshev ring distance to nearest solid/filled cell (0 = solid, capped)
     static byte[] narrowPrem;       // aperture pricing: per-cell premium for thin corridors
     static bool[] blockMask;        // pass-1 rasterisation of Blockedish — pass 2 scans arrays, not dictionaries
     static int[] wallIdMask;        // wall slot id of each blocked cell (-1 = solid) — gate identity for fills
@@ -598,13 +602,13 @@ public sealed class BasePathGrid : IPathGrid
         return squeezeFill[x + y * squeezeRect.width];
     }
 
-    static bool NearSolid(Vector3Int c)
+    static int PadCost(Vector3Int c)
     {
         EnsureSqueezeCache();
-        if (nearSolidCells == null) return false;
+        if (padRingCells == null) return 0;
         int x = c.x - squeezeRect.xMin, y = c.y - squeezeRect.yMin;
-        if (x < 0 || y < 0 || x >= squeezeRect.width || y >= squeezeRect.height) return false;
-        return nearSolidCells[x + y * squeezeRect.width];
+        if (x < 0 || y < 0 || x >= squeezeRect.width || y >= squeezeRect.height) return 0;
+        return padRingCells[x + y * squeezeRect.width] == 1 ? wallPaddingCost : 0;
     }
 
     static int NarrowPremium(Vector3Int c)
@@ -629,40 +633,55 @@ public sealed class BasePathGrid : IPathGrid
     /// (For the wall-hunting fields: cavity-edge walls read as more attractive to weighted views.)</summary>
     public static bool IsCavityEdge(Vector2Int cell) => BreachEdge(new Vector3Int(cell.x, cell.y, 0));
 
+    /// <summary>The padding-driven part of an open cell's surcharge — how much of
+    /// `Max(aperture, padding)` exists ONLY because of the padding rings. The ruler prices this
+    /// into its wander-discounted bucket (padding is comfort, not obstacle), so wander-0 lines
+    /// ignore it and still attack the first wall in the way.</summary>
+    public static int PadExcess(Vector3Int c) => Mathf.Max(0, PadCost(c) - NarrowPremium(c));
+
+    /// <summary>Debug/gizmo read of everything the router believes about one cell — solidity,
+    /// map interior, crack fill, aperture premium, padding cost. Lets the route gizmo heat-map
+    /// (and the console grid dump) show exactly what the router is being charged, so "why is it
+    /// hugging HERE" is answerable on sight.</summary>
+    public static void DebugCellState(Vector3Int c, out bool isSolid, out bool inMap, out bool filled,
+        out int aperture, out int padding)
+    {
+        isSolid = ((IPathGrid)blocked).Ready && blocked.IsSolid(c);
+        inMap = InMap(c);
+        filled = SqueezeFill(c) != FillNone;
+        aperture = NarrowPremium(c);
+        padding = PadCost(c);
+    }
+
     static void EnsureSqueezeCache()
     {
         var r = blocked.CellRect;
-        if (squeezeFill != null && narrowPrem != null && squeezeVersion == BaseBlockMap.Version && r.Equals(squeezeRect)) return;
+        // every array checked individually: a hot-reload patch can null ONE new static while the
+        // others (and the version stamp) survive — a joint guard then never rebuilds and the new
+        // layer silently reads as empty
+        if (squeezeFill != null && narrowPrem != null && padRingCells != null
+            && squeezeVersion == BaseBlockMap.Version && r.Equals(squeezeRect)) return;
         squeezeVersion = BaseBlockMap.Version;
         squeezeRect = r;
-        if (squeezeFill == null || squeezeFill.Length != r.width * r.height)
-        {
-            squeezeFill = new int[r.width * r.height];
-            nearSolidCells = new bool[r.width * r.height];
-        }
-        if (narrowPrem == null || narrowPrem.Length != r.width * r.height)
-        {
-            narrowPrem = new byte[r.width * r.height];
-            blockMask = new bool[r.width * r.height];
-            wallIdMask = new int[r.width * r.height];
-            breachEdgeCells = new bool[r.width * r.height];
-        }
-        // pass 1: rasterise the registry, fill cracks, mark the padding ring
+        int n = r.width * r.height;
+        if (squeezeFill == null || squeezeFill.Length != n) squeezeFill = new int[n];
+        if (padRingCells == null || padRingCells.Length != n) padRingCells = new byte[n];
+        if (narrowPrem == null || narrowPrem.Length != n) narrowPrem = new byte[n];
+        if (blockMask == null || blockMask.Length != n) blockMask = new bool[n];
+        if (wallIdMask == null || wallIdMask.Length != n) wallIdMask = new int[n];
+        if (breachEdgeCells == null || breachEdgeCells.Length != n) breachEdgeCells = new bool[n];
+        // pass 1: rasterise the registry, fill cracks
         for (int y = 0; y < r.height; y++)
             for (int x = 0; x < r.width; x++)
             {
                 int cx = r.xMin + x, cy = r.yMin + y;
                 int idx = x + y * r.width;
                 squeezeFill[idx] = FillNone;
-                nearSolidCells[idx] = false;
                 if (Blockedish(cx, cy, out int selfId)) { blockMask[idx] = true; wallIdMask[idx] = selfId; continue; }
                 blockMask[idx] = false;
                 wallIdMask[idx] = -1;
                 bool l = Blockedish(cx - 1, cy, out int wl), rr = Blockedish(cx + 1, cy, out int wr);
                 bool d = Blockedish(cx, cy - 1, out int wd), u = Blockedish(cx, cy + 1, out int wu);
-                nearSolidCells[idx] = l || rr || d || u
-                    || Blockedish(cx - 1, cy - 1, out _) || Blockedish(cx + 1, cy - 1, out _)
-                    || Blockedish(cx - 1, cy + 1, out _) || Blockedish(cx + 1, cy + 1, out _);
                 if (!((l && rr) || (d && u))) continue;    // crack fill needs opposing sides pinched
                 int wall = FillSolid;
                 if (l && rr && wl >= 0) wall = wl;
@@ -695,6 +714,43 @@ public sealed class BasePathGrid : IPathGrid
                     squeezeFill[idx] = gateWall >= 0 ? gateWall : FillSolid;   // no body fits: IS the wall
                 else if (w < tightWidth) narrowPrem[idx] = (byte)Mathf.Clamp(narrowGapCost2, 0, 255);
                 else if (w < snugWidth) narrowPrem[idx] = (byte)Mathf.Clamp(narrowGapCost3, 0, 255);
+            }
+        // pass 2.5: chebyshev distance-to-solid rings over walls, solids and everything pass 1/2
+        // filled, via a standard two-pass chamfer transform. The base only prices ring 1 (the
+        // original wallPaddingCost), so the transform caps at 2 — cells at the cap read as free.
+        int W = r.width, H = r.height;
+        int maxRing = 2;
+        for (int y = 0; y < H; y++)
+            for (int x = 0; x < W; x++)
+            {
+                int idx = x + y * W;
+                int best = blockMask[idx] || squeezeFill[idx] != FillNone ? 0 : maxRing;
+                if (best > 0)
+                {
+                    if (x > 0) best = Mathf.Min(best, padRingCells[idx - 1] + 1);
+                    if (y > 0)
+                    {
+                        best = Mathf.Min(best, padRingCells[idx - W] + 1);
+                        if (x > 0) best = Mathf.Min(best, padRingCells[idx - W - 1] + 1);
+                        if (x < W - 1) best = Mathf.Min(best, padRingCells[idx - W + 1] + 1);
+                    }
+                }
+                padRingCells[idx] = (byte)Mathf.Min(best, maxRing);
+            }
+        for (int y = H - 1; y >= 0; y--)
+            for (int x = W - 1; x >= 0; x--)
+            {
+                int idx = x + y * W;
+                int best = padRingCells[idx];
+                if (best == 0) continue;
+                if (x < W - 1) best = Mathf.Min(best, padRingCells[idx + 1] + 1);
+                if (y < H - 1)
+                {
+                    best = Mathf.Min(best, padRingCells[idx + W] + 1);
+                    if (x < W - 1) best = Mathf.Min(best, padRingCells[idx + W + 1] + 1);
+                    if (x > 0) best = Mathf.Min(best, padRingCells[idx + W - 1] + 1);
+                }
+                padRingCells[idx] = (byte)best;
             }
         // pass 3: cavity edges — blocked cells 4-adjacent to a gap cell (a wall-filled crack or a
         // priced narrow-corridor cell). Chewing one of these widens an existing cavity, so

@@ -310,12 +310,15 @@ public class BasePathManager : MonoBehaviour
 
     // The straight segment a→b priced for the ruler-vs-field comparison: walk = EUCLIDEAN length
     // in cell units (a straight line's true cost — the 4-metric would price diagonals ~1.4× dearer
-    // and make around-the-end staircases read as free) plus the ground surcharges of crossed cells
-    // (aperture/padding/off-map premiums, EnterCost - 1); chew = the wall surcharge of wall and
-    // filled-crack cells, with the first such wall coming back as the gate. Ends on b's cell — or,
-    // target's-own-mass style (the LineOfSight solid-tail rule), by staying solid from first solid
-    // contact to b. Solid-then-passable means an unchewable building stands in the way: no ruler
-    // route (false).
+    // and make around-the-end staircases read as free) plus the HARD ground surcharges of crossed
+    // cells (aperture/off-map premiums); chew = the DISCOMFORT the line asks the unit to swallow —
+    // wall chew surcharges AND the padding rings (crossing a wall means crossing its padded apron
+    // on both sides; pricing that into walk made the straight line read ~tens of cells longer than
+    // it is, so wander-0 units stopped attacking the wall in front of their target and detoured —
+    // padding is a comfort cost and must be wander-discounted like the chew it wraps). The first
+    // wall comes back as the gate. Ends on b's cell — or, target's-own-mass style (the LineOfSight
+    // solid-tail rule), by staying solid from first solid contact to b. Solid-then-passable means
+    // an unchewable building stands in the way: no ruler route (false).
     static bool RulerRoute(Vector2 a, Vector2 b, out float walk, out float chew, out LifeScript firstWall)
     {
         chew = 0f; firstWall = null;
@@ -324,7 +327,11 @@ public class BasePathManager : MonoBehaviour
         walk = (b - a).magnitude / cs;
         Vector3Int c = g.WorldToCell(a), cEnd = g.WorldToCell(b);
         int c0 = g.EnterCost(c);   // the querier's own cell surcharge, as the field pays it
-        if (c0 != PathGrid.BLOCKED) { if (g.WallIdAt(c) >= 0) chew += c0 - 1; else walk += c0 - 1; }
+        if (c0 != PathGrid.BLOCKED)
+        {
+            if (g.WallIdAt(c) >= 0) chew += c0 - 1;
+            else { int pe = BasePathGrid.PadExcess(c); chew += pe; walk += c0 - 1 - pe; }
+        }
         if (c == cEnd) return true;
         Vector2 d = b - a;
         int stepX = d.x > 0f ? 1 : -1, stepY = d.y > 0f ? 1 : -1;
@@ -349,7 +356,12 @@ public class BasePathManager : MonoBehaviour
                 chew += cost - 1;
                 if (firstWall == null) BaseBlockMap.TryGetWallBySlot(wallId, out firstWall, out _);
             }
-            else walk += cost - 1;
+            else
+            {
+                int pe = BasePathGrid.PadExcess(c);   // padding part → the wander-discounted bucket
+                chew += pe;
+                walk += cost - 1 - pe;
+            }
         }
         return false;
     }

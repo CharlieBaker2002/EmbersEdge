@@ -26,6 +26,14 @@ public class Pocket : MonoBehaviour
     bool coreActivated;
     bool promptShown;       // the "V — Tether The Core" key prompt is up
     bool geometryRevealed;  // showPockets cheat: walls/fog already cleared, guards against re-revealing
+    LifeScript bossLs;      // boss pockets: the boss's life — the tether bar shows ITS health there
+
+    /// <summary>Is this the era's boss arena?</summary>
+    public bool IsBossRoom => Instance != null && T.isBoss;
+
+    /// <summary>The boss's LifeScript once it has spawned (boss pockets only, else null) — the
+    /// tether's completion bar reads this as a boss HP bar instead of remaining points.</summary>
+    public LifeScript BossLife => IsBossRoom ? bossLs : null;
 
     const float CORE_INTERACT_RANGE = 2f;   // how close the player must be to throw the tether on
 
@@ -63,7 +71,6 @@ public class Pocket : MonoBehaviour
     {
         if (Discovered) return;
         Discovered = true;
-        Debug.Log($"[Pocket] discovered '{T.name}'{(T.isBoss ? " (BOSS)" : T.hasCore ? " (core)" : "")}");
         MineDungeonManager.i.activePocket = this;
         CastTether();                  // the ember tether shoots into the room centre, fishing-rod style
         SpawnExtras();                 // per-pocket props/obstacles appear at once on discovery
@@ -324,6 +331,9 @@ public class Pocket : MonoBehaviour
             // its soul visibly syphons into the tether disc on death (the bar itself is driven by
             // RemainingPoints, so odd multi-death enemies can't desync it)
             LifeScript first = g.GetComponentInChildren<LifeScript>();
+            // boss arena: the beefiest spawn is the boss — its health drives the tether bar
+            if (T.isBoss && first != null && (bossLs == null || first.maxHp > bossLs.maxHp))
+                bossLs = first;
             if (first != null)
             {
                 var tf = first.gameObject.AddComponent<TetherFuelOnDeath>();

@@ -897,41 +897,35 @@ public class MineField : MonoBehaviour
         var cfg = OreCfg(currentEra);
         if (cfg == null) return;
         float radius = 0.5f * Mathf.Min(w, h);
-        // Fairness = best-candidate (blue-noise) sampling: each seed considers several valid candidate
-        // spots and takes the one FURTHEST from its element's already-placed clusters. oreFairness scales
-        // the candidate count — 0 → 1 candidate (pure random, clumps allowed), 1 → 16 (strongly even).
+        // Radial spread is STRATIFIED, not random: each element's band splits into `clusters` equal
+        // sub-bands and each cluster sits at the centre of its own — distance-from-entry is perfectly
+        // even by construction (radius only relaxes if no valid cell exists at the target ring).
+        // Fairness picks WHERE on the ring: best-candidate sampling where each seed considers several
+        // valid candidate spots on its ring and takes the one FURTHEST (in 2D, through the dungeon
+        // space) from EVERY already-placed cluster — all elements together, cluster size ignored — so
+        // the ore field as a whole spreads evenly. oreFairness scales the candidate count — 0 → 1
+        // candidate (pure random, clumps allowed), 1 → 16 (strongly even spatial spread).
         int candN = 1 + Mathf.RoundToInt(Mathf.Clamp01(oreFairness) * 15f);
-        var seeds = new List<Vector2>(24);
+        var seeds = new List<Vector2>(48);   // ALL placed cluster seeds, every element
 
         for (int e = 0; e < 4; e++)
         {
             OreElementConfig el = cfg.Element(e);
             if (el == null || el.clusters <= 0) continue;
             Vector2 band = el.range;
-            seeds.Clear();
             for (int c = 0; c < el.clusters; c++)
             {
+                // this cluster's own ring: the centre of sub-band c
+                float dTarget = Mathf.Lerp(band.x, band.y, (c + 0.5f) / el.clusters);
+
                 Vector3Int best = default;
                 float bestScore = -1f, bestD = 0f;
                 for (int cand = 0; cand < candN; cand++)
                 {
-                    // rejection-sample one valid candidate inside the band
-                    Vector3Int cell = default;
-                    float d = 0f;
-                    bool ok = false;
-                    for (int a = 0; a < 64 && !ok; a++)
-                    {
-                        int x = Random.Range(0, w), y = Random.Range(0, h);
-                        float cx = xMin + x, cy = yMin + y;
-                        // clamp to 1 so rock in the boundary bulges (beyond the base ring) counts as rim
-                        d = Mathf.Min(1f, Mathf.Sqrt(cx * cx + cy * cy) / radius);
-                        if (d < band.x || d > band.y) continue;
-                        cell = new Vector3Int(xMin + x, yMin + y, 0);
-                        if (!OreableCell(cell)) continue;
-                        ok = true;
-                    }
-                    if (!ok) continue;
-                    // score = distance to the nearest existing cluster of this element (bigger = fairer)
+                    if (!FindOreableOnRing(dTarget, radius, out Vector3Int cell, out float d, out _))
+                        continue;
+                    // score = 2D distance to the nearest existing cluster of ANY element (bigger =
+                    // fairer) — spatial spread through the dungeon, not just around the circle
                     float score = float.MaxValue;
                     for (int s = 0; s < seeds.Count; s++)
                     {
@@ -951,6 +945,28 @@ public class MineField : MonoBehaviour
                 GrowOreBlob(best, (sbyte)e, size);
             }
         }
+    }
+
+    // One valid seed cell ON the target ring (normalized distance dTarget from the entry) at a random
+    // angle. The radius stays exact wherever possible: slack is 0 on early attempts and only widens as
+    // rejections mount (pocket cavities, the entry carve, boundary void or existing ore in the way).
+    // Returns the cell, its actual normalized distance, and its angle in DEGREES.
+    bool FindOreableOnRing(float dTarget, float radius, out Vector3Int cell, out float dOut, out float angOut)
+    {
+        for (int a = 0; a < 64; a++)
+        {
+            float angDeg = Random.Range(0f, 360f);
+            float slack = (a / 63f) * 0.12f;   // grows to ±12% of the full radius by the last attempt
+            float d = Mathf.Clamp01(dTarget + Random.Range(-slack, slack));
+            float r = d * radius;
+            float rad = angDeg * Mathf.Deg2Rad;
+            var c = new Vector3Int(Mathf.RoundToInt(Mathf.Cos(rad) * r), Mathf.RoundToInt(Mathf.Sin(rad) * r), 0);
+            if (!OreableCell(c)) continue;
+            cell = c; dOut = d; angOut = angDeg;
+            return true;
+        }
+        cell = default; dOut = 0f; angOut = 0f;
+        return false;
     }
 
     // Solid, ore-free, not boundary void, and not a disguised POCKET CAVITY cell — cavity ore would
@@ -1012,6 +1028,7 @@ public class MineField : MonoBehaviour
         data[idx].explored = false;
         data[idx].voidCell = false;
         data[idx].ore = -1;
+        SolidVersion++;
     }
 
     // =====================================================================================
@@ -1119,6 +1136,7 @@ public class MineField : MonoBehaviour
         data[idx].durability = 0;
         data[idx].explored = true;
         data[idx].ore = -1;
+        SolidVersion++;
 
         if (spawnerOfCell.TryGetValue(idx, out var minedSpawner))
         {
@@ -1269,6 +1287,7 @@ public class MineField : MonoBehaviour
             data[idx].explored = true;
             data[idx].voidCell = false;
             data[idx].ore = -1;
+            SolidVersion++;
             if (floorGlow) litCells.Add(new Vector2Int(cell.x, cell.y));
         }
         if (floorGlow) lightDirty = true;
@@ -1811,6 +1830,10 @@ public class MineField : MonoBehaviour
     }
 
     public bool IsSolidWorld(Vector2 world) => IsSolid(grid.WorldToCell(world));
+    /// <summary>Bumped whenever a cell's solidity changes at runtime (carve, mining, pocket
+    /// reveal) — a cheap staleness key for anything caching cost layers over the grid
+    /// (<see cref="MineGridAdapter"/>'s padding rings).</summary>
+    public int SolidVersion { get; private set; }
     /// <summary>Has a dungeon actually been generated into this field yet?</summary>
     public bool Built => data != null;
     /// <summary>The current dungeon's cell-coordinate rectangle (for pathfinding array sizing).</summary>

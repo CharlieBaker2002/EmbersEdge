@@ -118,6 +118,7 @@ MonoBehaviour:
   glow: {fileID: 5300000000002011}
   armTime: 2.8
   sparkCount: 12
+  throwSpeed: 2
 --- !u!114 &5300000000002005
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -321,7 +322,7 @@ MonoBehaviour:
   m_ShadowVolumeIntensity: 0.75
   m_LocalBounds:
     m_Center: {x: 0, y: 0, z: 0}
-    m_Extent: {x: 0.25, y: 0.25, z: 0}
+    m_Extent: {x: 0.125, y: 0.125, z: 0}
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0

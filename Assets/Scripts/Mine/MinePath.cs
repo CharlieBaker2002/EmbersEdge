@@ -354,18 +354,25 @@ public static class MinePath
 
     /// <summary>
     /// Line-of-sight for something with WIDTH — a projectile or a body that must fit through the
-    /// gap, not just a sightline. Casts the centre ray plus one ray along each edge (offset
-    /// ±radius perpendicular to the flight line); all three must be clear.
+    /// gap, not just a sightline. Casts the centre ray, the two edge rays (±radius perpendicular
+    /// to the flight line) and, for bodies wider than a wall cell, enough intermediate rays that
+    /// nothing solid can slip between them (spacing ≤ 0.4u — still exactly 3 rays for standard
+    /// bodies, so projectile checks and small units are untouched).
     /// </summary>
     public static bool LineOfSightWide(Vector2 a, Vector2 b, float radius)
     {
         if (radius <= 0f) return LineOfSight(a, b);
         Vector2 d = b - a;
         if (d.sqrMagnitude < 1e-6f) return LineOfSight(a, b);
-        Vector2 perp = new Vector2(-d.y, d.x).normalized * radius;
-        return LineOfSight(a, b)
-            && LineOfSight(a + perp, b + perp)
-            && LineOfSight(a - perp, b - perp);
+        if (!LineOfSight(a, b)) return false;
+        Vector2 perp = new Vector2(-d.y, d.x).normalized;
+        int side = Mathf.Max(1, Mathf.CeilToInt(radius / 0.4f));
+        for (int k = 1; k <= side; k++)
+        {
+            Vector2 off = perp * (radius * k / side);
+            if (!LineOfSight(a + off, b + off) || !LineOfSight(a - off, b - off)) return false;
+        }
+        return true;
     }
 
     // ------------------------------------------------- shooter target-visibility helpers
@@ -733,12 +740,16 @@ public class MinePathManager : MonoBehaviour
     /// Off the field's rect (map-edge spawn), the fields are read from the nearest in-rect cell —
     /// newborns still pick their true best target by their own criteria and march at that entry
     /// point. dir == zero = arrived — approach the target straight. False = nothing left to fight
-    /// anywhere (hold still; target is nulled).
+    /// anywhere (hold still; target is nulled). Wall standoff is entirely the FIELDS' job: the
+    /// size-driven padding rings (<see cref="PathPadding"/>) price near-wall cells so routes keep
+    /// their distance — no steering-time correction is applied on top (a reactive push/slide here
+    /// fought the route and could aim bodies into the next wall; removed deliberately).
     /// </summary>
     public static bool Decide(Unit u, out Vector2 dir)
     {
         dir = Vector2.zero;
         if (u == null) return false;
+        PathPadding.Report(u.bodySize);   // this tier is pathing NOW — the padding reach follows
         u.target = null;
         Vector2 pos = u.transform.position;
         var player = CharacterScript.CS;
@@ -787,17 +798,106 @@ public class MinePathManager : MonoBehaviour
         return false;
     }
 
+
     /// <summary>
     /// Editor debugging: call from OnDrawGizmosSelected to draw the route the unit's fields will
     /// walk it along (cyan cell trail) and its current objective's aim point (magenta sphere) —
     /// select an enemy in play mode with Scene-view Gizmos on. Reads the same decision the unit
     /// makes, so what you see is what it does.
     /// </summary>
+    // one console grid dump per newly-selected unit — the definitive "what does the router see"
+    static Unit dumpedFor;
+
+    // one read for both dimensions: what does the active grid believe about this cell?
+    static void DebugCellState(bool atBase, Vector3Int c, out bool solid, out bool inMap,
+        out bool filled, out int prem, out int pad)
+    {
+        if (atBase)
+        {
+            BasePathGrid.DebugCellState(c, out solid, out inMap, out filled, out prem, out pad);
+            return;
+        }
+        solid = MineField.i != null && MineField.i.IsSolid(c);
+        inMap = true; filled = false; prem = 0;
+        pad = MineGridAdapter.i.PadCost(c);
+    }
+
+    static void DumpGridAround(Unit u, Vector2 pos)
+    {
+        bool atBase = PathZone.AtBase(pos);
+        IPathGrid g = atBase ? (IPathGrid)BasePathGrid.blocked : MineGridAdapter.i;
+        var cc = g.WorldToCell(pos);
+        int halfW = 30, halfH = 22;
+        var sb = new System.Text.StringBuilder(2600);
+        int liveWalls = 0;
+        for (int k = 0; k < BaseBlockMap.WallOwners.Count; k++)
+            if (BaseBlockMap.WallOwners[k] != null) liveWalls++;
+        sb.Append($"[PathGrid dump] {u.name} @ {pos} cell {cc} | {(atBase ? "BASE" : "DUNGEON")} | " +
+                  $"cellSize {g.CellSize} | rect {g.CellRect} | BlockMap v{BaseBlockMap.Version}, {liveWalls} live walls | " +
+                  $"legend: # solid, % filled crack, o off-map, 1-9 padding cost, ~ aperture, . free, U unit\n");
+        for (int dy = halfH; dy >= -halfH; dy--)
+        {
+            for (int dx = -halfW; dx <= halfW; dx++)
+            {
+                if (dx == 0 && dy == 0) { sb.Append('U'); continue; }
+                var c = new Vector3Int(cc.x + dx, cc.y + dy, 0);
+                DebugCellState(atBase, c, out bool solid, out bool inMap, out bool filled,
+                    out int prem, out int pad);
+                sb.Append(solid ? '#'
+                    : filled ? '%'
+                    : !inMap ? 'o'
+                    : pad > 0 && pad >= prem ? (char)('0' + Mathf.Min(9, pad))
+                    : prem > 0 ? '~' : '.');
+            }
+            sb.Append('\n');
+        }
+    }
+
     static readonly List<Vector2> routeScratch = new List<Vector2>();
     public static void DrawRouteGizmo(Unit u)
     {
         if (u == null || !Application.isPlaying) return;
         Vector2 pos = u.transform.position;
+        // the ACTUAL steering Decide hands back — body clearance included (green ray). A wide
+        // body's green ray standing off a wall the cyan trail hugs = the standoff at work; green
+        // lying ON the hugging trail means the clearance found nothing solid there (obstacle not
+        // registered in the path grid?) or was contact-gated.
+        if (Decide(u, out Vector2 live) && live != Vector2.zero)
+        {
+            Gizmos.color = Color.green;
+            Gizmos.DrawLine(pos, pos + live * 2.5f);
+        }
+        // grid-state heatmap around the unit (both dimensions): blue = solid (registered
+        // wall/building or dungeon ore), teal = crack-filled, grey = off-map, orange = padding
+        // rings, magenta = aperture premium (brighter = dearer). A wall face with NO blue under it
+        // isn't in the path grid at all; blue with no orange skirt means the padding pass isn't
+        // seeing it. Selecting a unit also dumps this window as an ASCII grid to the console once
+        // — text beats squinting at alpha.
+        {
+            bool atBase = PathZone.AtBase(pos);
+            IPathGrid hg = atBase ? (IPathGrid)BasePathGrid.blocked : MineGridAdapter.i;
+            if (hg.Ready)
+            {
+                if (dumpedFor != u) { dumpedFor = u; DumpGridAround(u, pos); }
+                float bcs = hg.CellSize;
+                var cc = hg.WorldToCell(pos);
+                int rad = Mathf.CeilToInt(6f / bcs);
+                for (int dy = -rad; dy <= rad; dy++)
+                    for (int dx = -rad; dx <= rad; dx++)
+                    {
+                        var c = new Vector3Int(cc.x + dx, cc.y + dy, 0);
+                        DebugCellState(atBase, c, out bool solid, out bool inMap, out bool filled,
+                            out int prem, out int pad);
+                        if (solid) Gizmos.color = new Color(0.2f, 0.4f, 1f, 0.15f);
+                        else if (filled) Gizmos.color = new Color(0f, 0.8f, 0.8f, 0.15f);
+                        else if (pad > 0 && pad >= prem) Gizmos.color = new Color(1f, 0.45f, 0f, Mathf.Clamp01(0.05f + 0.025f * pad));
+                        else if (prem > 0) Gizmos.color = new Color(1f, 0f, 1f, Mathf.Clamp01(0.04f + 0.012f * prem));
+                        else if (!inMap) Gizmos.color = new Color(0.6f, 0.6f, 0.6f, 0.06f);
+                        else continue;
+                        Gizmos.DrawCube(hg.CellCenterWorld(c), new Vector3(bcs * 0.9f, bcs * 0.9f, 0.01f));
+                    }
+            }
+        }
         MineFlowField field = null;
         Vector2 evalPos = pos;
         Transform tgt = u.target;

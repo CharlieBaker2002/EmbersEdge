@@ -4,6 +4,10 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
+/// <summary>Pathing body classes — the radius behind <see cref="Unit.size"/>: Small 0.4u,
+/// Medium 0.8u, Large 1.6u.</summary>
+public enum BodySize { Small = 0, Medium = 1, Large = 2 }
+
 public class Unit : MonoBehaviour, IClickable
 {
     //THIS SCRIPT IS A BASE CLASS FOR ALL UNITS. FIRSTLY IT CONTAINS A DESCRIPTION FIELD AND AN ICON FOR WHEN PRESSED, WHICH ALSO DETAILS THE HEALTH. 
@@ -22,8 +26,11 @@ public class Unit : MonoBehaviour, IClickable
     [Tooltip("Status vulnerability effects duration stun, root, slow. It is a coefficient")]
     [SerializeField] public float statVulnerability = 1f;
 
-    [Tooltip("Body radius (circle approximation) for pathing: straight-line shortcuts are only taken when a corridor this wide is clear, so units stop grinding into cracks their bodies can't fit through.")]
-    public float size = 0.4f;
+    [Tooltip("Body size class for pathing: Small = 0.4u radius, Medium = 0.8u, Large = 1.6u. Two effects: (1) straight-line shortcuts are only taken when a corridor this wide is clear, so units stop grinding into cracks their bodies can't fit through; (2) it drives the wall-aversion reach of the shared padding rings — while any unit of a tier is actively pathing, routes price cells within that tier's radius of walls steeply. Fields are shared, so the largest tier CURRENTLY pathing sets the reach; it relaxes automatically when the big bodies die.")]
+    public BodySize bodySize = BodySize.Small;
+    /// <summary>Pathing body radius in world units, from <see cref="bodySize"/> (Small 0.4,
+    /// Medium 0.8, Large 1.6).</summary>
+    public float size => bodySize == BodySize.Large ? 1.6f : bodySize == BodySize.Medium ? 0.8f : 0.4f;
     [Tooltip("Wall-detour willingness at the base: detour when detourDist <= wander × throughDist. 1 = go around whenever any route exists, higher = detour further before resorting to chewing. Below 1 the chew route itself also straightens CONTINUOUSLY: chew time is discounted by this factor when routing, so ever-lower values ignore soft-wall shortcuts more, until 0 walks a dead-straight line and attacks the first wall geometrically in the way. Jittered per-instance into wanderEff.")]
     public float wander = 1.5f;
     [HideInInspector] public float wanderEff = 1.5f;

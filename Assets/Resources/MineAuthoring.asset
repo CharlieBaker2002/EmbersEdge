@@ -113,7 +113,6 @@ MonoBehaviour:
         present: 0
         pos: {x: 4.9117646, y: 6.5588236}
       weightRange: {x: 1, y: 3}
-      surroundWalls: 0
       ember: 1
       costOverridden: 1
       costOverride: 1
@@ -491,7 +490,6 @@ MonoBehaviour:
         present: 0
         pos: {x: 0, y: 0}
       weightRange: {x: 1, y: 3}
-      surroundWalls: 0
       ember: 1
       costOverridden: 0
       costOverride: 0
@@ -537,7 +535,8 @@ MonoBehaviour:
       - cell: {x: 5, y: 4}
         type: 3
       extras: []
-      combiTiles: []
+      combiTiles:
+      - {x: 7, y: 4}
       waves:
       - spawnDuration: 0
         delayAfter: 2
@@ -581,7 +580,6 @@ MonoBehaviour:
         present: 0
         pos: {x: 0, y: 0}
       weightRange: {x: 1, y: 3}
-      surroundWalls: 0
       ember: 1
       costOverridden: 0
       costOverride: 0
@@ -869,74 +867,41 @@ MonoBehaviour:
         present: 0
         pos: {x: 11.5, y: 12.5}
       weightRange: {x: 1, y: 3}
-      surroundWalls: 0
       ember: 1
       costOverridden: 0
       costOverride: 0
       tiles:
       - cell: {x: 0, y: 19}
         type: 2
-      - cell: {x: 1, y: 19}
-        type: 2
       - cell: {x: 0, y: 17}
         type: 2
       - cell: {x: 0, y: 18}
         type: 2
-      - cell: {x: 1, y: 17}
-        type: 2
-      - cell: {x: 1, y: 18}
-        type: 2
       - cell: {x: 0, y: 16}
-        type: 2
-      - cell: {x: 1, y: 16}
         type: 2
       - cell: {x: 0, y: 15}
         type: 2
-      - cell: {x: 1, y: 15}
-        type: 2
       - cell: {x: 0, y: 14}
-        type: 2
-      - cell: {x: 1, y: 14}
         type: 2
       - cell: {x: 0, y: 13}
         type: 2
-      - cell: {x: 1, y: 13}
-        type: 2
       - cell: {x: 0, y: 12}
-        type: 2
-      - cell: {x: 1, y: 12}
         type: 2
       - cell: {x: 0, y: 11}
         type: 2
-      - cell: {x: 1, y: 11}
-        type: 2
       - cell: {x: 0, y: 10}
-        type: 2
-      - cell: {x: 1, y: 10}
         type: 2
       - cell: {x: 0, y: 9}
         type: 2
-      - cell: {x: 1, y: 9}
-        type: 2
       - cell: {x: 0, y: 8}
-        type: 2
-      - cell: {x: 1, y: 8}
         type: 2
       - cell: {x: 0, y: 7}
         type: 2
-      - cell: {x: 1, y: 7}
-        type: 2
       - cell: {x: 0, y: 6}
-        type: 2
-      - cell: {x: 1, y: 6}
         type: 2
       - cell: {x: 0, y: 5}
         type: 2
-      - cell: {x: 1, y: 5}
-        type: 2
       - cell: {x: 0, y: 4}
-        type: 2
-      - cell: {x: 1, y: 4}
         type: 2
       - cell: {x: 0, y: 0}
         type: 2
@@ -946,89 +911,41 @@ MonoBehaviour:
         type: 2
       - cell: {x: 0, y: 3}
         type: 2
-      - cell: {x: 1, y: 0}
-        type: 2
-      - cell: {x: 1, y: 1}
-        type: 2
-      - cell: {x: 1, y: 2}
-        type: 2
-      - cell: {x: 1, y: 3}
-        type: 2
-      - cell: {x: 18, y: 19}
-        type: 2
       - cell: {x: 19, y: 19}
-        type: 2
-      - cell: {x: 18, y: 18}
         type: 2
       - cell: {x: 19, y: 18}
         type: 2
-      - cell: {x: 18, y: 17}
-        type: 2
       - cell: {x: 19, y: 17}
-        type: 2
-      - cell: {x: 18, y: 16}
         type: 2
       - cell: {x: 19, y: 16}
         type: 2
-      - cell: {x: 18, y: 0}
-        type: 2
       - cell: {x: 19, y: 0}
-        type: 2
-      - cell: {x: 18, y: 1}
         type: 2
       - cell: {x: 19, y: 1}
         type: 2
-      - cell: {x: 18, y: 2}
-        type: 2
       - cell: {x: 19, y: 2}
-        type: 2
-      - cell: {x: 18, y: 3}
-        type: 2
-      - cell: {x: 18, y: 4}
         type: 2
       - cell: {x: 19, y: 3}
         type: 2
       - cell: {x: 19, y: 4}
         type: 2
-      - cell: {x: 18, y: 5}
-        type: 2
       - cell: {x: 19, y: 5}
         type: 2
-      - cell: {x: 18, y: 6}
-        type: 2
       - cell: {x: 19, y: 6}
-        type: 2
-      - cell: {x: 18, y: 7}
-        type: 2
-      - cell: {x: 18, y: 8}
         type: 2
       - cell: {x: 19, y: 7}
         type: 2
       - cell: {x: 19, y: 8}
         type: 2
-      - cell: {x: 18, y: 9}
-        type: 2
       - cell: {x: 19, y: 9}
-        type: 2
-      - cell: {x: 18, y: 10}
         type: 2
       - cell: {x: 19, y: 10}
         type: 2
-      - cell: {x: 18, y: 11}
-        type: 2
       - cell: {x: 19, y: 11}
-        type: 2
-      - cell: {x: 18, y: 12}
         type: 2
       - cell: {x: 19, y: 12}
         type: 2
-      - cell: {x: 18, y: 13}
-        type: 2
       - cell: {x: 19, y: 13}
-        type: 2
-      - cell: {x: 18, y: 14}
-        type: 2
-      - cell: {x: 18, y: 15}
         type: 2
       - cell: {x: 19, y: 14}
         type: 2
@@ -1116,7 +1033,6 @@ MonoBehaviour:
         present: 1
         pos: {x: 10, y: 10.5}
       weightRange: {x: 1, y: 3}
-      surroundWalls: 0
       ember: 1
       costOverridden: 0
       costOverride: 0
@@ -1492,7 +1408,7 @@ MonoBehaviour:
       extras: []
       combiTiles: []
       waves:
-      - spawnDuration: 0
+      - spawnDuration: 2
         delayAfter: 2
         waitForClear: 1
         randomOrder: 1
@@ -1558,7 +1474,6 @@ MonoBehaviour:
         present: 0
         pos: {x: 0, y: 0}
       weightRange: {x: 1, y: 3}
-      surroundWalls: 0
       ember: 1
       costOverridden: 0
       costOverride: 0
@@ -1885,6 +1800,3366 @@ MonoBehaviour:
         - enemy: {fileID: 11400000, guid: 29423851d65a14569a31e3c1e2faa8bb, type: 2}
           prefab: {fileID: 0}
           pos: {x: 1, y: 13.5}
+          chance: 0
+    - name: Pocket 6
+      enabled: 1
+      width: 21
+      height: 21
+      isBoss: 0
+      core:
+        present: 0
+        pos: {x: 0, y: 0}
+      weightRange: {x: 1, y: 3}
+      ember: 1
+      costOverridden: 0
+      costOverride: 0
+      tiles:
+      - cell: {x: 0, y: 0}
+        type: 1
+      - cell: {x: 1, y: 0}
+        type: 1
+      - cell: {x: 2, y: 0}
+        type: 1
+      - cell: {x: 3, y: 0}
+        type: 1
+      - cell: {x: 4, y: 0}
+        type: 1
+      - cell: {x: 5, y: 0}
+        type: 1
+      - cell: {x: 6, y: 0}
+        type: 1
+      - cell: {x: 7, y: 0}
+        type: 1
+      - cell: {x: 8, y: 0}
+        type: 1
+      - cell: {x: 9, y: 0}
+        type: 1
+      - cell: {x: 10, y: 0}
+        type: 1
+      - cell: {x: 11, y: 0}
+        type: 1
+      - cell: {x: 12, y: 0}
+        type: 1
+      - cell: {x: 13, y: 0}
+        type: 1
+      - cell: {x: 14, y: 0}
+        type: 1
+      - cell: {x: 15, y: 0}
+        type: 1
+      - cell: {x: 16, y: 0}
+        type: 1
+      - cell: {x: 17, y: 0}
+        type: 1
+      - cell: {x: 18, y: 0}
+        type: 1
+      - cell: {x: 19, y: 0}
+        type: 1
+      - cell: {x: 20, y: 0}
+        type: 1
+      - cell: {x: 0, y: 1}
+        type: 1
+      - cell: {x: 1, y: 1}
+        type: 1
+      - cell: {x: 2, y: 1}
+        type: 1
+      - cell: {x: 3, y: 1}
+        type: 1
+      - cell: {x: 4, y: 1}
+        type: 1
+      - cell: {x: 5, y: 1}
+        type: 1
+      - cell: {x: 6, y: 1}
+        type: 1
+      - cell: {x: 7, y: 1}
+        type: 1
+      - cell: {x: 8, y: 1}
+        type: 1
+      - cell: {x: 9, y: 1}
+        type: 1
+      - cell: {x: 10, y: 1}
+        type: 1
+      - cell: {x: 11, y: 1}
+        type: 1
+      - cell: {x: 12, y: 1}
+        type: 1
+      - cell: {x: 13, y: 1}
+        type: 1
+      - cell: {x: 14, y: 1}
+        type: 1
+      - cell: {x: 15, y: 1}
+        type: 1
+      - cell: {x: 16, y: 1}
+        type: 1
+      - cell: {x: 17, y: 1}
+        type: 1
+      - cell: {x: 18, y: 1}
+        type: 1
+      - cell: {x: 19, y: 1}
+        type: 1
+      - cell: {x: 20, y: 1}
+        type: 1
+      - cell: {x: 0, y: 2}
+        type: 1
+      - cell: {x: 1, y: 2}
+        type: 1
+      - cell: {x: 2, y: 2}
+        type: 1
+      - cell: {x: 3, y: 2}
+        type: 1
+      - cell: {x: 4, y: 2}
+        type: 1
+      - cell: {x: 5, y: 2}
+        type: 1
+      - cell: {x: 6, y: 2}
+        type: 1
+      - cell: {x: 7, y: 2}
+        type: 1
+      - cell: {x: 8, y: 2}
+        type: 1
+      - cell: {x: 9, y: 2}
+        type: 1
+      - cell: {x: 10, y: 2}
+        type: 1
+      - cell: {x: 11, y: 2}
+        type: 1
+      - cell: {x: 12, y: 2}
+        type: 1
+      - cell: {x: 13, y: 2}
+        type: 1
+      - cell: {x: 14, y: 2}
+        type: 1
+      - cell: {x: 15, y: 2}
+        type: 1
+      - cell: {x: 16, y: 2}
+        type: 1
+      - cell: {x: 17, y: 2}
+        type: 1
+      - cell: {x: 18, y: 2}
+        type: 1
+      - cell: {x: 19, y: 2}
+        type: 1
+      - cell: {x: 20, y: 2}
+        type: 1
+      - cell: {x: 0, y: 3}
+        type: 1
+      - cell: {x: 1, y: 3}
+        type: 1
+      - cell: {x: 2, y: 3}
+        type: 1
+      - cell: {x: 3, y: 3}
+        type: 1
+      - cell: {x: 4, y: 3}
+        type: 1
+      - cell: {x: 5, y: 3}
+        type: 1
+      - cell: {x: 6, y: 3}
+        type: 1
+      - cell: {x: 7, y: 3}
+        type: 1
+      - cell: {x: 8, y: 3}
+        type: 1
+      - cell: {x: 9, y: 3}
+        type: 1
+      - cell: {x: 10, y: 3}
+        type: 1
+      - cell: {x: 11, y: 3}
+        type: 1
+      - cell: {x: 12, y: 3}
+        type: 1
+      - cell: {x: 13, y: 3}
+        type: 1
+      - cell: {x: 14, y: 3}
+        type: 1
+      - cell: {x: 15, y: 3}
+        type: 1
+      - cell: {x: 16, y: 3}
+        type: 1
+      - cell: {x: 17, y: 3}
+        type: 1
+      - cell: {x: 18, y: 3}
+        type: 1
+      - cell: {x: 19, y: 3}
+        type: 1
+      - cell: {x: 20, y: 3}
+        type: 1
+      - cell: {x: 0, y: 4}
+        type: 1
+      - cell: {x: 1, y: 4}
+        type: 1
+      - cell: {x: 2, y: 4}
+        type: 1
+      - cell: {x: 3, y: 4}
+        type: 1
+      - cell: {x: 4, y: 4}
+        type: 1
+      - cell: {x: 5, y: 4}
+        type: 1
+      - cell: {x: 6, y: 4}
+        type: 1
+      - cell: {x: 7, y: 4}
+        type: 1
+      - cell: {x: 8, y: 4}
+        type: 1
+      - cell: {x: 9, y: 4}
+        type: 1
+      - cell: {x: 10, y: 4}
+        type: 1
+      - cell: {x: 11, y: 4}
+        type: 1
+      - cell: {x: 12, y: 4}
+        type: 1
+      - cell: {x: 13, y: 4}
+        type: 1
+      - cell: {x: 14, y: 4}
+        type: 1
+      - cell: {x: 15, y: 4}
+        type: 1
+      - cell: {x: 16, y: 4}
+        type: 1
+      - cell: {x: 17, y: 4}
+        type: 1
+      - cell: {x: 18, y: 4}
+        type: 1
+      - cell: {x: 19, y: 4}
+        type: 1
+      - cell: {x: 20, y: 4}
+        type: 1
+      - cell: {x: 0, y: 5}
+        type: 1
+      - cell: {x: 1, y: 5}
+        type: 1
+      - cell: {x: 2, y: 5}
+        type: 1
+      - cell: {x: 3, y: 5}
+        type: 1
+      - cell: {x: 4, y: 5}
+        type: 1
+      - cell: {x: 16, y: 5}
+        type: 1
+      - cell: {x: 17, y: 5}
+        type: 1
+      - cell: {x: 18, y: 5}
+        type: 1
+      - cell: {x: 19, y: 5}
+        type: 1
+      - cell: {x: 20, y: 5}
+        type: 1
+      - cell: {x: 0, y: 6}
+        type: 1
+      - cell: {x: 1, y: 6}
+        type: 1
+      - cell: {x: 2, y: 6}
+        type: 1
+      - cell: {x: 3, y: 6}
+        type: 1
+      - cell: {x: 4, y: 6}
+        type: 1
+      - cell: {x: 16, y: 6}
+        type: 1
+      - cell: {x: 17, y: 6}
+        type: 1
+      - cell: {x: 18, y: 6}
+        type: 1
+      - cell: {x: 19, y: 6}
+        type: 1
+      - cell: {x: 20, y: 6}
+        type: 1
+      - cell: {x: 0, y: 7}
+        type: 1
+      - cell: {x: 1, y: 7}
+        type: 1
+      - cell: {x: 2, y: 7}
+        type: 1
+      - cell: {x: 3, y: 7}
+        type: 1
+      - cell: {x: 4, y: 7}
+        type: 1
+      - cell: {x: 16, y: 7}
+        type: 1
+      - cell: {x: 17, y: 7}
+        type: 1
+      - cell: {x: 18, y: 7}
+        type: 1
+      - cell: {x: 19, y: 7}
+        type: 1
+      - cell: {x: 20, y: 7}
+        type: 1
+      - cell: {x: 0, y: 8}
+        type: 1
+      - cell: {x: 1, y: 8}
+        type: 1
+      - cell: {x: 2, y: 8}
+        type: 1
+      - cell: {x: 3, y: 8}
+        type: 1
+      - cell: {x: 4, y: 8}
+        type: 1
+      - cell: {x: 16, y: 8}
+        type: 1
+      - cell: {x: 17, y: 8}
+        type: 1
+      - cell: {x: 18, y: 8}
+        type: 1
+      - cell: {x: 19, y: 8}
+        type: 1
+      - cell: {x: 20, y: 8}
+        type: 1
+      - cell: {x: 0, y: 9}
+        type: 1
+      - cell: {x: 1, y: 9}
+        type: 1
+      - cell: {x: 2, y: 9}
+        type: 1
+      - cell: {x: 3, y: 9}
+        type: 1
+      - cell: {x: 4, y: 9}
+        type: 1
+      - cell: {x: 16, y: 9}
+        type: 1
+      - cell: {x: 17, y: 9}
+        type: 1
+      - cell: {x: 18, y: 9}
+        type: 1
+      - cell: {x: 19, y: 9}
+        type: 1
+      - cell: {x: 20, y: 9}
+        type: 1
+      - cell: {x: 0, y: 10}
+        type: 1
+      - cell: {x: 1, y: 10}
+        type: 1
+      - cell: {x: 2, y: 10}
+        type: 1
+      - cell: {x: 3, y: 10}
+        type: 1
+      - cell: {x: 4, y: 10}
+        type: 1
+      - cell: {x: 16, y: 10}
+        type: 1
+      - cell: {x: 17, y: 10}
+        type: 1
+      - cell: {x: 18, y: 10}
+        type: 1
+      - cell: {x: 19, y: 10}
+        type: 1
+      - cell: {x: 20, y: 10}
+        type: 1
+      - cell: {x: 0, y: 11}
+        type: 1
+      - cell: {x: 1, y: 11}
+        type: 1
+      - cell: {x: 2, y: 11}
+        type: 1
+      - cell: {x: 3, y: 11}
+        type: 1
+      - cell: {x: 4, y: 11}
+        type: 1
+      - cell: {x: 16, y: 11}
+        type: 1
+      - cell: {x: 17, y: 11}
+        type: 1
+      - cell: {x: 18, y: 11}
+        type: 1
+      - cell: {x: 19, y: 11}
+        type: 1
+      - cell: {x: 20, y: 11}
+        type: 1
+      - cell: {x: 0, y: 12}
+        type: 1
+      - cell: {x: 1, y: 12}
+        type: 1
+      - cell: {x: 2, y: 12}
+        type: 1
+      - cell: {x: 3, y: 12}
+        type: 1
+      - cell: {x: 4, y: 12}
+        type: 1
+      - cell: {x: 16, y: 12}
+        type: 1
+      - cell: {x: 17, y: 12}
+        type: 1
+      - cell: {x: 18, y: 12}
+        type: 1
+      - cell: {x: 19, y: 12}
+        type: 1
+      - cell: {x: 20, y: 12}
+        type: 1
+      - cell: {x: 0, y: 13}
+        type: 1
+      - cell: {x: 1, y: 13}
+        type: 1
+      - cell: {x: 2, y: 13}
+        type: 1
+      - cell: {x: 3, y: 13}
+        type: 1
+      - cell: {x: 4, y: 13}
+        type: 1
+      - cell: {x: 16, y: 13}
+        type: 1
+      - cell: {x: 17, y: 13}
+        type: 1
+      - cell: {x: 18, y: 13}
+        type: 1
+      - cell: {x: 19, y: 13}
+        type: 1
+      - cell: {x: 20, y: 13}
+        type: 1
+      - cell: {x: 0, y: 14}
+        type: 1
+      - cell: {x: 1, y: 14}
+        type: 1
+      - cell: {x: 2, y: 14}
+        type: 1
+      - cell: {x: 3, y: 14}
+        type: 1
+      - cell: {x: 4, y: 14}
+        type: 1
+      - cell: {x: 16, y: 14}
+        type: 1
+      - cell: {x: 17, y: 14}
+        type: 1
+      - cell: {x: 18, y: 14}
+        type: 1
+      - cell: {x: 19, y: 14}
+        type: 1
+      - cell: {x: 20, y: 14}
+        type: 1
+      - cell: {x: 0, y: 15}
+        type: 1
+      - cell: {x: 1, y: 15}
+        type: 1
+      - cell: {x: 2, y: 15}
+        type: 1
+      - cell: {x: 3, y: 15}
+        type: 1
+      - cell: {x: 4, y: 15}
+        type: 1
+      - cell: {x: 16, y: 15}
+        type: 1
+      - cell: {x: 17, y: 15}
+        type: 1
+      - cell: {x: 18, y: 15}
+        type: 1
+      - cell: {x: 19, y: 15}
+        type: 1
+      - cell: {x: 20, y: 15}
+        type: 1
+      - cell: {x: 0, y: 16}
+        type: 1
+      - cell: {x: 1, y: 16}
+        type: 1
+      - cell: {x: 2, y: 16}
+        type: 1
+      - cell: {x: 3, y: 16}
+        type: 1
+      - cell: {x: 4, y: 16}
+        type: 1
+      - cell: {x: 5, y: 16}
+        type: 1
+      - cell: {x: 6, y: 16}
+        type: 1
+      - cell: {x: 7, y: 16}
+        type: 1
+      - cell: {x: 8, y: 16}
+        type: 1
+      - cell: {x: 9, y: 16}
+        type: 1
+      - cell: {x: 10, y: 16}
+        type: 1
+      - cell: {x: 11, y: 16}
+        type: 1
+      - cell: {x: 12, y: 16}
+        type: 1
+      - cell: {x: 13, y: 16}
+        type: 1
+      - cell: {x: 14, y: 16}
+        type: 1
+      - cell: {x: 15, y: 16}
+        type: 1
+      - cell: {x: 16, y: 16}
+        type: 1
+      - cell: {x: 17, y: 16}
+        type: 1
+      - cell: {x: 18, y: 16}
+        type: 1
+      - cell: {x: 19, y: 16}
+        type: 1
+      - cell: {x: 20, y: 16}
+        type: 1
+      - cell: {x: 0, y: 17}
+        type: 1
+      - cell: {x: 1, y: 17}
+        type: 1
+      - cell: {x: 2, y: 17}
+        type: 1
+      - cell: {x: 3, y: 17}
+        type: 1
+      - cell: {x: 4, y: 17}
+        type: 1
+      - cell: {x: 5, y: 17}
+        type: 1
+      - cell: {x: 6, y: 17}
+        type: 1
+      - cell: {x: 7, y: 17}
+        type: 1
+      - cell: {x: 8, y: 17}
+        type: 1
+      - cell: {x: 9, y: 17}
+        type: 1
+      - cell: {x: 10, y: 17}
+        type: 1
+      - cell: {x: 11, y: 17}
+        type: 1
+      - cell: {x: 12, y: 17}
+        type: 1
+      - cell: {x: 13, y: 17}
+        type: 1
+      - cell: {x: 14, y: 17}
+        type: 1
+      - cell: {x: 15, y: 17}
+        type: 1
+      - cell: {x: 16, y: 17}
+        type: 1
+      - cell: {x: 17, y: 17}
+        type: 1
+      - cell: {x: 18, y: 17}
+        type: 1
+      - cell: {x: 19, y: 17}
+        type: 1
+      - cell: {x: 20, y: 17}
+        type: 1
+      - cell: {x: 0, y: 18}
+        type: 1
+      - cell: {x: 1, y: 18}
+        type: 1
+      - cell: {x: 2, y: 18}
+        type: 1
+      - cell: {x: 3, y: 18}
+        type: 1
+      - cell: {x: 4, y: 18}
+        type: 1
+      - cell: {x: 5, y: 18}
+        type: 1
+      - cell: {x: 6, y: 18}
+        type: 1
+      - cell: {x: 7, y: 18}
+        type: 1
+      - cell: {x: 8, y: 18}
+        type: 1
+      - cell: {x: 9, y: 18}
+        type: 1
+      - cell: {x: 10, y: 18}
+        type: 1
+      - cell: {x: 11, y: 18}
+        type: 1
+      - cell: {x: 12, y: 18}
+        type: 1
+      - cell: {x: 13, y: 18}
+        type: 1
+      - cell: {x: 14, y: 18}
+        type: 1
+      - cell: {x: 15, y: 18}
+        type: 1
+      - cell: {x: 16, y: 18}
+        type: 1
+      - cell: {x: 17, y: 18}
+        type: 1
+      - cell: {x: 18, y: 18}
+        type: 1
+      - cell: {x: 19, y: 18}
+        type: 1
+      - cell: {x: 20, y: 18}
+        type: 1
+      - cell: {x: 0, y: 19}
+        type: 1
+      - cell: {x: 1, y: 19}
+        type: 1
+      - cell: {x: 2, y: 19}
+        type: 1
+      - cell: {x: 3, y: 19}
+        type: 1
+      - cell: {x: 4, y: 19}
+        type: 1
+      - cell: {x: 5, y: 19}
+        type: 1
+      - cell: {x: 6, y: 19}
+        type: 1
+      - cell: {x: 7, y: 19}
+        type: 1
+      - cell: {x: 8, y: 19}
+        type: 1
+      - cell: {x: 9, y: 19}
+        type: 1
+      - cell: {x: 10, y: 19}
+        type: 1
+      - cell: {x: 11, y: 19}
+        type: 1
+      - cell: {x: 12, y: 19}
+        type: 1
+      - cell: {x: 13, y: 19}
+        type: 1
+      - cell: {x: 14, y: 19}
+        type: 1
+      - cell: {x: 15, y: 19}
+        type: 1
+      - cell: {x: 16, y: 19}
+        type: 1
+      - cell: {x: 17, y: 19}
+        type: 1
+      - cell: {x: 18, y: 19}
+        type: 1
+      - cell: {x: 19, y: 19}
+        type: 1
+      - cell: {x: 20, y: 19}
+        type: 1
+      - cell: {x: 0, y: 20}
+        type: 1
+      - cell: {x: 1, y: 20}
+        type: 1
+      - cell: {x: 2, y: 20}
+        type: 1
+      - cell: {x: 3, y: 20}
+        type: 1
+      - cell: {x: 4, y: 20}
+        type: 1
+      - cell: {x: 5, y: 20}
+        type: 1
+      - cell: {x: 6, y: 20}
+        type: 1
+      - cell: {x: 7, y: 20}
+        type: 1
+      - cell: {x: 8, y: 20}
+        type: 1
+      - cell: {x: 9, y: 20}
+        type: 1
+      - cell: {x: 10, y: 20}
+        type: 1
+      - cell: {x: 11, y: 20}
+        type: 1
+      - cell: {x: 12, y: 20}
+        type: 1
+      - cell: {x: 13, y: 20}
+        type: 1
+      - cell: {x: 14, y: 20}
+        type: 1
+      - cell: {x: 15, y: 20}
+        type: 1
+      - cell: {x: 16, y: 20}
+        type: 1
+      - cell: {x: 17, y: 20}
+        type: 1
+      - cell: {x: 18, y: 20}
+        type: 1
+      - cell: {x: 19, y: 20}
+        type: 1
+      - cell: {x: 20, y: 20}
+        type: 1
+      extras: []
+      combiTiles:
+      - {x: 10, y: 15}
+      - {x: 15, y: 10}
+      - {x: 10, y: 5}
+      - {x: 5, y: 10}
+      waves:
+      - spawnDuration: 3
+        delayAfter: 2
+        waitForClear: 1
+        randomOrder: 1
+        placed:
+        - enemy: {fileID: 11400000, guid: 6d04b8f3a17e42c59e8d3a0b2c61f50a, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 10.5, y: 10.5}
+          chance: 0
+    - name: Pocket 7
+      enabled: 1
+      width: 20
+      height: 20
+      isBoss: 0
+      core:
+        present: 0
+        pos: {x: 0, y: 0}
+      weightRange: {x: 1, y: 3}
+      ember: 1
+      costOverridden: 0
+      costOverride: 0
+      tiles:
+      - cell: {x: 15, y: 19}
+        type: 1
+      - cell: {x: 15, y: 18}
+        type: 1
+      - cell: {x: 15, y: 17}
+        type: 1
+      - cell: {x: 15, y: 16}
+        type: 1
+      - cell: {x: 15, y: 15}
+        type: 1
+      - cell: {x: 15, y: 13}
+        type: 1
+      - cell: {x: 15, y: 14}
+        type: 1
+      - cell: {x: 15, y: 12}
+        type: 1
+      - cell: {x: 15, y: 11}
+        type: 1
+      - cell: {x: 15, y: 10}
+        type: 1
+      - cell: {x: 15, y: 9}
+        type: 1
+      - cell: {x: 15, y: 8}
+        type: 1
+      - cell: {x: 15, y: 7}
+        type: 1
+      - cell: {x: 15, y: 6}
+        type: 1
+      - cell: {x: 15, y: 5}
+        type: 1
+      - cell: {x: 15, y: 4}
+        type: 1
+      - cell: {x: 14, y: 4}
+        type: 1
+      - cell: {x: 13, y: 4}
+        type: 1
+      - cell: {x: 12, y: 4}
+        type: 1
+      - cell: {x: 11, y: 4}
+        type: 1
+      - cell: {x: 10, y: 4}
+        type: 1
+      - cell: {x: 9, y: 4}
+        type: 1
+      - cell: {x: 8, y: 4}
+        type: 1
+      - cell: {x: 7, y: 4}
+        type: 1
+      - cell: {x: 6, y: 4}
+        type: 1
+      - cell: {x: 5, y: 4}
+        type: 1
+      - cell: {x: 4, y: 4}
+        type: 1
+      - cell: {x: 4, y: 5}
+        type: 1
+      - cell: {x: 4, y: 6}
+        type: 1
+      - cell: {x: 4, y: 7}
+        type: 1
+      - cell: {x: 4, y: 8}
+        type: 1
+      - cell: {x: 4, y: 9}
+        type: 1
+      - cell: {x: 4, y: 10}
+        type: 1
+      - cell: {x: 4, y: 11}
+        type: 1
+      - cell: {x: 4, y: 12}
+        type: 1
+      - cell: {x: 4, y: 13}
+        type: 1
+      - cell: {x: 4, y: 14}
+        type: 1
+      - cell: {x: 4, y: 15}
+        type: 1
+      - cell: {x: 5, y: 15}
+        type: 1
+      - cell: {x: 6, y: 15}
+        type: 1
+      - cell: {x: 7, y: 15}
+        type: 1
+      - cell: {x: 8, y: 15}
+        type: 1
+      - cell: {x: 10, y: 15}
+        type: 1
+      - cell: {x: 10, y: 14}
+        type: 1
+      - cell: {x: 10, y: 13}
+        type: 1
+      - cell: {x: 10, y: 12}
+        type: 1
+      - cell: {x: 10, y: 11}
+        type: 1
+      - cell: {x: 10, y: 10}
+        type: 1
+      - cell: {x: 10, y: 9}
+        type: 1
+      - cell: {x: 9, y: 15}
+        type: 1
+      extras: []
+      combiTiles: []
+      waves:
+      - spawnDuration: 3
+        delayAfter: 2
+        waitForClear: 1
+        randomOrder: 1
+        placed:
+        - enemy: {fileID: 11400000, guid: 90b86b0fa3d4b449fb24c81446ba1686, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 7.5, y: 12.5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 9ebf60457ff204b29b7d88caa981a080, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 7.5, y: 10}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 7.5, y: 18}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 2, y: 11.5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 13, y: 12}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 2, y: 4.5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 7.5, y: 2}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 12.5, y: 2}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 18.5, y: 7}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 18.5, y: 11}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 18.5, y: 15}
+          chance: 0
+    - name: Pocket 8
+      enabled: 1
+      width: 20
+      height: 20
+      isBoss: 0
+      core:
+        present: 0
+        pos: {x: 0, y: 0}
+      weightRange: {x: 1, y: 3}
+      ember: 1
+      costOverridden: 0
+      costOverride: 0
+      tiles:
+      - cell: {x: 0, y: 0}
+        type: 1
+      - cell: {x: 1, y: 0}
+        type: 1
+      - cell: {x: 2, y: 0}
+        type: 1
+      - cell: {x: 3, y: 0}
+        type: 1
+      - cell: {x: 4, y: 0}
+        type: 1
+      - cell: {x: 5, y: 0}
+        type: 1
+      - cell: {x: 6, y: 0}
+        type: 1
+      - cell: {x: 7, y: 0}
+        type: 1
+      - cell: {x: 8, y: 0}
+        type: 1
+      - cell: {x: 9, y: 0}
+        type: 1
+      - cell: {x: 10, y: 0}
+        type: 1
+      - cell: {x: 11, y: 0}
+        type: 1
+      - cell: {x: 12, y: 0}
+        type: 1
+      - cell: {x: 13, y: 0}
+        type: 1
+      - cell: {x: 14, y: 0}
+        type: 1
+      - cell: {x: 15, y: 0}
+        type: 1
+      - cell: {x: 16, y: 0}
+        type: 1
+      - cell: {x: 17, y: 0}
+        type: 1
+      - cell: {x: 18, y: 0}
+        type: 1
+      - cell: {x: 19, y: 0}
+        type: 1
+      - cell: {x: 0, y: 1}
+        type: 1
+      - cell: {x: 1, y: 1}
+        type: 1
+      - cell: {x: 2, y: 1}
+        type: 1
+      - cell: {x: 3, y: 1}
+        type: 1
+      - cell: {x: 4, y: 1}
+        type: 1
+      - cell: {x: 5, y: 1}
+        type: 1
+      - cell: {x: 6, y: 1}
+        type: 1
+      - cell: {x: 7, y: 1}
+        type: 1
+      - cell: {x: 8, y: 1}
+        type: 1
+      - cell: {x: 9, y: 1}
+        type: 1
+      - cell: {x: 10, y: 1}
+        type: 1
+      - cell: {x: 11, y: 1}
+        type: 1
+      - cell: {x: 12, y: 1}
+        type: 1
+      - cell: {x: 13, y: 1}
+        type: 1
+      - cell: {x: 14, y: 1}
+        type: 1
+      - cell: {x: 15, y: 1}
+        type: 1
+      - cell: {x: 16, y: 1}
+        type: 1
+      - cell: {x: 17, y: 1}
+        type: 1
+      - cell: {x: 18, y: 1}
+        type: 1
+      - cell: {x: 19, y: 1}
+        type: 1
+      - cell: {x: 0, y: 2}
+        type: 1
+      - cell: {x: 1, y: 2}
+        type: 1
+      - cell: {x: 2, y: 2}
+        type: 1
+      - cell: {x: 3, y: 2}
+        type: 1
+      - cell: {x: 4, y: 2}
+        type: 1
+      - cell: {x: 5, y: 2}
+        type: 1
+      - cell: {x: 6, y: 2}
+        type: 1
+      - cell: {x: 7, y: 2}
+        type: 1
+      - cell: {x: 8, y: 2}
+        type: 1
+      - cell: {x: 9, y: 2}
+        type: 1
+      - cell: {x: 10, y: 2}
+        type: 1
+      - cell: {x: 11, y: 2}
+        type: 1
+      - cell: {x: 12, y: 2}
+        type: 1
+      - cell: {x: 13, y: 2}
+        type: 1
+      - cell: {x: 14, y: 2}
+        type: 1
+      - cell: {x: 15, y: 2}
+        type: 1
+      - cell: {x: 16, y: 2}
+        type: 1
+      - cell: {x: 17, y: 2}
+        type: 1
+      - cell: {x: 18, y: 2}
+        type: 1
+      - cell: {x: 19, y: 2}
+        type: 1
+      - cell: {x: 0, y: 3}
+        type: 1
+      - cell: {x: 1, y: 3}
+        type: 1
+      - cell: {x: 2, y: 3}
+        type: 1
+      - cell: {x: 3, y: 3}
+        type: 1
+      - cell: {x: 4, y: 3}
+        type: 1
+      - cell: {x: 5, y: 3}
+        type: 1
+      - cell: {x: 6, y: 3}
+        type: 1
+      - cell: {x: 7, y: 3}
+        type: 1
+      - cell: {x: 8, y: 3}
+        type: 1
+      - cell: {x: 9, y: 3}
+        type: 1
+      - cell: {x: 10, y: 3}
+        type: 1
+      - cell: {x: 11, y: 3}
+        type: 1
+      - cell: {x: 12, y: 3}
+        type: 1
+      - cell: {x: 13, y: 3}
+        type: 1
+      - cell: {x: 14, y: 3}
+        type: 1
+      - cell: {x: 15, y: 3}
+        type: 1
+      - cell: {x: 16, y: 3}
+        type: 1
+      - cell: {x: 17, y: 3}
+        type: 1
+      - cell: {x: 18, y: 3}
+        type: 1
+      - cell: {x: 19, y: 3}
+        type: 1
+      - cell: {x: 0, y: 4}
+        type: 1
+      - cell: {x: 1, y: 4}
+        type: 1
+      - cell: {x: 2, y: 4}
+        type: 1
+      - cell: {x: 3, y: 4}
+        type: 1
+      - cell: {x: 4, y: 4}
+        type: 1
+      - cell: {x: 5, y: 4}
+        type: 1
+      - cell: {x: 6, y: 4}
+        type: 1
+      - cell: {x: 7, y: 4}
+        type: 1
+      - cell: {x: 8, y: 4}
+        type: 1
+      - cell: {x: 9, y: 4}
+        type: 1
+      - cell: {x: 10, y: 4}
+        type: 1
+      - cell: {x: 11, y: 4}
+        type: 1
+      - cell: {x: 12, y: 4}
+        type: 1
+      - cell: {x: 13, y: 4}
+        type: 1
+      - cell: {x: 14, y: 4}
+        type: 1
+      - cell: {x: 15, y: 4}
+        type: 1
+      - cell: {x: 16, y: 4}
+        type: 1
+      - cell: {x: 17, y: 4}
+        type: 1
+      - cell: {x: 18, y: 4}
+        type: 1
+      - cell: {x: 19, y: 4}
+        type: 1
+      - cell: {x: 0, y: 5}
+        type: 1
+      - cell: {x: 1, y: 5}
+        type: 1
+      - cell: {x: 2, y: 5}
+        type: 1
+      - cell: {x: 3, y: 5}
+        type: 1
+      - cell: {x: 4, y: 5}
+        type: 1
+      - cell: {x: 15, y: 5}
+        type: 1
+      - cell: {x: 16, y: 5}
+        type: 1
+      - cell: {x: 17, y: 5}
+        type: 1
+      - cell: {x: 18, y: 5}
+        type: 1
+      - cell: {x: 19, y: 5}
+        type: 1
+      - cell: {x: 0, y: 6}
+        type: 1
+      - cell: {x: 1, y: 6}
+        type: 1
+      - cell: {x: 2, y: 6}
+        type: 1
+      - cell: {x: 3, y: 6}
+        type: 1
+      - cell: {x: 4, y: 6}
+        type: 1
+      - cell: {x: 15, y: 6}
+        type: 1
+      - cell: {x: 16, y: 6}
+        type: 1
+      - cell: {x: 17, y: 6}
+        type: 1
+      - cell: {x: 18, y: 6}
+        type: 1
+      - cell: {x: 19, y: 6}
+        type: 1
+      - cell: {x: 0, y: 7}
+        type: 1
+      - cell: {x: 1, y: 7}
+        type: 1
+      - cell: {x: 2, y: 7}
+        type: 1
+      - cell: {x: 3, y: 7}
+        type: 1
+      - cell: {x: 4, y: 7}
+        type: 1
+      - cell: {x: 15, y: 7}
+        type: 1
+      - cell: {x: 16, y: 7}
+        type: 1
+      - cell: {x: 17, y: 7}
+        type: 1
+      - cell: {x: 18, y: 7}
+        type: 1
+      - cell: {x: 19, y: 7}
+        type: 1
+      - cell: {x: 0, y: 8}
+        type: 1
+      - cell: {x: 1, y: 8}
+        type: 1
+      - cell: {x: 2, y: 8}
+        type: 1
+      - cell: {x: 3, y: 8}
+        type: 1
+      - cell: {x: 4, y: 8}
+        type: 1
+      - cell: {x: 15, y: 8}
+        type: 1
+      - cell: {x: 16, y: 8}
+        type: 1
+      - cell: {x: 17, y: 8}
+        type: 1
+      - cell: {x: 18, y: 8}
+        type: 1
+      - cell: {x: 19, y: 8}
+        type: 1
+      - cell: {x: 0, y: 9}
+        type: 1
+      - cell: {x: 1, y: 9}
+        type: 1
+      - cell: {x: 2, y: 9}
+        type: 1
+      - cell: {x: 3, y: 9}
+        type: 1
+      - cell: {x: 4, y: 9}
+        type: 1
+      - cell: {x: 15, y: 9}
+        type: 1
+      - cell: {x: 16, y: 9}
+        type: 1
+      - cell: {x: 17, y: 9}
+        type: 1
+      - cell: {x: 18, y: 9}
+        type: 1
+      - cell: {x: 19, y: 9}
+        type: 1
+      - cell: {x: 0, y: 10}
+        type: 1
+      - cell: {x: 1, y: 10}
+        type: 1
+      - cell: {x: 2, y: 10}
+        type: 1
+      - cell: {x: 3, y: 10}
+        type: 1
+      - cell: {x: 4, y: 10}
+        type: 1
+      - cell: {x: 15, y: 10}
+        type: 1
+      - cell: {x: 16, y: 10}
+        type: 1
+      - cell: {x: 17, y: 10}
+        type: 1
+      - cell: {x: 18, y: 10}
+        type: 1
+      - cell: {x: 19, y: 10}
+        type: 1
+      - cell: {x: 0, y: 11}
+        type: 1
+      - cell: {x: 1, y: 11}
+        type: 1
+      - cell: {x: 2, y: 11}
+        type: 1
+      - cell: {x: 3, y: 11}
+        type: 1
+      - cell: {x: 4, y: 11}
+        type: 1
+      - cell: {x: 15, y: 11}
+        type: 1
+      - cell: {x: 16, y: 11}
+        type: 1
+      - cell: {x: 17, y: 11}
+        type: 1
+      - cell: {x: 18, y: 11}
+        type: 1
+      - cell: {x: 19, y: 11}
+        type: 1
+      - cell: {x: 0, y: 12}
+        type: 1
+      - cell: {x: 1, y: 12}
+        type: 1
+      - cell: {x: 2, y: 12}
+        type: 1
+      - cell: {x: 3, y: 12}
+        type: 1
+      - cell: {x: 4, y: 12}
+        type: 1
+      - cell: {x: 15, y: 12}
+        type: 1
+      - cell: {x: 16, y: 12}
+        type: 1
+      - cell: {x: 17, y: 12}
+        type: 1
+      - cell: {x: 18, y: 12}
+        type: 1
+      - cell: {x: 19, y: 12}
+        type: 1
+      - cell: {x: 0, y: 13}
+        type: 1
+      - cell: {x: 1, y: 13}
+        type: 1
+      - cell: {x: 2, y: 13}
+        type: 1
+      - cell: {x: 3, y: 13}
+        type: 1
+      - cell: {x: 4, y: 13}
+        type: 1
+      - cell: {x: 15, y: 13}
+        type: 1
+      - cell: {x: 16, y: 13}
+        type: 1
+      - cell: {x: 17, y: 13}
+        type: 1
+      - cell: {x: 18, y: 13}
+        type: 1
+      - cell: {x: 19, y: 13}
+        type: 1
+      - cell: {x: 0, y: 14}
+        type: 1
+      - cell: {x: 1, y: 14}
+        type: 1
+      - cell: {x: 2, y: 14}
+        type: 1
+      - cell: {x: 3, y: 14}
+        type: 1
+      - cell: {x: 4, y: 14}
+        type: 1
+      - cell: {x: 15, y: 14}
+        type: 1
+      - cell: {x: 16, y: 14}
+        type: 1
+      - cell: {x: 17, y: 14}
+        type: 1
+      - cell: {x: 18, y: 14}
+        type: 1
+      - cell: {x: 19, y: 14}
+        type: 1
+      - cell: {x: 0, y: 15}
+        type: 1
+      - cell: {x: 1, y: 15}
+        type: 1
+      - cell: {x: 2, y: 15}
+        type: 1
+      - cell: {x: 3, y: 15}
+        type: 1
+      - cell: {x: 4, y: 15}
+        type: 1
+      - cell: {x: 5, y: 15}
+        type: 1
+      - cell: {x: 6, y: 15}
+        type: 1
+      - cell: {x: 7, y: 15}
+        type: 1
+      - cell: {x: 8, y: 15}
+        type: 1
+      - cell: {x: 9, y: 15}
+        type: 1
+      - cell: {x: 10, y: 15}
+        type: 1
+      - cell: {x: 11, y: 15}
+        type: 1
+      - cell: {x: 12, y: 15}
+        type: 1
+      - cell: {x: 13, y: 15}
+        type: 1
+      - cell: {x: 14, y: 15}
+        type: 1
+      - cell: {x: 15, y: 15}
+        type: 1
+      - cell: {x: 16, y: 15}
+        type: 1
+      - cell: {x: 17, y: 15}
+        type: 1
+      - cell: {x: 18, y: 15}
+        type: 1
+      - cell: {x: 19, y: 15}
+        type: 1
+      - cell: {x: 0, y: 16}
+        type: 1
+      - cell: {x: 1, y: 16}
+        type: 1
+      - cell: {x: 2, y: 16}
+        type: 1
+      - cell: {x: 3, y: 16}
+        type: 1
+      - cell: {x: 4, y: 16}
+        type: 1
+      - cell: {x: 5, y: 16}
+        type: 1
+      - cell: {x: 6, y: 16}
+        type: 1
+      - cell: {x: 7, y: 16}
+        type: 1
+      - cell: {x: 8, y: 16}
+        type: 1
+      - cell: {x: 9, y: 16}
+        type: 1
+      - cell: {x: 10, y: 16}
+        type: 1
+      - cell: {x: 11, y: 16}
+        type: 1
+      - cell: {x: 12, y: 16}
+        type: 1
+      - cell: {x: 13, y: 16}
+        type: 1
+      - cell: {x: 14, y: 16}
+        type: 1
+      - cell: {x: 15, y: 16}
+        type: 1
+      - cell: {x: 16, y: 16}
+        type: 1
+      - cell: {x: 17, y: 16}
+        type: 1
+      - cell: {x: 18, y: 16}
+        type: 1
+      - cell: {x: 19, y: 16}
+        type: 1
+      - cell: {x: 0, y: 17}
+        type: 1
+      - cell: {x: 1, y: 17}
+        type: 1
+      - cell: {x: 2, y: 17}
+        type: 1
+      - cell: {x: 3, y: 17}
+        type: 1
+      - cell: {x: 4, y: 17}
+        type: 1
+      - cell: {x: 5, y: 17}
+        type: 1
+      - cell: {x: 6, y: 17}
+        type: 1
+      - cell: {x: 7, y: 17}
+        type: 1
+      - cell: {x: 8, y: 17}
+        type: 1
+      - cell: {x: 9, y: 17}
+        type: 1
+      - cell: {x: 10, y: 17}
+        type: 1
+      - cell: {x: 11, y: 17}
+        type: 1
+      - cell: {x: 12, y: 17}
+        type: 1
+      - cell: {x: 13, y: 17}
+        type: 1
+      - cell: {x: 14, y: 17}
+        type: 1
+      - cell: {x: 15, y: 17}
+        type: 1
+      - cell: {x: 16, y: 17}
+        type: 1
+      - cell: {x: 17, y: 17}
+        type: 1
+      - cell: {x: 18, y: 17}
+        type: 1
+      - cell: {x: 19, y: 17}
+        type: 1
+      - cell: {x: 0, y: 18}
+        type: 1
+      - cell: {x: 1, y: 18}
+        type: 1
+      - cell: {x: 2, y: 18}
+        type: 1
+      - cell: {x: 3, y: 18}
+        type: 1
+      - cell: {x: 4, y: 18}
+        type: 1
+      - cell: {x: 5, y: 18}
+        type: 1
+      - cell: {x: 6, y: 18}
+        type: 1
+      - cell: {x: 7, y: 18}
+        type: 1
+      - cell: {x: 8, y: 18}
+        type: 1
+      - cell: {x: 9, y: 18}
+        type: 1
+      - cell: {x: 10, y: 18}
+        type: 1
+      - cell: {x: 11, y: 18}
+        type: 1
+      - cell: {x: 12, y: 18}
+        type: 1
+      - cell: {x: 13, y: 18}
+        type: 1
+      - cell: {x: 14, y: 18}
+        type: 1
+      - cell: {x: 15, y: 18}
+        type: 1
+      - cell: {x: 16, y: 18}
+        type: 1
+      - cell: {x: 17, y: 18}
+        type: 1
+      - cell: {x: 18, y: 18}
+        type: 1
+      - cell: {x: 19, y: 18}
+        type: 1
+      - cell: {x: 0, y: 19}
+        type: 1
+      - cell: {x: 1, y: 19}
+        type: 1
+      - cell: {x: 2, y: 19}
+        type: 1
+      - cell: {x: 3, y: 19}
+        type: 1
+      - cell: {x: 4, y: 19}
+        type: 1
+      - cell: {x: 5, y: 19}
+        type: 1
+      - cell: {x: 6, y: 19}
+        type: 1
+      - cell: {x: 7, y: 19}
+        type: 1
+      - cell: {x: 8, y: 19}
+        type: 1
+      - cell: {x: 9, y: 19}
+        type: 1
+      - cell: {x: 10, y: 19}
+        type: 1
+      - cell: {x: 11, y: 19}
+        type: 1
+      - cell: {x: 12, y: 19}
+        type: 1
+      - cell: {x: 13, y: 19}
+        type: 1
+      - cell: {x: 14, y: 19}
+        type: 1
+      - cell: {x: 15, y: 19}
+        type: 1
+      - cell: {x: 16, y: 19}
+        type: 1
+      - cell: {x: 17, y: 19}
+        type: 1
+      - cell: {x: 18, y: 19}
+        type: 1
+      - cell: {x: 19, y: 19}
+        type: 1
+      extras: []
+      combiTiles: []
+      waves:
+      - spawnDuration: 0
+        delayAfter: 6
+        waitForClear: 0
+        randomOrder: 1
+        placed:
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 7, y: 7}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 7, y: 10}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 7, y: 13}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 10, y: 13}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 13, y: 13}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 13, y: 10}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 13, y: 7}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 10, y: 7}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f45ef91775aad440a87b23d6553ea327, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 10, y: 10}
+          chance: 0
+      - spawnDuration: 0
+        delayAfter: 2
+        waitForClear: 1
+        randomOrder: 1
+        placed:
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 5.5, y: 14.5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 14.5, y: 14.5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 14.5, y: 5.5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 5.5, y: 5.5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 5.5, y: 10}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 10, y: 14.5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 10, y: 5.5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 14.5, y: 10}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f45ef91775aad440a87b23d6553ea327, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 10, y: 10}
+          chance: 0
+    - name: Pocket 9
+      enabled: 1
+      width: 20
+      height: 20
+      isBoss: 0
+      core:
+        present: 0
+        pos: {x: 0, y: 0}
+      weightRange: {x: 1, y: 3}
+      ember: 1
+      costOverridden: 0
+      costOverride: 0
+      tiles:
+      - cell: {x: 0, y: 0}
+        type: 1
+      - cell: {x: 1, y: 0}
+        type: 1
+      - cell: {x: 2, y: 0}
+        type: 1
+      - cell: {x: 3, y: 0}
+        type: 1
+      - cell: {x: 4, y: 0}
+        type: 1
+      - cell: {x: 5, y: 0}
+        type: 1
+      - cell: {x: 6, y: 0}
+        type: 1
+      - cell: {x: 7, y: 0}
+        type: 1
+      - cell: {x: 8, y: 0}
+        type: 1
+      - cell: {x: 9, y: 0}
+        type: 1
+      - cell: {x: 10, y: 0}
+        type: 1
+      - cell: {x: 11, y: 0}
+        type: 1
+      - cell: {x: 12, y: 0}
+        type: 1
+      - cell: {x: 13, y: 0}
+        type: 1
+      - cell: {x: 14, y: 0}
+        type: 1
+      - cell: {x: 15, y: 0}
+        type: 1
+      - cell: {x: 16, y: 0}
+        type: 1
+      - cell: {x: 17, y: 0}
+        type: 1
+      - cell: {x: 18, y: 0}
+        type: 1
+      - cell: {x: 19, y: 0}
+        type: 1
+      - cell: {x: 0, y: 1}
+        type: 1
+      - cell: {x: 1, y: 1}
+        type: 1
+      - cell: {x: 2, y: 1}
+        type: 1
+      - cell: {x: 3, y: 1}
+        type: 1
+      - cell: {x: 4, y: 1}
+        type: 1
+      - cell: {x: 5, y: 1}
+        type: 1
+      - cell: {x: 6, y: 1}
+        type: 1
+      - cell: {x: 7, y: 1}
+        type: 1
+      - cell: {x: 8, y: 1}
+        type: 1
+      - cell: {x: 9, y: 1}
+        type: 1
+      - cell: {x: 10, y: 1}
+        type: 1
+      - cell: {x: 11, y: 1}
+        type: 1
+      - cell: {x: 12, y: 1}
+        type: 1
+      - cell: {x: 13, y: 1}
+        type: 1
+      - cell: {x: 14, y: 1}
+        type: 1
+      - cell: {x: 15, y: 1}
+        type: 1
+      - cell: {x: 16, y: 1}
+        type: 1
+      - cell: {x: 17, y: 1}
+        type: 1
+      - cell: {x: 18, y: 1}
+        type: 1
+      - cell: {x: 19, y: 1}
+        type: 1
+      - cell: {x: 0, y: 2}
+        type: 1
+      - cell: {x: 1, y: 2}
+        type: 1
+      - cell: {x: 2, y: 2}
+        type: 1
+      - cell: {x: 3, y: 2}
+        type: 1
+      - cell: {x: 4, y: 2}
+        type: 1
+      - cell: {x: 5, y: 2}
+        type: 1
+      - cell: {x: 6, y: 2}
+        type: 1
+      - cell: {x: 7, y: 2}
+        type: 1
+      - cell: {x: 8, y: 2}
+        type: 1
+      - cell: {x: 9, y: 2}
+        type: 1
+      - cell: {x: 10, y: 2}
+        type: 1
+      - cell: {x: 11, y: 2}
+        type: 1
+      - cell: {x: 12, y: 2}
+        type: 1
+      - cell: {x: 13, y: 2}
+        type: 1
+      - cell: {x: 14, y: 2}
+        type: 1
+      - cell: {x: 15, y: 2}
+        type: 1
+      - cell: {x: 16, y: 2}
+        type: 1
+      - cell: {x: 17, y: 2}
+        type: 1
+      - cell: {x: 18, y: 2}
+        type: 1
+      - cell: {x: 19, y: 2}
+        type: 1
+      - cell: {x: 0, y: 3}
+        type: 1
+      - cell: {x: 1, y: 3}
+        type: 1
+      - cell: {x: 2, y: 3}
+        type: 1
+      - cell: {x: 3, y: 3}
+        type: 1
+      - cell: {x: 4, y: 3}
+        type: 1
+      - cell: {x: 5, y: 3}
+        type: 1
+      - cell: {x: 6, y: 3}
+        type: 1
+      - cell: {x: 7, y: 3}
+        type: 1
+      - cell: {x: 8, y: 3}
+        type: 1
+      - cell: {x: 9, y: 3}
+        type: 1
+      - cell: {x: 10, y: 3}
+        type: 1
+      - cell: {x: 11, y: 3}
+        type: 1
+      - cell: {x: 12, y: 3}
+        type: 1
+      - cell: {x: 13, y: 3}
+        type: 1
+      - cell: {x: 14, y: 3}
+        type: 1
+      - cell: {x: 15, y: 3}
+        type: 1
+      - cell: {x: 16, y: 3}
+        type: 1
+      - cell: {x: 17, y: 3}
+        type: 1
+      - cell: {x: 18, y: 3}
+        type: 1
+      - cell: {x: 19, y: 3}
+        type: 1
+      - cell: {x: 0, y: 4}
+        type: 1
+      - cell: {x: 1, y: 4}
+        type: 1
+      - cell: {x: 2, y: 4}
+        type: 1
+      - cell: {x: 3, y: 4}
+        type: 1
+      - cell: {x: 4, y: 4}
+        type: 1
+      - cell: {x: 5, y: 4}
+        type: 1
+      - cell: {x: 6, y: 4}
+        type: 1
+      - cell: {x: 7, y: 4}
+        type: 1
+      - cell: {x: 8, y: 4}
+        type: 1
+      - cell: {x: 9, y: 4}
+        type: 1
+      - cell: {x: 10, y: 4}
+        type: 1
+      - cell: {x: 11, y: 4}
+        type: 1
+      - cell: {x: 12, y: 4}
+        type: 1
+      - cell: {x: 13, y: 4}
+        type: 1
+      - cell: {x: 14, y: 4}
+        type: 1
+      - cell: {x: 15, y: 4}
+        type: 1
+      - cell: {x: 16, y: 4}
+        type: 1
+      - cell: {x: 17, y: 4}
+        type: 1
+      - cell: {x: 18, y: 4}
+        type: 1
+      - cell: {x: 19, y: 4}
+        type: 1
+      - cell: {x: 0, y: 5}
+        type: 1
+      - cell: {x: 1, y: 5}
+        type: 1
+      - cell: {x: 2, y: 5}
+        type: 1
+      - cell: {x: 3, y: 5}
+        type: 1
+      - cell: {x: 4, y: 5}
+        type: 1
+      - cell: {x: 15, y: 5}
+        type: 1
+      - cell: {x: 16, y: 5}
+        type: 1
+      - cell: {x: 17, y: 5}
+        type: 1
+      - cell: {x: 18, y: 5}
+        type: 1
+      - cell: {x: 19, y: 5}
+        type: 1
+      - cell: {x: 0, y: 6}
+        type: 1
+      - cell: {x: 1, y: 6}
+        type: 1
+      - cell: {x: 2, y: 6}
+        type: 1
+      - cell: {x: 3, y: 6}
+        type: 1
+      - cell: {x: 4, y: 6}
+        type: 1
+      - cell: {x: 15, y: 6}
+        type: 1
+      - cell: {x: 16, y: 6}
+        type: 1
+      - cell: {x: 17, y: 6}
+        type: 1
+      - cell: {x: 18, y: 6}
+        type: 1
+      - cell: {x: 19, y: 6}
+        type: 1
+      - cell: {x: 0, y: 7}
+        type: 1
+      - cell: {x: 1, y: 7}
+        type: 1
+      - cell: {x: 2, y: 7}
+        type: 1
+      - cell: {x: 3, y: 7}
+        type: 1
+      - cell: {x: 4, y: 7}
+        type: 1
+      - cell: {x: 15, y: 7}
+        type: 1
+      - cell: {x: 16, y: 7}
+        type: 1
+      - cell: {x: 17, y: 7}
+        type: 1
+      - cell: {x: 18, y: 7}
+        type: 1
+      - cell: {x: 19, y: 7}
+        type: 1
+      - cell: {x: 0, y: 8}
+        type: 1
+      - cell: {x: 1, y: 8}
+        type: 1
+      - cell: {x: 2, y: 8}
+        type: 1
+      - cell: {x: 3, y: 8}
+        type: 1
+      - cell: {x: 4, y: 8}
+        type: 1
+      - cell: {x: 15, y: 8}
+        type: 1
+      - cell: {x: 16, y: 8}
+        type: 1
+      - cell: {x: 17, y: 8}
+        type: 1
+      - cell: {x: 18, y: 8}
+        type: 1
+      - cell: {x: 19, y: 8}
+        type: 1
+      - cell: {x: 0, y: 9}
+        type: 1
+      - cell: {x: 1, y: 9}
+        type: 1
+      - cell: {x: 2, y: 9}
+        type: 1
+      - cell: {x: 3, y: 9}
+        type: 1
+      - cell: {x: 4, y: 9}
+        type: 1
+      - cell: {x: 15, y: 9}
+        type: 1
+      - cell: {x: 16, y: 9}
+        type: 1
+      - cell: {x: 17, y: 9}
+        type: 1
+      - cell: {x: 18, y: 9}
+        type: 1
+      - cell: {x: 19, y: 9}
+        type: 1
+      - cell: {x: 0, y: 10}
+        type: 1
+      - cell: {x: 1, y: 10}
+        type: 1
+      - cell: {x: 2, y: 10}
+        type: 1
+      - cell: {x: 3, y: 10}
+        type: 1
+      - cell: {x: 4, y: 10}
+        type: 1
+      - cell: {x: 15, y: 10}
+        type: 1
+      - cell: {x: 16, y: 10}
+        type: 1
+      - cell: {x: 17, y: 10}
+        type: 1
+      - cell: {x: 18, y: 10}
+        type: 1
+      - cell: {x: 19, y: 10}
+        type: 1
+      - cell: {x: 0, y: 11}
+        type: 1
+      - cell: {x: 1, y: 11}
+        type: 1
+      - cell: {x: 2, y: 11}
+        type: 1
+      - cell: {x: 3, y: 11}
+        type: 1
+      - cell: {x: 4, y: 11}
+        type: 1
+      - cell: {x: 15, y: 11}
+        type: 1
+      - cell: {x: 16, y: 11}
+        type: 1
+      - cell: {x: 17, y: 11}
+        type: 1
+      - cell: {x: 18, y: 11}
+        type: 1
+      - cell: {x: 19, y: 11}
+        type: 1
+      - cell: {x: 0, y: 12}
+        type: 1
+      - cell: {x: 1, y: 12}
+        type: 1
+      - cell: {x: 2, y: 12}
+        type: 1
+      - cell: {x: 3, y: 12}
+        type: 1
+      - cell: {x: 4, y: 12}
+        type: 1
+      - cell: {x: 15, y: 12}
+        type: 1
+      - cell: {x: 16, y: 12}
+        type: 1
+      - cell: {x: 17, y: 12}
+        type: 1
+      - cell: {x: 18, y: 12}
+        type: 1
+      - cell: {x: 19, y: 12}
+        type: 1
+      - cell: {x: 0, y: 13}
+        type: 1
+      - cell: {x: 1, y: 13}
+        type: 1
+      - cell: {x: 2, y: 13}
+        type: 1
+      - cell: {x: 3, y: 13}
+        type: 1
+      - cell: {x: 4, y: 13}
+        type: 1
+      - cell: {x: 15, y: 13}
+        type: 1
+      - cell: {x: 16, y: 13}
+        type: 1
+      - cell: {x: 17, y: 13}
+        type: 1
+      - cell: {x: 18, y: 13}
+        type: 1
+      - cell: {x: 19, y: 13}
+        type: 1
+      - cell: {x: 0, y: 14}
+        type: 1
+      - cell: {x: 1, y: 14}
+        type: 1
+      - cell: {x: 2, y: 14}
+        type: 1
+      - cell: {x: 3, y: 14}
+        type: 1
+      - cell: {x: 4, y: 14}
+        type: 1
+      - cell: {x: 15, y: 14}
+        type: 1
+      - cell: {x: 16, y: 14}
+        type: 1
+      - cell: {x: 17, y: 14}
+        type: 1
+      - cell: {x: 18, y: 14}
+        type: 1
+      - cell: {x: 19, y: 14}
+        type: 1
+      - cell: {x: 0, y: 15}
+        type: 1
+      - cell: {x: 1, y: 15}
+        type: 1
+      - cell: {x: 2, y: 15}
+        type: 1
+      - cell: {x: 3, y: 15}
+        type: 1
+      - cell: {x: 4, y: 15}
+        type: 1
+      - cell: {x: 5, y: 15}
+        type: 1
+      - cell: {x: 6, y: 15}
+        type: 1
+      - cell: {x: 7, y: 15}
+        type: 1
+      - cell: {x: 8, y: 15}
+        type: 1
+      - cell: {x: 9, y: 15}
+        type: 1
+      - cell: {x: 10, y: 15}
+        type: 1
+      - cell: {x: 11, y: 15}
+        type: 1
+      - cell: {x: 12, y: 15}
+        type: 1
+      - cell: {x: 13, y: 15}
+        type: 1
+      - cell: {x: 14, y: 15}
+        type: 1
+      - cell: {x: 15, y: 15}
+        type: 1
+      - cell: {x: 16, y: 15}
+        type: 1
+      - cell: {x: 17, y: 15}
+        type: 1
+      - cell: {x: 18, y: 15}
+        type: 1
+      - cell: {x: 19, y: 15}
+        type: 1
+      - cell: {x: 0, y: 16}
+        type: 1
+      - cell: {x: 1, y: 16}
+        type: 1
+      - cell: {x: 2, y: 16}
+        type: 1
+      - cell: {x: 3, y: 16}
+        type: 1
+      - cell: {x: 4, y: 16}
+        type: 1
+      - cell: {x: 5, y: 16}
+        type: 1
+      - cell: {x: 6, y: 16}
+        type: 1
+      - cell: {x: 7, y: 16}
+        type: 1
+      - cell: {x: 8, y: 16}
+        type: 1
+      - cell: {x: 9, y: 16}
+        type: 1
+      - cell: {x: 10, y: 16}
+        type: 1
+      - cell: {x: 11, y: 16}
+        type: 1
+      - cell: {x: 12, y: 16}
+        type: 1
+      - cell: {x: 13, y: 16}
+        type: 1
+      - cell: {x: 14, y: 16}
+        type: 1
+      - cell: {x: 15, y: 16}
+        type: 1
+      - cell: {x: 16, y: 16}
+        type: 1
+      - cell: {x: 17, y: 16}
+        type: 1
+      - cell: {x: 18, y: 16}
+        type: 1
+      - cell: {x: 19, y: 16}
+        type: 1
+      - cell: {x: 0, y: 17}
+        type: 1
+      - cell: {x: 1, y: 17}
+        type: 1
+      - cell: {x: 2, y: 17}
+        type: 1
+      - cell: {x: 3, y: 17}
+        type: 1
+      - cell: {x: 4, y: 17}
+        type: 1
+      - cell: {x: 5, y: 17}
+        type: 1
+      - cell: {x: 6, y: 17}
+        type: 1
+      - cell: {x: 7, y: 17}
+        type: 1
+      - cell: {x: 8, y: 17}
+        type: 1
+      - cell: {x: 9, y: 17}
+        type: 1
+      - cell: {x: 10, y: 17}
+        type: 1
+      - cell: {x: 11, y: 17}
+        type: 1
+      - cell: {x: 12, y: 17}
+        type: 1
+      - cell: {x: 13, y: 17}
+        type: 1
+      - cell: {x: 14, y: 17}
+        type: 1
+      - cell: {x: 15, y: 17}
+        type: 1
+      - cell: {x: 16, y: 17}
+        type: 1
+      - cell: {x: 17, y: 17}
+        type: 1
+      - cell: {x: 18, y: 17}
+        type: 1
+      - cell: {x: 19, y: 17}
+        type: 1
+      - cell: {x: 0, y: 18}
+        type: 1
+      - cell: {x: 1, y: 18}
+        type: 1
+      - cell: {x: 2, y: 18}
+        type: 1
+      - cell: {x: 3, y: 18}
+        type: 1
+      - cell: {x: 4, y: 18}
+        type: 1
+      - cell: {x: 5, y: 18}
+        type: 1
+      - cell: {x: 6, y: 18}
+        type: 1
+      - cell: {x: 7, y: 18}
+        type: 1
+      - cell: {x: 8, y: 18}
+        type: 1
+      - cell: {x: 9, y: 18}
+        type: 1
+      - cell: {x: 10, y: 18}
+        type: 1
+      - cell: {x: 11, y: 18}
+        type: 1
+      - cell: {x: 12, y: 18}
+        type: 1
+      - cell: {x: 13, y: 18}
+        type: 1
+      - cell: {x: 14, y: 18}
+        type: 1
+      - cell: {x: 15, y: 18}
+        type: 1
+      - cell: {x: 16, y: 18}
+        type: 1
+      - cell: {x: 17, y: 18}
+        type: 1
+      - cell: {x: 18, y: 18}
+        type: 1
+      - cell: {x: 19, y: 18}
+        type: 1
+      - cell: {x: 0, y: 19}
+        type: 1
+      - cell: {x: 1, y: 19}
+        type: 1
+      - cell: {x: 2, y: 19}
+        type: 1
+      - cell: {x: 3, y: 19}
+        type: 1
+      - cell: {x: 4, y: 19}
+        type: 1
+      - cell: {x: 5, y: 19}
+        type: 1
+      - cell: {x: 6, y: 19}
+        type: 1
+      - cell: {x: 7, y: 19}
+        type: 1
+      - cell: {x: 8, y: 19}
+        type: 1
+      - cell: {x: 9, y: 19}
+        type: 1
+      - cell: {x: 10, y: 19}
+        type: 1
+      - cell: {x: 11, y: 19}
+        type: 1
+      - cell: {x: 12, y: 19}
+        type: 1
+      - cell: {x: 13, y: 19}
+        type: 1
+      - cell: {x: 14, y: 19}
+        type: 1
+      - cell: {x: 15, y: 19}
+        type: 1
+      - cell: {x: 16, y: 19}
+        type: 1
+      - cell: {x: 17, y: 19}
+        type: 1
+      - cell: {x: 18, y: 19}
+        type: 1
+      - cell: {x: 19, y: 19}
+        type: 1
+      - cell: {x: 7, y: 14}
+        type: 1
+      - cell: {x: 12, y: 14}
+        type: 1
+      - cell: {x: 7, y: 5}
+        type: 1
+      - cell: {x: 12, y: 5}
+        type: 1
+      - cell: {x: 5, y: 11}
+        type: 1
+      - cell: {x: 14, y: 11}
+        type: 1
+      - cell: {x: 5, y: 8}
+        type: 1
+      - cell: {x: 14, y: 8}
+        type: 1
+      extras: []
+      combiTiles: []
+      waves:
+      - spawnDuration: 3
+        delayAfter: 2
+        waitForClear: 1
+        randomOrder: 1
+        placed:
+        - enemy: {fileID: 11400000, guid: 6d04b8f3a17e42c59e8d3a0b2c61f50a, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 6, y: 6}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6d04b8f3a17e42c59e8d3a0b2c61f50a, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 14, y: 6}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6d04b8f3a17e42c59e8d3a0b2c61f50a, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 6, y: 14}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6d04b8f3a17e42c59e8d3a0b2c61f50a, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 14, y: 14}
+          chance: 0
+    - name: Pocket 10
+      enabled: 1
+      width: 20
+      height: 20
+      isBoss: 0
+      core:
+        present: 1
+        pos: {x: 10, y: 10}
+      weightRange: {x: 1, y: 3}
+      ember: 1
+      costOverridden: 0
+      costOverride: 0
+      tiles:
+      - cell: {x: 0, y: 0}
+        type: 1
+      - cell: {x: 1, y: 0}
+        type: 1
+      - cell: {x: 2, y: 0}
+        type: 1
+      - cell: {x: 3, y: 0}
+        type: 1
+      - cell: {x: 4, y: 0}
+        type: 1
+      - cell: {x: 5, y: 0}
+        type: 1
+      - cell: {x: 6, y: 0}
+        type: 1
+      - cell: {x: 7, y: 0}
+        type: 1
+      - cell: {x: 8, y: 0}
+        type: 1
+      - cell: {x: 9, y: 0}
+        type: 1
+      - cell: {x: 10, y: 0}
+        type: 1
+      - cell: {x: 11, y: 0}
+        type: 1
+      - cell: {x: 12, y: 0}
+        type: 1
+      - cell: {x: 13, y: 0}
+        type: 1
+      - cell: {x: 14, y: 0}
+        type: 1
+      - cell: {x: 15, y: 0}
+        type: 1
+      - cell: {x: 16, y: 0}
+        type: 1
+      - cell: {x: 17, y: 0}
+        type: 1
+      - cell: {x: 18, y: 0}
+        type: 1
+      - cell: {x: 19, y: 0}
+        type: 1
+      - cell: {x: 0, y: 1}
+        type: 1
+      - cell: {x: 1, y: 1}
+        type: 1
+      - cell: {x: 2, y: 1}
+        type: 1
+      - cell: {x: 3, y: 1}
+        type: 1
+      - cell: {x: 4, y: 1}
+        type: 1
+      - cell: {x: 5, y: 1}
+        type: 1
+      - cell: {x: 6, y: 1}
+        type: 1
+      - cell: {x: 7, y: 1}
+        type: 1
+      - cell: {x: 8, y: 1}
+        type: 1
+      - cell: {x: 9, y: 1}
+        type: 1
+      - cell: {x: 10, y: 1}
+        type: 1
+      - cell: {x: 11, y: 1}
+        type: 1
+      - cell: {x: 12, y: 1}
+        type: 1
+      - cell: {x: 13, y: 1}
+        type: 1
+      - cell: {x: 14, y: 1}
+        type: 1
+      - cell: {x: 15, y: 1}
+        type: 1
+      - cell: {x: 16, y: 1}
+        type: 1
+      - cell: {x: 17, y: 1}
+        type: 1
+      - cell: {x: 18, y: 1}
+        type: 1
+      - cell: {x: 19, y: 1}
+        type: 1
+      - cell: {x: 0, y: 2}
+        type: 1
+      - cell: {x: 1, y: 2}
+        type: 1
+      - cell: {x: 2, y: 2}
+        type: 1
+      - cell: {x: 3, y: 2}
+        type: 1
+      - cell: {x: 4, y: 2}
+        type: 1
+      - cell: {x: 5, y: 2}
+        type: 1
+      - cell: {x: 6, y: 2}
+        type: 1
+      - cell: {x: 7, y: 2}
+        type: 1
+      - cell: {x: 8, y: 2}
+        type: 1
+      - cell: {x: 11, y: 2}
+        type: 1
+      - cell: {x: 12, y: 2}
+        type: 1
+      - cell: {x: 13, y: 2}
+        type: 1
+      - cell: {x: 14, y: 2}
+        type: 1
+      - cell: {x: 15, y: 2}
+        type: 1
+      - cell: {x: 16, y: 2}
+        type: 1
+      - cell: {x: 17, y: 2}
+        type: 1
+      - cell: {x: 18, y: 2}
+        type: 1
+      - cell: {x: 19, y: 2}
+        type: 1
+      - cell: {x: 0, y: 3}
+        type: 1
+      - cell: {x: 1, y: 3}
+        type: 1
+      - cell: {x: 2, y: 3}
+        type: 1
+      - cell: {x: 5, y: 3}
+        type: 1
+      - cell: {x: 6, y: 3}
+        type: 1
+      - cell: {x: 13, y: 3}
+        type: 1
+      - cell: {x: 14, y: 3}
+        type: 1
+      - cell: {x: 17, y: 3}
+        type: 1
+      - cell: {x: 18, y: 3}
+        type: 1
+      - cell: {x: 19, y: 3}
+        type: 1
+      - cell: {x: 0, y: 4}
+        type: 1
+      - cell: {x: 1, y: 4}
+        type: 1
+      - cell: {x: 2, y: 4}
+        type: 1
+      - cell: {x: 17, y: 4}
+        type: 1
+      - cell: {x: 18, y: 4}
+        type: 1
+      - cell: {x: 19, y: 4}
+        type: 1
+      - cell: {x: 0, y: 5}
+        type: 1
+      - cell: {x: 1, y: 5}
+        type: 1
+      - cell: {x: 2, y: 5}
+        type: 1
+      - cell: {x: 3, y: 5}
+        type: 1
+      - cell: {x: 16, y: 5}
+        type: 1
+      - cell: {x: 17, y: 5}
+        type: 1
+      - cell: {x: 18, y: 5}
+        type: 1
+      - cell: {x: 19, y: 5}
+        type: 1
+      - cell: {x: 0, y: 6}
+        type: 1
+      - cell: {x: 1, y: 6}
+        type: 1
+      - cell: {x: 2, y: 6}
+        type: 1
+      - cell: {x: 3, y: 6}
+        type: 1
+      - cell: {x: 16, y: 6}
+        type: 1
+      - cell: {x: 17, y: 6}
+        type: 1
+      - cell: {x: 18, y: 6}
+        type: 1
+      - cell: {x: 19, y: 6}
+        type: 1
+      - cell: {x: 0, y: 7}
+        type: 1
+      - cell: {x: 1, y: 7}
+        type: 1
+      - cell: {x: 2, y: 7}
+        type: 1
+      - cell: {x: 17, y: 7}
+        type: 1
+      - cell: {x: 18, y: 7}
+        type: 1
+      - cell: {x: 19, y: 7}
+        type: 1
+      - cell: {x: 0, y: 8}
+        type: 1
+      - cell: {x: 1, y: 8}
+        type: 1
+      - cell: {x: 2, y: 8}
+        type: 1
+      - cell: {x: 17, y: 8}
+        type: 1
+      - cell: {x: 18, y: 8}
+        type: 1
+      - cell: {x: 19, y: 8}
+        type: 1
+      - cell: {x: 0, y: 9}
+        type: 1
+      - cell: {x: 1, y: 9}
+        type: 1
+      - cell: {x: 18, y: 9}
+        type: 1
+      - cell: {x: 19, y: 9}
+        type: 1
+      - cell: {x: 0, y: 10}
+        type: 1
+      - cell: {x: 1, y: 10}
+        type: 1
+      - cell: {x: 18, y: 10}
+        type: 1
+      - cell: {x: 19, y: 10}
+        type: 1
+      - cell: {x: 0, y: 11}
+        type: 1
+      - cell: {x: 1, y: 11}
+        type: 1
+      - cell: {x: 2, y: 11}
+        type: 1
+      - cell: {x: 17, y: 11}
+        type: 1
+      - cell: {x: 18, y: 11}
+        type: 1
+      - cell: {x: 19, y: 11}
+        type: 1
+      - cell: {x: 0, y: 12}
+        type: 1
+      - cell: {x: 1, y: 12}
+        type: 1
+      - cell: {x: 2, y: 12}
+        type: 1
+      - cell: {x: 17, y: 12}
+        type: 1
+      - cell: {x: 18, y: 12}
+        type: 1
+      - cell: {x: 19, y: 12}
+        type: 1
+      - cell: {x: 0, y: 13}
+        type: 1
+      - cell: {x: 1, y: 13}
+        type: 1
+      - cell: {x: 2, y: 13}
+        type: 1
+      - cell: {x: 3, y: 13}
+        type: 1
+      - cell: {x: 16, y: 13}
+        type: 1
+      - cell: {x: 17, y: 13}
+        type: 1
+      - cell: {x: 18, y: 13}
+        type: 1
+      - cell: {x: 19, y: 13}
+        type: 1
+      - cell: {x: 0, y: 14}
+        type: 1
+      - cell: {x: 1, y: 14}
+        type: 1
+      - cell: {x: 2, y: 14}
+        type: 1
+      - cell: {x: 3, y: 14}
+        type: 1
+      - cell: {x: 16, y: 14}
+        type: 1
+      - cell: {x: 17, y: 14}
+        type: 1
+      - cell: {x: 18, y: 14}
+        type: 1
+      - cell: {x: 19, y: 14}
+        type: 1
+      - cell: {x: 0, y: 15}
+        type: 1
+      - cell: {x: 1, y: 15}
+        type: 1
+      - cell: {x: 2, y: 15}
+        type: 1
+      - cell: {x: 17, y: 15}
+        type: 1
+      - cell: {x: 18, y: 15}
+        type: 1
+      - cell: {x: 19, y: 15}
+        type: 1
+      - cell: {x: 0, y: 16}
+        type: 1
+      - cell: {x: 1, y: 16}
+        type: 1
+      - cell: {x: 2, y: 16}
+        type: 1
+      - cell: {x: 5, y: 16}
+        type: 1
+      - cell: {x: 6, y: 16}
+        type: 1
+      - cell: {x: 13, y: 16}
+        type: 1
+      - cell: {x: 14, y: 16}
+        type: 1
+      - cell: {x: 17, y: 16}
+        type: 1
+      - cell: {x: 18, y: 16}
+        type: 1
+      - cell: {x: 19, y: 16}
+        type: 1
+      - cell: {x: 0, y: 17}
+        type: 1
+      - cell: {x: 1, y: 17}
+        type: 1
+      - cell: {x: 2, y: 17}
+        type: 1
+      - cell: {x: 3, y: 17}
+        type: 1
+      - cell: {x: 4, y: 17}
+        type: 1
+      - cell: {x: 5, y: 17}
+        type: 1
+      - cell: {x: 6, y: 17}
+        type: 1
+      - cell: {x: 7, y: 17}
+        type: 1
+      - cell: {x: 8, y: 17}
+        type: 1
+      - cell: {x: 11, y: 17}
+        type: 1
+      - cell: {x: 12, y: 17}
+        type: 1
+      - cell: {x: 13, y: 17}
+        type: 1
+      - cell: {x: 14, y: 17}
+        type: 1
+      - cell: {x: 15, y: 17}
+        type: 1
+      - cell: {x: 16, y: 17}
+        type: 1
+      - cell: {x: 17, y: 17}
+        type: 1
+      - cell: {x: 18, y: 17}
+        type: 1
+      - cell: {x: 19, y: 17}
+        type: 1
+      - cell: {x: 0, y: 18}
+        type: 1
+      - cell: {x: 1, y: 18}
+        type: 1
+      - cell: {x: 2, y: 18}
+        type: 1
+      - cell: {x: 3, y: 18}
+        type: 1
+      - cell: {x: 4, y: 18}
+        type: 1
+      - cell: {x: 5, y: 18}
+        type: 1
+      - cell: {x: 6, y: 18}
+        type: 1
+      - cell: {x: 7, y: 18}
+        type: 1
+      - cell: {x: 8, y: 18}
+        type: 1
+      - cell: {x: 9, y: 18}
+        type: 1
+      - cell: {x: 10, y: 18}
+        type: 1
+      - cell: {x: 11, y: 18}
+        type: 1
+      - cell: {x: 12, y: 18}
+        type: 1
+      - cell: {x: 13, y: 18}
+        type: 1
+      - cell: {x: 14, y: 18}
+        type: 1
+      - cell: {x: 15, y: 18}
+        type: 1
+      - cell: {x: 16, y: 18}
+        type: 1
+      - cell: {x: 17, y: 18}
+        type: 1
+      - cell: {x: 18, y: 18}
+        type: 1
+      - cell: {x: 19, y: 18}
+        type: 1
+      - cell: {x: 0, y: 19}
+        type: 1
+      - cell: {x: 1, y: 19}
+        type: 1
+      - cell: {x: 2, y: 19}
+        type: 1
+      - cell: {x: 3, y: 19}
+        type: 1
+      - cell: {x: 4, y: 19}
+        type: 1
+      - cell: {x: 5, y: 19}
+        type: 1
+      - cell: {x: 6, y: 19}
+        type: 1
+      - cell: {x: 7, y: 19}
+        type: 1
+      - cell: {x: 8, y: 19}
+        type: 1
+      - cell: {x: 9, y: 19}
+        type: 1
+      - cell: {x: 10, y: 19}
+        type: 1
+      - cell: {x: 11, y: 19}
+        type: 1
+      - cell: {x: 12, y: 19}
+        type: 1
+      - cell: {x: 13, y: 19}
+        type: 1
+      - cell: {x: 14, y: 19}
+        type: 1
+      - cell: {x: 15, y: 19}
+        type: 1
+      - cell: {x: 16, y: 19}
+        type: 1
+      - cell: {x: 17, y: 19}
+        type: 1
+      - cell: {x: 18, y: 19}
+        type: 1
+      - cell: {x: 19, y: 19}
+        type: 1
+      - cell: {x: 4, y: 16}
+        type: 1
+      - cell: {x: 15, y: 16}
+        type: 1
+      - cell: {x: 4, y: 3}
+        type: 1
+      - cell: {x: 15, y: 3}
+        type: 1
+      - cell: {x: 3, y: 16}
+        type: 1
+      - cell: {x: 16, y: 16}
+        type: 1
+      - cell: {x: 3, y: 3}
+        type: 1
+      - cell: {x: 16, y: 3}
+        type: 1
+      - cell: {x: 3, y: 15}
+        type: 1
+      - cell: {x: 16, y: 15}
+        type: 1
+      - cell: {x: 3, y: 4}
+        type: 1
+      - cell: {x: 16, y: 4}
+        type: 1
+      extras: []
+      combiTiles: []
+      waves:
+      - spawnDuration: 10
+        delayAfter: 0
+        waitForClear: 1
+        randomOrder: 1
+        placed:
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 7, y: 13}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 13, y: 13}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 7, y: 7}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 13, y: 7}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 6.5, y: 10}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 13.5, y: 10}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 10, y: 14}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 10, y: 6}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 14.5, y: 12}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 5.5, y: 12}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 14.5, y: 8}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 5.5, y: 8}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 7.5, y: 14.5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 12.5, y: 14.5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 7.5, y: 5.5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 12.5, y: 5.5}
+          chance: 0
+    - name: Pocket 11
+      enabled: 1
+      width: 20
+      height: 20
+      isBoss: 0
+      core:
+        present: 0
+        pos: {x: 0, y: 0}
+      weightRange: {x: 1, y: 3}
+      ember: 1
+      costOverridden: 0
+      costOverride: 0
+      tiles:
+      - cell: {x: 0, y: 0}
+        type: 1
+      - cell: {x: 1, y: 0}
+        type: 1
+      - cell: {x: 2, y: 0}
+        type: 1
+      - cell: {x: 3, y: 0}
+        type: 1
+      - cell: {x: 4, y: 0}
+        type: 1
+      - cell: {x: 5, y: 0}
+        type: 1
+      - cell: {x: 6, y: 0}
+        type: 1
+      - cell: {x: 7, y: 0}
+        type: 1
+      - cell: {x: 8, y: 0}
+        type: 1
+      - cell: {x: 9, y: 0}
+        type: 1
+      - cell: {x: 10, y: 0}
+        type: 1
+      - cell: {x: 11, y: 0}
+        type: 1
+      - cell: {x: 12, y: 0}
+        type: 1
+      - cell: {x: 13, y: 0}
+        type: 1
+      - cell: {x: 14, y: 0}
+        type: 1
+      - cell: {x: 15, y: 0}
+        type: 1
+      - cell: {x: 16, y: 0}
+        type: 1
+      - cell: {x: 17, y: 0}
+        type: 1
+      - cell: {x: 18, y: 0}
+        type: 1
+      - cell: {x: 19, y: 0}
+        type: 1
+      - cell: {x: 0, y: 1}
+        type: 1
+      - cell: {x: 1, y: 1}
+        type: 1
+      - cell: {x: 2, y: 1}
+        type: 1
+      - cell: {x: 3, y: 1}
+        type: 1
+      - cell: {x: 4, y: 1}
+        type: 1
+      - cell: {x: 5, y: 1}
+        type: 1
+      - cell: {x: 6, y: 1}
+        type: 1
+      - cell: {x: 7, y: 1}
+        type: 1
+      - cell: {x: 8, y: 1}
+        type: 1
+      - cell: {x: 9, y: 1}
+        type: 1
+      - cell: {x: 10, y: 1}
+        type: 1
+      - cell: {x: 11, y: 1}
+        type: 1
+      - cell: {x: 12, y: 1}
+        type: 1
+      - cell: {x: 13, y: 1}
+        type: 1
+      - cell: {x: 14, y: 1}
+        type: 1
+      - cell: {x: 15, y: 1}
+        type: 1
+      - cell: {x: 16, y: 1}
+        type: 1
+      - cell: {x: 17, y: 1}
+        type: 1
+      - cell: {x: 18, y: 1}
+        type: 1
+      - cell: {x: 19, y: 1}
+        type: 1
+      - cell: {x: 0, y: 2}
+        type: 1
+      - cell: {x: 1, y: 2}
+        type: 1
+      - cell: {x: 2, y: 2}
+        type: 1
+      - cell: {x: 3, y: 2}
+        type: 1
+      - cell: {x: 4, y: 2}
+        type: 1
+      - cell: {x: 5, y: 2}
+        type: 1
+      - cell: {x: 6, y: 2}
+        type: 1
+      - cell: {x: 7, y: 2}
+        type: 1
+      - cell: {x: 8, y: 2}
+        type: 1
+      - cell: {x: 9, y: 2}
+        type: 1
+      - cell: {x: 10, y: 2}
+        type: 1
+      - cell: {x: 11, y: 2}
+        type: 1
+      - cell: {x: 12, y: 2}
+        type: 1
+      - cell: {x: 13, y: 2}
+        type: 1
+      - cell: {x: 14, y: 2}
+        type: 1
+      - cell: {x: 15, y: 2}
+        type: 1
+      - cell: {x: 16, y: 2}
+        type: 1
+      - cell: {x: 17, y: 2}
+        type: 1
+      - cell: {x: 18, y: 2}
+        type: 1
+      - cell: {x: 19, y: 2}
+        type: 1
+      - cell: {x: 0, y: 3}
+        type: 1
+      - cell: {x: 1, y: 3}
+        type: 1
+      - cell: {x: 2, y: 3}
+        type: 1
+      - cell: {x: 3, y: 3}
+        type: 1
+      - cell: {x: 4, y: 3}
+        type: 1
+      - cell: {x: 5, y: 3}
+        type: 1
+      - cell: {x: 6, y: 3}
+        type: 1
+      - cell: {x: 7, y: 3}
+        type: 1
+      - cell: {x: 8, y: 3}
+        type: 1
+      - cell: {x: 9, y: 3}
+        type: 1
+      - cell: {x: 10, y: 3}
+        type: 1
+      - cell: {x: 11, y: 3}
+        type: 1
+      - cell: {x: 12, y: 3}
+        type: 1
+      - cell: {x: 13, y: 3}
+        type: 1
+      - cell: {x: 14, y: 3}
+        type: 1
+      - cell: {x: 15, y: 3}
+        type: 1
+      - cell: {x: 16, y: 3}
+        type: 1
+      - cell: {x: 17, y: 3}
+        type: 1
+      - cell: {x: 18, y: 3}
+        type: 1
+      - cell: {x: 19, y: 3}
+        type: 1
+      - cell: {x: 0, y: 4}
+        type: 1
+      - cell: {x: 1, y: 4}
+        type: 1
+      - cell: {x: 2, y: 4}
+        type: 1
+      - cell: {x: 3, y: 4}
+        type: 1
+      - cell: {x: 4, y: 4}
+        type: 1
+      - cell: {x: 5, y: 4}
+        type: 1
+      - cell: {x: 6, y: 4}
+        type: 1
+      - cell: {x: 7, y: 4}
+        type: 1
+      - cell: {x: 8, y: 4}
+        type: 1
+      - cell: {x: 9, y: 4}
+        type: 1
+      - cell: {x: 10, y: 4}
+        type: 1
+      - cell: {x: 11, y: 4}
+        type: 1
+      - cell: {x: 13, y: 4}
+        type: 1
+      - cell: {x: 14, y: 4}
+        type: 1
+      - cell: {x: 15, y: 4}
+        type: 1
+      - cell: {x: 16, y: 4}
+        type: 1
+      - cell: {x: 17, y: 4}
+        type: 1
+      - cell: {x: 18, y: 4}
+        type: 1
+      - cell: {x: 19, y: 4}
+        type: 1
+      - cell: {x: 0, y: 5}
+        type: 1
+      - cell: {x: 1, y: 5}
+        type: 1
+      - cell: {x: 2, y: 5}
+        type: 1
+      - cell: {x: 16, y: 5}
+        type: 1
+      - cell: {x: 17, y: 5}
+        type: 1
+      - cell: {x: 18, y: 5}
+        type: 1
+      - cell: {x: 19, y: 5}
+        type: 1
+      - cell: {x: 0, y: 6}
+        type: 1
+      - cell: {x: 1, y: 6}
+        type: 1
+      - cell: {x: 2, y: 6}
+        type: 1
+      - cell: {x: 16, y: 6}
+        type: 1
+      - cell: {x: 17, y: 6}
+        type: 1
+      - cell: {x: 18, y: 6}
+        type: 1
+      - cell: {x: 19, y: 6}
+        type: 1
+      - cell: {x: 0, y: 7}
+        type: 1
+      - cell: {x: 1, y: 7}
+        type: 1
+      - cell: {x: 2, y: 7}
+        type: 1
+      - cell: {x: 19, y: 7}
+        type: 1
+      - cell: {x: 0, y: 8}
+        type: 1
+      - cell: {x: 1, y: 8}
+        type: 1
+      - cell: {x: 2, y: 8}
+        type: 1
+      - cell: {x: 19, y: 8}
+        type: 1
+      - cell: {x: 0, y: 9}
+        type: 1
+      - cell: {x: 1, y: 9}
+        type: 1
+      - cell: {x: 2, y: 9}
+        type: 1
+      - cell: {x: 0, y: 10}
+        type: 1
+      - cell: {x: 1, y: 10}
+        type: 1
+      - cell: {x: 2, y: 10}
+        type: 1
+      - cell: {x: 0, y: 11}
+        type: 1
+      - cell: {x: 1, y: 11}
+        type: 1
+      - cell: {x: 2, y: 11}
+        type: 1
+      - cell: {x: 0, y: 12}
+        type: 1
+      - cell: {x: 1, y: 12}
+        type: 1
+      - cell: {x: 2, y: 12}
+        type: 1
+      - cell: {x: 0, y: 13}
+        type: 1
+      - cell: {x: 1, y: 13}
+        type: 1
+      - cell: {x: 2, y: 13}
+        type: 1
+      - cell: {x: 17, y: 13}
+        type: 1
+      - cell: {x: 18, y: 13}
+        type: 1
+      - cell: {x: 19, y: 13}
+        type: 1
+      - cell: {x: 0, y: 14}
+        type: 1
+      - cell: {x: 1, y: 14}
+        type: 1
+      - cell: {x: 2, y: 14}
+        type: 1
+      - cell: {x: 17, y: 14}
+        type: 1
+      - cell: {x: 18, y: 14}
+        type: 1
+      - cell: {x: 19, y: 14}
+        type: 1
+      - cell: {x: 0, y: 15}
+        type: 1
+      - cell: {x: 1, y: 15}
+        type: 1
+      - cell: {x: 2, y: 15}
+        type: 1
+      - cell: {x: 17, y: 15}
+        type: 1
+      - cell: {x: 18, y: 15}
+        type: 1
+      - cell: {x: 19, y: 15}
+        type: 1
+      - cell: {x: 0, y: 16}
+        type: 1
+      - cell: {x: 1, y: 16}
+        type: 1
+      - cell: {x: 2, y: 16}
+        type: 1
+      - cell: {x: 3, y: 16}
+        type: 1
+      - cell: {x: 4, y: 16}
+        type: 1
+      - cell: {x: 5, y: 16}
+        type: 1
+      - cell: {x: 6, y: 16}
+        type: 1
+      - cell: {x: 7, y: 16}
+        type: 1
+      - cell: {x: 8, y: 16}
+        type: 1
+      - cell: {x: 9, y: 16}
+        type: 1
+      - cell: {x: 10, y: 16}
+        type: 1
+      - cell: {x: 11, y: 16}
+        type: 1
+      - cell: {x: 12, y: 16}
+        type: 1
+      - cell: {x: 13, y: 16}
+        type: 1
+      - cell: {x: 14, y: 16}
+        type: 1
+      - cell: {x: 15, y: 16}
+        type: 1
+      - cell: {x: 16, y: 16}
+        type: 1
+      - cell: {x: 17, y: 16}
+        type: 1
+      - cell: {x: 18, y: 16}
+        type: 1
+      - cell: {x: 19, y: 16}
+        type: 1
+      - cell: {x: 0, y: 17}
+        type: 1
+      - cell: {x: 1, y: 17}
+        type: 1
+      - cell: {x: 2, y: 17}
+        type: 1
+      - cell: {x: 3, y: 17}
+        type: 1
+      - cell: {x: 4, y: 17}
+        type: 1
+      - cell: {x: 5, y: 17}
+        type: 1
+      - cell: {x: 6, y: 17}
+        type: 1
+      - cell: {x: 7, y: 17}
+        type: 1
+      - cell: {x: 8, y: 17}
+        type: 1
+      - cell: {x: 9, y: 17}
+        type: 1
+      - cell: {x: 10, y: 17}
+        type: 1
+      - cell: {x: 11, y: 17}
+        type: 1
+      - cell: {x: 12, y: 17}
+        type: 1
+      - cell: {x: 13, y: 17}
+        type: 1
+      - cell: {x: 14, y: 17}
+        type: 1
+      - cell: {x: 15, y: 17}
+        type: 1
+      - cell: {x: 16, y: 17}
+        type: 1
+      - cell: {x: 17, y: 17}
+        type: 1
+      - cell: {x: 18, y: 17}
+        type: 1
+      - cell: {x: 19, y: 17}
+        type: 1
+      - cell: {x: 0, y: 18}
+        type: 1
+      - cell: {x: 1, y: 18}
+        type: 1
+      - cell: {x: 2, y: 18}
+        type: 1
+      - cell: {x: 3, y: 18}
+        type: 1
+      - cell: {x: 4, y: 18}
+        type: 1
+      - cell: {x: 5, y: 18}
+        type: 1
+      - cell: {x: 6, y: 18}
+        type: 1
+      - cell: {x: 7, y: 18}
+        type: 1
+      - cell: {x: 8, y: 18}
+        type: 1
+      - cell: {x: 9, y: 18}
+        type: 1
+      - cell: {x: 10, y: 18}
+        type: 1
+      - cell: {x: 11, y: 18}
+        type: 1
+      - cell: {x: 12, y: 18}
+        type: 1
+      - cell: {x: 13, y: 18}
+        type: 1
+      - cell: {x: 14, y: 18}
+        type: 1
+      - cell: {x: 15, y: 18}
+        type: 1
+      - cell: {x: 16, y: 18}
+        type: 1
+      - cell: {x: 17, y: 18}
+        type: 1
+      - cell: {x: 18, y: 18}
+        type: 1
+      - cell: {x: 19, y: 18}
+        type: 1
+      - cell: {x: 0, y: 19}
+        type: 1
+      - cell: {x: 1, y: 19}
+        type: 1
+      - cell: {x: 2, y: 19}
+        type: 1
+      - cell: {x: 3, y: 19}
+        type: 1
+      - cell: {x: 4, y: 19}
+        type: 1
+      - cell: {x: 5, y: 19}
+        type: 1
+      - cell: {x: 6, y: 19}
+        type: 1
+      - cell: {x: 7, y: 19}
+        type: 1
+      - cell: {x: 8, y: 19}
+        type: 1
+      - cell: {x: 9, y: 19}
+        type: 1
+      - cell: {x: 10, y: 19}
+        type: 1
+      - cell: {x: 11, y: 19}
+        type: 1
+      - cell: {x: 12, y: 19}
+        type: 1
+      - cell: {x: 13, y: 19}
+        type: 1
+      - cell: {x: 14, y: 19}
+        type: 1
+      - cell: {x: 15, y: 19}
+        type: 1
+      - cell: {x: 16, y: 19}
+        type: 1
+      - cell: {x: 17, y: 19}
+        type: 1
+      - cell: {x: 18, y: 19}
+        type: 1
+      - cell: {x: 19, y: 19}
+        type: 1
+      - cell: {x: 18, y: 7}
+        type: 1
+      - cell: {x: 17, y: 7}
+        type: 1
+      - cell: {x: 16, y: 7}
+        type: 1
+      - cell: {x: 19, y: 12}
+        type: 1
+      - cell: {x: 19, y: 11}
+        type: 1
+      - cell: {x: 19, y: 10}
+        type: 1
+      - cell: {x: 19, y: 9}
+        type: 1
+      - cell: {x: 15, y: 7}
+        type: 1
+      - cell: {x: 15, y: 6}
+        type: 1
+      - cell: {x: 15, y: 5}
+        type: 1
+      - cell: {x: 14, y: 5}
+        type: 1
+      - cell: {x: 14, y: 6}
+        type: 1
+      - cell: {x: 14, y: 7}
+        type: 1
+      - cell: {x: 13, y: 7}
+        type: 1
+      - cell: {x: 12, y: 7}
+        type: 1
+      - cell: {x: 11, y: 7}
+        type: 1
+      - cell: {x: 12, y: 4}
+        type: 1
+      - cell: {x: 12, y: 5}
+        type: 1
+      - cell: {x: 13, y: 5}
+        type: 1
+      - cell: {x: 13, y: 6}
+        type: 1
+      - cell: {x: 12, y: 6}
+        type: 1
+      - cell: {x: 11, y: 6}
+        type: 1
+      - cell: {x: 11, y: 5}
+        type: 1
+      extras: []
+      combiTiles:
+      - {x: 18, y: 10}
+      waves:
+      - spawnDuration: 0
+        delayAfter: 5
+        waitForClear: 0
+        randomOrder: 0
+        placed:
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 4, y: 6}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 4, y: 14.5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 4, y: 10.5}
+          chance: 0
+      - spawnDuration: 0
+        delayAfter: 0
+        waitForClear: 1
+        randomOrder: 1
+        placed:
+        - enemy: {fileID: 11400000, guid: 22fa7ae4ad15e4b8cb523214488945b1, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 7, y: 11}
+          chance: 0
+    - name: Pocket 12
+      enabled: 1
+      width: 30
+      height: 10
+      isBoss: 0
+      core:
+        present: 1
+        pos: {x: 15, y: 5}
+      weightRange: {x: 1, y: 3}
+      ember: 1
+      costOverridden: 0
+      costOverride: 0
+      tiles:
+      - cell: {x: 9, y: 9}
+        type: 1
+      - cell: {x: 20, y: 9}
+        type: 1
+      - cell: {x: 9, y: 0}
+        type: 1
+      - cell: {x: 20, y: 0}
+        type: 1
+      - cell: {x: 9, y: 8}
+        type: 1
+      - cell: {x: 20, y: 8}
+        type: 1
+      - cell: {x: 9, y: 1}
+        type: 1
+      - cell: {x: 20, y: 1}
+        type: 1
+      - cell: {x: 9, y: 7}
+        type: 1
+      - cell: {x: 20, y: 7}
+        type: 1
+      - cell: {x: 9, y: 2}
+        type: 1
+      - cell: {x: 20, y: 2}
+        type: 1
+      extras: []
+      combiTiles: []
+      waves:
+      - spawnDuration: 0
+        delayAfter: 0
+        waitForClear: 1
+        randomOrder: 1
+        placed:
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 4, y: 5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 26, y: 5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6d04b8f3a17e42c59e8d3a0b2c61f50a, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 15, y: 5}
+          chance: 0
+      - spawnDuration: 0
+        delayAfter: 0
+        waitForClear: 1
+        randomOrder: 1
+        placed:
+        - enemy: {fileID: 11400000, guid: 29423851d65a14569a31e3c1e2faa8bb, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 4, y: 5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 29423851d65a14569a31e3c1e2faa8bb, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 26, y: 5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6d04b8f3a17e42c59e8d3a0b2c61f50a, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 15, y: 5}
+          chance: 0
+      - spawnDuration: 0
+        delayAfter: 0
+        waitForClear: 1
+        randomOrder: 1
+        placed:
+        - enemy: {fileID: 11400000, guid: 9ebf60457ff204b29b7d88caa981a080, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 15, y: 5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 3.5, y: 5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: 6c46ac4349fdf4c52aaf784d18495653, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 26.5, y: 5}
           chance: 0
     spawners:
     - name: Wagglers
@@ -2219,31 +5494,738 @@ MonoBehaviour:
         present: 0
         pos: {x: 0, y: 0}
       weightRange: {x: 1, y: 3}
-      surroundWalls: 0
       ember: 1
       costOverridden: 0
       costOverride: 0
-      tiles: []
+      tiles:
+      - cell: {x: 2, y: 10}
+        type: 1
+      - cell: {x: 2, y: 5}
+        type: 1
+      - cell: {x: 8, y: 8}
+        type: 1
+      - cell: {x: 8, y: 9}
+        type: 1
+      - cell: {x: 8, y: 10}
+        type: 1
+      - cell: {x: 8, y: 7}
+        type: 1
+      - cell: {x: 4, y: 4}
+        type: 1
+      - cell: {x: 3, y: 4}
+        type: 1
+      - cell: {x: 3, y: 5}
+        type: 1
+      - cell: {x: 5, y: 3}
+        type: 1
+      - cell: {x: 5, y: 4}
+        type: 1
+      - cell: {x: 6, y: 0}
+        type: 1
+      - cell: {x: 6, y: 1}
+        type: 1
+      - cell: {x: 6, y: 2}
+        type: 1
+      - cell: {x: 6, y: 3}
+        type: 1
+      - cell: {x: 6, y: 4}
+        type: 1
+      - cell: {x: 7, y: 0}
+        type: 1
+      - cell: {x: 7, y: 1}
+        type: 1
+      - cell: {x: 7, y: 2}
+        type: 1
+      - cell: {x: 7, y: 3}
+        type: 1
+      - cell: {x: 7, y: 4}
+        type: 1
+      - cell: {x: 8, y: 0}
+        type: 1
+      - cell: {x: 8, y: 1}
+        type: 1
+      - cell: {x: 8, y: 2}
+        type: 1
+      - cell: {x: 8, y: 3}
+        type: 1
+      - cell: {x: 8, y: 6}
+        type: 1
+      - cell: {x: 9, y: 0}
+        type: 1
+      - cell: {x: 9, y: 1}
+        type: 1
+      - cell: {x: 9, y: 2}
+        type: 1
+      - cell: {x: 9, y: 3}
+        type: 1
+      - cell: {x: 10, y: 0}
+        type: 1
+      - cell: {x: 10, y: 1}
+        type: 1
+      - cell: {x: 10, y: 2}
+        type: 1
+      - cell: {x: 2, y: 9}
+        type: 1
+      - cell: {x: 2, y: 8}
+        type: 1
+      - cell: {x: 2, y: 7}
+        type: 1
+      - cell: {x: 2, y: 6}
+        type: 1
+      - cell: {x: 8, y: 5}
+        type: 1
+      - cell: {x: 7, y: 5}
+        type: 1
+      - cell: {x: 8, y: 4}
+        type: 1
+      - cell: {x: 9, y: 4}
+        type: 1
+      - cell: {x: 9, y: 5}
+        type: 1
+      - cell: {x: 9, y: 10}
+        type: 1
+      - cell: {x: 10, y: 7}
+        type: 1
+      - cell: {x: 10, y: 3}
+        type: 1
+      - cell: {x: 10, y: 4}
+        type: 1
+      - cell: {x: 10, y: 5}
+        type: 1
+      - cell: {x: 10, y: 6}
+        type: 1
+      - cell: {x: 9, y: 6}
+        type: 1
+      - cell: {x: 9, y: 7}
+        type: 1
+      - cell: {x: 10, y: 8}
+        type: 1
+      - cell: {x: 10, y: 10}
+        type: 1
+      - cell: {x: 10, y: 9}
+        type: 1
+      - cell: {x: 9, y: 9}
+        type: 1
+      - cell: {x: 9, y: 8}
+        type: 1
+      - cell: {x: 5, y: 0}
+        type: 1
+      - cell: {x: 5, y: 1}
+        type: 1
+      - cell: {x: 5, y: 2}
+        type: 1
+      - cell: {x: 4, y: 0}
+        type: 1
+      - cell: {x: 4, y: 1}
+        type: 1
+      - cell: {x: 4, y: 2}
+        type: 1
+      - cell: {x: 4, y: 3}
+        type: 1
+      - cell: {x: 3, y: 0}
+        type: 1
+      - cell: {x: 3, y: 1}
+        type: 1
+      - cell: {x: 3, y: 2}
+        type: 1
+      - cell: {x: 3, y: 3}
+        type: 1
+      - cell: {x: 0, y: 0}
+        type: 1
+      - cell: {x: 1, y: 0}
+        type: 1
+      - cell: {x: 2, y: 0}
+        type: 1
+      - cell: {x: 2, y: 1}
+        type: 1
+      - cell: {x: 2, y: 2}
+        type: 1
+      - cell: {x: 2, y: 3}
+        type: 1
+      - cell: {x: 2, y: 4}
+        type: 1
+      - cell: {x: 0, y: 1}
+        type: 1
+      - cell: {x: 1, y: 1}
+        type: 1
+      - cell: {x: 0, y: 2}
+        type: 1
+      - cell: {x: 1, y: 2}
+        type: 1
+      - cell: {x: 0, y: 3}
+        type: 1
+      - cell: {x: 1, y: 3}
+        type: 1
+      - cell: {x: 0, y: 4}
+        type: 1
+      - cell: {x: 1, y: 4}
+        type: 1
+      - cell: {x: 0, y: 5}
+        type: 1
+      - cell: {x: 1, y: 5}
+        type: 1
+      - cell: {x: 0, y: 6}
+        type: 1
+      - cell: {x: 1, y: 6}
+        type: 1
+      - cell: {x: 0, y: 7}
+        type: 1
+      - cell: {x: 0, y: 8}
+        type: 1
+      - cell: {x: 0, y: 9}
+        type: 1
+      - cell: {x: 0, y: 10}
+        type: 1
+      - cell: {x: 1, y: 7}
+        type: 1
+      - cell: {x: 1, y: 8}
+        type: 1
+      - cell: {x: 1, y: 9}
+        type: 1
+      - cell: {x: 1, y: 10}
+        type: 1
       extras: []
       combiTiles: []
       waves:
-      - spawnDuration: 3
-        delayAfter: 2
+      - spawnDuration: 0
+        delayAfter: 0
         waitForClear: 1
         randomOrder: 1
         placed:
         - enemy: {fileID: 11400000, guid: 29423851d65a14569a31e3c1e2faa8bb, type: 2}
           prefab: {fileID: 0}
-          pos: {x: 5.5588236, y: 8.264706}
+          pos: {x: 5.5, y: 8}
           chance: 0
-      - spawnDuration: 3
-        delayAfter: 2
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 4.5, y: 6.5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 6.5, y: 6.5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 5.5, y: 6}
+          chance: 0
+    - name: Combi 1
+      enabled: 1
+      width: 11
+      height: 11
+      isBoss: 0
+      core:
+        present: 0
+        pos: {x: 0, y: 0}
+      weightRange: {x: 1, y: 3}
+      ember: 1
+      costOverridden: 0
+      costOverride: 0
+      tiles:
+      - cell: {x: 2, y: 10}
+        type: 1
+      - cell: {x: 2, y: 9}
+        type: 1
+      - cell: {x: 8, y: 8}
+        type: 1
+      - cell: {x: 2, y: 8}
+        type: 1
+      - cell: {x: 1, y: 7}
+        type: 1
+      - cell: {x: 0, y: 7}
+        type: 1
+      - cell: {x: 0, y: 6}
+        type: 1
+      - cell: {x: 0, y: 5}
+        type: 1
+      - cell: {x: 0, y: 4}
+        type: 1
+      - cell: {x: 9, y: 7}
+        type: 1
+      - cell: {x: 10, y: 7}
+        type: 1
+      - cell: {x: 10, y: 6}
+        type: 1
+      - cell: {x: 10, y: 5}
+        type: 1
+      - cell: {x: 10, y: 4}
+        type: 1
+      - cell: {x: 10, y: 3}
+        type: 1
+      - cell: {x: 10, y: 2}
+        type: 1
+      - cell: {x: 9, y: 2}
+        type: 1
+      - cell: {x: 8, y: 2}
+        type: 1
+      - cell: {x: 7, y: 2}
+        type: 1
+      - cell: {x: 6, y: 2}
+        type: 1
+      - cell: {x: 5, y: 2}
+        type: 1
+      - cell: {x: 4, y: 2}
+        type: 1
+      - cell: {x: 3, y: 2}
+        type: 1
+      - cell: {x: 2, y: 2}
+        type: 1
+      - cell: {x: 1, y: 2}
+        type: 1
+      - cell: {x: 0, y: 2}
+        type: 1
+      - cell: {x: 0, y: 3}
+        type: 1
+      - cell: {x: 0, y: 0}
+        type: 1
+      - cell: {x: 0, y: 1}
+        type: 1
+      - cell: {x: 1, y: 0}
+        type: 1
+      - cell: {x: 1, y: 1}
+        type: 1
+      - cell: {x: 2, y: 0}
+        type: 1
+      - cell: {x: 2, y: 1}
+        type: 1
+      - cell: {x: 3, y: 0}
+        type: 1
+      - cell: {x: 3, y: 1}
+        type: 1
+      - cell: {x: 4, y: 0}
+        type: 1
+      - cell: {x: 4, y: 1}
+        type: 1
+      - cell: {x: 5, y: 0}
+        type: 1
+      - cell: {x: 5, y: 1}
+        type: 1
+      - cell: {x: 6, y: 0}
+        type: 1
+      - cell: {x: 6, y: 1}
+        type: 1
+      - cell: {x: 7, y: 0}
+        type: 1
+      - cell: {x: 7, y: 1}
+        type: 1
+      - cell: {x: 8, y: 0}
+        type: 1
+      - cell: {x: 8, y: 1}
+        type: 1
+      - cell: {x: 9, y: 0}
+        type: 1
+      - cell: {x: 9, y: 1}
+        type: 1
+      - cell: {x: 10, y: 0}
+        type: 1
+      - cell: {x: 10, y: 1}
+        type: 1
+      - cell: {x: 8, y: 9}
+        type: 1
+      - cell: {x: 8, y: 10}
+        type: 1
+      - cell: {x: 9, y: 10}
+        type: 1
+      - cell: {x: 10, y: 10}
+        type: 1
+      - cell: {x: 9, y: 8}
+        type: 1
+      - cell: {x: 9, y: 9}
+        type: 1
+      - cell: {x: 10, y: 8}
+        type: 1
+      - cell: {x: 10, y: 9}
+        type: 1
+      - cell: {x: 0, y: 10}
+        type: 1
+      - cell: {x: 1, y: 10}
+        type: 1
+      - cell: {x: 0, y: 8}
+        type: 1
+      - cell: {x: 0, y: 9}
+        type: 1
+      - cell: {x: 1, y: 8}
+        type: 1
+      - cell: {x: 1, y: 9}
+        type: 1
+      extras: []
+      combiTiles: []
+      waves:
+      - spawnDuration: 0
+        delayAfter: 0
         waitForClear: 1
         randomOrder: 1
         placed:
         - enemy: {fileID: 11400000, guid: 9ebf60457ff204b29b7d88caa981a080, type: 2}
           prefab: {fileID: 0}
-          pos: {x: 5.529412, y: 8.558824}
+          pos: {x: 5.5, y: 5.5}
+          chance: 0
+    - name: Combi 2
+      enabled: 1
+      width: 11
+      height: 11
+      isBoss: 0
+      core:
+        present: 0
+        pos: {x: 0, y: 0}
+      weightRange: {x: 1, y: 3}
+      ember: 1
+      costOverridden: 0
+      costOverride: 0
+      tiles:
+      - cell: {x: 2, y: 10}
+        type: 1
+      - cell: {x: 2, y: 9}
+        type: 1
+      - cell: {x: 2, y: 8}
+        type: 1
+      - cell: {x: 8, y: 10}
+        type: 1
+      - cell: {x: 8, y: 9}
+        type: 1
+      - cell: {x: 8, y: 8}
+        type: 1
+      - cell: {x: 0, y: 6}
+        type: 1
+      - cell: {x: 0, y: 5}
+        type: 1
+      - cell: {x: 0, y: 4}
+        type: 1
+      - cell: {x: 1, y: 4}
+        type: 1
+      - cell: {x: 2, y: 4}
+        type: 1
+      - cell: {x: 3, y: 4}
+        type: 1
+      - cell: {x: 4, y: 4}
+        type: 1
+      - cell: {x: 5, y: 4}
+        type: 1
+      - cell: {x: 6, y: 4}
+        type: 1
+      - cell: {x: 7, y: 4}
+        type: 1
+      - cell: {x: 8, y: 4}
+        type: 1
+      - cell: {x: 9, y: 4}
+        type: 1
+      - cell: {x: 10, y: 4}
+        type: 1
+      - cell: {x: 10, y: 5}
+        type: 1
+      - cell: {x: 10, y: 6}
+        type: 1
+      - cell: {x: 3, y: 8}
+        type: 1
+      - cell: {x: 7, y: 8}
+        type: 1
+      - cell: {x: 3, y: 7}
+        type: 1
+      - cell: {x: 7, y: 7}
+        type: 1
+      - cell: {x: 0, y: 7}
+        type: 1
+      - cell: {x: 0, y: 8}
+        type: 1
+      - cell: {x: 1, y: 8}
+        type: 1
+      - cell: {x: 10, y: 7}
+        type: 1
+      - cell: {x: 9, y: 8}
+        type: 1
+      - cell: {x: 10, y: 8}
+        type: 1
+      - cell: {x: 3, y: 5}
+        type: 13
+      - cell: {x: 3, y: 6}
+        type: 13
+      - cell: {x: 0, y: 9}
+        type: 1
+      - cell: {x: 0, y: 10}
+        type: 1
+      - cell: {x: 1, y: 9}
+        type: 1
+      - cell: {x: 1, y: 10}
+        type: 1
+      - cell: {x: 9, y: 9}
+        type: 1
+      - cell: {x: 9, y: 10}
+        type: 1
+      - cell: {x: 10, y: 9}
+        type: 1
+      - cell: {x: 10, y: 10}
+        type: 1
+      - cell: {x: 0, y: 2}
+        type: 1
+      - cell: {x: 0, y: 3}
+        type: 1
+      - cell: {x: 1, y: 2}
+        type: 1
+      - cell: {x: 1, y: 3}
+        type: 1
+      - cell: {x: 2, y: 2}
+        type: 1
+      - cell: {x: 2, y: 3}
+        type: 1
+      - cell: {x: 3, y: 2}
+        type: 1
+      - cell: {x: 3, y: 3}
+        type: 1
+      - cell: {x: 4, y: 2}
+        type: 1
+      - cell: {x: 4, y: 3}
+        type: 1
+      - cell: {x: 5, y: 2}
+        type: 1
+      - cell: {x: 5, y: 3}
+        type: 1
+      - cell: {x: 6, y: 2}
+        type: 1
+      - cell: {x: 6, y: 3}
+        type: 1
+      - cell: {x: 7, y: 2}
+        type: 1
+      - cell: {x: 7, y: 3}
+        type: 1
+      - cell: {x: 8, y: 2}
+        type: 1
+      - cell: {x: 8, y: 3}
+        type: 1
+      - cell: {x: 9, y: 3}
+        type: 1
+      - cell: {x: 10, y: 3}
+        type: 1
+      - cell: {x: 9, y: 2}
+        type: 1
+      - cell: {x: 10, y: 2}
+        type: 1
+      - cell: {x: 10, y: 0}
+        type: 1
+      - cell: {x: 10, y: 1}
+        type: 1
+      - cell: {x: 4, y: 0}
+        type: 1
+      - cell: {x: 4, y: 1}
+        type: 1
+      - cell: {x: 0, y: 0}
+        type: 1
+      - cell: {x: 0, y: 1}
+        type: 1
+      - cell: {x: 1, y: 0}
+        type: 1
+      - cell: {x: 1, y: 1}
+        type: 1
+      - cell: {x: 2, y: 0}
+        type: 1
+      - cell: {x: 2, y: 1}
+        type: 1
+      - cell: {x: 3, y: 0}
+        type: 1
+      - cell: {x: 3, y: 1}
+        type: 1
+      - cell: {x: 5, y: 0}
+        type: 1
+      - cell: {x: 5, y: 1}
+        type: 1
+      - cell: {x: 6, y: 0}
+        type: 1
+      - cell: {x: 6, y: 1}
+        type: 1
+      - cell: {x: 7, y: 0}
+        type: 1
+      - cell: {x: 7, y: 1}
+        type: 1
+      - cell: {x: 8, y: 0}
+        type: 1
+      - cell: {x: 8, y: 1}
+        type: 1
+      - cell: {x: 9, y: 0}
+        type: 1
+      - cell: {x: 9, y: 1}
+        type: 1
+      extras: []
+      combiTiles: []
+      waves:
+      - spawnDuration: 0
+        delayAfter: 0
+        waitForClear: 1
+        randomOrder: 1
+        placed:
+        - enemy: {fileID: 11400000, guid: 90b86b0fa3d4b449fb24c81446ba1686, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 2, y: 7}
+          chance: 0
+    - name: Combi 3
+      enabled: 1
+      width: 11
+      height: 11
+      isBoss: 0
+      core:
+        present: 0
+        pos: {x: 0, y: 0}
+      weightRange: {x: 1, y: 3}
+      ember: 1
+      costOverridden: 0
+      costOverride: 0
+      tiles:
+      - cell: {x: 2, y: 10}
+        type: 1
+      - cell: {x: 2, y: 9}
+        type: 1
+      - cell: {x: 2, y: 8}
+        type: 1
+      - cell: {x: 8, y: 10}
+        type: 1
+      - cell: {x: 8, y: 9}
+        type: 1
+      - cell: {x: 8, y: 8}
+        type: 1
+      - cell: {x: 8, y: 7}
+        type: 1
+      - cell: {x: 2, y: 7}
+        type: 1
+      - cell: {x: 1, y: 7}
+        type: 1
+      - cell: {x: 1, y: 6}
+        type: 1
+      - cell: {x: 1, y: 5}
+        type: 1
+      - cell: {x: 1, y: 4}
+        type: 1
+      - cell: {x: 1, y: 3}
+        type: 1
+      - cell: {x: 1, y: 2}
+        type: 1
+      - cell: {x: 1, y: 1}
+        type: 1
+      - cell: {x: 7, y: 1}
+        type: 1
+      - cell: {x: 8, y: 1}
+        type: 1
+      - cell: {x: 6, y: 1}
+        type: 1
+      - cell: {x: 5, y: 1}
+        type: 1
+      - cell: {x: 4, y: 1}
+        type: 1
+      - cell: {x: 3, y: 1}
+        type: 1
+      - cell: {x: 2, y: 1}
+        type: 1
+      - cell: {x: 0, y: 10}
+        type: 1
+      - cell: {x: 1, y: 10}
+        type: 1
+      - cell: {x: 0, y: 9}
+        type: 1
+      - cell: {x: 1, y: 8}
+        type: 1
+      - cell: {x: 1, y: 9}
+        type: 1
+      - cell: {x: 0, y: 8}
+        type: 1
+      - cell: {x: 0, y: 7}
+        type: 1
+      - cell: {x: 0, y: 6}
+        type: 1
+      - cell: {x: 0, y: 5}
+        type: 1
+      - cell: {x: 0, y: 4}
+        type: 1
+      - cell: {x: 0, y: 3}
+        type: 1
+      - cell: {x: 0, y: 2}
+        type: 1
+      - cell: {x: 0, y: 1}
+        type: 1
+      - cell: {x: 0, y: 0}
+        type: 1
+      - cell: {x: 1, y: 0}
+        type: 1
+      - cell: {x: 2, y: 0}
+        type: 1
+      - cell: {x: 3, y: 0}
+        type: 1
+      - cell: {x: 4, y: 0}
+        type: 1
+      - cell: {x: 5, y: 0}
+        type: 1
+      - cell: {x: 6, y: 0}
+        type: 1
+      - cell: {x: 7, y: 0}
+        type: 1
+      - cell: {x: 8, y: 0}
+        type: 1
+      - cell: {x: 9, y: 0}
+        type: 1
+      - cell: {x: 10, y: 0}
+        type: 1
+      - cell: {x: 9, y: 1}
+        type: 1
+      - cell: {x: 10, y: 1}
+        type: 1
+      - cell: {x: 9, y: 2}
+        type: 1
+      - cell: {x: 10, y: 2}
+        type: 1
+      - cell: {x: 9, y: 3}
+        type: 1
+      - cell: {x: 10, y: 3}
+        type: 1
+      - cell: {x: 9, y: 4}
+        type: 1
+      - cell: {x: 10, y: 4}
+        type: 1
+      - cell: {x: 9, y: 5}
+        type: 1
+      - cell: {x: 10, y: 5}
+        type: 1
+      - cell: {x: 9, y: 6}
+        type: 1
+      - cell: {x: 10, y: 6}
+        type: 1
+      - cell: {x: 9, y: 7}
+        type: 1
+      - cell: {x: 10, y: 7}
+        type: 1
+      - cell: {x: 9, y: 8}
+        type: 1
+      - cell: {x: 10, y: 8}
+        type: 1
+      - cell: {x: 9, y: 9}
+        type: 1
+      - cell: {x: 9, y: 10}
+        type: 1
+      - cell: {x: 10, y: 9}
+        type: 1
+      - cell: {x: 10, y: 10}
+        type: 1
+      extras: []
+      combiTiles: []
+      waves:
+      - spawnDuration: 0
+        delayAfter: 0
+        waitForClear: 1
+        randomOrder: 1
+        placed:
+        - enemy: {fileID: 11400000, guid: f45ef91775aad440a87b23d6553ea327, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 4, y: 3}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f45ef91775aad440a87b23d6553ea327, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 7, y: 3}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f45ef91775aad440a87b23d6553ea327, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 5.5, y: 4.5}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f45ef91775aad440a87b23d6553ea327, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 7, y: 6}
+          chance: 0
+        - enemy: {fileID: 11400000, guid: f45ef91775aad440a87b23d6553ea327, type: 2}
+          prefab: {fileID: 0}
+          pos: {x: 4, y: 6}
           chance: 0
   - pockets:
     - name: Boss
@@ -2255,7 +6237,6 @@ MonoBehaviour:
         present: 0
         pos: {x: 0, y: 0}
       weightRange: {x: 1, y: 3}
-      surroundWalls: 0
       ember: 1
       costOverridden: 0
       costOverride: 0
@@ -2280,7 +6261,6 @@ MonoBehaviour:
         present: 0
         pos: {x: 0, y: 0}
       weightRange: {x: 1, y: 3}
-      surroundWalls: 0
       ember: 1
       costOverridden: 0
       costOverride: 0
