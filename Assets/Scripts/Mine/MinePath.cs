@@ -644,6 +644,11 @@ public class MinePathManager : MonoBehaviour
     // ally-side seeds beyond the player — future buildings/drones register here
     static readonly List<(Transform t, int cost)> allyTargets = new List<(Transform, int)>();
 
+    // Domain reload is off: without this a play-stop leaks last session's registrations
+    // (phantom aggro seats pointing at destroyed drones).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetAllyTargets() => allyTargets.Clear();
+
     float builtAllyT = float.NegativeInfinity, builtPlayerT = float.NegativeInfinity, builtEnemyT = float.NegativeInfinity;
     float queryAllyT = float.NegativeInfinity, queryPlayerT = float.NegativeInfinity, queryEnemyT = float.NegativeInfinity;
     readonly List<MineFlowField.Seed> seedScratch = new List<MineFlowField.Seed>();
@@ -805,9 +810,6 @@ public class MinePathManager : MonoBehaviour
     /// select an enemy in play mode with Scene-view Gizmos on. Reads the same decision the unit
     /// makes, so what you see is what it does.
     /// </summary>
-    // one console grid dump per newly-selected unit — the definitive "what does the router see"
-    static Unit dumpedFor;
-
     // one read for both dimensions: what does the active grid believe about this cell?
     static void DebugCellState(bool atBase, Vector3Int c, out bool solid, out bool inMap,
         out bool filled, out int prem, out int pad)
@@ -820,37 +822,6 @@ public class MinePathManager : MonoBehaviour
         solid = MineField.i != null && MineField.i.IsSolid(c);
         inMap = true; filled = false; prem = 0;
         pad = MineGridAdapter.i.PadCost(c);
-    }
-
-    static void DumpGridAround(Unit u, Vector2 pos)
-    {
-        bool atBase = PathZone.AtBase(pos);
-        IPathGrid g = atBase ? (IPathGrid)BasePathGrid.blocked : MineGridAdapter.i;
-        var cc = g.WorldToCell(pos);
-        int halfW = 30, halfH = 22;
-        var sb = new System.Text.StringBuilder(2600);
-        int liveWalls = 0;
-        for (int k = 0; k < BaseBlockMap.WallOwners.Count; k++)
-            if (BaseBlockMap.WallOwners[k] != null) liveWalls++;
-        sb.Append($"[PathGrid dump] {u.name} @ {pos} cell {cc} | {(atBase ? "BASE" : "DUNGEON")} | " +
-                  $"cellSize {g.CellSize} | rect {g.CellRect} | BlockMap v{BaseBlockMap.Version}, {liveWalls} live walls | " +
-                  $"legend: # solid, % filled crack, o off-map, 1-9 padding cost, ~ aperture, . free, U unit\n");
-        for (int dy = halfH; dy >= -halfH; dy--)
-        {
-            for (int dx = -halfW; dx <= halfW; dx++)
-            {
-                if (dx == 0 && dy == 0) { sb.Append('U'); continue; }
-                var c = new Vector3Int(cc.x + dx, cc.y + dy, 0);
-                DebugCellState(atBase, c, out bool solid, out bool inMap, out bool filled,
-                    out int prem, out int pad);
-                sb.Append(solid ? '#'
-                    : filled ? '%'
-                    : !inMap ? 'o'
-                    : pad > 0 && pad >= prem ? (char)('0' + Mathf.Min(9, pad))
-                    : prem > 0 ? '~' : '.');
-            }
-            sb.Append('\n');
-        }
     }
 
     static readonly List<Vector2> routeScratch = new List<Vector2>();
@@ -871,14 +842,12 @@ public class MinePathManager : MonoBehaviour
         // wall/building or dungeon ore), teal = crack-filled, grey = off-map, orange = padding
         // rings, magenta = aperture premium (brighter = dearer). A wall face with NO blue under it
         // isn't in the path grid at all; blue with no orange skirt means the padding pass isn't
-        // seeing it. Selecting a unit also dumps this window as an ASCII grid to the console once
-        // — text beats squinting at alpha.
+        // seeing it.
         {
             bool atBase = PathZone.AtBase(pos);
             IPathGrid hg = atBase ? (IPathGrid)BasePathGrid.blocked : MineGridAdapter.i;
             if (hg.Ready)
             {
-                if (dumpedFor != u) { dumpedFor = u; DumpGridAround(u, pos); }
                 float bcs = hg.CellSize;
                 var cc = hg.WorldToCell(pos);
                 int rad = Mathf.CeilToInt(6f / bcs);

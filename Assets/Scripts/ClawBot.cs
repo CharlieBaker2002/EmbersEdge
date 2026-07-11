@@ -35,9 +35,12 @@ public class ClawBot : AllyAI, IOnCollide
     [SerializeField] Sprite[] lvl2s;
     Coroutine lu = null;
 
+    PilotedVehicle vehicle;   // present = this hull only runs while crewed
+
     protected override void Start()
     {
         base.Start();
+        vehicle = GetComponent<PilotedVehicle>();
         MakeClaw(0);
         MakeClaw(1);
         if (big) { range = 14f; AS.mass = 2f; moveForce = 2.25f; find.radius = 7f;  ls.maxHp = 12; ls.Change(12,-1); }
@@ -48,6 +51,11 @@ public class ClawBot : AllyAI, IOnCollide
     {
         while (true)
         {
+            if (vehicle != null && !vehicle.Active)
+            {
+                yield return new WaitForSeconds(0.25f);   // uncrewed between waves — idle cheaply
+                continue;
+            }
             Transform temp = find.FindFresh();
             if (temp != null) { e = temp;}
             if (transform.Distance(targetPoint) > range || e == null)
@@ -148,6 +156,7 @@ public class ClawBot : AllyAI, IOnCollide
 
     protected override void Update()
     {
+        if (vehicle != null && !vehicle.Active) return;
         base.Update();
         healTimer -= Time.deltaTime;
         if (healTimer <= 0f)

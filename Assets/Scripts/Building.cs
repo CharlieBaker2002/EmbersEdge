@@ -26,6 +26,8 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     public bool isWall = false;
     [Tooltip("Placement: hold the place button and SWEEP to stamp many copies (walls). Each stamp charges the tile's orb cost. Pair with builtBlasts = 0 for orb-only construction (no ember needed).")]
     public bool multiDrag = false;
+    [Tooltip("Offered by the build menu while in the DUNGEON (placed on excavated mine cells). Requires builtBlasts = 0 — dungeon builds complete on purchase, no ember/pylons exist there.")]
+    public bool dungeonBuildable = false;
     public LifeScript physic;
     // pathfinding footprint bookkeeping — what we registered, so unregistration is exact
     private bool footprintRegistered;
@@ -37,9 +39,8 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     private bool regAsWall;
     private LifeScript regWallLs;
     private bool box = true;
-    [Header("Times & Costs")] 
+    [Header("Times & Costs")]
     public int builtBlasts = 2;
-    public int[] rebuildCost = new int[4];
     [SerializeField] public List<EEIcon> icons = new();
     private bool subscribed = false;
     [HideInInspector]
@@ -57,7 +58,6 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     // touch Start-initialized state until that's happened.
     private bool startCalled;
 
-    private bool repairing;
     Action upgradeAction;
     
     [HideInInspector]public Vector2Int anchorCell;
@@ -119,20 +119,6 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         };
 
         spriterenderers = hasExtraParent ? transform.parent.GetComponentsInChildren<SpriteRenderer>(true) : GetComponentsInChildren<SpriteRenderer>(true);
-
-        // Repair price: authored rebuildCost when set, else derived as HALF the build cost (the
-        // prefab's authored Task orb magnets, read before any runtime task adds its own). Never
-        // free — a zero cost would make ResourceManager.NewTask complete instantly and ghosts
-        // would auto-repair without orbs.
-        if (Mathf.Max(rebuildCost) == 0)
-        {
-            GameObject costRoot = hasExtraParent ? transform.parent.gameObject : gameObject;
-            foreach (OrbMagnet om in costRoot.GetComponents<OrbMagnet>())
-                if (om.typ == OrbMagnet.OrbType.Task && om.capacity > 0)
-                    rebuildCost[om.orbType] += Mathf.Max(1, Mathf.CeilToInt(om.capacity * 0.5f));
-            if (Mathf.Max(rebuildCost) == 0) rebuildCost[0] = 1;   // last resort: one white orb
-        }
-
 
         if (physic != null)
         {
@@ -366,7 +352,6 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         else
         {
             UIParent.gameObject.SetActive(false);
-            repairing = true;
             UnregisterPathFootprint(); // ghost building blocks nothing — enemies walk the footprint
         }
     }
@@ -374,11 +359,11 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     public virtual void OnDestroy()
     {
         if(GS.qutting) return;
-        if (pendingRepair != null && SpawnManager.instance != null)
-            SpawnManager.instance.onWaveComplete -= pendingRepair;
         UnregisterPathFootprint();
         BDisable();
-        GridManager.i.SetArea(anchorCell, gridSize, false);
+        // Dungeon-placed buildings (telepads) never registered with the base grid.
+        if (GridManager.i != null && PathZone.AtBase(transform.position))
+            GridManager.i.SetArea(anchorCell, gridSize, false);
         _power?.Detach();
     }
 
@@ -414,7 +399,6 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             instantAction = () =>
             {
                 SwitchMonos(false);
-                repairing = false;
             };
         }
         else
@@ -422,7 +406,6 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             instantAction += () =>
             {
                 SwitchMonos(false);
-                repairing = false;
             };
         }
         tile.Init(hasExtraParent ? g.transform.parent.gameObject : g, cost, nam, spr, destroyOnUseP, () => {Upgrade(act,n);}, instantAction,
@@ -442,38 +425,61 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             OnClose.Invoke();
         }
         SwitchMonos(false);
-        // Repairs need no ember shot any more: the ghost tints immediately and the orb rebuild
-        // task is queued for the END of the round — dead walls stay open while enemies remain.
+        // Repairs are DRONE work now — no orbs, no ember. The ghost persists until repair drones
+        // pump maxHealth worth of hp back in (RepairTick), which may span multiple drone-days.
         sr.LeanSRColor(new Color(1f, 0.5f, 0.5f, 0.5f), 0.2f).setEaseOutCubic();
-        QueueRoundEndRepair();
+        droneRepairGhost = true;
+        repairHp = 0f;
     }
 
-    // One-shot hook onto the wave-complete signal; deaths outside a wave repair immediately.
-    Action pendingRepair;
+    // ------------------------------------------------------------------ drone repair
 
-    void QueueRoundEndRepair()
+    // Ghost rebuild progress (hp equivalent). Persistent across days on purpose: SwitchMonos(true)
+    // resets the live physic to full, so progress is banked HERE and only cashed in at completion.
+    bool droneRepairGhost;
+    float repairHp;
+
+    public bool IsGhostAwaitingRepair => droneRepairGhost;
+
+    /// <summary>True while a repair drone has something to do here: a destroyed ghost still being
+    /// rebuilt, or a live building below max hp. Excludes unbuilt constructions and anything with
+    /// ember icons in flight (initial build / upgrade — those flows own the physic).</summary>
+    public bool NeedsDroneRepair
     {
-        if (pendingRepair != null) return;
-        var sm = SpawnManager.instance;
-        if (sm == null || sm.waveCompleted || sm.dayState == SpawnManager.DayState.Day)
+        get
         {
-            StartRepairTask();   // peaceful death — no round to wait out
-            return;
+            if (!builtYet || icons.Count > 0 || upgradeAction != null) return false;
+            if (droneRepairGhost) return true;
+            return physic != null && !physic.hasDied && physic.hp < maxHealth - 0.01f;
         }
-        pendingRepair = () =>
-        {
-            sm.onWaveComplete -= pendingRepair;
-            pendingRepair = null;
-            if (this != null && repairing) StartRepairTask();
-        };
-        sm.onWaveComplete += pendingRepair;
     }
 
-    void StartRepairTask()
+    /// <summary>Apply <paramref name="hp"/> of drone repair. Ghosts bank progress and reactivate
+    /// at full maxHealth (SwitchMonos(true) then restores the physic at full); live buildings heal
+    /// directly. Returns the hp actually applied so the drone can bill energy for real work only.
+    /// Concurrent drones simply accumulate.</summary>
+    public float RepairTick(float hp)
     {
-        if (!repairing) return;
-        repairing = false;
-        ResourceManager.instance.NewTask(gameObject, rebuildCost, () => SwitchMonos(true), false);
+        if (hp <= 0f) return 0f;
+        if (droneRepairGhost)
+        {
+            float used = Mathf.Min(hp, maxHealth - repairHp);
+            repairHp += used;
+            if (sr != null)
+                sr.color = Color.Lerp(new Color(1f, 0.5f, 0.5f, 0.5f), Color.white, repairHp / maxHealth);
+            if (repairHp >= maxHealth - 0.001f)
+            {
+                droneRepairGhost = false;
+                repairHp = 0f;
+                SwitchMonos(true);
+            }
+            return used;
+        }
+        if (physic == null || physic.hasDied) return 0f;
+        float applied = Mathf.Min(hp, maxHealth - physic.hp);
+        if (applied <= 0f) return 0f;
+        physic.Change(applied, -1, false);
+        return applied;
     }
 
     void BuildFirst()
@@ -567,12 +573,6 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             {
                 builtYet = true;
                 SwitchMonos(true);
-            }
-            else if(repairing)
-            {
-                repairing = false;
-                sr.LeanSRColor( new Color(1f, 0.5f, 0.5f, 0.5f),0.2f).setEaseOutCubic();
-                ResourceManager.instance.NewTask(gameObject, rebuildCost, () => SwitchMonos(true), false);
             }
             else
             {
@@ -878,7 +878,6 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         {
             Destroy(physic.gameObject);
         }
-        repairing = false;
         upgradeAction = upgradeAct;
     }
     
@@ -887,7 +886,9 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     /// </summary>
     void RegisterGridOccupancy()
     {
-        if (GridManager.i == null) return;
+        // The base build grid doesn't exist in the dungeon — dungeon placement (telepads) keeps
+        // its own occupancy on the mine field instead.
+        if (GridManager.i == null || !PathZone.AtBase(transform.position)) return;
 
         Vector2Int sizeCells = new Vector2Int(
             Mathf.Max(1, Mathf.RoundToInt(size.x / GridManager.i.cellSize)),

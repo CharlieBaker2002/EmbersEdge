@@ -842,6 +842,46 @@ public class MineField : MonoBehaviour
                (pocketIdOfCell == null || pocketIdOfCell[idx] == -1);
     }
 
+    /// <summary>May a DRONE break this cell? Everything IsPlainWall allows plus ore cells, but
+    /// NEVER anything pocket-related: a disguised cavity cell, an authored ring wall, a cell whose
+    /// break would fire the revealed-pocket border trigger, or a spawner's footprint (drones don't
+    /// poke hornet nests). Pocket discovery stays a player verb.</summary>
+    public bool DroneMineable(Vector3Int c)
+    {
+        if (!InBounds(c)) return false;
+        int idx = Idx(c);
+        if (!data[idx].IsSolid || data[idx].voidCell) return false;
+        if (pocketIdOfCell != null && pocketIdOfCell[idx] >= 0) return false;      // disguised cavity
+        if (wallPocketOfCell != null && wallPocketOfCell[idx] >= 0) return false;  // authored ring wall
+        if (spawnerOfCell.ContainsKey(idx)) return false;
+        foreach (var d in N4)
+        {
+            var n = c + d;
+            if (!InBounds(n)) continue;
+            int npid = pocketIdOfCell != null ? pocketIdOfCell[Idx(n)] : -1;
+            if (npid >= 0 && pocketRevealed[npid] && !pocketOpened[npid]) return false;
+        }
+        return true;
+    }
+
+    /// <summary>A drone's mining bite: grind <paramref name="ms"/> milliseconds off one KNOWN cell
+    /// (no cone scan — the drone aims at a single face). Refuses non-DroneMineable cells so a drone
+    /// can never breach a pocket. <paramref name="tier"/> reports the cell's hardness for energy
+    /// billing; <paramref name="broke"/> is true on the bite that finishes the cell.</summary>
+    public bool DroneChip(Vector3Int cell, int ms, out bool broke, out CellType tier)
+    {
+        broke = false;
+        tier = CellType.Empty;
+        if (!DroneMineable(cell)) return false;
+        tier = data[Idx(cell)].type;
+        broke = ChipCell(cell, ms) > 0;
+        return true;
+    }
+
+    public CellType CellTypeAt(Vector3Int c) => InBounds(c) ? data[Idx(c)].type : CellType.Empty;
+
+    public sbyte OreAt(Vector3Int c) => InBounds(c) ? data[Idx(c)].ore : (sbyte)-1;
+
     /// <summary>Blank the wall art under a spawner's footprint — the spawner PNG becomes the look of
     /// those walls. CellData is untouched: the cells still block and mine exactly like the regular
     /// walls they replace.</summary>
@@ -1124,6 +1164,7 @@ public class MineField : MonoBehaviour
         int idx = Idx(cell);
 
         int orb = data[idx].ore;   // -1 = no ore; else orb index
+        CellType brokenTier = data[idx].type;   // captured before the reset below
         if (orb >= 0)
         {
             // Per-element yield: rarer elements (higher index) drop fewer per ore.
@@ -1131,6 +1172,9 @@ public class MineField : MonoBehaviour
             drop[orb] = OreYield[orb];
             GS.CallSpawnOrbs(grid.GetCellCenterWorld(cell), drop);
         }
+        // Every broken wall scatters ore-chip debris (size class by hardness tier, element-lit
+        // when the cell carried ore). Chips persist until the player returns to base.
+        DroneManager.SpawnChips(grid.GetCellCenterWorld(cell), brokenTier, orb);
 
         data[idx].type = CellType.Empty;
         data[idx].durability = 0;

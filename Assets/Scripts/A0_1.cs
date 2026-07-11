@@ -17,9 +17,12 @@ public class A0_1 : AllyAI
     [HideInInspector]
     public float detectionRange = 6f;
 
+    PilotedVehicle vehicle;   // present = this hull only runs while crewed
+
     protected override void Start()
     {
         base.Start();
+        vehicle = GetComponent<PilotedVehicle>();
         StartCoroutine(A01());
     }
 
@@ -49,6 +52,11 @@ public class A0_1 : AllyAI
     {
         while (true)
         {
+            if (vehicle != null && !vehicle.Active)
+            {
+                yield return new WaitForSeconds(0.25f);   // uncrewed between waves — idle cheaply
+                continue;
+            }
             e = GS.FindNearestEnemy(tag, transform.position, detectionRange, false, false);
             if (detectionRange == 9f) { ps.Play(); }
             if (e != null)

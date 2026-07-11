@@ -152,11 +152,15 @@ public class UnitBuilding : Building
         Destroy(sr.gameObject);
     }
 
+    /// <summary>Fires after a unit rolls out (drone pilot stations track vehicle hulls off this).</summary>
+    public event Action<GameObject> onUnitSpawned;
+
     private void SpawnNewUnit()
     {
         var a = Instantiate(unit, transform.position + GS.RandCircle(0.6f, 1.1f), Quaternion.identity, GS.FindParent(GS.Parent.allies));
         a.GetComponent<AllyAI>().home = this;
         a.SetActive(true);
+        onUnitSpawned?.Invoke(a);
     }
 
     

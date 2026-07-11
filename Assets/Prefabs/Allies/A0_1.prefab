@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 837508685}
   - component: {fileID: 4081629360305943340}
   - component: {fileID: 596032838884476379}
+  - component: {fileID: 810836128798891254}
   m_Layer: 6
   m_Name: A0_1
   m_TagString: Allies
@@ -53,22 +54,25 @@ MonoBehaviour:
   race: 0
   onDeaths:
   - {fileID: 837508685}
-  shield: 0
+  shields: []
   maxHp: 2
   hp: 2
   orbs: []
   blood: {fileID: 0}
+  shieldBlood: {fileID: 0}
   bloodHold: {fileID: 0}
+  isCharacter: 0
   hasDied: 0
-  dodging: 0
+  invulnerable: 0
   animateBeforeDie: 0
   orbSpawnPlace: {fileID: 0}
   dmgsrs:
   - {fileID: 4370263372041130173}
   thicknesses: 01000000
+  overrideCol: {r: 0, g: 0, b: 0, a: 0}
 --- !u!50 &37244155027457345
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -79,8 +83,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 1
   m_UseAutoMass: 0
   m_Mass: 1
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -108,10 +112,11 @@ MonoBehaviour:
   mass: 0.5
   maxVelocity: 2.25
   turniness: 1
-  bounciness: 1
   sharpness: 1
+  hitRate: 1.25
   hardness: 1
-  shockResistanceCoef: 1
+  ramBaseSpeed: 1.5
+  ramSelfRecoil: 0.5
   dragCoef: 0.98
   PS: {fileID: 0}
   onCollides: []
@@ -125,6 +130,7 @@ MonoBehaviour:
   velCap: 1
   rooted: 0
   wall: 0
+  building: 0
   ignoreWalls: 0
   convertProjectiles: 0
   absorbProjectiles: 0
@@ -145,6 +151,32 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9b7588de2164f49cd96309ec1d889d14, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  enemyID: -1
+  ls: {fileID: 37244155027457344}
+  AS: {fileID: 37244155027457358}
+  anim: {fileID: 4081629360305943340}
+  sr: {fileID: 0}
+  iconPlacer: {x: 0, y: 0, z: 0}
+  stati: []
+  statVulnerability: 1
+  bodySize: 0
+  wander: 1.5
+  wanderEff: 1.5
+  wallExploitIQ: 1
+  crowdAversion: 1
+  preferCharacter: 0
+  preferBuildings: 0
+  preferWalls: 0
+  phasing: 0
+  target: {fileID: 0}
+  defaultActRate: 1
+  actRate: 1
+  juggernaut: 0
+  staticEffectActivated: 0
+  converted: 0
+  leechTime: -1
+  description: 
+  isCharacter: 0
   home: {fileID: 0}
   mode: 0
   targetPoint: {x: 0, y: 0}
@@ -154,20 +186,17 @@ MonoBehaviour:
   pushPoint: 5
   skrskr: 0
   stopSkr: 0
-  AS: {fileID: 37244155027457358}
-  ls: {fileID: 37244155027457344}
   spr: {fileID: 1003352783, guid: ee38c5ac1ef9f4e3eb9134453494875b, type: 3}
   groupCost: 1
   zap: {fileID: 8444806945408973731, guid: 2f6ccdd66d0bd48748449ea1ce21d041, type: 3}
   piercer: {fileID: 6638231833558150260, guid: 027a018b392524cb890faee231e7945e, type: 3}
-  anim: {fileID: 4081629360305943340}
   ps: {fileID: 7240559589834607450}
   shootN: 1
   shootSqrDist: 6
   detectionRange: 6
 --- !u!95 &4081629360305943340
 Animator:
-  serializedVersion: 5
+  serializedVersion: 7
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -181,6 +210,7 @@ Animator:
   m_ApplyRootMotion: 0
   m_LinearVelocityBlending: 0
   m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
   m_WarningMessage: 
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
@@ -202,6 +232,20 @@ MonoBehaviour:
   maxIntensity: 1.25
   minIntensity: 0
   l: {fileID: 5540201276783022209}
+--- !u!114 &810836128798891254
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 37244155027457356}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f812b54981fc641bdaf6cbd023e87aef, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PilotedVehicle
+  pilotsRequired: 1
+  dormantTint: {r: 0.45, g: 0.45, b: 0.5, a: 0.9}
 --- !u!1 &866936163554100187
 GameObject:
   m_ObjectHideFlags: 0
@@ -245,6 +289,7 @@ BoxCollider2D:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 866936163554100187}
   m_Enabled: 1
+  serializedVersion: 3
   m_Density: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -268,7 +313,8 @@ BoxCollider2D:
     m_Bits: 4294967295
   m_IsTrigger: 0
   m_UsedByEffector: 0
-  m_UsedByComposite: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
   m_Offset: {x: 0, y: -0.018823862}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
@@ -279,11 +325,11 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  serializedVersion: 2
   m_Size: {x: 0.21788716, y: 0.29318285}
   m_EdgeRadius: 0
 --- !u!212 &4370263372041130173
 SpriteRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -299,6 +345,11 @@ SpriteRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -320,9 +371,11 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 1663965395
   m_SortingLayer: 4
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_Sprite: {fileID: 1003352783, guid: ee38c5ac1ef9f4e3eb9134453494875b, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -332,7 +385,6 @@ SpriteRenderer:
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
-  m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!114 &5540201276783022209
 MonoBehaviour:
@@ -346,14 +398,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 073797afb82c5a1438f328866b10b3f0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_ComponentVersion: 1
+  m_ComponentVersion: 2
   m_LightType: 2
   m_BlendStyleIndex: 0
   m_FalloffIntensity: 0.5
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 1
   m_LightVolumeIntensity: 1
-  m_LightVolumeIntensityEnabled: 0
+  m_LightVolumeEnabled: 0
   m_ApplyToSortingLayers: 00000000d3182e63
   m_LightCookieSprite: {fileID: 1003352783, guid: ee38c5ac1ef9f4e3eb9134453494875b, type: 3}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
@@ -363,8 +415,10 @@ MonoBehaviour:
   m_NormalMapDistance: 3
   m_NormalMapQuality: 2
   m_UseNormalMap: 0
-  m_ShadowIntensityEnabled: 0
+  m_ShadowsEnabled: 0
   m_ShadowIntensity: 0.75
+  m_ShadowSoftness: 0
+  m_ShadowSoftnessFalloffIntensity: 0.5
   m_ShadowVolumeIntensityEnabled: 0
   m_ShadowVolumeIntensity: 0.75
   m_LocalBounds:
@@ -419,7 +473,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: -110}
 --- !u!199 &1723749431207694950
 ParticleSystemRenderer:
-  serializedVersion: 6
+  serializedVersion: 7
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -435,6 +489,11 @@ ParticleSystemRenderer:
   m_ReflectionProbeUsage: 0
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -456,9 +515,11 @@ ParticleSystemRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 899417529
   m_SortingLayer: 8
   m_SortingOrder: -1
+  m_MaskInteraction: 0
   m_RenderMode: 0
   m_MeshDistribution: 0
   m_SortMode: 0
@@ -490,7 +551,6 @@ ParticleSystemRenderer:
   m_MeshWeighting1: 1
   m_MeshWeighting2: 1
   m_MeshWeighting3: 1
-  m_MaskInteraction: 0
 --- !u!198 &7240559589834607450
 ParticleSystem:
   m_ObjectHideFlags: 0

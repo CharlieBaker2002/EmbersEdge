@@ -38,6 +38,16 @@ public class BM : MonoBehaviour //Building Manager
     Vector2Int lastStampCell;
     bool dragArmed;      // a deliberate click starts the sweep (guards against the menu click's held button)
     bool upfrontSpent;   // the menu click pre-charged ONE copy; later stamps charge per placement
+
+    // ---- dungeon placement (Building.dungeonBuildable, e.g. the Telepad) ----
+    // The base grid doesn't exist down there: snap to mine cells, validate on excavated floor,
+    // and keep occupancy in this set (mirrors GridManager.SetArea). Static + reload-off ⇒ reset.
+    bool dungeonMode;
+    Vector3Int dungeonAnchor;
+    public static readonly HashSet<Vector3Int> DungeonOccupancy = new HashSet<Vector3Int>();
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetDungeonOccupancy() => DungeonOccupancy.Clear();
     
     private void Awake()
     {
@@ -111,15 +121,17 @@ public class BM : MonoBehaviour //Building Manager
 
     public void AltUI() //inefficient but few lines so meh.
     {
-        if (GS.CS().InDungeon() || CharacterScript.dead)
+        if (CharacterScript.dead)
         {
             return;
         }
 
+        bool inDungeon = GS.CS().InDungeon();
         bool wasActive = UI.activeInHierarchy;
         UIManager.CloseAllUIs();
         if (!wasActive)
         {
+            if (inDungeon && !AnyDungeonBuildable()) return;   // nothing placeable down here yet
             if (!IM.i.CActive())
             {
                 IM.i.OpenCursor();
@@ -127,12 +139,59 @@ public class BM : MonoBehaviour //Building Manager
 
             UI.SetActive(true);
             IM.i.pi.Player.Interact.Enable();
-            DetermineFitDaddies();
+            if (inDungeon) SetupDungeonPalette();
+            else DetermineFitDaddies();
             EscapeRouter.i?.Push(closeUIDel);
         }
         else
         {
             IM.i.CloseCursor();
+        }
+    }
+
+    bool AnyDungeonBuildable()
+    {
+        foreach (GameObject g in GetAllBuildings())
+        {
+            var b = g != null ? g.GetComponentInChildren<Building>(true) : null;
+            if (b != null && b.dungeonBuildable) return true;
+        }
+        return false;
+    }
+
+    /// <summary>The in-dungeon build menu: a flat palette of dungeonBuildable buildings only
+    /// (no daddy groups). Tiles reuse the exact SetupDaddy init so cost/icon behave identically.</summary>
+    void SetupDungeonPalette()
+    {
+        foreach (DaddyBuildingTile d in daddies)
+        {
+            d.gameObject.SetActive(false);
+        }
+        DaddyBuildingTile.current = null;
+        backButton.SetActive(false);
+        int pos = 0;
+        foreach (GameObject g in GetAllBuildings())
+        {
+            var build = g != null ? g.GetComponentInChildren<Building>(true) : null;
+            if (build == null || !build.dungeonBuildable) continue;
+            var a = Instantiate(UIPrefab, UIspots[pos + 4].position, Quaternion.identity, UI.transform);
+            BuildingTile tile = a.GetComponent<BuildingTile>();
+            tile.img.sprite = build.icon == null ? build.sr.sprite : build.icon;
+            int[] costB = new int[4] { 0, 0, 0, 0 };
+            foreach (OrbMagnet om in g.GetComponents<OrbMagnet>())
+            {
+                if (om.typ == OrbMagnet.OrbType.Task)
+                {
+                    costB[om.orbType] += om.capacity;
+                    om.init = true;
+                }
+            }
+            tile.cost = costB;
+            tile.txt.text = g.name;
+            tile.UpdateCost();
+            tile.ChangeBackground();
+            tile.buildingPrefab = g;
+            pos++;
         }
     }
 
@@ -153,6 +212,7 @@ public class BM : MonoBehaviour //Building Manager
     public void BuildingFollowMouse(GameObject g, BuildingTile r)
     {
         map.SetActive(false);
+        dungeonMode = GS.CS().InDungeon();
         recent = r;
         redbuildingPrefab = g;
         redBuilding = Instantiate(g);
@@ -163,7 +223,7 @@ public class BM : MonoBehaviour //Building Manager
         {
             s.color = new Color(0.35f, 0.35f, 0.35f, 0.75f);
         }
-        GridManager.i.ActivateGrid();
+        if (!dungeonMode) GridManager.i.ActivateGrid();
         ChangeBuildingColour(false);
         rotationStep = 0;
         lastStampCell = new Vector2Int(int.MinValue, int.MinValue);
@@ -189,6 +249,13 @@ public class BM : MonoBehaviour //Building Manager
         {
             yield return new WaitForFixedUpdate();
             if (redBuilding == null) yield break;
+
+            if (dungeonMode)
+            {
+                // Mine-cell snap; validity is painted straight onto the ghost (no grid overlay).
+                PositionDungeon();
+                continue;
+            }
 
             // R rotates the preview 90° clockwise. Non-square footprints swap their gridSize.
             if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
@@ -235,7 +302,7 @@ public class BM : MonoBehaviour //Building Manager
     public void Escape(bool activateGoToDaddy = true)
     {
         StopAllCoroutines();
-        GridManager.i.DeactivateGrid();
+        if (!dungeonMode) GridManager.i.DeactivateGrid();
         if (redBuilding != null)
         {
             ResourceManager.instance.CanAfford(cost, true);
@@ -254,12 +321,32 @@ public class BM : MonoBehaviour //Building Manager
 
         map.SetActive(true);
         planting = false;
+        dungeonMode = false;
     }
 
     private void TryPlace()
     {
         if (redBuilding == null)
         {
+            return;
+        }
+
+        if (dungeonMode)
+        {
+            if (!DungeonAreaClear()) return;
+            Commit(redBuilding, rbb, false);
+            planting = false;
+            redBuilding = null;
+            IM.i.pi.Player.Interact.performed -= clickAction;
+            EscapeRouter.i?.Remove(escape);
+            map.SetActive(true);
+            GS.QA(() =>
+            {
+                if (ResourceManager.instance.CanAfford(recent.cost, false, false))
+                {
+                    recent.OnClick();
+                }
+            }, 2);
             return;
         }
 
@@ -322,6 +409,11 @@ public class BM : MonoBehaviour //Building Manager
     /// buildings — orb-only construction, no ember), decompressors, registry.</summary>
     void Commit(GameObject built, Building bb, bool freshInstance)
     {
+        if (dungeonMode)
+        {
+            CommitDungeon(built, bb);
+            return;
+        }
         GridManager.i.SetArea(anchorCell, gridSize, true);
         bb.anchorCell = anchorCell;
         bb.gridSize = gridSize;
@@ -415,6 +507,56 @@ public class BM : MonoBehaviour //Building Manager
         }
     }
 
+
+    // ---- dungeon placement helpers ----
+
+    void PositionDungeon()
+    {
+        if (MineField.i == null || redBuilding == null) return;
+        Vector2 worldMouse = IM.controller ? (Vector2)IM.i.controllerCursor.position : IM.i.MousePosition();
+        dungeonAnchor = MineField.i.WorldToCell(worldMouse);
+        redBuilding.transform.position = MineField.i.CellCenterWorld(dungeonAnchor);
+        bool clear = DungeonAreaClear();
+        Color tint = clear ? new Color(0.35f, 0.35f, 0.35f, 0.75f) : new Color(0.7f, 0.15f, 0.15f, 0.75f);
+        foreach (SpriteRenderer s in redBuilding.GetComponentsInChildren<SpriteRenderer>(true))
+        {
+            s.color = tint;
+        }
+    }
+
+    bool DungeonAreaClear()
+    {
+        if (MineField.i == null) return false;
+        return MineField.i.IsExcavated(dungeonAnchor) && !DungeonOccupancy.Contains(dungeonAnchor);
+    }
+
+    /// <summary>Dungeon commit: mine-cell occupancy instead of the base grid, and construction
+    /// completes IMMEDIATELY — the cost was charged from the bank on the menu click, and no orb
+    /// pylons exist in the dungeon to fly the task orbs in.</summary>
+    void CommitDungeon(GameObject built, Building bb)
+    {
+        DungeonOccupancy.Add(dungeonAnchor);
+        foreach (SpriteRenderer s in built.GetComponentsInChildren<SpriteRenderer>(true))
+        {
+            s.color = GS.ColFromEra();
+        }
+        built.transform.parent = GS.FindParent(GS.Parent.buildings);
+        buildings.Add(bb);
+        foreach (OrbMagnet om in built.GetComponents<OrbMagnet>())
+        {
+            if (om.typ == OrbMagnet.OrbType.Task) Destroy(om);
+        }
+        // Building prefabs ship with the main script DISABLED — in the base flow the filled orb
+        // task enables every child Behaviour before invoking CompleteViaOrbs (OrbMagnet.ReceiveOrb).
+        // We just destroyed those magnets, so replicate that enable here or Start never runs and
+        // CompleteViaOrbs retry-loops forever on startCalled == false.
+        foreach (Behaviour beh in built.GetComponentsInChildren<Behaviour>(true))
+        {
+            if (beh is OrbMagnet) continue;   // doomed (Destroy is deferred) — don't wake them
+            beh.enabled = true;
+        }
+        bb.CompleteViaOrbs();   // QA-retries internally until the instance's Start has run
+    }
 
     private void Position(Transform t)
         {

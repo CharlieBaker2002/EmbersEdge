@@ -332,7 +332,9 @@ public class LifeScript : MonoBehaviour
         {
             if (MechaSuit.lastlife)
             {
-                CharacterScript.CS.StartCoroutine(CharacterScript.CS.DieDie());
+                // Host on RefreshManager: dungeon deaths Portal() home, which Hide()s (deactivates)
+                // the character GameObject — a coroutine on CS itself would be killed mid-death.
+                RefreshManager.i.StartCoroutine(CharacterScript.CS.DieDie());
             }
             else
             {

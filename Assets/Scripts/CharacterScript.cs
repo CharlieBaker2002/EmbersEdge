@@ -702,7 +702,8 @@ public class CharacterScript : Unit
 
         if (PortalScript.i.inDungeon)
         {
-            this.QA(() => MechaSuit.Announce(),2f);
+            // Not this.QA — Portal() below deactivates the character GO, which would kill a CS-hosted delay.
+            RefreshManager.i.QA(() => MechaSuit.Announce(),2f);
             CS.ColourControllerDeath();
             PortalScript.i.Portal();
             if (MineDungeonManager.i == null)

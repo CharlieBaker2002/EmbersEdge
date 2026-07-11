@@ -568,7 +568,7 @@ public class Unit : MonoBehaviour, IClickable
         PlaceStats();
     }
   
-     private void CarryOutShieldDisplay()
+     protected void CarryOutShieldDisplay()   // protected: Drone.Update bypasses AllyAI.Update but still wants shield display
      {
          // Let the life script clamp each shield‐type to maxHp:
          if (updateShields)

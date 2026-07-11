@@ -55,6 +55,16 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
     private Collider2D pickCollider;
     private const float pickRadius = 0.18f;
 
+    /// <summary>Live batteries (bag drones scan this instead of FindObjectsOfType).</summary>
+    public static readonly System.Collections.Generic.List<Battery> all = new();
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetRegistry() => all.Clear();
+
+    private void OnEnable() => all.Add(this);
+
+    private void OnDisable() => all.Remove(this);
+
     private void Awake()
     {
         coilSprs = new[] { coil0Sprs, coil1Sprs, coil2Sprs };

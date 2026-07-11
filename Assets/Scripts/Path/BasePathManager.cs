@@ -53,6 +53,16 @@ public class BasePathManager : MonoBehaviour
     public static int crowdDivisor = 4;
     public static int crowdMaxPenalty = 3;
 
+    /// <summary>Allies-parent children in this set are INVISIBLE to base enemy targeting (both the
+    /// field seeding and the phase-walker straight-line pool). The base auto-seeds every ally, so
+    /// this is the opt-OUT — the mirror of the dungeon's opt-in RegisterAllyTarget. Used by
+    /// empty-handed drones (they only attract enemies while holding cargo) and dormant vehicle
+    /// hulls. Static registry + domain-reload-off ⇒ needs the explicit reset below.</summary>
+    public static readonly HashSet<Transform> UntargetableAllies = new HashSet<Transform>();
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetUntargetableAllies() => UntargetableAllies.Clear();
+
     enum Fam { All, Char, Bld }
 
     // One W/D pair per VIEW: a target family × a baked crowd-penalty coefficient (its anchor).
@@ -426,7 +436,8 @@ public class BasePathManager : MonoBehaviour
                 for (int k = 0; k < allies.childCount; k++)
                 {
                     var ch = allies.GetChild(k);
-                    if (ch.gameObject.activeInHierarchy) AddPhaseCandidate(pos, ch);
+                    if (ch.gameObject.activeInHierarchy && !UntargetableAllies.Contains(ch))
+                        AddPhaseCandidate(pos, ch);
                 }
         }
         if (fam != Fam.Char)
@@ -578,7 +589,7 @@ public class BasePathManager : MonoBehaviour
                 for (int k = 0; k < allies.childCount; k++)
                 {
                     var ch = allies.GetChild(k);
-                    if (ch.gameObject.activeInHierarchy)
+                    if (ch.gameObject.activeInHierarchy && !UntargetableAllies.Contains(ch))
                         seedScratch.Add(new MineFlowField.Seed(ch.position, SeedCost(tc, ch), ch));
                 }
         }

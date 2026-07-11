@@ -108,7 +108,7 @@ public class ResonanceTotem : WaveExtra
 
         // A code-built ring that races outward; each enemy is hit once, as the wavefront passes it.
         SpriteRenderer ring = MakeRing(c);
-        var hitSet = new HashSet<int>();
+        var hitSet = new HashSet<EntityId>();
         for (float t = 0f; t < novaTime; t += Time.deltaTime)
         {
             float k = t / novaTime;
@@ -134,14 +134,14 @@ public class ResonanceTotem : WaveExtra
     }
 
     // Slow + shove every enemy whose centre now sits inside the wavefront and hasn't been caught yet.
-    void SweepRing(Vector2 c, float rad, float chargeFrac, HashSet<int> hitSet)
+    void SweepRing(Vector2 c, float rad, float chargeFrac, HashSet<EntityId> hitSet)
     {
         int n = Physics2D.OverlapCircle(c, rad, enemyFilter, buf);
         for (int i = 0; i < n; i++)
         {
             var col = buf[i];
             if (col == null || col.isTrigger || col.attachedRigidbody == null) continue;
-            int id = col.attachedRigidbody.GetEntityId();
+            EntityId id = col.attachedRigidbody.GetEntityId();
             if (!hitSet.Add(id)) continue;
 
             var ls = col.GetComponentInParent<LifeScript>();

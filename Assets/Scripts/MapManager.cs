@@ -1500,6 +1500,10 @@ public class MapManager : MonoBehaviour
                         }
                     }
                 }
+                // A dimension warp is not a boundary escape: drones (and anything else) that
+                // teleport to the dungeon "exit" the base colliders by position jump — pulling
+                // those back would fly them home across the world.
+                if (!PathZone.AtBase(collision.attachedRigidbody.transform.position)) return;
                 // Track for pull only once they're outside the inset boundary; both poly and
                 // pushPoly feed this, so ignore exits that still leave them inside it and dedupe.
                 if (InsideInset(collision.attachedRigidbody.transform.position)) return;
@@ -1539,6 +1543,14 @@ public class MapManager : MonoBehaviour
 
             if (InsideInset(asses[i].transform.position))
             {
+                asses.RemoveAt(i);
+                i--;
+            }
+            else if (!PathZone.AtBase(asses[i].transform.position))
+            {
+                // Teleported to the dungeon while being tracked (e.g. a drone that was in the
+                // pull band when it deployed) — it's not escaping, drop it. It re-enters the
+                // base colliders on recall, well inside bounds.
                 asses.RemoveAt(i);
                 i--;
             }
