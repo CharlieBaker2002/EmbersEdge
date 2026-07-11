@@ -6,7 +6,8 @@ using UnityEngine;
 /// Produces claimable drone equipment as STOCK on the building (no physical item until a drone
 /// dies or swaps roles). Two prefabs share this class: the Drill Forge (produces Drill) and the
 /// Cargoloft (produces Bag). Production is an orb-cost slot in the building UI; drones dragged
-/// onto the workshop take a unit of stock, or wait beside it until one is forged.
+/// onto the workshop fly to it and take a unit of stock on arrival, waiting beside it until
+/// one is forged if the shelf is empty.
 /// </summary>
 public class EquipmentWorkshop : Building
 {
@@ -48,8 +49,9 @@ public class EquipmentWorkshop : Building
     void ProduceOne()
     {
         stock++;
-        ServeWaiters();
         UpdateStockText();
+        // Waiting drones hovering at the workshop pick this up on their next brain tick
+        // (they poll TryHandOver while at the WaitPoint).
     }
 
     void UpdateStockText()
@@ -61,42 +63,61 @@ public class EquipmentWorkshop : Building
 
     public Vector2 WaitPoint => transform.position;
 
-    /// <summary>Drag-assignment entry: kit the drone now, or queue it beside the workshop.</summary>
+    /// <summary>Drag-assignment entry: the drone flies to the workshop and collects its kit
+    /// there (TryHandOver on arrival) — never an instant remote pickup.</summary>
     public void TryClaim(Drone d)
     {
         if (d == null || d.equipment == produces) return;
-        if (stock > 0)
+        if (!waiting.Contains(d)) waiting.Add(d);
+        d.WaitAt(this);
+    }
+
+    /// <summary>Arrival hand-over: the drone is physically at the workshop, so give it a unit
+    /// of stock if there is one (otherwise it keeps hovering in the queue).</summary>
+    public void TryHandOver(Drone d)
+    {
+        if (d == null) return;
+        if (d.equipment == produces || stock > 0)
         {
-            stock--;
-            UpdateStockText();
+            if (d.equipment != produces)
+            {
+                stock--;
+                UpdateStockText();
+            }
             waiting.Remove(d);
             d.TakeEquipment(produces);
-        }
-        else if (!waiting.Contains(d))
-        {
-            waiting.Add(d);
-            d.WaitAt(this);
         }
     }
 
     public void LeaveQueue(Drone d) => waiting.Remove(d);
 
-    void ServeWaiters()
+    /// <summary>A drone hands a unit of kit back (swap return). A full shelf drops it as a
+    /// physical item beside the workshop instead of vanishing it.</summary>
+    public void Restock()
     {
-        for (int k = 0; k < waiting.Count && stock > 0; k++)
+        if (stock < maxStock)
         {
-            var d = waiting[k];
-            if (d == null || d.state != Drone.State.WaitingAtStation)
-            {
-                waiting.RemoveAt(k);
-                k--;
-                continue;
-            }
-            stock--;
-            waiting.RemoveAt(k);
-            k--;
-            d.TakeEquipment(produces);
+            stock++;
+            UpdateStockText();
         }
-        UpdateStockText();
+        else
+        {
+            DroneEquipmentItem.Spawn(produces, transform.position + GS.RandCircle(0.3f, 0.7f));
+        }
+    }
+
+    /// <summary>The live workshop that owns this kind of kit, nearest to <paramref name="from"/> —
+    /// where a swapping drone returns its old kit. Null when none stands.</summary>
+    public static EquipmentWorkshop NearestProducing(DroneEquipment kind, Vector2 from)
+    {
+        EquipmentWorkshop best = null;
+        float bestSqr = float.MaxValue;
+        foreach (Building b in buildings)
+        {
+            if (b is not EquipmentWorkshop ws || !ws.enabled || ws.produces != kind) continue;
+            float d = ((Vector2)ws.transform.position - from).sqrMagnitude;
+            if (d < bestSqr) { bestSqr = d; best = ws; }
+        }
+        return best;
     }
 }

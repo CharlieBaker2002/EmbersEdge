@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -327,12 +328,23 @@ public class MineDungeonManager : MonoBehaviour
     //  the next dive re-enables them exactly where they stood.
     // =====================================================================================
 
-    readonly List<GameObject> frozen = new List<GameObject>();
+    readonly List<GameObject> frozen = new List<GameObject>();       // dungeon-side sleepers
+    readonly List<GameObject> frozenBase = new List<GameObject>();   // base-side sleepers
+    Coroutine baseRespawn;
+    const float BASE_WAKE_MIN = 5f;   // frozen base enemies rematerialise this long after the
+    const float BASE_WAKE_MAX = 10f;  // teleport home — each on its own beat, like a spawner arming
 
-    /// <summary>Teleported INTO the dungeon: thaw the frozen enemies, then let every spawner that
-    /// already has the dig in range arm its day plan (fires 0–30s from now).</summary>
+    /// <summary>Teleported INTO the dungeon: the base dimension freezes (every enemy still at base
+    /// sleeps where it stands), the dungeon thaws instantly, then every spawner that already has the
+    /// dig in range arms its day plan (fires 0–30s from now).</summary>
     public void OnEnterDungeon()
     {
+        // any base sleeper still waiting on its respawn beat just stays frozen for the next return
+        if (baseRespawn != null) { StopCoroutine(baseRespawn); baseRespawn = null; }
+        var parent = GS.FindParent(GS.Parent.enemies);
+        if (parent != null)
+            foreach (Transform t in parent)
+                if (t.gameObject.activeSelf && !t.InDungeon()) { t.gameObject.SetActive(false); frozenBase.Add(t.gameObject); }
         foreach (var g in frozen)
         {
             if (g == null) continue;
@@ -345,15 +357,45 @@ public class MineDungeonManager : MonoBehaviour
         foreach (var s in spawners) if (s != null) s.OnEnterDungeon();
     }
 
-    /// <summary>Teleported back to base: armed spawner plans land their remainder instantly, then the
-    /// whole dungeon dimension freezes — every live enemy is disabled where it stands.</summary>
+    /// <summary>Teleported back to base: armed spawner plans land their remainder instantly, the
+    /// dungeon dimension freezes — every live enemy there is disabled where it stands — and the
+    /// frozen base enemies rematerialise over the next few seconds instead of popping in at once.</summary>
     public void OnLeaveDungeon()
     {
         foreach (var s in spawners) if (s != null) s.OnLeaveDungeon();
         var parent = GS.FindParent(GS.Parent.enemies);
-        if (parent == null) return;
-        foreach (Transform t in parent)
-            if (t.gameObject.activeSelf) { t.gameObject.SetActive(false); frozen.Add(t.gameObject); }
+        if (parent != null)
+            foreach (Transform t in parent)
+                if (t.gameObject.activeSelf && t.InDungeon()) { t.gameObject.SetActive(false); frozen.Add(t.gameObject); }
+        if (baseRespawn != null) StopCoroutine(baseRespawn);
+        baseRespawn = frozenBase.Count > 0 ? StartCoroutine(RespawnBaseEnemiesI()) : null;
+    }
+
+    // Base time resumes: each sleeper wakes BASE_WAKE_MIN..MAX seconds after the teleport with the
+    // spawner materialise flash, keeping whatever hp it went to sleep with (nothing is re-instantiated,
+    // SetActive preserves LifeScript state).
+    IEnumerator RespawnBaseEnemiesI()
+    {
+        var wake = new List<float>();
+        for (int i = 0; i < frozenBase.Count; i++) wake.Add(Random.Range(BASE_WAKE_MIN, BASE_WAKE_MAX));
+        float t = 0f;
+        while (frozenBase.Count > 0)
+        {
+            t += Time.deltaTime;
+            for (int i = frozenBase.Count - 1; i >= 0; i--)
+            {
+                if (t < wake[i]) continue;
+                var g = frozenBase[i];
+                frozenBase.RemoveAt(i);
+                wake.RemoveAt(i);
+                if (g == null) continue;
+                MineFX.EnemySpawnFlash(g.transform.position);
+                g.SetActive(true);
+                if (g.TryGetComponent<Unit>(out var u)) u.OnThaw();
+            }
+            yield return null;
+        }
+        baseRespawn = null;
     }
 
     // =====================================================================================

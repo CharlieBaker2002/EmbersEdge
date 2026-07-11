@@ -13,6 +13,10 @@ public class DroneManager : MonoBehaviour
     [Header("Feel")]
     [Tooltip("Master speed multiplier for everything drones do: move force, drill rate, repair rate. Raise to make the workforce snappier.")]
     public float haste = 1.5f;
+    [Tooltip("Movement force per physics tick — code-set onto every drone at Start (the prefab-serialized value is stale).")]
+    public float droneMoveForce = 5f;
+    [Tooltip("Cruise speed cap (ActionScript maxVelocity) — code-set onto every drone at Start.")]
+    public float droneMaxVelocity = 4.5f;
 
     [Header("Threat response")]
     [Tooltip("An enemy within this range makes a drone flee.")]
@@ -21,6 +25,8 @@ public class DroneManager : MonoBehaviour
     public float threatClearRadius = 6f;
     [Tooltip("How far a rally-fighting drill drone may stray from its rally point.")]
     public float rallyLeash = 7f;
+    [Tooltip("Rally-fight drill contact damage per second, per enemy in reach (scaled by haste).")]
+    public float drillCombatDps = 0.7f;
 
     [Header("Loot")]
     [Tooltip("Where returning bag drones dump their haul at base.")]
@@ -41,6 +47,9 @@ public class DroneManager : MonoBehaviour
     public int maxChips = 300;
 
     public static float Haste => i != null ? i.haste : 1.5f;
+    public static float DroneMoveForce => i != null ? i.droneMoveForce : 5f;
+    public static float DroneMaxVelocity => i != null ? i.droneMaxVelocity : 4.5f;
+    public static float DrillCombatDps => i != null ? i.drillCombatDps : 0.7f;
     public static float ThreatRadius => i != null ? i.threatRadius : 4f;
     public static float ThreatClearRadius => i != null ? i.threatClearRadius : 6f;
     public static float RallyLeash => i != null ? i.rallyLeash : 7f;
@@ -152,18 +161,26 @@ public class DroneManager : MonoBehaviour
         if (i == null) return;
         int size = tier == CellType.VeryHard ? 2 : tier == CellType.Hard ? 1 : 0;
         int n = Random.Range(i.chipsMinPerBreak, i.chipsMaxPerBreak + 1);
+        var mf = MineField.i;
         for (int k = 0; k < n; k++)
-            i.SpawnChip(pos + GS.RandCircle(0.05f, 0.4f), size, oreElement);
+        {
+            // stay inside the cavity: a scatter offset that lands in rock snaps back to the
+            // freshly-broken cell's centre (open by definition)
+            Vector3 p = pos + GS.RandCircle(0.05f, 0.4f);
+            if (mf != null && mf.IsSolid(mf.WorldToCell(p))) p = pos;
+            i.SpawnChip(p, size, oreElement, pos);
+        }
     }
 
-    void SpawnChip(Vector3 pos, int sizeClass, int element)
+    void SpawnChip(Vector3 pos, int sizeClass, int element, Vector2 burstFrom)
     {
-        if (chipSprites == null)
-        {
+        // never cache a failed load — an empty result (asset pipeline mid-refresh) would
+        // otherwise poison the whole session
+        if (chipSprites == null || chipSprites.Length < 12)
             chipSprites = LoadStripNumeric("OreChips");
+        if (chipPrefab == null)
             chipPrefab = Resources.Load<GameObject>("OreChip");
-        }
-        if (chipSprites == null || chipSprites.Length < 12) return;
+        if (chipSprites.Length < 12) return;
 
         // cap: cull the oldest chip
         if (OreChip.all.Count >= maxChips && OreChip.all.Count > 0)
@@ -201,6 +218,7 @@ public class DroneManager : MonoBehaviour
                 if (chipOreMats[element] != null) chip.sr.material = chipOreMats[element];
             }
         }
+        chip.Tumble(burstFrom);
     }
 
     /// <summary>Dumped scrap at the base (bag-drone haul) — same chip visuals, base-side, so it
@@ -208,7 +226,8 @@ public class DroneManager : MonoBehaviour
     public static void SpawnScrap(Vector3 pos, int sizeClass, int element)
     {
         if (i == null) Ensure();
-        i.SpawnChip(pos, sizeClass, element);
+        // burstFrom == pos → degenerate direction, so each piece tumbles a random way (dump puff)
+        i.SpawnChip(pos, sizeClass, element, pos);
     }
 
     static void DespawnAllChips()

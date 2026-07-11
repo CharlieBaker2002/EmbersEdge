@@ -182,6 +182,8 @@ public class Constructor : Building
         SpawnManager.instance.onWaveComplete -= act;
     }
 
+    Building lastConstructTarget;
+
     public void Construct(Building b)
     {
         for (int i = stores.Count - 1; i >= 0; i--)
@@ -199,13 +201,16 @@ public class Constructor : Building
         Vector3 p = b.icons[b.icons.Count - b.numIconsTrue].transform.position;
         EnergyManager.i.UpdateEmber();
         constructing = true;
+        // repeat sends to the SAME building skip the slow wind-up — the stick is already on target
+        float dur = b == lastConstructTarget ? 0.1f : 0.5f;
+        lastConstructTarget = b;
         if (!visual)
         {
-            this.QA(() => DoConstruct(b,p),1.31f);
+            this.QA(() => DoConstruct(b,p),dur);
             return;
         }
-        stick.transform.LeanRotate(GS.TsTV(stick.transform.position,b.transform.position), 1.3f).setEaseInOutSine();
-        stick.LeanAnimate(sprs, 1.3f,true).setOnComplete(() => DoConstruct(b,p));
+        stick.transform.LeanRotate(GS.TsTV(stick.transform.position,b.transform.position), dur).setEaseInOutSine();
+        stick.LeanAnimate(sprs, dur,true).setOnComplete(() => DoConstruct(b,p));
     }
     void DoConstruct(Building b, Vector3 p)
     {

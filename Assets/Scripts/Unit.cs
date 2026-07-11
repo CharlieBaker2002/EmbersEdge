@@ -596,7 +596,9 @@ public class Unit : MonoBehaviour, IClickable
          {
              if(shieldStati[index] == null) return;
              if(shieldStati[index].dissapearing) return;
-             if (shieldStati[index].ind != 7 || shieldStati[index].ind != 18) return;
+             // bail only when the slot holds something that ISN'T a shield status —
+             // the old `!= 7 || != 18` was always true, so the icon never dissapeared
+             if (shieldStati[index].ind != 7 && shieldStati[index].ind != 18) return;
              shieldStati[index].value1 = 0f;
              shieldStati[index].UpdateSlider();
              shieldStati[index]?.Dissapear();

@@ -15,12 +15,10 @@ public static class ShieldUtility
     {
         if (n == null) return;
 
-        int ID = n.CreateShield(max, true, weak); 
-        Debug.Log("a");
+        int ID = n.CreateShield(max, true, weak);
         RefreshManager.i.QA(() =>
         {
-            Debug.Log("a");
-            if (n != null){ n.RemoveShield(ID);    Debug.Log("b");}
+            if (n != null) n.RemoveShield(ID);
         }, duration);
     }
     

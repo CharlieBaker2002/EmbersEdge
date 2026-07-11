@@ -12,8 +12,6 @@ public class DroneDrillBit : MonoBehaviour
     public float frameRate = 18f;
     [Tooltip("Local-space vibration amplitude while grinding.")]
     public float jitterAmp = 0.03f;
-    [Tooltip("Contact damage per second while rally-fighting.")]
-    public float dps = 2f;
     [Tooltip("Reach of the contact damage from the drill tip.")]
     public float hitRadius = 0.55f;
 
@@ -72,7 +70,7 @@ public class DroneDrillBit : MonoBehaviour
         {
             var ls = t.GetComponentInParent<LifeScript>();
             if (ls == null || ls.hasDied) continue;
-            ls.Change(-dps * tick, 2);
+            ls.Change(-DroneManager.DrillCombatDps * tick, 2);
             any = true;
         }
         return any;

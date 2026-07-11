@@ -43,6 +43,10 @@ public class Drone : AllyAI, IOnDeath
     [HideInInspector] public PilotedVehicle pilotOf;
     FactoryPilotStation waitingStation;
     EquipmentWorkshop waitingWorkshop;
+    // kit-swap errand: fly to the OLD kit's home workshop, hand it back, then continue to the
+    // new kit's workshop — swaps never strand equipment on the ground
+    EquipmentWorkshop pendingWorkshop;
+    bool returningKit;
 
     [Header("Drilling")]
     [Tooltip("How far (in cells) a drill drone scans for its next wall.")]
@@ -74,12 +78,22 @@ public class Drone : AllyAI, IOnDeath
     // nudged a few degrees per broken tile — lines stay roughly straight instead of scribbly
     float headingDeg;
     bool headingSeeded;
+    /// <summary>Deploy-order spoke dealer — spreads drill headings across the map.</summary>
+    static int spokeCounter;
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetSpokeCounter() => spokeCounter = 0;   // no-domain-reload: statics survive play-stop
     bool hasDrillTarget;
     Vector3Int drillTarget;
     Vector2 drillApproach;
+    // approach watchdog: FindDrillTarget only proves a face is EXPOSED, not REACHABLE — a wall
+    // seen across an unconnected cavity would otherwise be shoved at forever
+    float drillBestDist;
+    float drillStallTimer;
+    float noTargetTimer;
+    readonly System.Collections.Generic.List<(Vector3Int cell, float until)> drillBlacklist
+        = new System.Collections.Generic.List<(Vector3Int cell, float until)>();
     float rallyBuffTimer;
     bool rallyBuffed;
-    int rallyShieldId = -1;
 
     /// <summary>actRate for visual pacing (drill spin etc.) — floor keeps animations alive under slows.</summary>
     public float ActRateVisible => Mathf.Max(0.2f, actRate);
@@ -110,6 +124,9 @@ public class Drone : AllyAI, IOnDeath
         stopSkr = true;
         resetTimer = float.MaxValue;
         BasePathManager.UntargetableAllies.Add(transform);   // empty-handed = invisible to enemies
+        // Speed lives on DroneManager — the prefab-serialized moveForce/maxVelocity are stale.
+        moveForce = DroneManager.DroneMoveForce;
+        if (AS != null) AS.maxVelocity = DroneManager.DroneMaxVelocity;
         connectable = GetComponent<Connectable>();
         if (connectable != null)
         {
@@ -123,11 +140,17 @@ public class Drone : AllyAI, IOnDeath
     }
 
     /// <summary>Swap the drone's kit. Physical kit being replaced (drill/bag) drops as a world
-    /// item where the drone stands — recoverable, haulable. Child visuals follow.</summary>
-    public virtual void SetEquipment(DroneEquipment kind)
+    /// item where the drone stands — recoverable, haulable — unless the caller already banked
+    /// it (workshop return: <paramref name="dropReplaced"/> false). Child visuals follow.</summary>
+    public virtual void SetEquipment(DroneEquipment kind, bool dropReplaced = true)
     {
         if (kind != equipment && (equipment == DroneEquipment.Drill || equipment == DroneEquipment.Bag))
-            DroneEquipmentItem.Spawn(equipment, transform.position + GS.RandCircle(0.2f, 0.5f));
+        {
+            if (equipment == DroneEquipment.Bag && HasCargo)
+                DumpCargoAt(transform.position);   // cargo can't exist without the bag holding it
+            if (dropReplaced)
+                DroneEquipmentItem.Spawn(equipment, transform.position + GS.RandCircle(0.2f, 0.5f));
+        }
         equipment = kind;
         if (drillBit != null) drillBit.gameObject.SetActive(kind == DroneEquipment.Drill);
         if (sack != null) sack.gameObject.SetActive(kind == DroneEquipment.Bag);
@@ -141,11 +164,31 @@ public class Drone : AllyAI, IOnDeath
         state = assignedPad != null && Charged ? State.TravelToPad : State.ReturningToDock;
     }
 
-    /// <summary>Queue beside a workshop that's out of stock.</summary>
+    /// <summary>Fly to a workshop and queue for kit — it's handed over on arrival.</summary>
     public void WaitAt(EquipmentWorkshop workshop)
     {
         waitingWorkshop = workshop;
+        returningKit = false;   // this is always the COLLECT leg (TryClaim entry)
         state = State.WaitingAtStation;
+    }
+
+    /// <summary>Arrived at the OLD kit's home workshop: bank the kit (cargo spills here first —
+    /// it can't exist without the bag), then continue the errand to the new kit's workshop.</summary>
+    void FinishKitReturn()
+    {
+        var home = waitingWorkshop;
+        returningKit = false;
+        waitingWorkshop = null;
+        if (home != null && home.produces == equipment &&
+            (equipment == DroneEquipment.Drill || equipment == DroneEquipment.Bag))
+        {
+            home.Restock();
+            SetEquipment(DroneEquipment.None, dropReplaced: false);
+        }
+        var next = pendingWorkshop;
+        pendingWorkshop = null;
+        if (next != null) next.TryClaim(this);
+        else state = assignedPad != null && Charged ? State.TravelToPad : State.ReturningToDock;
     }
 
     // ------------------------------------------------------------------ drag assignment
@@ -169,6 +212,20 @@ public class Drone : AllyAI, IOnDeath
         if (b is EquipmentWorkshop ws)
         {
             LeaveCurrentRole(keepPad: true);   // new kit doesn't cancel the pad assignment
+            // Holding kit already? Return it to its home workshop FIRST, then collect the new
+            // one — a swap must never shed equipment onto the ground mid-errand.
+            if (equipment == DroneEquipment.Drill || equipment == DroneEquipment.Bag)
+            {
+                var home = EquipmentWorkshop.NearestProducing(equipment, transform.position);
+                if (home != null)
+                {
+                    pendingWorkshop = ws;
+                    returningKit = true;
+                    waitingWorkshop = home;
+                    state = State.WaitingAtStation;
+                    return;
+                }
+            }
             ws.TryClaim(this);
             return;
         }
@@ -180,11 +237,14 @@ public class Drone : AllyAI, IOnDeath
         }
     }
 
-    /// <summary>Detach from whatever job/station held this drone (re-drag = reassign).</summary>
+    /// <summary>Detach from whatever job/station held this drone (re-drag = reassign). Any
+    /// queued kit-swap errand is forgotten — the latest order always wins.</summary>
     protected void LeaveCurrentRole(bool keepPad = false)
     {
         if (waitingStation != null) { waitingStation.LeaveQueue(this); waitingStation = null; }
         if (waitingWorkshop != null) { waitingWorkshop.LeaveQueue(this); waitingWorkshop = null; }
+        pendingWorkshop = null;
+        returningKit = false;
         if (pilotOf != null) pilotOf.RemovePilot(this);
         if (!keepPad && assignedPad != null) { assignedPad.Unassign(this); assignedPad = null; }
         if (equipment == DroneEquipment.Pilot) SetEquipment(DroneEquipment.None);
@@ -200,12 +260,13 @@ public class Drone : AllyAI, IOnDeath
     public void AssignTo(Telepad tp)
     {
         if (tp == null || !tp.Assign(this)) return;
-        if (waitingStation != null) { waitingStation.LeaveQueue(this); waitingStation = null; }
-        if (pilotOf != null) pilotOf.RemovePilot(this);
-        if (equipment == DroneEquipment.Pilot) SetEquipment(DroneEquipment.None);
+        // The pad order supersedes everything queued — workshop errands (kit swaps included)
+        // are forgotten, so a drone mid-"go get a drill" obeys the newer telepad drag.
+        bool wasQueued = state == State.WaitingAtStation;
+        LeaveCurrentRole(keepPad: true);
         if (assignedPad != null && assignedPad != tp) assignedPad.Unassign(this);
         assignedPad = tp;
-        if (state == State.Docked || state == State.ReturningToDock)
+        if (state == State.Docked || state == State.ReturningToDock || wasQueued)
             state = State.TravelToPad;
     }
 
@@ -282,6 +343,9 @@ public class Drone : AllyAI, IOnDeath
         {
             if (ls != null && ls.hasDied) yield break;
             UpdateThreat();
+            // Buff cooldown ticks in every state — a fight left early must still spend the
+            // window before the next engagement can stim/shield again.
+            if (rallyBuffed && (rallyBuffTimer -= Time.fixedDeltaTime) <= 0f) rallyBuffed = false;
             switch (state)
             {
                 case State.Docked:
@@ -310,9 +374,15 @@ public class Drone : AllyAI, IOnDeath
                 case State.DeployedTravel:
                     // Dungeon-side idle/travel hub; drill and bag work dispatch from here.
                     if (threatened) { state = State.Fleeing; break; }
-                    if (equipment == DroneEquipment.Drill && Charged) { state = State.Drilling; break; }
-                    if (equipment == DroneEquipment.Bag && Charged) { state = State.Collecting; break; }
-                    HoldAt(RallySpot(), 0.6f);
+                    // CanAffordDrill (not Charged): a drone whose dregs can't buy one regular
+                    // wall must NOT bounce Drilling<->here every tick — that reads as frozen.
+                    if (equipment == DroneEquipment.Drill && CanAffordDrill) { state = State.Drilling; break; }
+                    // EffectiveSpaceLeft (not Charged): dregs that can't buy one space unit must
+                    // not bounce Collecting<->here every tick either.
+                    if (equipment == DroneEquipment.Bag && EffectiveSpaceLeft > 0) { state = State.Collecting; break; }
+                    // Off-duty (flat battery included): PATH back to the pad — HoldAt's straight
+                    // shove would pin the drone against the first wall between here and there.
+                    MoveToward(PadRally(), 0.6f);
                     break;
 
                 case State.Collecting:
@@ -333,10 +403,11 @@ public class Drone : AllyAI, IOnDeath
 
                 case State.Fleeing:
                     bool atRally = MoveToward(RallySpot(), 0.55f);
-                    if (atRally && equipment == DroneEquipment.Drill && transform.InDungeon() && threatened)
+                    if (atRally && equipment == DroneEquipment.Drill && threatened)
                     {
-                        // touched the rally point under threat: buff up and fight back
-                        ApplyRallyBuff();
+                        // touched the rally point under threat: turn and fight — the stim/shield
+                        // only pops on actual engagement (TickRallyFight), not here. Works in
+                        // both dimensions: base-side the rally point is the refuge at (0,0).
                         state = State.RallyFight;
                         break;
                     }
@@ -351,8 +422,32 @@ public class Drone : AllyAI, IOnDeath
                 case State.WaitingAtStation:
                     if (threatened && !HasCargo) { state = State.Evading; break; }
                     if (waitingStation != null) HoldAt(waitingStation.WaitPoint, 0.8f);
-                    else if (waitingWorkshop != null) HoldAt(waitingWorkshop.WaitPoint, 0.8f);
-                    else state = State.ReturningToDock;
+                    else if (waitingWorkshop != null)
+                    {
+                        // Kit is handled in person: path to the workshop, then either hand the
+                        // old kit back (swap's return leg) or keep asking for stock (covers
+                        // queuing while the forge works).
+                        if (MoveToward(waitingWorkshop.WaitPoint, 0.8f))
+                        {
+                            if (returningKit) FinishKitReturn();
+                            else waitingWorkshop.TryHandOver(this);
+                        }
+                    }
+                    else if (returningKit && pendingWorkshop != null)
+                    {
+                        // return-leg workshop died mid-flight — skip straight to collecting
+                        // (the old kit falls at the drone's feet on handover, the old fallback)
+                        returningKit = false;
+                        var next = pendingWorkshop;
+                        pendingWorkshop = null;
+                        next.TryClaim(this);
+                    }
+                    else
+                    {
+                        returningKit = false;   // whole errand died — forget it cleanly
+                        pendingWorkshop = null;
+                        state = State.ReturningToDock;
+                    }
                     break;
 
                 case State.BoardingVehicle:
@@ -372,7 +467,14 @@ public class Drone : AllyAI, IOnDeath
 
                 case State.Evading:
                     // Survival overrides the energy gate — an uncharged drone still flees.
-                    MoveToward(RefugePoint());
+                    bool atRefuge = MoveToward(RefugePoint());
+                    if (atRefuge && equipment == DroneEquipment.Drill && threatened)
+                    {
+                        // drill drones don't cower at the refuge: same turn-and-fight as the
+                        // dungeon rally, with (0,0) as the rally point base-side
+                        state = State.RallyFight;
+                        break;
+                    }
                     if (!threatened) state = State.ReturningToDock;
                     break;
 
@@ -407,6 +509,17 @@ public class Drone : AllyAI, IOnDeath
         return (padPos - pos).sqrMagnitude <= (player - pos).sqrMagnitude ? padPos : player;
     }
 
+    /// <summary>Where an off-duty deployed drone waits: its dungeon-side pad (the telepad IS the
+    /// rally point), falling back to RallySpot when the link is down.</summary>
+    Vector2 PadRally()
+    {
+        Telepad pad = assignedPad != null ? (assignedPad.IsDungeonSide ? assignedPad : assignedPad.Linked) : null;
+        return pad != null && pad.IsOperational ? pad.RallyPoint : RallySpot();
+    }
+
+    /// <summary>Enough energy left to buy at least one regular-tier wall.</summary>
+    bool CanAffordDrill => energy >= DroneManager.DrillCost(CellType.Regular);
+
     // ------------------------------------------------------------------ deployment
 
     /// <summary>Teleport through the link into the dungeon (rides the player's dive).</summary>
@@ -415,16 +528,30 @@ public class Drone : AllyAI, IOnDeath
         if (dungeonPad == null) return;
         if (!headingSeeded)
         {
-            // Excavation heading: outward from the entry cavity (the dungeon origin) through the
-            // pad, jittered — pads near the centre just pick a random spoke.
+            // Excavation heading: each drone takes its own spoke so the squad spreads over the
+            // map instead of clumping on the pad's outward line. Pads away from the centre fan
+            // around their outward direction (0°, ±70°, ±140°); central pads use golden-angle
+            // spokes for even all-round coverage.
             headingSeeded = true;
             Vector2 outward = dungeonPad.transform.position;
-            headingDeg = outward.sqrMagnitude > 1f
-                ? Mathf.Atan2(outward.y, outward.x) * Mathf.Rad2Deg + Random.Range(-25f, 25f)
-                : Random.Range(0f, 360f);
+            int k = spokeCounter++;
+            if (outward.sqrMagnitude > 1f)
+            {
+                float fan = ((k + 1) / 2) * 70f * (k % 2 == 0 ? 1f : -1f);
+                headingDeg = Mathf.Atan2(outward.y, outward.x) * Mathf.Rad2Deg + fan + Random.Range(-15f, 15f);
+            }
+            else
+            {
+                headingDeg = k * 137.508f + Random.Range(-15f, 15f);
+            }
         }
         transform.position = dungeonPad.transform.position + GS.RandCircle(0.2f, 0.6f);
         if (AS != null && AS.rb != null) AS.rb.linearVelocity = Vector2.zero;
+        // Bag drones obey the ore like any dungeon body (collision is code-based — kinematic
+        // bodies ignore physics colliders, so only registered rbs get depenetrated). Drill
+        // drones stay unregistered: pressing INTO the wall face is how they grind.
+        if (equipment == DroneEquipment.Bag && MineField.i != null && AS != null && AS.rb != null)
+            MineField.i.Register(AS.rb);
         inDungeon = true;
         repairTarget = null;
         threatened = false;
@@ -443,6 +570,7 @@ public class Drone : AllyAI, IOnDeath
         else landing = Vector2.zero;
         transform.position = (Vector3)landing + GS.RandCircle(0.2f, 0.5f);
         if (AS != null && AS.rb != null) AS.rb.linearVelocity = Vector2.zero;
+        if (MineField.i != null && AS != null && AS.rb != null) MineField.i.Unregister(AS.rb);
         inDungeon = false;
         repairTarget = null;
         ReleaseCollectTarget();   // dungeon claims don't follow home
@@ -542,7 +670,41 @@ public class Drone : AllyAI, IOnDeath
         if (threatTimer > 0f) return;
         threatTimer = 0.3f;
         float radius = threatened ? DroneManager.ThreatClearRadius : DroneManager.ThreatRadius;
-        threatened = GS.FindEnemies(tag, transform.position, radius, false, false).Count > 0;
+        var foes = GS.FindEnemies(tag, transform.position, radius, false, false);
+        if (!transform.InDungeon())
+        {
+            threatened = foes.Count > 0;
+            return;
+        }
+        // Dungeon: rock blocks threat. FindEnemies is a bare radius query — an enemy 4u away
+        // THROUGH A WALL would lock the drone into flee/rally-fight forever (it can never be
+        // reached, so 'threatened' never clears and no wall ever gets drilled again).
+        threatened = false;
+        for (int k = 0; k < foes.Count; k++)
+        {
+            if (foes[k] == null) continue;
+            if (ThreatVisible(transform.position, foes[k].position)) { threatened = true; break; }
+        }
+    }
+
+    /// <summary>Straight rock-free line between two dungeon points? Sub-cell sampling against the
+    /// mine grid — cheap, and honest enough for threat checks (enemies can't hit through walls).</summary>
+    static bool ThreatVisible(Vector2 from, Vector2 to)
+    {
+        var mf = MineField.i;
+        if (mf == null) return true;
+        Vector2 d = to - from;
+        float len = d.magnitude;
+        if (len < 1e-3f) return true;
+        int steps = Mathf.CeilToInt(len / (mf.cellSize * 0.45f));   // < half a cell per step
+        Vector2 stepV = d / steps;
+        Vector2 p = from;
+        for (int k = 1; k < steps; k++)
+        {
+            p += stepV;
+            if (mf.IsSolid(mf.WorldToCell(p))) return false;
+        }
+        return true;
     }
 
     // ------------------------------------------------------------------ drilling
@@ -559,10 +721,10 @@ public class Drone : AllyAI, IOnDeath
         if (threatened) { StopDrillVisual(); state = State.Fleeing; return; }
         var mf = MineField.i;
         if (mf == null || !transform.InDungeon()) { StopDrillVisual(); state = State.DeployedTravel; return; }
-        if (energy < DroneManager.DrillCost(CellType.Regular))
+        if (!CanAffordDrill)
         {
             StopDrillVisual();
-            state = State.DeployedTravel;   // flat — hold at the pad until recall/recharge
+            state = State.DeployedTravel;   // flat — heads back to the pad until recall/recharge
             return;
         }
 
@@ -571,10 +733,21 @@ public class Drone : AllyAI, IOnDeath
             StopDrillVisual();
             if (!FindDrillTarget(mf))
             {
-                // nothing minable in scan range — push outward along the heading and rescan
+                // nothing minable in scan range — push outward along the heading and rescan;
+                // if this heading has been dry for a while it's a dead end (open cavern /
+                // unreachable rock): swing to a fresh spoke instead of nosing the same wall
+                noTargetTimer += Time.fixedDeltaTime;
+                if (noTargetTimer > 4f)
+                {
+                    noTargetTimer = 0f;
+                    headingDeg += Random.Range(90f, 270f);
+                }
                 MoveToward((Vector2)transform.position + HeadingDir() * 3f, 0.4f);
                 return;
             }
+            noTargetTimer = 0f;
+            drillBestDist = float.MaxValue;
+            drillStallTimer = 0f;
         }
 
         Vector2 face = mf.CellCenterWorld(drillTarget);
@@ -582,6 +755,19 @@ public class Drone : AllyAI, IOnDeath
         if (dist > 0.85f)
         {
             StopDrillVisual();
+            // watchdog: exposed ≠ reachable — no closing progress for a while means the face
+            // sits across a gap/unconnected cavity; ban it briefly and pick something else
+            if (dist < drillBestDist - 0.05f)
+            {
+                drillBestDist = dist;
+                drillStallTimer = 0f;
+            }
+            else if ((drillStallTimer += Time.fixedDeltaTime) > 3f)
+            {
+                drillBlacklist.Add((drillTarget, Time.time + 20f));
+                hasDrillTarget = false;
+                return;
+            }
             // route to the exposed neighbour cell, then press straight into the wall face
             // (plain force — the A* would refuse to route into a solid cell)
             if (MoveToward(drillApproach, 0.45f))
@@ -606,13 +792,18 @@ public class Drone : AllyAI, IOnDeath
     }
 
     /// <summary>Scan for the next wall to eat: exposed (standable face), pocket-safe, affordable.
-    /// Soft ore is the prize; heading alignment keeps the excavation a corridor, not a scribble.</summary>
+    /// The heading is a SIDE of the map (bearing from the entry), not a push direction: staying in
+    /// the wedge stops back-and-forth, the depth penalty grows the dig in even rings instead of
+    /// one deep bore, and hardness only nudges (soft preferred, not law). Ore is the prize.</summary>
     bool FindDrillTarget(MineField mf)
     {
         Vector3Int myCell = mf.WorldToCell(transform.position);
         Vector2 hd = HeadingDir();
+        Vector2 origin = mf.CellCenterWorld(new Vector3Int(0, 0, 0));   // entry cavity centre
         float bestScore = float.MaxValue;
         bool found = false;
+        for (int k = drillBlacklist.Count - 1; k >= 0; k--)   // bans age out
+            if (Time.time >= drillBlacklist[k].until) drillBlacklist.RemoveAt(k);
         int R = Mathf.Max(2, drillScanRadius);
         for (int dx = -R; dx <= R; dx++)
         {
@@ -620,6 +811,10 @@ public class Drone : AllyAI, IOnDeath
             {
                 var c = new Vector3Int(myCell.x + dx, myCell.y + dy, 0);
                 if (!mf.DroneMineable(c)) continue;
+                bool banned = false;
+                for (int k = 0; k < drillBlacklist.Count; k++)
+                    if (drillBlacklist[k].cell == c) { banned = true; break; }
+                if (banned) continue;
                 bool exposed = false;
                 Vector3Int approach = default;
                 foreach (var f in FaceOffsets)
@@ -631,12 +826,15 @@ public class Drone : AllyAI, IOnDeath
                 CellType tier = mf.CellTypeAt(c);
                 if (DroneManager.DrillCost(tier) > energy) continue;
                 int ore = mf.OreAt(c);
-                Vector2 rel = (Vector2)mf.CellCenterWorld(c) - (Vector2)transform.position;
-                float d = rel.magnitude;
-                float align = d > 0.01f ? Vector2.Dot(rel / d, hd) : 1f;
-                float tierPen = tier == CellType.VeryHard ? 8f : tier == CellType.Hard ? 4f : 0f;
+                Vector2 cellW = (Vector2)mf.CellCenterWorld(c);
+                float d = (cellW - (Vector2)transform.position).magnitude;
+                Vector2 fromOrigin = cellW - origin;
+                float depth = fromOrigin.magnitude;
+                float sectorPen = depth > 1.5f ? (1f - Vector2.Dot(fromOrigin / depth, hd)) * 2f : 0f;
+                float depthPen = 0.4f * depth;
+                float tierPen = tier == CellType.VeryHard ? 3f : tier == CellType.Hard ? 1.5f : 0f;
                 float oreBonus = ore >= 0 ? (tier == CellType.Regular ? 7f : tier == CellType.Hard ? 4f : 2f) : 0f;
-                float score = d - 3f * align + tierPen - oreBonus;
+                float score = d + sectorPen + depthPen + tierPen - oreBonus;
                 if (score < bestScore)
                 {
                     bestScore = score;
@@ -659,18 +857,23 @@ public class Drone : AllyAI, IOnDeath
 
     int SackMaxSpace => sack != null ? sack.maxSpace : 8;
     int SpaceLeft => SackMaxSpace - cargoSpaceUsed;
+    // One full charge buys EXACTLY one full bag: every space unit swallowed costs 1/maxSpace
+    // energy, so capacity is whichever runs out first — physical room or remaining charge.
+    float CollectCostPerSpace => 1f / SackMaxSpace;
+    int EffectiveSpaceLeft => Mathf.Min(SpaceLeft, Mathf.FloorToInt(energy * SackMaxSpace + 1e-3f));
 
     void TickCollecting()
     {
         if (threatened) { ReleaseCollectTarget(); state = State.Fleeing; return; }
         if (!transform.InDungeon()) { state = State.ReturningToDock; return; }
-        if (SpaceLeft <= 0) { ReleaseCollectTarget(); state = State.ShuttleHome; return; }
+        if (EffectiveSpaceLeft <= 0) { ReleaseCollectTarget(); state = State.ShuttleHome; return; }
 
         if (!HasValidCollectTarget() && !FindCollectTarget())
         {
-            // nothing to grab right now: head home full-ish, or loiter at the rally point
-            if (cargoSpaceUsed > 0 && SpaceLeft <= 2) { state = State.ShuttleHome; return; }
-            HoldAt(RallySpot(), 0.8f);
+            // nothing to grab right now: park at the pad full-ish, or loiter at the rally point
+            // (pathfinding move — a straight HoldAt shove wedges the drone against walls)
+            if (cargoSpaceUsed > 0 && EffectiveSpaceLeft <= 2) { state = State.ShuttleHome; return; }
+            MoveToward(RallySpot(), 0.8f);
             return;
         }
 
@@ -678,12 +881,18 @@ public class Drone : AllyAI, IOnDeath
             : orbTarget != null ? (Vector2)orbTarget.transform.position
             : equipmentTarget != null ? (Vector2)equipmentTarget.transform.position
             : (Vector2)batteryTarget.transform.position;
-        if (MoveToward(tpos, 0.45f)) PickupTarget();
+        // chips are collected by TOUCH: close to actual contact, present the front, swallow
+        float reach = chipTarget != null ? 0.32f : 0.45f;
+        if (MoveToward(tpos, reach))
+        {
+            FaceDir(tpos - (Vector2)transform.position);
+            PickupTarget();
+        }
     }
 
     bool HasValidCollectTarget()
     {
-        if (chipTarget != null && chipTarget.claimedBy == this && chipTarget.SpaceCost <= SpaceLeft) return true;
+        if (chipTarget != null && chipTarget.claimedBy == this && chipTarget.SpaceCost <= EffectiveSpaceLeft) return true;
         chipTarget = null;
         if (orbTarget != null && orbTarget.gameObject.activeInHierarchy && orbTarget.state == OrbScript.OrbState.wild
             && orbTarget.transform.InDungeon()) return true;
@@ -707,7 +916,7 @@ public class Drone : AllyAI, IOnDeath
     bool FindCollectTarget()
     {
         Vector2 pos = transform.position;
-        int spaceLeft = SpaceLeft;
+        int spaceLeft = EffectiveSpaceLeft;
 
         // 1) chips — the bag drone's bread and butter
         float bestSqr = float.MaxValue;
@@ -716,6 +925,7 @@ public class Drone : AllyAI, IOnDeath
         {
             var chip = OreChip.all[k];
             if (chip == null || !chip.transform.InDungeon()) continue;
+            if (chip.Age < OreChip.SettleSeconds) continue;   // let debris visibly land first
             if (chip.claimedBy != null && chip.claimedBy != this) continue;
             if (chip.SpaceCost > spaceLeft) continue;
             float d = ((Vector2)chip.transform.position - pos).sqrMagnitude;
@@ -785,7 +995,7 @@ public class Drone : AllyAI, IOnDeath
         if (chipTarget != null)
         {
             AddCargo(new CargoEntry { kind = 0, space = chipTarget.SpaceCost, sizeClass = chipTarget.sizeClass, element = chipTarget.element });
-            Destroy(chipTarget.gameObject);
+            chipTarget.AbsorbInto(transform);   // visible swallow: ease-out shrink into the front
             chipTarget = null;
         }
         else if (orbTarget != null)
@@ -819,16 +1029,21 @@ public class Drone : AllyAI, IOnDeath
     {
         cargo.Add(e);
         cargoSpaceUsed += e.space;
+        // the bag's tariff: space swallowed is charge spent, so one full charge = one full bag
+        energy = Mathf.Max(0f, energy - e.space * CollectCostPerSpace);
         SetCargoUnits(cargoSpaceUsed);
         if (sack != null) sack.SetFill(cargoSpaceUsed / (float)SackMaxSpace);
     }
 
     void TickShuttleHome()
     {
+        // Run over (bag full or charge spent): park at the dungeon pad and WAIT — drones never
+        // ride the link on their own. The only ways home are the player's teleport (DroneManager's
+        // recall sweep) — pads coming online for the first time mid-dive only deploy, never recall.
         if (!transform.InDungeon()) { state = HasCargo ? State.DumpLoot : State.ReturningToDock; return; }
         Telepad pad = assignedPad != null ? (assignedPad.IsDungeonSide ? assignedPad : assignedPad.Linked) : null;
-        if (pad == null || !pad.IsOperational) { RecallHome(); return; }   // no gate — emergency hop
-        if (MoveToward(pad.transform.position, 0.5f)) RecallHome();
+        Vector2 park = pad != null && pad.IsOperational ? (Vector2)pad.RallyPoint : RallySpot();
+        MoveToward(park, 0.5f);
     }
 
     void TickDumpLoot()
@@ -836,12 +1051,8 @@ public class Drone : AllyAI, IOnDeath
         if (!HasCargo) { state = State.ReturningToDock; return; }
         if (!MoveToward(DroneManager.ScrapPoint, 0.6f)) return;
         DumpCargoAt(DroneManager.ScrapPoint);
-        // player still below and the link stands? go straight back to work
-        if (PortalScript.i != null && PortalScript.i.inDungeon && Charged && assignedPad != null)
-        {
-            Telepad link = assignedPad.IsDungeonSide ? assignedPad : assignedPad.Linked;
-            if (link != null && link.IsOperational) { Deploy(link); return; }
-        }
+        // No solo hop back down — the next deployment rides the player's dive (or a freshly
+        // built pad's TryDeployNow). Dock first anyway: the run spent the whole charge.
         state = State.ReturningToDock;
     }
 
@@ -881,24 +1092,26 @@ public class Drone : AllyAI, IOnDeath
     {
         if (rallyBuffed) return;
         rallyBuffed = true;
-        rallyBuffTimer = 10f;
-        rallyShieldId = CreateShield(5f);
+        rallyBuffTimer = 10f;   // matches the shield's full life: 6s hold + 4s ramp-down
+        // Self-expiring: instant at full strength, holds 6s, then ramps to zero over 4s — no
+        // manual removal, so a recall/state hijack mid-fight can't strand a permanent shield.
+        ShieldUtility.DecayingShield(this, 5f, 6f, 4f);
         GS.Stat(this, "stim", 10f, 1.35f);
     }
 
     void TickRallyFight()
     {
-        rallyBuffTimer -= Time.fixedDeltaTime;
-        if (rallyBuffed && rallyBuffTimer <= 0f && rallyShieldId >= 0)
-        {
-            RemoveShield(rallyShieldId);   // the 10s shield window closes even mid-fight
-            rallyShieldId = -1;
-        }
-
+        // Both dimensions: dungeon rallies at the pad/player, base rallies at the (0,0) refuge.
+        bool dungeon = transform.InDungeon();
         Vector2 rallyCenter = RallySpot();
         float leash = DroneManager.RallyLeash;
-        if (!Charged) { EndRallyFight(State.DeployedTravel); return; }
-        if (!threatened) { EndRallyFight(equipment == DroneEquipment.Drill ? State.Drilling : State.DeployedTravel); return; }
+        if (!Charged) { EndRallyFight(dungeon ? State.DeployedTravel : State.ReturningToDock); return; }
+        if (!threatened)
+        {
+            EndRallyFight(!dungeon ? State.ReturningToDock
+                : equipment == DroneEquipment.Drill ? State.Drilling : State.DeployedTravel);
+            return;
+        }
 
         if (((Vector2)transform.position - rallyCenter).sqrMagnitude > leash * leash)
         {
@@ -912,6 +1125,9 @@ public class Drone : AllyAI, IOnDeath
         {
             FaceDir((Vector2)e.position - (Vector2)transform.position);
             MoveToward(e.position, 0.45f);
+            // stim + shield only once the drone actually closes on its target, not en route
+            if (!rallyBuffed && ((Vector2)e.position - (Vector2)transform.position).sqrMagnitude < 1.2f * 1.2f)
+                ApplyRallyBuff();
             if (drillBit != null)
             {
                 drillBit.SetActiveDrilling(true);
@@ -927,12 +1143,8 @@ public class Drone : AllyAI, IOnDeath
 
     void EndRallyFight(State next)
     {
-        rallyBuffed = false;
-        if (rallyShieldId >= 0)
-        {
-            RemoveShield(rallyShieldId);
-            rallyShieldId = -1;
-        }
+        // The shield decays on its own schedule; rallyBuffed rides out its timer so hopping
+        // out and back into a fight can't stack fresh shields.
         StopDrillVisual();
         state = next;
     }

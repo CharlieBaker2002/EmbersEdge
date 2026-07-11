@@ -116,18 +116,24 @@ public class FocusRouter : MonoBehaviour
         // would randomly win the press over the pylon itself, leaving press-and-drag to start a
         // new cable only ~half the time. Demote CableLink to a fallback: a cable is only picked
         // when nothing else is under the cursor (i.e. clicking it mid-span, away from buildings).
+        // Building bodies (the generic ~1-cell Physic carrying an IClickableCarrier) are demoted the
+        // same way: a unit hovering over a building's footprint — e.g. a docked drone over its
+        // DroneDock — must win the press, or the building randomly swallows the drone's drag-to-assign.
         var hits = WorldHits();
         if (hits.Length > 0)
         {
+            IClickable buildingFallback = null;
             IClickable cableFallback = null;
             foreach (var h in hits)
             {
                 IClickable clickable = ClickableOf(h.collider);
                 if (clickable == null) continue;
                 if (clickable is CableLink) { cableFallback ??= clickable; continue; }
+                if (clickable is IClickableCarrier) { buildingFallback ??= clickable; continue; }
                 DispatchClick(clickable);
                 return;
             }
+            if (buildingFallback != null) { DispatchClick(buildingFallback); return; }
             if (cableFallback != null) { DispatchClick(cableFallback); return; }
             IM.i.CloseCursor();
         }
