@@ -259,10 +259,17 @@ public class CharacterScript : Unit
         }
         else
         {
-            if (ls.shields.Any(x => x.isWeak))
+            bool anyWeak = false;
+            bool anyNotWeak = false;
+            for (int i = 0; i < ls.shields.Count; i++)
+            {
+                if (ls.shields[i].isWeak) anyWeak = true;
+                else anyNotWeak = true;
+            }
+            if (anyWeak)
             {
                 shieldStati[1]?.gameObject.SetActive(true);
-                if (ls.shields.Any(x => !x.isWeak))
+                if (anyNotWeak)
                 {
                     shieldStati[0]?.gameObject.SetActive(false); //could be both types active
                 }

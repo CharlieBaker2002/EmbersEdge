@@ -177,6 +177,8 @@ public class MineField : MonoBehaviour
 
     // ----- runtime objects -----
     Grid grid;
+    Vector2 gridOrigin;
+    bool gridSimple; //identity rotation + unit scale: pure-math cell conversions match the Grid
     Tilemap renderMap, fogMap, collisionMap, floorMap;
     // One overlay tilemap per ore element (index = orb index: 0 white, 1 green, 2 blue, 3 red), drawn above
     // the rock. Each uses its element's emissive material (LitWhite/Green/Blue/Red) so ore reads as a glowing
@@ -320,9 +322,14 @@ public class MineField : MonoBehaviour
 
     // Circle-vs-tile push-out for a point of the given radius. Shared by the body collision and the
     // drill-tip hard stop. Returns the separation that lifts the circle out of any solid cells.
+    // Cell<->world math is done in pure C# here (this runs per body per physics tick): the grid is
+    // code-created, axis-aligned and unit-scale, so it matches Grid.WorldToCell/GetCellCenterWorld.
     Vector2 SeparationAt(Vector2 pos, float radius)
     {
-        Vector3Int c0 = grid.WorldToCell(pos);
+        Vector3Int c0 = gridSimple
+            ? new Vector3Int(Mathf.FloorToInt((pos.x - gridOrigin.x) / cellSize),
+                             Mathf.FloorToInt((pos.y - gridOrigin.y) / cellSize), 0)
+            : grid.WorldToCell(pos);
         if (!InBounds(c0)) return Vector2.zero; // not in the mine region
 
         float half = cellSize * 0.5f;
@@ -337,7 +344,10 @@ public class MineField : MonoBehaviour
             {
                 var cell = new Vector3Int(c0.x + dx, c0.y + dy, 0);
                 if (!IsSolid(cell)) continue;
-                Vector2 cc = grid.GetCellCenterWorld(cell);
+                Vector2 cc = gridSimple
+                    ? new Vector2(gridOrigin.x + (cell.x + 0.5f) * cellSize,
+                                  gridOrigin.y + (cell.y + 0.5f) * cellSize)
+                    : (Vector2)grid.GetCellCenterWorld(cell);
                 Vector2 closest = new Vector2(Mathf.Clamp(pos.x, cc.x - half, cc.x + half),
                                               Mathf.Clamp(pos.y, cc.y - half, cc.y + half));
                 Vector2 d = pos - closest;
@@ -501,6 +511,9 @@ public class MineField : MonoBehaviour
         gridGo.transform.SetParent(transform, false);
         grid = gridGo.AddComponent<Grid>();
         grid.cellSize = new Vector3(cellSize, cellSize, 0f);
+        gridOrigin = grid.CellToWorld(Vector3Int.zero);
+        gridSimple = grid.transform.rotation == Quaternion.identity &&
+                     (grid.transform.lossyScale - Vector3.one).sqrMagnitude < 1e-8f;
 
         floorMap = CreateMap("FloorMap", floorSortingOrder, render: true, collide: false);  // under the ore
         // The revealed floor is UNLIT: it renders at full sprite brightness regardless of the 2D point lights,
@@ -1593,9 +1606,22 @@ public class MineField : MonoBehaviour
         light.targetSortingLayers = _allSortingLayers;   // public setter in URP 17 (no reflection needed)
     }
 
+    static Object chipFxPrefab;
+    static bool chipFxLoaded;
+
+    internal static Object ChipFxPrefab()
+    {
+        if (!chipFxLoaded)
+        {
+            chipFxLoaded = true;
+            chipFxPrefab = Resources.Load("ChipFX");
+        }
+        return chipFxPrefab;
+    }
+
     void SpawnChipFX(Vector3Int cell)
     {
-        var fx = Resources.Load("ChipFX");
+        var fx = ChipFxPrefab();
         if (fx == null) return;
         Object.Instantiate(fx, grid.GetCellCenterWorld(cell),
             Quaternion.Euler(0f, 0f, Random.Range(0f, 360f)), transform);

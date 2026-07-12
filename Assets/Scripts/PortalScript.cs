@@ -478,7 +478,7 @@ public class PortalScript : MonoBehaviour
                 // var man = emb.trailPS[0].main; man.simulationSpeed = 3f;
                 // em = emb.trailPS[1].emission; em.rateOverDistanceMultiplier *= 3f; 
                 // man = emb.trailPS[1].main; man.simulationSpeed = 3f;
-                yield return new WaitForFixedUpdate();
+                yield return GS.WFFU;
             }
         }
     }

@@ -753,7 +753,7 @@ public class Drone : AllyAI, IOnDeath
         if (!transform.InDungeon())
         {
             // (0,0) is the base RALLY POINT — is anything pressing it right now?
-            baseZoneHot = GS.FindEnemies(tag, Vector2.zero, DroneManager.RallyLeash, false, false).Count > 0;
+            baseZoneHot = DroneManager.BaseZoneHot(tag); //shared fleet-wide probe, 0.3s TTL
             threatened = foes.Count > 0;
             if (!threatened && baseZoneHot)
             {
@@ -1343,12 +1343,13 @@ public class Drone : AllyAI, IOnDeath
         // drill: deconstruct marked ore — unless the whole drill fleet is reserved by telepad
         // requests (they save their charge for the dive; see DroneManager.BaseMiningAllowed)
         if (equipment == DroneEquipment.Drill && !transform.InDungeon()
-            && DroneManager.BaseMiningAllowed() && OreMarks.Any)
+            && DroneManager.BaseMiningAllowedCached() && OreMarks.Any)
         {
             state = State.MineBaseOre;
             return true;
         }
-        if (equipment == DroneEquipment.None && Peaceful() && FindRepairTarget() != null)
+        if (equipment == DroneEquipment.None && Peaceful()
+            && DroneManager.RepairWorkAvailable(PathZone.AtBase(transform.position)))
         {
             state = State.RepairSweep;
             return true;
@@ -1807,7 +1808,7 @@ public class Drone : AllyAI, IOnDeath
             state = State.ReturningToDock;
             return;
         }
-        if (!DroneManager.BaseMiningAllowed())
+        if (!DroneManager.BaseMiningAllowedCached())
         {
             StopDrillVisual();
             ReleaseOre();

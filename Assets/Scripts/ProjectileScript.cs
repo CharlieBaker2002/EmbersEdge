@@ -57,7 +57,7 @@ public class ProjectileScript : MonoBehaviour, IOnCollide
             {
                 lifeScript.OnDie();
             }
-            else
+            else if (!SpawnManager.TryReleaseProjectile(gameObject))
             {
                 Destroy(gameObject);
             }
@@ -248,6 +248,23 @@ public class ProjectileScript : MonoBehaviour, IOnCollide
 
     public void DestroyImmed()
     {
-        Destroy(gameObject);
+        if (!SpawnManager.TryReleaseProjectile(gameObject))
+        {
+            Destroy(gameObject);
+        }
+    }
+
+    /// <summary>Pool-reuse seam: restart the flight bookkeeping a fresh Instantiate would get
+    /// from Awake — hit counter and victim list (slot 0 stays this body's own id).</summary>
+    public void ResetFlight()
+    {
+        hit = 0;
+        if (enemiesHit != null)
+        {
+            for (int i = 1; i < enemiesHit.Length; i++)
+            {
+                enemiesHit[i] = default;
+            }
+        }
     }
 }

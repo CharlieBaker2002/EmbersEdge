@@ -217,7 +217,7 @@ public class BM : MonoBehaviour //Building Manager
         IM.i.pi.Player.Interact.Enable();
         while (redBuilding != null)
         {
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
             if (redBuilding == null) yield break;
 
             if (dungeonMode)

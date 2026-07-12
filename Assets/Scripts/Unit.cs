@@ -275,7 +275,7 @@ public class Unit : MonoBehaviour, IClickable
                         s.value1 = 11;
                         s.sliderValue = 1f;
                         AS.prepared = false;
-                        Instantiate(Resources.Load<GameObject>("StaticFX"), transform.position,Quaternion.Euler(90f,0f,0f), transform).GetComponent<Follower>().t = s.transform;
+                        Instantiate(GS.Res("StaticFX"), transform.position,Quaternion.Euler(90f,0f,0f), transform).GetComponent<Follower>().t = s.transform;
                         ls.ChangeOverTime(-0.4f * ls.maxHp,5f,2);
                         UpdateActRate();
                     }
@@ -437,7 +437,7 @@ public class Unit : MonoBehaviour, IClickable
                     s.value1 = 11; //Such that it activated in the status & visually shown as so.
                     s.sliderValue = 1f;
                     AS.prepared = false;
-                    Instantiate(Resources.Load<GameObject>("StaticFX"), transform.position, Quaternion.Euler(90f,0f,0f), transform).GetComponent<Follower>().t = s.transform;
+                    Instantiate(GS.Res("StaticFX"), transform.position, Quaternion.Euler(90f,0f,0f), transform).GetComponent<Follower>().t = s.transform;
                     ls.ChangeOverTime(-0.4f * ls.maxHp,5f,2,false);
                     UpdateActRate();
                     return s;
@@ -540,7 +540,7 @@ public class Unit : MonoBehaviour, IClickable
                 if (!ls.hasDied)
                 {
                     ls.Change(-2f * GS.Era1(),2);
-                    Instantiate(Resources.Load<GameObject>("StaticFXBurst"), transform.position, Quaternion.Euler(90f,45f,0f), GS.FindParent(GS.Parent.misc));
+                    Instantiate(GS.Res("StaticFXBurst"), transform.position, Quaternion.Euler(90f,45f,0f), GS.FindParent(GS.Parent.misc));
                     UpdateActRate();
                 }
                 break;

@@ -491,28 +491,51 @@ public class EnergyManager : MonoBehaviour
         
     }
     
+    //reused across CalculateShortestRoutes calls (main thread only, cleared before every use)
+    readonly List<EmberConnector> routeConnectors = new();
+    readonly HashSet<EmberConnector> routeConnectorSet = new();
+    readonly Dictionary<EmberConnector, float> routeDistances = new();
+    readonly Dictionary<EmberConnector, EmberConnector> routePrevious = new();
+    readonly HashSet<EmberConnector> routeUnvisited = new();
+
+    void AddRouteConnector(EmberConnector c)
+    {
+        if (routeConnectorSet.Add(c))
+        {
+            routeConnectors.Add(c);
+        }
+    }
+
     // Fixed CalculateShortestRoutes method
     List<List<EmberConnector>> CalculateShortestRoutes(List<EmberConnector> starts, List<EmberConnector> ends)
     {
         var allPaths = new List<(List<EmberConnector> path, float distance)>();
-        
-        // Get all connectors in the game
-        var allConnectors = emberStores.Select(x => x.connect)
-            .Concat(constructors.Select(x => x.connect))
-            .Concat(Extractor.extractors.Select(x => x.connect))
-            .Concat(EmberCannon.ecs.Select(x => x.connect))
-            .Concat(emberGens.Where(g => g != null && g.connect != null).Select(g => g.connect))
-            .Distinct()
-            .ToList();
-        
+
+        // Get all connectors in the game (same order + first-occurrence dedupe as the old
+        // Concat().Distinct() chain, without rebuilding LINQ enumerators per ember event)
+        routeConnectors.Clear();
+        routeConnectorSet.Clear();
+        foreach (var x in emberStores) AddRouteConnector(x.connect);
+        foreach (var x in constructors) AddRouteConnector(x.connect);
+        foreach (var x in Extractor.extractors) AddRouteConnector(x.connect);
+        foreach (var x in EmberCannon.ecs) AddRouteConnector(x.connect);
+        foreach (var g in emberGens)
+        {
+            if (g != null && g.connect != null) AddRouteConnector(g.connect);
+        }
+        var allConnectors = routeConnectors;
+
         // For each start connector
         foreach (var start in starts)
         {
             // Run Dijkstra's algorithm from this start
-            var distances = new Dictionary<EmberConnector, float>();
-            var previous = new Dictionary<EmberConnector, EmberConnector>();
-            var unvisited = new HashSet<EmberConnector>();
-            
+            var distances = routeDistances;
+            var previous = routePrevious;
+            var unvisited = routeUnvisited;
+            distances.Clear();
+            previous.Clear();
+            unvisited.Clear();
+
             // Initialize all connectors
             foreach (var connector in allConnectors)
             {
@@ -637,24 +660,30 @@ public class EnergyManager : MonoBehaviour
         // start once Ember's Edge goes quiet again (eeactive is cleared after the wave completes).
         if (SpawnManager.eeactive) return;
 
-        for (int x = 0; x < bs.Count; x++)
+        // One pass is enough: Construct() flips c.constructing synchronously, so a constructor
+        // can dispatch at most once per frame anyway (the old bs.Count outer loop was dead weight).
+        foreach (Constructor c in constructors)
         {
-            foreach (Constructor c in constructors)
+            if (c.constructing || c.connect.ember <= 0 || c.connect.ember + c.connect.emberTravel <= 0) continue;
+
+            // Build in the order placed: the earliest-added task still needing work,
+            // finishing it before moving on (tasks are appended in placement order).
+            Building task = null;
+            for (int i = 0; i < c.tasks.Count; i++)
             {
-                if (c.constructing || c.connect.ember <= 0 || c.connect.ember + c.connect.emberTravel <= 0) continue;
-
-                // Build in the order placed: the earliest-added task still needing work,
-                // finishing it before moving on (tasks are appended in placement order).
-                var task = c.tasks
-                    .FirstOrDefault(t => t.numIconsTrue > 0);
-
-                if (task == null) continue;           // nothing it can build right now
-
-                c.Construct(task);
-                emberCount[task]++;                   // track fairness
-                task.numIconsTrue--;
-                if (task.numIconsTrue == 0) RemoveBuilding(task);
+                if (c.tasks[i].numIconsTrue > 0)
+                {
+                    task = c.tasks[i];
+                    break;
+                }
             }
+
+            if (task == null) continue;           // nothing it can build right now
+
+            c.Construct(task);
+            emberCount[task]++;                   // track fairness
+            task.numIconsTrue--;
+            if (task.numIconsTrue == 0) RemoveBuilding(task);
         }
     }
     

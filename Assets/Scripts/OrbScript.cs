@@ -28,6 +28,13 @@ public class OrbScript : MonoBehaviour
     [HideInInspector] public float depWig1;       // primary wiggle amplitude (2-lobe harmonic)
     [HideInInspector] public float depWig2;       // secondary wiggle amplitude (3-lobe harmonic)
 
+    [HideInInspector] public Transform tr; //cached: OrbManager touches thousands of orbs per frame
+
+    void Awake()
+    {
+        tr = transform;
+    }
+
     void Start()
     {
         theta = Random.Range(0f, 2 * Mathf.PI);

@@ -78,7 +78,7 @@ public class Seeking : MonoBehaviour
                 }
                 dir *= 1 + acceleration * (1 - dist / seekDistance);
                 AS.TryAddForce(force * Time.fixedDeltaTime * dir, true);
-                yield return new WaitForFixedUpdate();
+                yield return GS.WFFU;
             }
         }
         if (killOnLostTarget!=null)
@@ -91,9 +91,10 @@ public class Seeking : MonoBehaviour
     
     IEnumerator FindNew()
     {
+        var wait = new WaitForSeconds(seekRefresh);
         while (target == null)
         {
-            yield return new WaitForSeconds(seekRefresh);
+            yield return wait;
             target = GS.FindNearestEnemy(tag,transform.position, seekDistance,false);
         }
         StartCoroutine(Seek());

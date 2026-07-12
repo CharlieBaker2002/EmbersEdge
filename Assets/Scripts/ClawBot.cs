@@ -110,7 +110,7 @@ public class ClawBot : AllyAI, IOnCollide
             {
                 MakeClaw(Random.Range(0, 2));
             }
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
     }
 
@@ -140,7 +140,7 @@ public class ClawBot : AllyAI, IOnCollide
             li.pointLightOuterRadius = Mathf.Lerp(li.pointLightOuterRadius, 2f, Time.fixedDeltaTime * 2 * i);
             li.pointLightInnerRadius += Time.fixedDeltaTime;
             SetSprite(i);
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
         yield return new WaitForSeconds(0.1f);
         for (float i = 0; i < 1f; i += Time.fixedDeltaTime)
@@ -148,7 +148,7 @@ public class ClawBot : AllyAI, IOnCollide
             li.pointLightOuterRadius = Mathf.Lerp(li.pointLightOuterRadius, 0.5f, Time.fixedDeltaTime * i);
             li.pointLightInnerRadius = Mathf.Max(0f,li.pointLightInnerRadius - 0.5f * Time.fixedDeltaTime);
             SetSprite(i * 0.5f);
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
         li.pointLightOuterRadius = 0.5f;
         li.pointLightInnerRadius = 0f;

@@ -66,7 +66,7 @@ public class E2_4 : Unit, IRoomUnit
                     float steerT = 0.4f;
                     while ((transform.position - point).sqrMagnitude > 1 && guard > 0f)
                     {
-                        yield return new WaitForFixedUpdate();
+                        yield return GS.WFFU;
                         guard -= Time.fixedDeltaTime;
                         steerT -= Time.fixedDeltaTime;
                         if(Random.Range(0,100) == 0 && target != null)
@@ -106,7 +106,7 @@ public class E2_4 : Unit, IRoomUnit
                         break;
                     }
                     AS.TryAddForceToward(T.position, 7*actRate, 5, 3);
-                    yield return new WaitForFixedUpdate();
+                    yield return GS.WFFU;
                 }
                 if(Random.Range(0,5) < 2) //40% chance
                 {
@@ -126,7 +126,7 @@ public class E2_4 : Unit, IRoomUnit
                             break;
                         }
                         AS.TryAddForceToward(T.position, 15 * actRate, 8, 0);
-                        yield return new WaitForFixedUpdate();
+                        yield return GS.WFFU;
                     }
                     AS.Stop();
                     yield return new WaitForSeconds(0.35f);

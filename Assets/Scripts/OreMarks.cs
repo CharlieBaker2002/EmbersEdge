@@ -16,7 +16,11 @@ public static class OreMarks
     static readonly Color MarkTint = new Color(0.5f, 0.5f, 0.55f, 1f);
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() => marked.Clear();   // no-domain-reload: statics survive play-stop
+    static void ResetStatics()   // no-domain-reload: statics survive play-stop
+    {
+        marked.Clear();
+        lastPruneFrame = -1;
+    }
 
     public static bool IsMarked(Ore o) => o != null && marked.Contains(o);
 
@@ -31,11 +35,19 @@ public static class OreMarks
         }
     }
 
+    static int lastPruneFrame = -1;
+
     public static bool Any
     {
         get
         {
-            Prune();
+            // Any is polled per drill drone per tick — prune once per rendered frame is plenty
+            // (ClaimFor still prunes on every call before handing out a target).
+            if (Time.frameCount != lastPruneFrame)
+            {
+                lastPruneFrame = Time.frameCount;
+                Prune();
+            }
             return marked.Count > 0;
         }
     }

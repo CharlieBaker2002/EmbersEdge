@@ -49,24 +49,27 @@ public class TurretScript : Building
 
     void Update()
     {
-        if (ammo == 0)
+        float animSpeed = ammo == 0 ? 0f : 1f;
+        if (anim.speed != animSpeed)
         {
-            anim.speed = 0;
-        }
-        else
-        {
-            anim.speed = 1;
+            anim.speed = animSpeed;
         }
         timer -= Time.deltaTime;
         waitT -= Time.deltaTime;
-        if (waitT <= 0f || T == null)
+        if (T == null)
         {
-             T = GS.FindNearestEnemy(tag, transform.position, dRadius,false);
-            waitT = resetT;
-            if(T == null)
+            if (waitT > 0f) //no target: retry on the timer instead of searching every frame
             {
-                waitT = resetT/5;
+                return;
             }
+            T = GS.FindNearestEnemy(tag, transform.position, dRadius,false);
+            waitT = T == null ? resetT/5 : resetT;
+            return;
+        }
+        if (waitT <= 0f)
+        {
+            T = GS.FindNearestEnemy(tag, transform.position, dRadius,false);
+            waitT = T == null ? resetT/5 : resetT;
             return;
         }
         if(Vector2.Distance(T.position, transform.position) > dRadius)
@@ -96,9 +99,10 @@ public class TurretScript : Building
         {
             return;
         }
-        var p = Instantiate(pPrefabs[level], shootPoint.position, transform.rotation, GS.FindParent(s));
-        p.GetComponent<ProjectileScript>().SetValues((Vector2) transform.up + Random.insideUnitCircle * inaccuracy, tag);
-        p.GetComponent<ProjectileScript>().speed *= 1 + level * 0.35f;
+        var p = SpawnManager.instance.SpawnProjectile(pPrefabs[level], shootPoint.position, transform.rotation, GS.FindParent(s));
+        var proj = p.GetComponent<ProjectileScript>();
+        proj.SetValues((Vector2) transform.up + Random.insideUnitCircle * inaccuracy, tag);
+        proj.speed *= 1 + level * 0.35f;   // after SetValues, matching the original order (launch velocity unchanged)
         AmmoCheck();
     }
 

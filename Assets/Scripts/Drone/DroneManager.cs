@@ -88,10 +88,7 @@ public class DroneManager : MonoBehaviour
     /// <summary>Standing drill-drone demand across every base pad's request slots.</summary>
     public static int TelepadDrillDemand()
     {
-        int n = 0;
-        foreach (Building b in Building.buildings)
-            if (b is Telepad tp && !tp.IsDungeonSide && tp.IsOperational) n += tp.reqDrill;
-        return n;
+        return TelepadNetwork.BaseDrillDemand();
     }
 
     static int DrillDroneCount()
@@ -127,7 +124,64 @@ public class DroneManager : MonoBehaviour
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() => i = null;
+    static void ResetStatics()
+    {
+        i = null;
+        jobCacheTime = float.NaN;
+        baseZoneHotAt = float.NegativeInfinity;
+    }
+
+    // ---- shared job-board caches: every idle drone polls the same questions every fixed tick,
+    // so answer them once per tick (and once per 0.3s for the rally probe) for the whole fleet ----
+    static float jobCacheTime = float.NaN;
+    static bool cachedRepairAtBase, cachedRepairAway, cachedBaseMining;
+    static float baseZoneHotAt = float.NegativeInfinity;
+    static bool baseZoneHotVal;
+
+    static void EnsureJobCaches()
+    {
+        if (Time.fixedTime == jobCacheTime) return;
+        jobCacheTime = Time.fixedTime;
+        cachedBaseMining = BaseMiningAllowed();
+        cachedRepairAtBase = false;
+        cachedRepairAway = false;
+        var list = Building.buildings;
+        for (int k = 0; k < list.Count; k++)
+        {
+            Building b = list[k];
+            if (b == null || !b.gameObject.activeInHierarchy || !b.NeedsDroneRepair) continue;
+            if (PathZone.AtBase(b.transform.position)) cachedRepairAtBase = true;
+            else cachedRepairAway = true;
+            if (cachedRepairAtBase && cachedRepairAway) break;
+        }
+    }
+
+    /// <summary>Per-tick cached <see cref="BaseMiningAllowed"/> for job-board polling.</summary>
+    public static bool BaseMiningAllowedCached()
+    {
+        EnsureJobCaches();
+        return cachedBaseMining;
+    }
+
+    /// <summary>Is there ANY building needing drone repair on this side? Existence only —
+    /// RepairSweep still runs its own nearest-target scan once dispatched.</summary>
+    public static bool RepairWorkAvailable(bool atBase)
+    {
+        EnsureJobCaches();
+        return atBase ? cachedRepairAtBase : cachedRepairAway;
+    }
+
+    /// <summary>Anything pressing the base rally point (0,0) right now? One shared probe with a
+    /// 0.3s TTL instead of one identical physics query per drone per threat tick.</summary>
+    public static bool BaseZoneHot(string tag)
+    {
+        if (Time.time - baseZoneHotAt >= 0.3f)
+        {
+            baseZoneHotAt = Time.time;
+            baseZoneHotVal = GS.FindEnemies(tag, Vector2.zero, RallyLeash, false, false).Count > 0;
+        }
+        return baseZoneHotVal;
+    }
 
     public static DroneManager Ensure()
     {

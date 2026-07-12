@@ -26,7 +26,7 @@ public class E2_7P0 : MonoBehaviour
         {
             vel = Mathf.Lerp(vel, 0f, Time.fixedDeltaTime);
             transform.position += Time.fixedDeltaTime * vel * transform.up;
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
         Vector3 dir = (pos - (Vector2)transform.position) * 0.9f;
         float dist = 1000000f;
@@ -40,7 +40,7 @@ public class E2_7P0 : MonoBehaviour
             }
             dist = temp;
             transform.position += t * Time.fixedDeltaTime * dir;
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
     }
 
@@ -80,7 +80,7 @@ public class E2_7P0 : MonoBehaviour
         for(float i = 0f; i < 0.5f; i += Time.fixedDeltaTime)
         {
             sr.color = Color.Lerp(sr.color, Color.clear, 3*Time.fixedDeltaTime);
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
         Destroy(gameObject);
     }

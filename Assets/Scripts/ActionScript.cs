@@ -32,6 +32,13 @@ public class ActionScript : MonoBehaviour
     public float speedCoef = 1f;
 
     private Dictionary<EntityId, (Vector2,Vector2,bool)> wallNormals = new(); //contact 1, contact 2, dontDeleteBool
+    static readonly List<EntityId> wallNormalScratch = new(); //FixedUpdate-transient key snapshot, main thread only
+    static readonly string[] ccPush = { "push" };
+    static readonly string[] ccStunRoot = { "stun", "root" };
+    static readonly string[] ccStunRestrict = { "stun", "restrict" };
+    static readonly string[] ccRestrictStun = { "restrict", "stun" };
+    static readonly string[] ccRoot = { "root" };
+    static readonly WaitForSeconds waitTenth = new WaitForSeconds(0.1f);
     private Dictionary<EntityId, float> contactIDs = new Dictionary<EntityId, float>();
     private List<(EntityId, float)> recentlyHit = new();
     [HideInInspector]
@@ -137,10 +144,17 @@ public class ActionScript : MonoBehaviour
                     vel = RemoveComponent(vel, v.Item2);
                 }
             }
-            List<EntityId> keys = new List<EntityId>(wallNormals.Keys);
-            foreach(EntityId key in keys)
+            if (wallNormals.Count > 0)
             {
-                wallNormals[key] = (wallNormals[key].Item1, wallNormals[key].Item2,false);
+                wallNormalScratch.Clear();
+                foreach (EntityId key in wallNormals.Keys)
+                {
+                    wallNormalScratch.Add(key);
+                }
+                foreach (EntityId key in wallNormalScratch)
+                {
+                    wallNormals[key] = (wallNormals[key].Item1, wallNormals[key].Item2,false);
+                }
             }
         }
         rb.linearVelocity = vel;
@@ -341,7 +355,7 @@ public class ActionScript : MonoBehaviour
                             float dmg = sharpness;
                             if (collision.rigidbody.CompareTag(tag))
                             {
-                                if (!CheckCCs(new string[] { "push" }))
+                                if (!CheckCCs(ccPush))
                                 {
                                     return;
                                 }
@@ -378,7 +392,7 @@ public class ActionScript : MonoBehaviour
                         // hands the CC on (an ability shove cascading through a crowd). A casual
                         // walk-bump or a wall-bounce into a neighbour flags nothing — flagging every
                         // contact made crowds chain friendly-fire damage out of nowhere.
-                        if (!building && CheckCCs(new string[] { "push" })) oAS.AddPush(0.6f, true, Vector2.zero);
+                        if (!building && CheckCCs(ccPush)) oAS.AddPush(0.6f, true, Vector2.zero);
                     }
                 }
             }
@@ -416,7 +430,7 @@ public class ActionScript : MonoBehaviour
         float dmg = sharpness;
         if (collision.rigidbody.CompareTag(tag)) // ramming a same-team (e.g. allied) building
         {
-            if (!CheckCCs(new string[] { "push" })) return; // only while being pushed
+            if (!CheckCCs(ccPush)) return; // only while being pushed
             dmg *= 0.5f;
         }
 
@@ -577,6 +591,11 @@ public class ActionScript : MonoBehaviour
         if(pushable || !negative)
         {
             forceP *= 2; //now i've set to fixed update
+            if (!negative && duration <= Time.fixedDeltaTime)
+            {
+                TryAddForce(forceP, true); //single-tick push: identical to one AddPushE iteration, no coroutine
+                return;
+            }
             StartCoroutine(AddPushE(duration, negative, forceP));
         }
     }
@@ -591,7 +610,7 @@ public class ActionScript : MonoBehaviour
         {
             duration -= Time.fixedDeltaTime;
             TryAddForce(forceP,!negative);
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
     }
 
@@ -619,7 +638,7 @@ public class ActionScript : MonoBehaviour
         // shove the target exactly like the non-PS body-collision path does (line ~315), minus the
         // damage — and minus the push CC unless WE are under a harmful push ourselves: a drill bump
         // is locomotion, and flagging its victims let them chain friendly-fire into their teammates
-        if (!oAS.building && CheckCCs(new string[] { "push" })) oAS.AddPush(0.6f, true, Vector2.zero);
+        if (!oAS.building && CheckCCs(ccPush)) oAS.AddPush(0.6f, true, Vector2.zero);
         oAS.TryAddForce(mass * relVel * normal * 30f, false);
 
         // recoil the wielder a bit — the "bump" feel of ramming, but it takes no damage
@@ -699,11 +718,11 @@ public class ActionScript : MonoBehaviour
     {
         for (int i = 0; i < Mathf.RoundToInt(10 * t); i++)
         {
-            if (CheckCCs(new string[] { "stun", "root" }) == false)
+            if (CheckCCs(ccStunRoot) == false)
             {
                 rb.linearVelocity *= x;
                 i++;
-                yield return new WaitForSeconds(0.1f);
+                yield return waitTenth;
             }
             else
             {
@@ -727,7 +746,7 @@ public class ActionScript : MonoBehaviour
         {
             t -= Time.fixedDeltaTime;
             transform.up = Vector2.Lerp(transform.up, dir, coef * Time.fixedDeltaTime * 0.7f);
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
     }
 
@@ -747,7 +766,7 @@ public class ActionScript : MonoBehaviour
         while (t > 0f)
         {
             transform.up = Vector2.Lerp(transform.up, dir, spinCoef * Time.fixedDeltaTime * 0.5f);
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
             t -= Time.fixedDeltaTime;
         }
     }
@@ -773,12 +792,12 @@ public class ActionScript : MonoBehaviour
                 Vector2 dir = UnityEngine.Random.insideUnitCircle.normalized;
                 while (t > 0f)
                 {
-                    if (CheckCCs(new string[] { "stun", "root" }) == false)
+                    if (CheckCCs(ccStunRoot) == false)
                     {
                         transform.up = Vector2.Lerp(transform.up, dir, Mathf.Min(1, coef * Time.fixedDeltaTime * 0.5f));
                     }
                     t -= Time.fixedDeltaTime;
-                    yield return new WaitForFixedUpdate();
+                    yield return GS.WFFU;
                 }
             }
         }
@@ -809,7 +828,7 @@ public class ActionScript : MonoBehaviour
                     yield break;
                 }
                 t -= Time.fixedDeltaTime;
-                yield return new WaitForFixedUpdate();
+                yield return GS.WFFU;
             }
         }
     }
@@ -952,7 +971,7 @@ public class ActionScript : MonoBehaviour
                 rb.linearVelocity = PS.startDirection * speedCoef;
             }
         }
-        else if (c.name == "stun" && !CheckCCs(new string[] { "stun", "restrict" }))
+        else if (c.name == "stun" && !CheckCCs(ccStunRestrict))
         {
             canAct = true;
         }
@@ -960,11 +979,11 @@ public class ActionScript : MonoBehaviour
         {
             mass /= c.value;
         }
-        else if (c.name == "root" && !CheckCCs(new string[] { "root"}))
+        else if (c.name == "root" && !CheckCCs(ccRoot))
         {
             rooted = false;
         }
-        else if (c.name == "restrict" && !CheckCCs(new string[] { "restrict", "stun" }))
+        else if (c.name == "restrict" && !CheckCCs(ccRestrictStun))
         {
             canAct = true;
         }

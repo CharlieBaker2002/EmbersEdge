@@ -77,7 +77,7 @@ public class E2_0 : Unit, IOnCollide
             {
                 AS.TryAddForce(20f * actRate * t * t * dir, true);
             }
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
         anim.SetBool(Pounce1, false);
         AS.Stop();

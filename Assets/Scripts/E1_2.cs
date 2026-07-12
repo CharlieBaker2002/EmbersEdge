@@ -55,7 +55,7 @@ public class E1_2 : Unit, IOnCollide
         Vector2 aim = MinePath.AimPoint(target, transform.position);
         Vector2 y = (aim - (Vector2)transform.position).normalized;
         // straight-line waggle only when the BODY fits the line (size); else ride the field
-        if (!MinePath.LineOfSightWide(transform.position, aim, size) && pathDir != Vector2.zero)
+        if (pathDir != Vector2.zero && !MinePath.LineOfSightWide(transform.position, aim, size))
         {
             y = pathDir;
         }

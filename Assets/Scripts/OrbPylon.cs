@@ -61,7 +61,7 @@ public class OrbPylon : Building
                     yield return StartCoroutine(Obtain());
                 }
             }
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
     }
 

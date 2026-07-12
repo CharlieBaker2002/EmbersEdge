@@ -93,7 +93,7 @@ public class E1_5 : Unit
         {
             timer -= Time.fixedDeltaTime;
             AS.TryAddForceToward(t.position, 18f * actRate, 3f, 1f);
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
     }
     

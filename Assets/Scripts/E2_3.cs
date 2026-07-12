@@ -36,7 +36,7 @@ public class E2_3 : Unit //Either shoots down-grav proj or up-grav projectiles b
                 {
                     d = t.position + (transform.position.y > t.position.y ? new Vector3(0f, dist) : new Vector3(0f, -dist)) - transform.position;
                     AS.TryAddForce(2f * actRate * GS.VectInRange(d, 0f, dist), true);
-                    yield return new WaitForFixedUpdate();
+                    yield return GS.WFFU;
                     if (Time.time - tim > dist * InvActRate())
                     {
                         break;
@@ -68,7 +68,7 @@ public class E2_3 : Unit //Either shoots down-grav proj or up-grav projectiles b
                     if (t != null)
                     {
                         AS.TryAddForceToward(t.position + ((transform.position.y > t.position.y) ? new Vector3(0f, dist) : new Vector3(0f, -dist)), 12f * actRate, 3f, 1f);
-                        yield return new WaitForFixedUpdate();
+                        yield return GS.WFFU;
                     }
                     else
                     {

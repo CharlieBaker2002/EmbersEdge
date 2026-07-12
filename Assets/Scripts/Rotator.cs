@@ -65,7 +65,7 @@ public class Rotator : MonoBehaviour
         started = true;
         for(float t = 2f; t > 0f; t-= Time.fixedDeltaTime)
         {
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
             omega += Time.fixedDeltaTime * 3000;
         }
     }

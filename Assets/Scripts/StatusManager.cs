@@ -134,7 +134,7 @@ public class StatusManager : MonoBehaviour
         u.stati.First(x => x.ind == 15).sliderValue = 1;
         u.AS.prepared = false;
         Transform z = u.stati.First(x => x.ind == 15).transform;
-        Instantiate(Resources.Load<GameObject>("StaticFX"), u.transform.position,Quaternion.Euler(90f,0f,0f), u.transform).GetComponent<Follower>().t = z;
+        Instantiate(GS.Res("StaticFX"), u.transform.position,Quaternion.Euler(90f,0f,0f), u.transform).GetComponent<Follower>().t = z;
         u.ls.ChangeOverTime(-0.4f * u.ls.maxHp,5f,2);
 
         lightning = true;

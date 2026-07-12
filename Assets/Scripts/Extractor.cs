@@ -144,7 +144,7 @@ public class Extractor : Building
             {
                 l[x].Light();
                 l[x].gameObject.SetActive(true);
-                yield return new WaitForFixedUpdate();
+                yield return GS.WFFU;
                 hitPos += (Vector3)v;
             }
         }

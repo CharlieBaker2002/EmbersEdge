@@ -412,10 +412,15 @@ public class BasePathManager : MonoBehaviour
 
     // ------------------------------------------------------------------ phase-walkers
 
-    readonly List<(float d2, Transform t)> phaseScratch = new List<(float, Transform)>();
     /// <summary>How many nearest candidates get a line test before the phased answer gives up —
     /// past that, being walled off from everything near means the material fallback should run.</summary>
     const int PhaseLineChecks = 6;
+
+    // Only the PhaseLineChecks nearest candidates are ever line-tested, so keep just those: a
+    // fixed ascending buffer filled during the scan replaces building + sorting the full list.
+    readonly (float d2, Transform t)[] phaseBest = new (float, Transform)[PhaseLineChecks];
+    int phaseBestCount;
+    int footprintHealFrame = -1;   // several phasers (x up to 3 fams) per frame share one heal pass
 
     // One family's phased answer: the nearest candidate by STRAIGHT LINE whose segment crosses no
     // immaterial wall. No field, no wander, no crowding — a phaser's metric is the ruler, and its
@@ -425,8 +430,7 @@ public class BasePathManager : MonoBehaviour
     // field distances are in.
     bool EvalPhaseFam(Fam fam, Vector2 pos, ref float bestEff, ref Transform target, ref Vector2 dir)
     {
-        var list = phaseScratch;
-        list.Clear();
+        phaseBestCount = 0;
         if (fam != Fam.Bld && CharacterScript.CS != null && PathZone.AtBase(CharacterScript.CS.transform.position))
             AddPhaseCandidate(pos, CharacterScript.CS.transform);
         if (fam == Fam.All)
@@ -441,25 +445,27 @@ public class BasePathManager : MonoBehaviour
                 }
         }
         if (fam != Fam.Char)
+        {
+            bool heal = footprintHealFrame != Time.frameCount;
             for (int b = 0; b < Building.buildings.Count; b++)
             {
                 var bld = Building.buildings[b];
                 if (bld == null || !bld.gameObject.activeInHierarchy) continue;
-                bld.EnsurePathFootprintCurrent();
+                if (heal) bld.EnsurePathFootprintCurrent();
                 if (!bld.TryGetPathFootprint(out _, out _)) continue;
                 AddPhaseCandidate(pos, bld.transform);
             }
-        if (list.Count == 0) return false;
-        list.Sort((x, y) => x.d2.CompareTo(y.d2));
-        int checks = Mathf.Min(list.Count, PhaseLineChecks);
-        for (int k = 0; k < checks; k++)
+            if (heal) footprintHealFrame = Time.frameCount;
+        }
+        if (phaseBestCount == 0) return false;
+        for (int k = 0; k < phaseBestCount; k++)
         {
-            Vector2 to = list[k].t.position;
+            Vector2 to = phaseBest[k].t.position;
             if (BaseBlockMap.SegmentCrossesImmaterialWall(pos, to)) continue;   // force-field span in the way
-            float score = Mathf.Sqrt(list[k].d2) / BaseBlockMap.CellSize;
-            if (score >= bestEff) return false;   // sorted — no later candidate can beat this either
+            float score = Mathf.Sqrt(phaseBest[k].d2) / BaseBlockMap.CellSize;
+            if (score >= bestEff) return false;   // ascending — no later candidate can beat this either
             bestEff = score;
-            target = list[k].t;
+            target = phaseBest[k].t;
             Vector2 d = to - pos;
             dir = d.sqrMagnitude > 1e-4f ? d.normalized : Vector2.zero;
             return true;
@@ -468,7 +474,19 @@ public class BasePathManager : MonoBehaviour
     }
 
     void AddPhaseCandidate(Vector2 pos, Transform t)
-        => phaseScratch.Add((((Vector2)t.position - pos).sqrMagnitude, t));
+    {
+        float d2 = ((Vector2)t.position - pos).sqrMagnitude;
+        var best = phaseBest;
+        if (phaseBestCount == best.Length && d2 >= best[phaseBestCount - 1].d2) return;
+        int i = phaseBestCount < best.Length ? phaseBestCount : best.Length - 1;
+        while (i > 0 && best[i - 1].d2 > d2)
+        {
+            best[i] = best[i - 1];
+            i--;
+        }
+        best[i] = (d2, t);
+        if (phaseBestCount < best.Length) phaseBestCount++;
+    }
 
     // ------------------------------------------------------------------ steering-only API
 

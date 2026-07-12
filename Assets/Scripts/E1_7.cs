@@ -88,7 +88,7 @@ public class E1_7 : Unit
                       + tang * (0.065f * near);
         // orbit only when the BODY has a clear line to the target (size-wide, not sight-wide) —
         // else drift down the pathfinding route (which may deliberately head INTO a chewable wall)
-        if (!MinePath.LineOfSightWide(transform.position, aim, size) && pathDir != Vector2.zero)
+        if (pathDir != Vector2.zero && !MinePath.LineOfSightWide(transform.position, aim, size))
         {
             force = pathDir * 0.09f;
             near = 0f;

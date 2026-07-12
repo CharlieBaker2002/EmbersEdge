@@ -32,7 +32,7 @@ public class Ore : MonoBehaviour
         }
         if (prev - Mathf.FloorToInt(orbs) > 0)
         {
-            Instantiate(Resources.Load("ChipFX"), transform.position, Quaternion.Euler(0f, 0f, Random.Range(0f, 360f)), transform);
+            Instantiate(MineField.ChipFxPrefab(), transform.position, Quaternion.Euler(0f, 0f, Random.Range(0f, 360f)), transform);
         }
         return prev - Mathf.FloorToInt(orbs);
     }
@@ -51,7 +51,7 @@ public class Ore : MonoBehaviour
         droneYield -= give;
         if (orbs <= 0f) StartCoroutine(Des());
         if (give > 0)
-            Instantiate(Resources.Load("ChipFX"), transform.position, Quaternion.Euler(0f, 0f, Random.Range(0f, 360f)), transform);
+            Instantiate(MineField.ChipFxPrefab(), transform.position, Quaternion.Euler(0f, 0f, Random.Range(0f, 360f)), transform);
         return give;
     }
 

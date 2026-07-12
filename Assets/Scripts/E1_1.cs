@@ -59,11 +59,12 @@ public class E1_1 : Unit
         {
             aimPos = MinePath.AimPoint(target, transform.position);
             wallAim = aimPos != (Vector2)target.position;   // AimPoint returns position verbatim for non-walls
-            losToTarget = MinePath.LineOfSightWide(transform.position, aimPos, 0.1f);
+            bool centreLos = MinePath.LineOfSight(transform.position, aimPos); //shared by both width tests
+            losToTarget = MinePath.LineOfSightWide(transform.position, aimPos, 0.1f, centreLos);
             Vector2 approach = (aimPos - (Vector2)transform.position).normalized;
             // walk straight only if the BODY fits the straight line (size), not just the bullet —
             // otherwise follow the field, which prices cracks as the walls that pinch them
-            if (!MinePath.LineOfSightWide(transform.position, aimPos, size) && pathDir != Vector2.zero)
+            if (pathDir != Vector2.zero && !MinePath.LineOfSightWide(transform.position, aimPos, size, centreLos))
             {
                 approach = pathDir;
             }
@@ -117,6 +118,8 @@ public class E1_1 : Unit
         StartCoroutine(ShootI());
     }
 
+    static readonly WaitForSeconds shotGap = new WaitForSeconds(0.25f);
+
     IEnumerator ShootI()
     {
         for(int i = 0; i < n; i++)
@@ -124,7 +127,7 @@ public class E1_1 : Unit
             AS.TryAddForce(-transform.up * 35f, false);
             var p = Instantiate(proj, sp.position, transform.rotation, GS.FindParent(GS.Parent.enemyprojectiles));
             p.GetComponent<ProjectileScript>().SetValues(sp.position + (Vector3) Random.insideUnitCircle * 0.1f - transform.position, tag);
-            yield return new WaitForSeconds(0.25f);
+            yield return shotGap;
         }
     }
 

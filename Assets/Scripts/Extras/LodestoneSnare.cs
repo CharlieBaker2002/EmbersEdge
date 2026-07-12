@@ -61,7 +61,7 @@ public class LodestoneSnare : SentryExtra
             ring.transform.position = transform.position;
             ring.transform.localScale = Vector3.one * Mathf.Lerp(detectRadius * 1.8f, 0.4f, cyc);
             ring.color = new Color(Alert.r, Alert.g, Alert.b, (1f - cyc) * 0.8f);
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
         Destroy(ring.gameObject);
 
@@ -76,7 +76,7 @@ public class LodestoneSnare : SentryExtra
             {
                 Vector2 d = GS.VTheta(baseAng + i * (360f / discCount));
                 GS.NewP(discProjectile, transform, TAG, d, discSpread, discStrength);
-                if (i % 4 == 3) yield return new WaitForFixedUpdate();
+                if (i % 4 == 3) yield return GS.WFFU;
             }
         }
         transform.localScale = baseScale;

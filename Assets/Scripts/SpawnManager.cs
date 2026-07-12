@@ -15,6 +15,59 @@ public class SpawnManager : MonoBehaviour
     public int incrementer;
     public GameObject[] orbs;
     public ObjectPool<GameObject>[] orbPools = new ObjectPool<GameObject>[4];
+
+    // ---- projectile pools (per prefab, opt-in per spawn site — mirrors orbPools) ----
+    // A pooled shot is reset to its captured post-Awake baseline on every Get, so per-shot
+    // mutations (turret level speed multipliers, Convert() side flips, pierce bookkeeping)
+    // start from prefab-fresh values exactly like a real Instantiate.
+    readonly Dictionary<GameObject, ObjectPool<GameObject>> projectilePools = new();
+    readonly Dictionary<GameObject, ObjectPool<GameObject>> poolOfProjectile = new();   // live instance -> its pool
+
+    public GameObject SpawnProjectile(GameObject prefab, Vector3 pos, Quaternion rot, Transform parent)
+    {
+        if (!projectilePools.TryGetValue(prefab, out var pool))
+        {
+            pool = new ObjectPool<GameObject>(() =>
+            {
+                var fresh = Instantiate(prefab, transform.position, Quaternion.identity, orbParent);
+                var marker = fresh.AddComponent<PooledProjectile>();
+                marker.CaptureBaseline();
+                return fresh;
+            }, null, null, g =>
+            {
+                if (!Application.isPlaying || !g) return;
+                poolOfProjectile.Remove(g);
+                Destroy(g);
+            });
+            projectilePools[prefab] = pool;
+        }
+
+        GameObject g = null;
+        while (g == null)   // scene teardown can kill parked instances; skip the corpses
+        {
+            g = pool.Get();
+        }
+        poolOfProjectile[g] = pool;
+        g.transform.SetParent(parent, true);
+        g.transform.SetPositionAndRotation(pos, rot);
+        g.GetComponent<PooledProjectile>().ResetForReuse();
+        g.SetActive(true);
+        return g;
+    }
+
+    /// <summary>Release a pooled projectile instead of destroying it. False = not pool-managed
+    /// (caller should Destroy as before). Safe to call from every death path — double calls
+    /// no-op on the inactive instance.</summary>
+    public static bool TryReleaseProjectile(GameObject g)
+    {
+        var sm = instance;
+        if (sm == null || g == null || !sm.poolOfProjectile.TryGetValue(g, out var pool)) return false;
+        if (!g.activeSelf) return true;   // already parked this frame (e.g. OnDie + timer both fired)
+        g.SetActive(false);
+        g.transform.SetParent(sm.orbParent, false);
+        pool.Release(g);
+        return true;
+    }
     public GameObject[] chests;
     public Transform Allies;
     public Transform AllyBuildings;
@@ -1068,5 +1121,74 @@ public class SpawnManager : MonoBehaviour
         public float ts { get; }
         public float expire { get; }
         public int ID { get; }
+    }
+}
+/// <summary>
+/// Marker on pool-managed projectiles: snapshots the post-Awake baseline at creation and restores
+/// it on every reuse, so a recycled shot is indistinguishable from a fresh Instantiate — per-shot
+/// multipliers don't compound, pierce bookkeeping restarts, side flips (Convert) don't stick.
+/// AddComponent-only, never authored onto prefabs.
+/// </summary>
+public class PooledProjectile : MonoBehaviour
+{
+    ProjectileScript ps;
+    ActionScript body;
+    LifeScript ls;
+    Rigidbody2D rb;
+    TrailRenderer[] trails;
+    float speed, damage, push, timer, angle, angVelMag, maxVelocity, mass, hp, maxHp;
+
+    public void CaptureBaseline()
+    {
+        ps = GetComponent<ProjectileScript>();
+        body = GetComponent<ActionScript>();
+        ls = GetComponent<LifeScript>();
+        rb = GetComponent<Rigidbody2D>();
+        trails = GetComponentsInChildren<TrailRenderer>(true);
+        speed = ps.speed;
+        damage = ps.damage;
+        push = ps.push;
+        timer = ps.timer;
+        angle = ps.angle;
+        angVelMag = Mathf.Abs(ps.angVel);   // Awake randomised the sign; reuse re-rolls it
+        maxVelocity = body.maxVelocity;
+        mass = body.mass;
+        if (ls != null)
+        {
+            hp = ls.hp;
+            maxHp = ls.maxHp;
+        }
+    }
+
+    // Called while the object is still inactive, pose already set by SpawnProjectile.
+    public void ResetForReuse()
+    {
+        ps.speed = speed;
+        ps.damage = damage;
+        ps.push = push;
+        ps.timer = timer;
+        ps.angle = angle;
+        ps.angVel = angVelMag * GS.PlusMinus();
+        ps.ResetFlight();
+        body.maxVelocity = maxVelocity;
+        body.mass = mass;
+        body.speedCoef = 1f;
+        body.canAct = true;
+        body.rooted = false;
+        body.force = Vector3.zero;
+        body.CCs.Clear();
+        if (ls != null)
+        {
+            ls.hasDied = false;
+            ls.hp = hp;
+            ls.maxHp = maxHp;
+            ls.enabled = true;
+        }
+        rb.linearVelocity = Vector2.zero;   // SetValues assigns the real velocity right after
+        rb.angularVelocity = 0f;
+        for (int i = 0; i < trails.Length; i++)
+        {
+            trails[i].Clear();
+        }
     }
 }

@@ -59,7 +59,7 @@ public class Move : MonoBehaviour
         //    while (true)
         //    {
         //        Randomise();
-        //        yield return new WaitForFixedUpdate();
+        //        yield return GS.WFFU;
         //    }
         //}
         float wait = interWait == 0f ? duration / positions.Count : interWait;

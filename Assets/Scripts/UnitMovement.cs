@@ -30,11 +30,11 @@ public class UnitMovement : MonoBehaviour
     {
         cols = new Collider2D[maxSearch];
         speedTimeFrame = moveSpeedGraph[moveSpeedGraph.length - 1].time;
-        yield return new WaitForFixedUpdate();
+        yield return GS.WFFU;
         yield return new WaitForSeconds(Random.Range(0.1f, 1.25f));
         while (true)
         {
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
             target = GS.FindEnemy(transform, searchDistance, GS.searchType.unitsSearch, cols);
             if (target == null)
             {
@@ -49,7 +49,7 @@ public class UnitMovement : MonoBehaviour
                         Turn((Vector2)(target.position - transform.position));
                         transform.position += moveSpeed * Time.fixedDeltaTime * (target.position - transform.position).normalized;
                         transform.position = (Vector2)transform.position;
-                        yield return new WaitForFixedUpdate();
+                        yield return GS.WFFU;
                         if (BreakCheck(target.position))
                         {
                             break;
@@ -68,7 +68,7 @@ public class UnitMovement : MonoBehaviour
                         before = (Vector2)transform.position;
                         transform.position = GS.Bez(new Vector2[] { pos, GS.IP(pos, targetPos, randX, randY,false), targetPos }, i, maxT);
                         Turn(transform.position - before);
-                        yield return new WaitForFixedUpdate();
+                        yield return GS.WFFU;
                         if(target == null)
                         {
                             break;
@@ -93,7 +93,7 @@ public class UnitMovement : MonoBehaviour
                         before = transform.position;
                         transform.position = GS.Bez(new Vector2[] { pos, GS.IP(pos, target.position, randX, randY,false), target.position }, t, searchDistance);
                         Turn(transform.position - before);
-                        yield return new WaitForFixedUpdate();
+                        yield return GS.WFFU;
                         if(target == null)
                         {
                             break;
@@ -113,7 +113,7 @@ public class UnitMovement : MonoBehaviour
                         before = transform.position;
                         transform.position = GS.Bez(new Vector2[] { pos, GS.IP(pos, targetPos, randX, randY,false), GS.IP(pos, targetPos, rand2X, rand2Y,false), targetPos }, i, maxT);
                         Turn(transform.position - before);
-                        yield return new WaitForFixedUpdate();
+                        yield return GS.WFFU;
                         if (target == null)
                         {
                             break;
@@ -140,7 +140,7 @@ public class UnitMovement : MonoBehaviour
                         before = transform.position;
                         transform.position = GS.Bez(new Vector2[] { pos, GS.IP(pos, targetPos, randX, randY,false), GS.IP(pos, targetPos, rand2Y, rand2Y,false), targetPos }, t, searchDistance);
                         Turn(transform.position - before);
-                        yield return new WaitForFixedUpdate();
+                        yield return GS.WFFU;
                         if (target == null)
                         {
                             break;
@@ -153,7 +153,7 @@ public class UnitMovement : MonoBehaviour
                     {
                         Turn((target.position + rand) - transform.position);
                         transform.position += moveSpeed * Time.fixedDeltaTime * ((target.position + rand) - transform.position).normalized;
-                        yield return new WaitForFixedUpdate();
+                        yield return GS.WFFU;
                         if (BreakCheck(target.position + rand))
                         {
                             break;
@@ -166,7 +166,7 @@ public class UnitMovement : MonoBehaviour
                     {
                         Turn((target.position + randbig) - transform.position);
                         transform.position += ((target.position + randbig) - transform.position).normalized * moveSpeed * Time.fixedDeltaTime;
-                        yield return new WaitForFixedUpdate();
+                        yield return GS.WFFU;
                         if (BreakCheck(target.position + randbig))
                         {
                             break;

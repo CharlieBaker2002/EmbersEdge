@@ -56,6 +56,8 @@ public class MapManager : MonoBehaviour
     int textureSize => Mathf.RoundToInt(400 * Scale);   // mask resolution scales with the map (base 400)
     private const int splineSampleCount = 100;   // higher‑res sampling for tighter mask fit
     private bool awaitingReadback = false;       // guard to avoid overlapping GPU readbacks
+    private Material glColorMat;                 // reused GL mask material (was created per call)
+    private Sprite generatedMaskSprite;          // last readback's sprite, destroyed on replace
     float maskSpan => 40f * Scale;               // world‑units the mask texture spans (was the 'scale' field)
     public static float MaskSpan => 40f * Scale; // same span, exposed for the base ground tiler (BaseGroundTiler)
   // --- Area‑safety & smoothing constants ---
@@ -227,14 +229,18 @@ public class MapManager : MonoBehaviour
         RenderTexture.active = maskRT;
         GL.Clear(true, true, Color.clear);
 
-        // Use Unity's internal colored shader for GL immediate mode (respects GL.Color)
-        var colorMat = new Material(Shader.Find("Hidden/Internal-Colored"));
-        colorMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
-        colorMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
-        colorMat.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
-        colorMat.SetInt("_ZWrite", 0);
-        colorMat.SetInt("_ZTest", (int)UnityEngine.Rendering.CompareFunction.Always);
-        colorMat.SetPass(0);
+        // Use Unity's internal colored shader for GL immediate mode (respects GL.Color).
+        // Created once — this runs per frame during boundary animations.
+        if (glColorMat == null)
+        {
+            glColorMat = new Material(Shader.Find("Hidden/Internal-Colored"));
+            glColorMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+            glColorMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
+            glColorMat.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+            glColorMat.SetInt("_ZWrite", 0);
+            glColorMat.SetInt("_ZTest", (int)UnityEngine.Rendering.CompareFunction.Always);
+        }
+        glColorMat.SetPass(0);
 
         GL.PushMatrix();
         GL.LoadOrtho();
@@ -258,7 +264,6 @@ public class MapManager : MonoBehaviour
         GL.End();
 
         GL.PopMatrix();
-        DestroyImmediate(colorMat);
         RenderTexture.active = prevRT;
 
         // ---------- CPU texture update using SetPixelData ----------
@@ -290,6 +295,11 @@ public class MapManager : MonoBehaviour
                     textureSize / maskSpan);
 
                 sr.sprite = sprite;
+                // Sprite objects aren't garbage-collected: destroy the one we made last readback
+                // (never touches a serialized asset sprite) or long sessions leak one per frame
+                // of boundary animation.
+                if (generatedMaskSprite != null) Destroy(generatedMaskSprite);
+                generatedMaskSprite = sprite;
             }
             finally
             {
@@ -373,12 +383,14 @@ public class MapManager : MonoBehaviour
             homeTexture = new RenderTexture(bigger ? 1024 : low, bigger ? 1024 : low, 32);
             raw.texture = homeTexture;
             cams[0].targetTexture = homeTexture;
+            homeCamNextRender = 0f;   // fresh (empty) RT — render into it this frame, not next tick
         }
         else
         {
             //dungeonTex = new RenderTexture(bigger ? 2048 : 1024, bigger ? 2048 : 1024, 32);
             raw.texture = dungeonTex;
             cams[1].targetTexture = dungeonTex;
+            dungeonCamNextRender = 0f;
         }
     }
 
@@ -576,7 +588,7 @@ public class MapManager : MonoBehaviour
         for (float t = 0f; t < EmbersEdge.warmUpTime; t += Time.fixedDeltaTime)
         {
             i.spinWait = Mathf.Lerp(i.spinWait, oneoversixty / acco, 0.1f * t * oneoversixty);
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
     }
 
@@ -1236,6 +1248,8 @@ public class MapManager : MonoBehaviour
         }
         if (pixelBuffer.IsCreated) pixelBuffer.Dispose();
         if (maskRT != null)        maskRT.Release();
+        if (glColorMat != null)    Destroy(glColorMat);
+        if (generatedMaskSprite != null) Destroy(generatedMaskSprite);
         awaitingReadback = false;
     }
 
@@ -1578,8 +1592,22 @@ public class MapManager : MonoBehaviour
     //
     // Unlike the old follow-the-player behaviour, the camera is framed ONCE (to the exact extent of the
     // current dungeon's cell area) and then held fixed — it does not track the player.
+    // Minimap RT refresh rate: cameras render one frame per interval and the RT holds the image
+    // in between — the world doesn't change fast enough for a 60Hz minimap to earn its cost.
+    const float MinimapRefreshInterval = 0.1f;
+    float homeCamNextRender, dungeonCamNextRender;
+
     private void LateUpdate()
     {
+        // Throttle the always-on home minimap camera (URP renders every enabled camera every
+        // frame; Camera.Render() is a no-op under SRP, so gate via .enabled instead).
+        if (cams != null && cams.Length > 0 && cams[0] != null && cams[0].gameObject.activeSelf)
+        {
+            bool homeDue = Time.unscaledTime >= homeCamNextRender;
+            if (homeDue) homeCamNextRender = Time.unscaledTime + MinimapRefreshInterval;
+            if (cams[0].enabled != homeDue) cams[0].enabled = homeDue;
+        }
+
         if (MineDungeonManager.i == null || cams == null || cams.Length < 2 || cams[1] == null) return;
 
         bool show = par != null && par.activeSelf && raw != null
@@ -1587,14 +1615,23 @@ public class MapManager : MonoBehaviour
         if (show)
         {
             if (cams[1].targetTexture != dungeonTex) cams[1].targetTexture = dungeonTex;
-            if (!cams[1].gameObject.activeSelf) cams[1].gameObject.SetActive(true);
+            if (!cams[1].gameObject.activeSelf)
+            {
+                cams[1].gameObject.SetActive(true);
+                dungeonCamNextRender = 0f;   // just opened — render this frame
+            }
 
             if (MineField.i != null) FrameDungeonMap();   // re-fit every frame — cheap, and self-heals if the layout changes
+
+            bool due = Time.unscaledTime >= dungeonCamNextRender;
+            if (due) dungeonCamNextRender = Time.unscaledTime + MinimapRefreshInterval;
+            if (cams[1].enabled != due) cams[1].enabled = due;
 
             dungeonCamRunning = true;
         }
         else if (dungeonCamRunning)
         {
+            cams[1].enabled = true;   // hand the camera back to the snapshot flows intact
             cams[1].gameObject.SetActive(false);
             dungeonCamRunning = false;
         }

@@ -75,7 +75,7 @@ public class MineFlowField
             seedOf = new ushort[size];
             gateOf = new ushort[size];
         }
-        for (int k = 0; k < size; k++) dist[k] = UNREACHED;
+        System.Array.Fill(dist, UNREACHED);
         for (int k = 0; k < buckets.Count; k++) buckets[k].Clear();
 
         // resolve seeds to cells
@@ -365,6 +365,27 @@ public static class MinePath
         Vector2 d = b - a;
         if (d.sqrMagnitude < 1e-6f) return LineOfSight(a, b);
         if (!LineOfSight(a, b)) return false;
+        Vector2 perp = new Vector2(-d.y, d.x).normalized;
+        int side = Mathf.Max(1, Mathf.CeilToInt(radius / 0.4f));
+        for (int k = 1; k <= side; k++)
+        {
+            Vector2 off = perp * (radius * k / side);
+            if (!LineOfSight(a + off, b + off) || !LineOfSight(a - off, b - off)) return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Same as <see cref="LineOfSightWide(Vector2,Vector2,float)"/> but with the centre ray
+    /// precomputed by the caller — for callers that test several widths over the SAME segment
+    /// each frame, so the shared centre ray is cast once instead of per width.
+    /// </summary>
+    public static bool LineOfSightWide(Vector2 a, Vector2 b, float radius, bool centreVisible)
+    {
+        if (!centreVisible) return false;
+        if (radius <= 0f) return true;
+        Vector2 d = b - a;
+        if (d.sqrMagnitude < 1e-6f) return true;
         Vector2 perp = new Vector2(-d.y, d.x).normalized;
         int side = Mathf.Max(1, Mathf.CeilToInt(radius / 0.4f));
         for (int k = 1; k <= side; k++)

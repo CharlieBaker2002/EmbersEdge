@@ -100,7 +100,7 @@ public class AirDropBeacon : SentryExtra
             {
                 Vector2 dir = GS.VTheta(baseAng + i * (360f / discCount));
                 GS.NewP(discProjectile, pkg.transform, TAG, dir, discSpread, discStrength);
-                if (i % 3 == 2) yield return new WaitForFixedUpdate();
+                if (i % 3 == 2) yield return GS.WFFU;
             }
         }
 

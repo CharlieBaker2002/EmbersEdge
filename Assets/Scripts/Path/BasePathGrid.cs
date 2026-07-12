@@ -48,8 +48,65 @@ public static class BaseBlockMap
         wallMults.Clear();
         byWall.Clear();
         wallByTf.Clear();
+        ClearDirty();
         Version++;
         BasePathGrid.InvalidateSessionCaches();
+    }
+
+    // ------------------------------------------------------------------ dirty-cell tracking
+    // Every mutator records which cells it touched, so the squeeze cache can recompute just that
+    // neighbourhood instead of the whole rect on every Version bump (a wall dying mid-wave used
+    // to cost a full ~58k-cell rebuild). Overflow (or an un-enumerable change) forces a full one.
+
+    const int DirtyCap = 4096;
+    static readonly List<Vector2Int> dirtyCells = new List<Vector2Int>();
+    static bool dirtyOverflow;
+
+    public static List<Vector2Int> DirtyCells => dirtyCells;
+    public static bool DirtyOverflow => dirtyOverflow;
+
+    public static void ClearDirty()
+    {
+        dirtyCells.Clear();
+        dirtyOverflow = false;
+    }
+
+    static void MarkDirty(Vector2Int c)
+    {
+        if (dirtyCells.Count < DirtyCap) dirtyCells.Add(c);
+        else dirtyOverflow = true;
+    }
+
+    /// <summary>Stamp the raw registry into full-rect arrays (arrays pre-cleared by the caller) —
+    /// iterates the sparse registrations, not every cell.</summary>
+    public static void RasterStampAll(RectInt rect, bool[] solidMaskP, ushort[] rawSlotP)
+    {
+        foreach (var c in solid.Keys)
+        {
+            int x = c.x - rect.xMin, y = c.y - rect.yMin;
+            if (x < 0 || y < 0 || x >= rect.width || y >= rect.height) continue;
+            solidMaskP[x + y * rect.width] = true;
+        }
+        foreach (var kv in wallIdOfCell)
+        {
+            int x = kv.Key.x - rect.xMin, y = kv.Key.y - rect.yMin;
+            if (x < 0 || y < 0 || x >= rect.width || y >= rect.height) continue;
+            rawSlotP[x + y * rect.width] = kv.Value;
+        }
+    }
+
+    /// <summary>Refresh a sub-region of the raster by probing the registry per cell (regions are
+    /// small — a wall's neighbourhood — so per-cell probes beat a full registry sweep).</summary>
+    public static void RasterProbe(RectInt rect, RectInt regionLocal, bool[] solidMaskP, ushort[] rawSlotP, ushort noneSlot)
+    {
+        for (int y = regionLocal.yMin; y < regionLocal.yMax; y++)
+            for (int x = regionLocal.xMin; x < regionLocal.xMax; x++)
+            {
+                var cell = new Vector2Int(rect.xMin + x, rect.yMin + y);
+                int idx = x + y * rect.width;
+                solidMaskP[idx] = solid.ContainsKey(cell);
+                rawSlotP[idx] = wallIdOfCell.TryGetValue(cell, out ushort s) ? s : noneSlot;
+            }
     }
 
     public static IReadOnlyList<LifeScript> WallOwners => wallOwners;
@@ -144,6 +201,7 @@ public static class BaseBlockMap
             {
                 var c = new Vector2Int(anchorCell.x + x, anchorCell.y + y);
                 solid[c] = solid.TryGetValue(c, out int n) ? n + 1 : 1;
+                MarkDirty(c);
             }
         Version++;
     }
@@ -157,6 +215,7 @@ public static class BaseBlockMap
                 if (!solid.TryGetValue(c, out int n)) continue;
                 if (n <= 1) solid.Remove(c);
                 else solid[c] = n - 1;
+                MarkDirty(c);
             }
         Version++;
     }
@@ -224,7 +283,10 @@ public static class BaseBlockMap
         // `is null`, not Unity's ==: a just-destroyed LifeScript must still unregister its cells
         if (ls is null || !byWall.TryGetValue(ls, out var entry)) return;
         foreach (var c in entry.cells)
+        {
             if (wallIdOfCell.TryGetValue(c, out ushort slot) && slot == entry.id) wallIdOfCell.Remove(c);
+            MarkDirty(c);
+        }
         wallOwners[entry.id] = null;   // slot free for reuse
         if (entry.tf is object) wallByTf.Remove(entry.tf);   // stored ref works even if destroyed
         byWall.Remove(ls);
@@ -239,7 +301,10 @@ public static class BaseBlockMap
         {
             // replacing: drop old cells, keep the slot
             foreach (var c in existing.cells)
+            {
                 if (wallIdOfCell.TryGetValue(c, out ushort slot) && slot == existing.id) wallIdOfCell.Remove(c);
+                MarkDirty(c);
+            }
             existing.cells.Clear();
             cells = existing.cells;
             wallMults[existing.id] = costMult;
@@ -286,6 +351,7 @@ public static class BaseBlockMap
         }
         wallIdOfCell[c] = id;
         cells.Add(c);
+        MarkDirty(c);
     }
 
     // ------------------------------------------------------------------ phase-walker line test
@@ -489,14 +555,51 @@ public sealed class BasePathGrid : IPathGrid
         return true;
     }
 
+    // Hot queries (flow-field rebuilds hit EnterCost 4x per expanded cell; LOS DDA hits IsSolid
+    // per crossed cell, per enemy per frame) read the Version-fresh raster arrays instead of
+    // paying Dictionary<Vector2Int> probes. LIVE checks (destroyed / hasDied owners) stay at
+    // query time via TryGetWallBySlot — a wall dying never bumps Version, exactly as before.
+
+    // in-rect fast path index; false = off the squeeze rect (rare border queries) → dictionary path
+    static bool TryRawIndex(Vector3Int c, out int idx)
+    {
+        int x = c.x - squeezeRect.xMin, y = c.y - squeezeRect.yMin;
+        if (x < 0 || y < 0 || x >= squeezeRect.width || y >= squeezeRect.height) { idx = -1; return false; }
+        idx = x + y * squeezeRect.width;
+        return true;
+    }
+
     public bool IsSolid(Vector3Int c)
     {
+        EnsureSqueezeCache();
+        if (TryRawIndex(c, out int idx))
+        {
+            if (solidMask[idx]) return true;
+            ushort slot = rawSlot[idx];
+            return slot != RawNone && BaseBlockMap.TryGetWallBySlot(slot, out _, out _);
+        }
         var cell = new Vector2Int(c.x, c.y);
         return BaseBlockMap.HasSolid(cell) || BaseBlockMap.TryGetLiveWall(cell, out _, out _);
     }
 
     public int EnterCost(Vector3Int c)
     {
+        EnsureSqueezeCache();
+        if (TryRawIndex(c, out int idx))
+        {
+            ushort slot = rawSlot[idx];
+            if (slot != RawNone && BaseBlockMap.TryGetWallBySlot(slot, out LifeScript wls, out float wmult))
+                return chew ? WallCost(wls, wmult, breachEdgeCells[idx]) : PathGrid.BLOCKED;
+            if (solidMask[idx]) return PathGrid.BLOCKED;
+            int f = squeezeFill[idx];
+            if (f >= 0 && BaseBlockMap.TryGetWallBySlot(f, out LifeScript ffls, out float ffmult))
+                return chew ? WallCost(ffls, ffmult, true) : PathGrid.BLOCKED;
+            if (f == FillSolid) return PathGrid.BLOCKED;
+            int cst = InMap(c) ? 1 : offMapCost;
+            cst += Mathf.Max(narrowPrem[idx], padRingCells[idx] == 1 ? wallPaddingCost : 0);
+            return cst;
+        }
+
         var cell = new Vector2Int(c.x, c.y);
         if (BaseBlockMap.TryGetLiveWall(cell, out LifeScript ls, out _, out float mult))
             return chew ? WallCost(ls, mult, BreachEdge(c)) : PathGrid.BLOCKED;
@@ -572,6 +675,14 @@ public sealed class BasePathGrid : IPathGrid
     public int WallIdAt(Vector3Int c)
     {
         if (!chew) return -1;   // D view never crosses walls, so gates never arise
+        EnsureSqueezeCache();
+        if (TryRawIndex(c, out int idx))
+        {
+            ushort slot = rawSlot[idx];
+            if (slot != RawNone && BaseBlockMap.TryGetWallBySlot(slot, out _, out _)) return slot;
+            int f = squeezeFill[idx];
+            return f >= 0 && BaseBlockMap.TryGetWallBySlot(f, out _, out _) ? f : -1;
+        }
         if (BaseBlockMap.TryGetLiveWall(new Vector2Int(c.x, c.y), out _, out int id)) return id;
         // filled cracks carry their wall's identity so the gate propagates across them too
         int fill = SqueezeFill(c);
@@ -584,14 +695,22 @@ public sealed class BasePathGrid : IPathGrid
     // Keyed to the registry Version, so it rebuilds only when walls/buildings actually change.
 
     const int FillNone = -2, FillSolid = -1;
-    static int[] squeezeFill;
+    const ushort RawNone = ushort.MaxValue;
+    static int[] squeezeFill;       // FINAL fill state (pass-1 crack fills overwritten by pass-2 aperture fills)
+    static int[] crackFill;         // pass-1-only snapshot — pass 2's forward reads use this (raster-order semantics)
     static byte[] padRingCells;     // chebyshev ring distance to nearest solid/filled cell (0 = solid, capped)
     static byte[] narrowPrem;       // aperture pricing: per-cell premium for thin corridors
     static bool[] blockMask;        // pass-1 rasterisation of Blockedish — pass 2 scans arrays, not dictionaries
     static int[] wallIdMask;        // wall slot id of each blocked cell (-1 = solid) — gate identity for fills
     static bool[] breachEdgeCells;  // blocked cells flanking a gap — chewing these WIDENS a cavity
+    static ushort[] rawSlot;        // Version-fresh raster of wallIdOfCell (RawNone = no registration)
+    static bool[] solidMask;        // Version-fresh raster of the solid registry
     static RectInt squeezeRect;
     static int squeezeVersion = int.MinValue;
+
+    /// <summary>Kill-switch: false = every registry change rebuilds the whole rect (the old
+    /// behaviour), for A/B-ing the incremental dirty-region path.</summary>
+    public static bool incrementalSqueeze = true;
 
     static int SqueezeFill(Vector3Int c)
     {
@@ -655,73 +774,212 @@ public sealed class BasePathGrid : IPathGrid
 
     static void EnsureSqueezeCache()
     {
+        if (!Ready) return;   // pre-warm queries fall back to the dictionary paths (arrays stay null)
         var r = blocked.CellRect;
         // every array checked individually: a hot-reload patch can null ONE new static while the
         // others (and the version stamp) survive — a joint guard then never rebuilds and the new
         // layer silently reads as empty
-        if (squeezeFill != null && narrowPrem != null && padRingCells != null
-            && squeezeVersion == BaseBlockMap.Version && r.Equals(squeezeRect)) return;
+        int n = r.width * r.height;
+        bool arraysValid = squeezeFill != null && crackFill != null && narrowPrem != null
+            && padRingCells != null && blockMask != null && wallIdMask != null && breachEdgeCells != null
+            && rawSlot != null && solidMask != null
+            && squeezeFill.Length == n && r.Equals(squeezeRect);
+        if (arraysValid && squeezeVersion == BaseBlockMap.Version) return;
+
+        var dirty = BaseBlockMap.DirtyCells;
+        bool full = !arraysValid || !incrementalSqueeze || BaseBlockMap.DirtyOverflow || dirty.Count == 0;
+
+        float csz = blocked.CellSize;
+        int reach = Mathf.CeilToInt(snugWidth / csz);   // aperture scan radius — pass 2's influence reach
+
+        RectInt reg = default;
+        if (!full)
+        {
+            int minX = int.MaxValue, minY = int.MaxValue, maxX = int.MinValue, maxY = int.MinValue;
+            for (int k = 0; k < dirty.Count; k++)
+            {
+                int x = dirty[k].x - r.xMin, y = dirty[k].y - r.yMin;
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            }
+            reg = ClampRegion(minX - reach - 1, minY - reach - 1, maxX + reach + 1, maxY + reach + 1, r);
+            if (reg.width <= 0 || reg.height <= 0) { full = true; }            // dirty cells all off-rect
+            else if ((long)reg.width * reg.height > (long)n * 2 / 5) full = true;   // not worth being clever
+        }
+
         squeezeVersion = BaseBlockMap.Version;
         squeezeRect = r;
-        int n = r.width * r.height;
+        if (full)
+        {
+            FullSqueezeRebuild(r, n);
+            BaseBlockMap.ClearDirty();
+            return;
+        }
+
+        // Incremental: recompute the dirty neighbourhood. Whenever pass 2's fill results CHANGE
+        // near the region rim, the erosion cascade could reach cells outside it — grow the region
+        // and redo, so the final state matches what a full rebuild would have produced. Growth
+        // decisions use the CUMULATIVE change bounds (later sweeps compare against the previous
+        // sweep, so their `changed` alone would under-report proximity to the new rim).
+        int cumMinX = int.MaxValue, cumMinY = int.MaxValue, cumMaxX = int.MinValue, cumMaxY = int.MinValue;
+        for (int guard = 0; guard < 64; guard++)
+        {
+            BaseBlockMap.RasterProbe(r, reg, solidMask, rawSlot, RawNone);
+            Pass1Region(reg, r);
+            Pass2Region(reg, r, out RectInt changed, out bool anyChange);
+            if (anyChange)
+            {
+                if (changed.xMin < cumMinX) cumMinX = changed.xMin;
+                if (changed.yMin < cumMinY) cumMinY = changed.yMin;
+                if (changed.xMax - 1 > cumMaxX) cumMaxX = changed.xMax - 1;
+                if (changed.yMax - 1 > cumMaxY) cumMaxY = changed.yMax - 1;
+            }
+            if (cumMinX == int.MaxValue) break;   // nothing actually changed
+            bool grow = false;
+            int gMinX = reg.xMin, gMinY = reg.yMin, gMaxX = reg.xMax - 1, gMaxY = reg.yMax - 1;
+            if (reg.xMin > 0 && cumMinX - reg.xMin < reach) { gMinX = reg.xMin - reach; grow = true; }
+            if (reg.yMin > 0 && cumMinY - reg.yMin < reach) { gMinY = reg.yMin - reach; grow = true; }
+            if (reg.xMax < r.width && reg.xMax - 1 - cumMaxX < reach) { gMaxX = reg.xMax - 1 + reach; grow = true; }
+            if (reg.yMax < r.height && reg.yMax - 1 - cumMaxY < reach) { gMaxY = reg.yMax - 1 + reach; grow = true; }
+            if (!grow) break;
+            reg = ClampRegion(gMinX, gMinY, gMaxX, gMaxY, r);
+            if ((long)reg.width * reg.height > (long)n * 2 / 5)
+            {
+                FullSqueezeRebuild(r, n);
+                BaseBlockMap.ClearDirty();
+                return;
+            }
+        }
+
+        // chamfer reads solids/fills within maxRing(2); breach edges read gaps within 1
+        var cham = ClampRegion(reg.xMin - 3, reg.yMin - 3, reg.xMax - 1 + 3, reg.yMax - 1 + 3, r);
+        ChamferRegion(cham, r);
+        var br = ClampRegion(cham.xMin - 1, cham.yMin - 1, cham.xMax - 1 + 1, cham.yMax - 1 + 1, r);
+        BreachRegion(br, r);
+        BaseBlockMap.ClearDirty();
+    }
+
+    static RectInt ClampRegion(int minX, int minY, int maxX, int maxY, RectInt r)
+    {
+        minX = Mathf.Max(0, minX);
+        minY = Mathf.Max(0, minY);
+        maxX = Mathf.Min(r.width - 1, maxX);
+        maxY = Mathf.Min(r.height - 1, maxY);
+        return new RectInt(minX, minY, maxX - minX + 1, maxY - minY + 1);
+    }
+
+    static void EnsureArrays(int n)
+    {
         if (squeezeFill == null || squeezeFill.Length != n) squeezeFill = new int[n];
+        if (crackFill == null || crackFill.Length != n) crackFill = new int[n];
         if (padRingCells == null || padRingCells.Length != n) padRingCells = new byte[n];
         if (narrowPrem == null || narrowPrem.Length != n) narrowPrem = new byte[n];
         if (blockMask == null || blockMask.Length != n) blockMask = new bool[n];
         if (wallIdMask == null || wallIdMask.Length != n) wallIdMask = new int[n];
         if (breachEdgeCells == null || breachEdgeCells.Length != n) breachEdgeCells = new bool[n];
-        // pass 1: rasterise the registry, fill cracks
-        for (int y = 0; y < r.height; y++)
-            for (int x = 0; x < r.width; x++)
+        if (rawSlot == null || rawSlot.Length != n) rawSlot = new ushort[n];
+        if (solidMask == null || solidMask.Length != n) solidMask = new bool[n];
+    }
+
+    static void FullSqueezeRebuild(RectInt r, int n)
+    {
+        EnsureArrays(n);
+        System.Array.Fill(rawSlot, RawNone);
+        System.Array.Clear(solidMask, 0, n);
+        BaseBlockMap.RasterStampAll(r, solidMask, rawSlot);
+        var whole = new RectInt(0, 0, r.width, r.height);
+        Pass1Region(whole, r);
+        Pass2Region(whole, r, out _, out _);
+        ChamferRegion(whole, r);
+        BreachRegion(whole, r);
+    }
+
+    // pass 1: rasterise the registry, fill cracks. Writes crackFill (the pass-1 snapshot that
+    // pass 2's forward reads use) — squeezeFill gets its final value in pass 2.
+    static void Pass1Region(RectInt reg, RectInt r)
+    {
+        for (int y = reg.yMin; y < reg.yMax; y++)
+            for (int x = reg.xMin; x < reg.xMax; x++)
             {
                 int cx = r.xMin + x, cy = r.yMin + y;
                 int idx = x + y * r.width;
-                squeezeFill[idx] = FillNone;
-                if (Blockedish(cx, cy, out int selfId)) { blockMask[idx] = true; wallIdMask[idx] = selfId; continue; }
+                crackFill[idx] = FillNone;
+                if (BlockedishAt(cx, cy, r, out int selfId)) { blockMask[idx] = true; wallIdMask[idx] = selfId; continue; }
                 blockMask[idx] = false;
                 wallIdMask[idx] = -1;
-                bool l = Blockedish(cx - 1, cy, out int wl), rr = Blockedish(cx + 1, cy, out int wr);
-                bool d = Blockedish(cx, cy - 1, out int wd), u = Blockedish(cx, cy + 1, out int wu);
+                bool l = BlockedishAt(cx - 1, cy, r, out int wl), rr = BlockedishAt(cx + 1, cy, r, out int wr);
+                bool d = BlockedishAt(cx, cy - 1, r, out int wd), u = BlockedishAt(cx, cy + 1, r, out int wu);
                 if (!((l && rr) || (d && u))) continue;    // crack fill needs opposing sides pinched
                 int wall = FillSolid;
                 if (l && rr && wl >= 0) wall = wl;
                 else if (l && rr && wr >= 0) wall = wr;
                 else if (d && u && wd >= 0) wall = wd;
                 else if (d && u && wu >= 0) wall = wu;
-                squeezeFill[idx] = wall;
+                crackFill[idx] = wall;
             }
-        // pass 2: aperture widths in WORLD UNITS, measured over pass-1 results plus this pass's
-        // own fills (a sub-body gap that fills makes its neighbours narrower — the erosion
-        // cascades, but only below the fill threshold, so real corridors never seal themselves).
-        // Four axes catch zigzag seams between diagonally offset walls that pure H/V misses.
+    }
+
+    // pass 2: aperture widths in WORLD UNITS, measured over pass-1 results plus this pass's
+    // own fills (a sub-body gap that fills makes its neighbours narrower — the erosion
+    // cascades, but only below the fill threshold, so real corridors never seal themselves).
+    // Four axes catch zigzag seams between diagonally offset walls that pure H/V misses.
+    // Raster-order semantics: cells EARLIER in the sweep are read at their final (pass-2) value,
+    // cells LATER at their pass-1 value — crackFill/squeezeFill split keeps that exact for
+    // region recomputes too. `changed` reports the bounds of cells whose final fill differs
+    // from the previous build (drives the incremental rim re-expansion).
+    static void Pass2Region(RectInt reg, RectInt r, out RectInt changed, out bool anyChange)
+    {
         float csz = blocked.CellSize;
         float diagStep = csz * 1.41421f;
         int maxOrtho = Mathf.CeilToInt(snugWidth / csz);
         int maxDiag = Mathf.CeilToInt(snugWidth / diagStep);
-        for (int y = 0; y < r.height; y++)
-            for (int x = 0; x < r.width; x++)
+        int chMinX = int.MaxValue, chMinY = int.MaxValue, chMaxX = int.MinValue, chMaxY = int.MinValue;
+        for (int y = reg.yMin; y < reg.yMax; y++)
+            for (int x = reg.xMin; x < reg.xMax; x++)
             {
                 int idx = x + y * r.width;
+                int prevFinal = squeezeFill[idx];
+                int newFinal = crackFill[idx];
                 narrowPrem[idx] = 0;
-                if (blockMask[idx] || squeezeFill[idx] != FillNone) continue;
-                float w = float.MaxValue;
-                int gateWall = -1;
-                MeasureAxis(x, y, 1, 0, csz, maxOrtho, r, ref w, ref gateWall);
-                MeasureAxis(x, y, 0, 1, csz, maxOrtho, r, ref w, ref gateWall);
-                MeasureAxis(x, y, 1, 1, diagStep, maxDiag, r, ref w, ref gateWall);
-                MeasureAxis(x, y, 1, -1, diagStep, maxDiag, r, ref w, ref gateWall);
-                if (w < minPassableWidth)
-                    squeezeFill[idx] = gateWall >= 0 ? gateWall : FillSolid;   // no body fits: IS the wall
-                else if (w < tightWidth) narrowPrem[idx] = (byte)Mathf.Clamp(narrowGapCost2, 0, 255);
-                else if (w < snugWidth) narrowPrem[idx] = (byte)Mathf.Clamp(narrowGapCost3, 0, 255);
+                if (!blockMask[idx] && newFinal == FillNone)
+                {
+                    float w = float.MaxValue;
+                    int gateWall = -1;
+                    MeasureAxis(x, y, idx, 1, 0, csz, maxOrtho, r, ref w, ref gateWall);
+                    MeasureAxis(x, y, idx, 0, 1, csz, maxOrtho, r, ref w, ref gateWall);
+                    MeasureAxis(x, y, idx, 1, 1, diagStep, maxDiag, r, ref w, ref gateWall);
+                    MeasureAxis(x, y, idx, 1, -1, diagStep, maxDiag, r, ref w, ref gateWall);
+                    if (w < minPassableWidth)
+                        newFinal = gateWall >= 0 ? gateWall : FillSolid;   // no body fits: IS the wall
+                    else if (w < tightWidth) narrowPrem[idx] = (byte)Mathf.Clamp(narrowGapCost2, 0, 255);
+                    else if (w < snugWidth) narrowPrem[idx] = (byte)Mathf.Clamp(narrowGapCost3, 0, 255);
+                }
+                squeezeFill[idx] = newFinal;
+                if (newFinal != prevFinal)
+                {
+                    if (x < chMinX) chMinX = x;
+                    if (x > chMaxX) chMaxX = x;
+                    if (y < chMinY) chMinY = y;
+                    if (y > chMaxY) chMaxY = y;
+                }
             }
-        // pass 2.5: chebyshev distance-to-solid rings over walls, solids and everything pass 1/2
-        // filled, via a standard two-pass chamfer transform. The base only prices ring 1 (the
-        // original wallPaddingCost), so the transform caps at 2 — cells at the cap read as free.
-        int W = r.width, H = r.height;
+        anyChange = chMinX != int.MaxValue;
+        changed = anyChange ? new RectInt(chMinX, chMinY, chMaxX - chMinX + 1, chMaxY - chMinY + 1) : default;
+    }
+
+    // pass 2.5: chebyshev distance-to-solid rings over walls, solids and everything pass 1/2
+    // filled, via a standard two-pass chamfer transform. The base only prices ring 1 (the
+    // original wallPaddingCost), so the transform caps at 2 — cells at the cap read as free.
+    // Ring values only depend on solids/fills within the cap, so a region recompute inflated
+    // past the cap reads valid stored values at its rim.
+    static void ChamferRegion(RectInt reg, RectInt r)
+    {
+        int W = r.width;
         int maxRing = 2;
-        for (int y = 0; y < H; y++)
-            for (int x = 0; x < W; x++)
+        for (int y = reg.yMin; y < reg.yMax; y++)
+            for (int x = reg.xMin; x < reg.xMax; x++)
             {
                 int idx = x + y * W;
                 int best = blockMask[idx] || squeezeFill[idx] != FillNone ? 0 : maxRing;
@@ -737,14 +995,14 @@ public sealed class BasePathGrid : IPathGrid
                 }
                 padRingCells[idx] = (byte)Mathf.Min(best, maxRing);
             }
-        for (int y = H - 1; y >= 0; y--)
-            for (int x = W - 1; x >= 0; x--)
+        for (int y = reg.yMax - 1; y >= reg.yMin; y--)
+            for (int x = reg.xMax - 1; x >= reg.xMin; x--)
             {
                 int idx = x + y * W;
                 int best = padRingCells[idx];
                 if (best == 0) continue;
                 if (x < W - 1) best = Mathf.Min(best, padRingCells[idx + 1] + 1);
-                if (y < H - 1)
+                if (y < r.height - 1)
                 {
                     best = Mathf.Min(best, padRingCells[idx + W] + 1);
                     if (x < W - 1) best = Mathf.Min(best, padRingCells[idx + W + 1] + 1);
@@ -752,12 +1010,16 @@ public sealed class BasePathGrid : IPathGrid
                 }
                 padRingCells[idx] = (byte)best;
             }
-        // pass 3: cavity edges — blocked cells 4-adjacent to a gap cell (a wall-filled crack or a
-        // priced narrow-corridor cell). Chewing one of these widens an existing cavity, so
-        // WallCost discounts them by breachEdgeChewMult and the widening snowballs until the gap
-        // hits free-flow width. (Solid-solid pinches don't count: no chew can widen those.)
-        for (int y = 0; y < r.height; y++)
-            for (int x = 0; x < r.width; x++)
+    }
+
+    // pass 3: cavity edges — blocked cells 4-adjacent to a gap cell (a wall-filled crack or a
+    // priced narrow-corridor cell). Chewing one of these widens an existing cavity, so
+    // WallCost discounts them by breachEdgeChewMult and the widening snowballs until the gap
+    // hits free-flow width. (Solid-solid pinches don't count: no chew can widen those.)
+    static void BreachRegion(RectInt reg, RectInt r)
+    {
+        for (int y = reg.yMin; y < reg.yMax; y++)
+            for (int x = reg.xMin; x < reg.xMax; x++)
             {
                 int idx = x + y * r.width;
                 breachEdgeCells[idx] = blockMask[idx] &&
@@ -775,12 +1037,12 @@ public sealed class BasePathGrid : IPathGrid
     // Clear width (world units) of the corridor through this cell along one axis; keeps the
     // narrowest result across axes plus a live wall id flanking that narrowest pinch — the gate
     // identity if the cell ends up filled. Open on either side within the scan = not a corridor.
-    static void MeasureAxis(int x, int y, int dx, int dy, float step, int maxScan, RectInt r,
+    static void MeasureAxis(int x, int y, int readerIdx, int dx, int dy, float step, int maxScan, RectInt r,
         ref float best, ref int gateWall)
     {
-        int a = ScanWallish(x, y, dx, dy, maxScan, r, out int idA);
+        int a = ScanWallish(x, y, readerIdx, dx, dy, maxScan, r, out int idA);
         if (a <= 0) return;
-        int b = ScanWallish(x, y, -dx, -dy, maxScan, r, out int idB);
+        int b = ScanWallish(x, y, readerIdx, -dx, -dy, maxScan, r, out int idB);
         if (b <= 0) return;
         float w = (a + b - 1) * step;
         if (w >= best) return;
@@ -788,7 +1050,7 @@ public sealed class BasePathGrid : IPathGrid
         gateWall = idA >= 0 ? idA : idB;
     }
 
-    static int ScanWallish(int x, int y, int dx, int dy, int maxScan, RectInt r, out int wallId)
+    static int ScanWallish(int x, int y, int readerIdx, int dx, int dy, int maxScan, RectInt r, out int wallId)
     {
         wallId = -1;
         for (int s = 1; s <= maxScan; s++)
@@ -797,9 +1059,24 @@ public sealed class BasePathGrid : IPathGrid
             if (nx < 0 || ny < 0 || nx >= r.width || ny >= r.height) return 0;   // rect edge = open
             int ni = nx + ny * r.width;
             if (blockMask[ni]) { wallId = wallIdMask[ni]; return s; }
-            if (squeezeFill[ni] != FillNone) { wallId = squeezeFill[ni] >= 0 ? squeezeFill[ni] : -1; return s; }
+            // earlier-in-raster cells read at their pass-2 value, later ones at pass-1 —
+            // the original single-array sweep's exact semantics
+            int fillAt = ni < readerIdx ? squeezeFill[ni] : crackFill[ni];
+            if (fillAt != FillNone) { wallId = fillAt >= 0 ? fillAt : -1; return s; }
         }
         return 0;
+    }
+
+    // absolute-cell blockedish over the Version-fresh raster; off-rect falls back to the registry
+    static bool BlockedishAt(int gx, int gy, RectInt r, out int wallId)
+    {
+        int x = gx - r.xMin, y = gy - r.yMin;
+        if (x < 0 || y < 0 || x >= r.width || y >= r.height) return Blockedish(gx, gy, out wallId);
+        int idx = x + y * r.width;
+        ushort slot = rawSlot[idx];
+        if (slot != RawNone && BaseBlockMap.TryGetWallBySlot(slot, out _, out _)) { wallId = slot; return true; }
+        wallId = -1;
+        return solidMask[idx];
     }
 
     static bool Blockedish(int x, int y, out int wallId)

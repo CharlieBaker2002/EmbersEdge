@@ -52,6 +52,7 @@ public class OrbManager : MonoBehaviour
                     continue;   // over budget: skip this orb's tick, not the whole loop
                 }
             }
+            Transform tr = o.tr;
             switch (o.state)
             {
                 case OrbScript.OrbState.wild:
@@ -66,11 +67,12 @@ public class OrbManager : MonoBehaviour
                     }
                     if (o.timeLeft > 74f)
                     {
-                        o.transform.position += (o.rot+90) * (o.timeLeft - 74f) * 2f * disperseSpeeds[o.orbType] * Time.deltaTime * new Vector3(Mathf.Sin(o.theta),Mathf.Cos(o.theta))/360f * Random.Range(1.5f,2f);
+                        tr.position += (o.rot+90) * (o.timeLeft - 74f) * 2f * disperseSpeeds[o.orbType] * Time.deltaTime * new Vector3(Mathf.Sin(o.theta),Mathf.Cos(o.theta))/360f * Random.Range(1.5f,2f);
                     }
                     else
                     {
-                        dir = (Vector2)(CS.position - o.transform.position);
+                        Vector3 pos = tr.position;
+                        dir = (Vector2)(CS.position - pos);
                         if (OrbScript.canAttract[o.orbType])
                         {
                             dist = dir.sqrMagnitude;
@@ -93,7 +95,7 @@ public class OrbManager : MonoBehaviour
                                 // starts at 1× and winds up to ~7× after ~5s, so orbs that keep failing to
                                 // reach you accelerate hard and quickly close the gap instead of trailing.
                                 float chaseBoost = 1f + 1.2f * Mathf.Min(o.chaseT, 5f);
-                                o.transform.position += chaseBoost * disperseSpeeds[o.orbType] * Time.deltaTime * (2f + 2f * d + ramp) * (Vector3)dir.normalized;
+                                tr.position = pos + chaseBoost * disperseSpeeds[o.orbType] * Time.deltaTime * (2f + 2f * d + ramp) * (Vector3)(dir / d);
                             }
                             else o.chaseT = 0f;   // drifted out of range — reset the chase ramp
                         }
@@ -103,21 +105,22 @@ public class OrbManager : MonoBehaviour
                 case OrbScript.OrbState.collect:
                     if (OrbScript.canAttract[o.orbType])
                     {
-                        dir = CS.position - o.transform.position;
+                        Vector3 pos = tr.position;
+                        dir = CS.position - pos;
                         dist = dir.sqrMagnitude;
                         if (dist < Mathf.Pow(10f * Time.deltaTime, 2))
                         {
                             PlayerCollide(o);
                             continue;
                         }
-                        o.transform.position += 7.5f * Time.deltaTime * (Vector3)dir.normalized;
+                        tr.position = pos + 7.5f * Time.deltaTime * (Vector3)dir.normalized;
                     }
                     break;
                 case OrbScript.OrbState.decelerate:
-                    o.transform.localPosition = Vector2.Lerp(o.transform.localPosition, Vector3.zero, 0.6f * speeds[o.orbType] * Time.deltaTime);
+                    tr.localPosition = Vector2.Lerp(tr.localPosition, Vector3.zero, 0.6f * speeds[o.orbType] * Time.deltaTime);
                     continue;
                 case OrbScript.OrbState.accelerate:
-                    o.transform.Translate(speeds[o.orbType] * Time.deltaTime * 3 * -o.transform.localPosition.normalized);
+                    tr.Translate(speeds[o.orbType] * Time.deltaTime * 3 * -tr.localPosition.normalized);
                     continue;
                 case OrbScript.OrbState.harvest:
                     if (o.hovTimer > 0f)
@@ -125,22 +128,22 @@ public class OrbManager : MonoBehaviour
                         o.hovTimer -= Time.deltaTime;
                         if(o.hovTimer <= 0f)
                         {
-                            o.transform.localPosition = Vector2.zero;
+                            tr.localPosition = Vector2.zero;
                             o.hovTimer = -1f;
                         }
-                        o.transform.localPosition = Vector2.Lerp(o.transform.localPosition, Vector2.zero, 3f * Time.deltaTime * (2f-o.hovTimer));
-                        
+                        tr.localPosition = Vector2.Lerp(tr.localPosition, Vector2.zero, 3f * Time.deltaTime * (2f-o.hovTimer));
+
                     }
                     else
                     {
-                        o.transform.localPosition = Vector2.Lerp(o.transform.localPosition, Random.insideUnitCircle * 0.2f ,  Time.deltaTime);
+                        tr.localPosition = Vector2.Lerp(tr.localPosition, Random.insideUnitCircle * 0.2f ,  Time.deltaTime);
                     }
                     continue;
                 case OrbScript.OrbState.hover:
                     o.hovTimer -= Time.deltaTime;
                     if (o.hovTimer > 0f)
                     {
-                        o.transform.localPosition = Vector3.Lerp(o.transform.localPosition, new Vector2(distortion * (-0.5f + 1f * Mathf.PerlinNoise(Mathf.Sin(o.theta + 0.8f*Time.time),0.35f*Time.time)), -0.5f + Mathf.PerlinNoise(Mathf.Cos(o.theta+ 0.8f*Time.time), 0.35f*Time.time)).Rotated(o.rot), 4f * Time.deltaTime);
+                        tr.localPosition = Vector3.Lerp(tr.localPosition, new Vector2(distortion * (-0.5f + 1f * Mathf.PerlinNoise(Mathf.Sin(o.theta + 0.8f*Time.time),0.35f*Time.time)), -0.5f + Mathf.PerlinNoise(Mathf.Cos(o.theta+ 0.8f*Time.time), 0.35f*Time.time)).Rotated(o.rot), 4f * Time.deltaTime);
                     }
                     else if(o.hovTimer < 0f)
                     {
@@ -153,7 +156,7 @@ public class OrbManager : MonoBehaviour
                     if (o.hovTimer > 0f)
                     {
                         dir = new Vector2(distortion * (-0.5f + 1f * Mathf.PerlinNoise(Mathf.Sin(o.theta + 0.8f * Time.time), 0.35f * Time.time)), -0.5f + Mathf.PerlinNoise(Mathf.Cos(o.theta + 0.8f * Time.time), 0.35f * Time.time)).Rotated(o.rot);
-                        o.transform.localPosition = Vector3.Lerp(o.transform.localPosition, new Vector3(dir.x*1.75f,dir.y*0.75f, 0f) , 4f * Time.deltaTime);
+                        tr.localPosition = Vector3.Lerp(tr.localPosition, new Vector3(dir.x*1.75f,dir.y*0.75f, 0f) , 4f * Time.deltaTime);
                     }
                     else if (o.hovTimer < 0f)
                     {
@@ -172,9 +175,9 @@ public class OrbManager : MonoBehaviour
                     Vector3 line = s0 * (1f - e);
                     Vector3 perp = new Vector3(-s0.y, s0.x, 0f).normalized;
                     float wig = o.depWig1 * Mathf.Sin(2f * Mathf.PI * t) + o.depWig2 * Mathf.Sin(3f * Mathf.PI * t);
-                    o.transform.localPosition = line + perp * wig;
-                    o.transform.localScale = Vector3.one * (1f + 0.28f * Mathf.Sin(t * Mathf.PI));  // swell, settle
-                    if (t >= 1f) { o.transform.localPosition = Vector3.zero; o.transform.localScale = Vector3.one; }
+                    tr.localPosition = line + perp * wig;
+                    tr.localScale = Vector3.one * (1f + 0.28f * Mathf.Sin(t * Mathf.PI));  // swell, settle
+                    if (t >= 1f) { tr.localPosition = Vector3.zero; tr.localScale = Vector3.one; }
                     continue;
             }
         }

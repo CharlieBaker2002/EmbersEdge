@@ -102,7 +102,7 @@ public class E1_4 : Unit, IOnCollide
             }
             TurnToward(want, coef, Time.fixedDeltaTime * actRate);
             seconds -= Time.fixedDeltaTime * actRate;
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
     }
 
@@ -147,7 +147,7 @@ public class E1_4 : Unit, IOnCollide
                     // chewable wall), never nose-first into rock the route walks around.
                     Vector2 aim = MinePath.AimPoint(target, transform.position);
                     Vector2 want = (aim - (Vector2)transform.position).normalized;
-                    if (!MinePath.LineOfSightWide(transform.position, aim, size) && pathDir != Vector2.zero)
+                    if (pathDir != Vector2.zero && !MinePath.LineOfSightWide(transform.position, aim, size))
                     {
                         want = pathDir;
                     }
@@ -162,7 +162,7 @@ public class E1_4 : Unit, IOnCollide
                 Vector2 lat = AS.rb.linearVelocity - Vector2.Dot(AS.rb.linearVelocity, dir) * dir;
                 AS.TryAddForce(-LateralGrip * actRate * AS.mass * lat, true);
                 timer -= Time.fixedDeltaTime * actRate;
-                yield return new WaitForFixedUpdate();
+                yield return GS.WFFU;
             }
             charging = false;
             AS.Decelerate(1.5f, 0.935f);
@@ -199,7 +199,7 @@ public class E1_4 : Unit, IOnCollide
         float c = 0f;
         for (float t = 0f; t < 2.25f; t += Time.fixedDeltaTime)
         {
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
             c += actRate * 20f;
             if (!GS.Chance(c)) continue;
             c -= 100f;

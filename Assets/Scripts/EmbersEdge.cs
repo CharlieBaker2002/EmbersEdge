@@ -272,7 +272,7 @@ public class EmbersEdge : MonoBehaviour
                 rand += size * fluidness * Random.insideUnitCircle;
                 positions[i] = (Vector2)positions[i] + rand;
             }
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
         busy = false;
     }
@@ -316,7 +316,7 @@ public class EmbersEdge : MonoBehaviour
             for (float t = 0f; t < warmUpTime; t += Time.fixedDeltaTime)
             {
                 refresh = Mathf.Lerp(refresh, 0,  0.25f * t  / warmUpTime * Time.fixedDeltaTime);
-                yield return new WaitForFixedUpdate();
+                yield return GS.WFFU;
             }
         }
         
@@ -434,7 +434,7 @@ public class EmbersEdge : MonoBehaviour
         for (float t = 0f; t < warmUpTime; t += Time.fixedDeltaTime)
         {
             refresh = Mathf.Lerp(refresh, 0.05f, 0.25f * t / warmUpTime * Time.fixedDeltaTime);
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
         refresh = 0.05f;
     }
@@ -455,7 +455,7 @@ public class EmbersEdge : MonoBehaviour
         for (float i = 29f; i > 0f; i -= Time.fixedDeltaTime)
         {
             transform.position += mov;
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
         hastiness /= 2;
         shiftPos = Vector2.zero;

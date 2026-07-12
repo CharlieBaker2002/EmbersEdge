@@ -123,14 +123,35 @@ public class ResourceManager : MonoBehaviour
             }
         }
 
-        energy = EnergyPart.energies.Sum(x => x.energy);
-        fuel = EnergyPart.fuels.Sum(x => x.energy);
+        float energySum = 0f;
+        var energies = EnergyPart.energies;
+        for (int i = 0; i < energies.Count; i++)
+        {
+            energySum += energies[i].energy;
+        }
+        energy = energySum;
+        float fuelSum = 0f;
+        var fuels = EnergyPart.fuels;
+        for (int i = 0; i < fuels.Count; i++)
+        {
+            fuelSum += fuels[i].energy;
+        }
+        fuel = fuelSum;
         energySlider.UpdateSlider(energy);
         fuelSlider.UpdateSlider(fuel);
         latentShield.enabled = energy > 0f;
-        
+
         GS.DistributeSprites(DefensePart.hps,hpSprites,1f - CharacterScript.CS.ls.hp/CharacterScript.CS.ls.maxHp);
-        GS.DistributeSprites(DefensePart.shields,shieldSprites,1f - CharacterScript.CS.ls.shields.First(x => x.ID == CharacterScript.CS.latentShield.ID).strength / CharacterScript.CS.latentShield.max);
+        var csShields = CharacterScript.CS.ls.shields;
+        int latentID = CharacterScript.CS.latentShield.ID;
+        for (int i = 0; i < csShields.Count; i++)
+        {
+            if (csShields[i].ID == latentID)
+            {
+                GS.DistributeSprites(DefensePart.shields,shieldSprites,1f - csShields[i].strength / CharacterScript.CS.latentShield.max);
+                break;
+            }
+        }
         if (DefensePart.shieldRegens.Count == 0) return;
         //Doing shield regen animation here for whatever reason...
         shieldAnimTimer -= Time.deltaTime;

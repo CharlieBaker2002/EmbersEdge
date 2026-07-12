@@ -23,6 +23,112 @@ public static class GS
     public static ActionScript AS;
     public static bool qutting = false;
 
+    public static readonly WaitForFixedUpdate WFFU = new WaitForFixedUpdate();
+
+    //layer bits are engine-constant, so a stale cache across no-domain-reload plays is harmless
+    static int layerCharacter, layerAllyUnits, layerAllyBuildings, layerAllyProjectiles,
+        layerEnemyUnits, layerEnemyBuildings, layerEnemyProjectiles;
+    static bool masksReady;
+
+    static Collider2D[] nearestUnitsBuf = new Collider2D[64];
+    static Collider2D[] nearestBuildingsBuf = new Collider2D[64];
+    static readonly Collider2D[] findEnemiesBuf = new Collider2D[10];
+    static readonly Dictionary<string, GameObject> resourceCache = new();
+
+    //cached Resources.Load for gameplay-rate FX prefabs (assets are immutable at runtime)
+    public static GameObject Res(string path)
+    {
+        if (!resourceCache.TryGetValue(path, out var g))
+        {
+            g = Resources.Load<GameObject>(path);
+            resourceCache[path] = g;
+        }
+
+        return g;
+    }
+
+    static void EnsureMasks()
+    {
+        if (masksReady) return;
+        masksReady = true;
+        layerCharacter = 1 << LayerMask.NameToLayer("Character");
+        layerAllyUnits = 1 << LayerMask.NameToLayer("Ally Units");
+        layerAllyBuildings = 1 << LayerMask.NameToLayer("Ally Buildings");
+        layerAllyProjectiles = 1 << LayerMask.NameToLayer("Ally Projectiles");
+        layerEnemyUnits = 1 << LayerMask.NameToLayer("Enemy Units");
+        layerEnemyBuildings = 1 << LayerMask.NameToLayer("Enemy Buildings");
+        layerEnemyProjectiles = 1 << LayerMask.NameToLayer("Enemy Projectiles");
+    }
+
+    //grows until the full candidate set fits, so results always match the old OverlapCircleAll
+    static int OverlapGrow(Vector2 pos, float radius, int mask, ref Collider2D[] buf)
+    {
+        var filter = new ContactFilter2D
+        {
+            useTriggers = false,
+            useLayerMask = true,
+            layerMask = mask
+        };
+        int n = Physics2D.OverlapCircle(pos, radius, filter, buf);
+        while (n == buf.Length)
+        {
+            buf = new Collider2D[buf.Length * 2];
+            n = Physics2D.OverlapCircle(pos, radius, filter, buf);
+        }
+
+        return n;
+    }
+
+    static void NearestNonTrigger(Collider2D[] buf, int n, Vector3 currentPosition, ref Transform bestTarget,
+        ref float closestDistanceSqr)
+    {
+        for (int i = 0; i < n; i++)
+        {
+            Collider2D potentialTarget = buf[i];
+            if (potentialTarget.isTrigger || potentialTarget.attachedRigidbody == null) continue;
+            float dSqrToTarget = (potentialTarget.transform.position - currentPosition).sqrMagnitude;
+            if (dSqrToTarget < closestDistanceSqr)
+            {
+                closestDistanceSqr = dSqrToTarget;
+                bestTarget = potentialTarget.attachedRigidbody.transform;
+            }
+        }
+    }
+
+    static int SearchMask(bool callerIsAlly, searchType search)
+    {
+        EnsureMasks();
+        int units = callerIsAlly ? layerEnemyUnits : layerAllyUnits;
+        int buildings = callerIsAlly ? layerEnemyBuildings : layerAllyBuildings;
+        int projectiles = callerIsAlly ? layerEnemyProjectiles : layerAllyProjectiles;
+        int mask = 0;
+        switch (search)
+        {
+            case (searchType.allSearch):
+                mask = units | buildings;
+                break;
+            case (searchType.allAndProjSearch):
+                mask = units | buildings | projectiles;
+                break;
+            case (searchType.buildingsSearch):
+                mask = buildings;
+                break;
+            case (searchType.unitsSearch):
+                mask = units;
+                break;
+            case (searchType.projSearch):
+                mask = projectiles;
+                break;
+        }
+
+        if (!callerIsAlly && search != searchType.projSearch && search != searchType.buildingsSearch)
+        {
+            mask |= layerCharacter;
+        }
+
+        return mask;
+    }
+
     public static bool CanAct()
     {
         return AS.canAct;
@@ -120,84 +226,32 @@ public static class GS
     public static Transform FindNearestEnemy(string tagP, Vector2 pos, float searchDistance, bool preferBuildings,
         bool allowOther = true)
     {
-        Collider2D[] enemies = new Collider2D[] { };
-        Collider2D[] buildings = new Collider2D[] { };
-        if (!(preferBuildings && !allowOther))
-        {
-            if (tagP == "Enemies")
-            {
-                enemies = Physics2D.OverlapCircleAll(pos, searchDistance,
-                    LayerMask.GetMask(new string[] { "Character", "Ally Units" }));
-            }
-            else
-            {
-                enemies = Physics2D.OverlapCircleAll(pos, searchDistance,
-                    LayerMask.GetMask(new string[] { "Enemy Units" }));
-            }
-
-        }
-
-        if (preferBuildings || allowOther)
-        {
-            buildings = Physics2D.OverlapCircleAll(pos, searchDistance,
-                1 << LayerMask.NameToLayer(EnemyTag(tagP, true, true)));
-        }
+        EnsureMasks();
+        int unitsMask = tagP == "Enemies" ? layerCharacter | layerAllyUnits : layerEnemyUnits;
+        int buildingsMask = tagP == "Enemies" ? layerAllyBuildings :
+            tagP == "Allies" ? layerEnemyBuildings : 1 << LayerMask.NameToLayer(EnemyTag(tagP, true, true));
 
         Transform bestTarget = null;
         float closestDistanceSqr = Mathf.Infinity;
         Vector3 currentPosition = pos;
         if (preferBuildings)
         {
-            foreach (Collider2D potentialTarget in buildings)
-            {
-                if (potentialTarget.isTrigger || potentialTarget.attachedRigidbody == null) continue;
-                float dSqrToTarget = (potentialTarget.transform.position - currentPosition).sqrMagnitude;
-                if (dSqrToTarget < closestDistanceSqr)
-                {
-                    closestDistanceSqr = dSqrToTarget;
-                    bestTarget = potentialTarget.attachedRigidbody.transform;
-                }
-            }
-
+            int n = OverlapGrow(pos, searchDistance, buildingsMask, ref nearestBuildingsBuf);
+            NearestNonTrigger(nearestBuildingsBuf, n, currentPosition, ref bestTarget, ref closestDistanceSqr);
             if (bestTarget == null && allowOther)
             {
-                foreach (Collider2D potentialTarget in enemies)
-                {
-                    if (potentialTarget.isTrigger || potentialTarget.attachedRigidbody == null) continue;
-                    float dSqrToTarget = (potentialTarget.transform.position - currentPosition).sqrMagnitude;
-                    if (dSqrToTarget < closestDistanceSqr)
-                    {
-                        closestDistanceSqr = dSqrToTarget;
-                        bestTarget = potentialTarget.attachedRigidbody.transform;
-                    }
-                }
+                n = OverlapGrow(pos, searchDistance, unitsMask, ref nearestUnitsBuf);
+                NearestNonTrigger(nearestUnitsBuf, n, currentPosition, ref bestTarget, ref closestDistanceSqr);
             }
         }
         else
         {
-            foreach (Collider2D potentialTarget in enemies)
-            {
-                if (potentialTarget.isTrigger || potentialTarget.attachedRigidbody == null) continue;
-                float dSqrToTarget = (potentialTarget.transform.position - currentPosition).sqrMagnitude;
-                if (dSqrToTarget < closestDistanceSqr)
-                {
-                    closestDistanceSqr = dSqrToTarget;
-                    bestTarget = potentialTarget.attachedRigidbody.transform;
-                }
-            }
-
+            int n = OverlapGrow(pos, searchDistance, unitsMask, ref nearestUnitsBuf);
+            NearestNonTrigger(nearestUnitsBuf, n, currentPosition, ref bestTarget, ref closestDistanceSqr);
             if (bestTarget == null && allowOther)
             {
-                foreach (Collider2D potentialTarget in buildings)
-                {
-                    if (potentialTarget.isTrigger || potentialTarget.attachedRigidbody == null) continue;
-                    float dSqrToTarget = (potentialTarget.transform.position - currentPosition).sqrMagnitude;
-                    if (dSqrToTarget < closestDistanceSqr)
-                    {
-                        closestDistanceSqr = dSqrToTarget;
-                        bestTarget = potentialTarget.attachedRigidbody.transform;
-                    }
-                }
+                n = OverlapGrow(pos, searchDistance, buildingsMask, ref nearestBuildingsBuf);
+                NearestNonTrigger(nearestBuildingsBuf, n, currentPosition, ref bestTarget, ref closestDistanceSqr);
             }
         }
 
@@ -252,56 +306,6 @@ public static class GS
         return acs;
     }
 
-    public static ActionScript FindEnemyAS(Transform t, float searchDistance, searchType search)
-    {
-        string[] strs = new string[] { };
-        string add = t.CompareTag("Allies") ? "Ally " : "Enemy ";
-        switch (search)
-        {
-            case (searchType.allSearch):
-                strs = new string[] { add + "Units", add + "Buildings" };
-                break;
-            case (searchType.allAndProjSearch):
-                strs = new string[] { add + "Units", add + "Buildings", add + "Projectiles" };
-                break;
-            case (searchType.buildingsSearch):
-                strs = new string[] { add + "Buildings" };
-                break;
-            case (searchType.unitsSearch):
-                strs = new string[] { add + "Units" };
-                break;
-            case (searchType.projSearch):
-                strs = new string[] { add + "Projectiles" };
-                break;
-        }
-
-        if (!t.CompareTag("Allies"))
-        {
-            if (search != searchType.projSearch && search != searchType.buildingsSearch)
-            {
-                Array.Resize(ref strs, strs.Length + 1);
-                strs[^1] = "Character";
-            }
-        }
-
-        var cols = Physics2D.OverlapCircleAll(t.position, searchDistance, LayerMask.GetMask(strs));
-        int rand;
-        for (int i = 0; i < cols.Length; i++)
-        {
-            rand = UnityEngine.Random.Range(0, cols.Length);
-            if (cols[rand].isTrigger) continue;
-            if (cols[rand].attachedRigidbody != null)
-            {
-                if (cols[rand].attachedRigidbody.TryGetComponent<ActionScript>(out var AS))
-                {
-                    return AS;
-                }
-            }
-        }
-
-        return null;
-    }
-
     public static searchType BoolsToSearch(bool allowUnits, bool allowBuildings, bool allowProjectiles)
     {
         if (allowUnits && allowBuildings && allowProjectiles)
@@ -336,41 +340,11 @@ public static class GS
     public static Transform FindEnemy(Transform t, float searchDistance, searchType search, Collider2D[] cols,
         Transform compare = null)
     {
-        string[] strs = new string[] { };
-        string add = t.CompareTag("Allies") ? "Enemy " : "Ally ";
-        switch (search)
-        {
-            case (searchType.allSearch):
-                strs = new string[] { add + "Units", add + "Buildings" };
-                break;
-            case (searchType.allAndProjSearch):
-                strs = new string[] { add + "Units", add + "Buildings", add + "Projectiles" };
-                break;
-            case (searchType.buildingsSearch):
-                strs = new string[] { add + "Buildings" };
-                break;
-            case (searchType.unitsSearch):
-                strs = new string[] { add + "Units" };
-                break;
-            case (searchType.projSearch):
-                strs = new string[] { add + "Projectiles" };
-                break;
-        }
-
-        if (!t.CompareTag("Allies"))
-        {
-            if (search != searchType.projSearch && search != searchType.buildingsSearch)
-            {
-                Array.Resize(ref strs, strs.Length + 1);
-                strs[^1] = "Character";
-            }
-        }
-
         var filter = new ContactFilter2D
         {
             useTriggers = true,
             useLayerMask = true,
-            layerMask = LayerMask.GetMask(strs)
+            layerMask = SearchMask(t.CompareTag("Allies"), search)
         };
         var size = Physics2D.OverlapCircle(t.position, searchDistance, filter, cols);
         if (size > 0)
@@ -403,46 +377,46 @@ public static class GS
     public static List<Transform> FindEnemies(string tagP, Vector2 pos, float searchDistance,
         bool allowBuildings = true, bool allowProjectiles = false, Collider2D[] cols = null)
     {
-        List<string> layers = new List<string>();
-        if (tagP.ToLower() == "enemies")
+        EnsureMasks();
+        int layerMask;
+        if (string.Equals(tagP, "Enemies", StringComparison.OrdinalIgnoreCase))
         {
-            layers.Add("Character");
-            layers.Add("Ally Units");
+            layerMask = layerCharacter | layerAllyUnits;
             if (allowBuildings)
             {
-                layers.Add("Ally Buildings");
+                layerMask |= layerAllyBuildings;
             }
 
             if (allowProjectiles)
             {
-                layers.Add("Ally Projectiles");
+                layerMask |= layerAllyProjectiles;
             }
         }
         else
         {
-            layers.Add("Enemy Units");
+            layerMask = layerEnemyUnits;
             if (allowBuildings)
             {
-                layers.Add("Enemy Buildings");
+                layerMask |= layerEnemyBuildings;
             }
 
             if (allowProjectiles)
             {
-                layers.Add("Enemy Projectiles");
+                layerMask |= layerEnemyProjectiles;
             }
         }
 
         List<Transform> objs = new List<Transform>();
         if (cols == null)
         {
-            cols = new Collider2D[10];
+            cols = findEnemiesBuf; //same deliberate 10-collider cap as before, just not reallocated per call
         }
 
         var filter = new ContactFilter2D
         {
             useTriggers = true,
             useLayerMask = true,
-            layerMask = LayerMask.GetMask(layers.ToArray())
+            layerMask = layerMask
         };
         int n = Physics2D.OverlapCircle(pos, searchDistance, filter, cols);
         for (int x = 0; x < n; x++)
@@ -454,11 +428,15 @@ public static class GS
 
             if (cols[x].attachedRigidbody != null)
             {
-                objs.Add(cols[x].attachedRigidbody.transform);
+                Transform tr = cols[x].attachedRigidbody.transform;
+                if (!objs.Contains(tr))
+                {
+                    objs.Add(tr);
+                }
             }
         }
 
-        return objs.Distinct().ToList();
+        return objs;
     }
 
     public static Parent ProjParent(Transform t)
@@ -1314,7 +1292,7 @@ public static class GS
             if (o == null) yield break;
             T.transform.up = Vector2.Lerp(T.transform.up, (o.position - T.transform.position).normalized,
                 coef * Time.fixedDeltaTime);
-            yield return new WaitForFixedUpdate();
+            yield return WFFU;
         }
     }
 

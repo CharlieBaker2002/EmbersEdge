@@ -30,6 +30,7 @@ public class Tentacle : MonoBehaviour, IOnCollide
 
     Vector2[] posVels;
     Vector3[] positions;
+    Vector3[] initPositions;
     private List<Vector2> prevData = new List<Vector2>();
 
     [Header("")]
@@ -110,12 +111,15 @@ public class Tentacle : MonoBehaviour, IOnCollide
             targetPosition = targetEnd.position;
         }
 
-        Vector3[] initPositions = new Vector3[N];
+        if (initPositions == null || initPositions.Length < N)
+        {
+            initPositions = new Vector3[N];
+        }
         for (int i = 0; i < N; i++)
         {
             initPositions[i] = positions[i];
         }
-       
+        Vector3 attachUp = attachPoint.transform.up;
         for (int repetitions = 0; repetitions < 10; repetitions++) //inverse kinematics loopage
         {
             positions[^1] = targetPosition;
@@ -126,7 +130,7 @@ public class Tentacle : MonoBehaviour, IOnCollide
             positions[0] = attachPoint.position;
             for (int i = 1; i <= enforcedRotationSegs; i++)
             {
-                positions[i] = positions[i - 1] + attachPoint.transform.up * segLength;
+                positions[i] = positions[i - 1] + attachUp * segLength;
             }
             for (int i = 1 + enforcedRotationSegs; i < positions.Length; i++)
             {
@@ -197,7 +201,7 @@ public class Tentacle : MonoBehaviour, IOnCollide
                 rand += segLength * fluidness * Random.insideUnitCircle;
                 positions[i] = (Vector2)positions[i] + rand;
             }
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
         busy = false;
     }

@@ -52,7 +52,7 @@ public class E1_3 : Unit
                     for (float i = x; i > 0f; i -= Time.fixedDeltaTime)
                     {
                         AS.TryAddForce(1.5f * actRate * transform.up, true);
-                        yield return new WaitForFixedUpdate();
+                        yield return GS.WFFU;
                     }
                 }
                 else
@@ -79,7 +79,7 @@ public class E1_3 : Unit
             anim.SetBool("Morph", true);
             while(anim.GetBool("Morph") == true)
             {
-                yield return new WaitForFixedUpdate();
+                yield return GS.WFFU;
             }
         }
     }

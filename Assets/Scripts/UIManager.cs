@@ -191,10 +191,56 @@ public class UIManager : MonoBehaviour
         StartCoroutine(DamageTextI(Mathf.Abs(dmg), typ, pos));
     }
 
+    //popups are exclusive to one coroutine from Get to Release, so each pooled entry can own
+    //its Gradient + key arrays (a shared Gradient would be trampled by concurrent popups)
+    class PooledDmgText
+    {
+        public GameObject go;
+        public Transform tr;
+        public TextMeshPro txt;
+        public readonly Gradient gradient = new Gradient();
+        public readonly GradientColorKey[] keys = new GradientColorKey[2];
+        public readonly GradientAlphaKey[] alphaKey = new GradientAlphaKey[2];
+    }
+
+    readonly Stack<PooledDmgText> dmgTextPool = new();
+    Vector3 dmgTextBaseScale;
+    bool dmgTextBaseScaleSet;
+
+    PooledDmgText GetDmgText(Vector2 pos)
+    {
+        if (!dmgTextBaseScaleSet)
+        {
+            dmgTextBaseScaleSet = true;
+            dmgTextBaseScale = Text.transform.localScale;
+        }
+        while (dmgTextPool.Count > 0)
+        {
+            var p = dmgTextPool.Pop();
+            if (p.go == null) continue;
+            p.tr.SetPositionAndRotation(pos, Quaternion.identity);
+            p.tr.localScale = dmgTextBaseScale;
+            p.go.SetActive(true);
+            return p;
+        }
+        var fresh = new PooledDmgText();
+        fresh.go = Instantiate(Text, pos, Quaternion.identity, dmgTextParent);
+        fresh.tr = fresh.go.transform;
+        fresh.txt = fresh.go.GetComponent<TextMeshPro>();
+        return fresh;
+    }
+
+    void ReleaseDmgText(PooledDmgText p)
+    {
+        if (p.go == null) return;
+        p.go.SetActive(false);
+        dmgTextPool.Push(p);
+    }
+
     IEnumerator DamageTextI(float dmg, int typ, Vector2 pos)
     {
-        var text = Instantiate(Text, pos, Quaternion.identity, dmgTextParent);
-        var txt = text.GetComponent<TextMeshPro>();
+        var p = GetDmgText(pos);
+        var txt = p.txt;
         if (dmg >= 5f)
         {
             txt.text = dmg.ToString("F0");
@@ -216,14 +262,14 @@ public class UIManager : MonoBehaviour
         }
         else
         {
-            Destroy(text);
+            ReleaseDmgText(p);
             yield break;
         }
         float timer = lifeTime / 2f;
         float dScaler = 1 + scaler * Mathf.Log(Mathf.Max(1, dmg), 2);
 
-        Gradient gradient = new Gradient();
-        GradientColorKey[] keys = new GradientColorKey[2];
+        Gradient gradient = p.gradient;
+        GradientColorKey[] keys = p.keys;
         keys[0].color = Color.black;
         keys[0].time = 0;
         if (typ < 0)
@@ -235,22 +281,22 @@ public class UIManager : MonoBehaviour
             keys[1].color = colSO.cols[typ];
         }
         keys[1].time = timer;
-        var alphaKey = new GradientAlphaKey[2];
+        var alphaKey = p.alphaKey;
         alphaKey[0].alpha = 0f;
         alphaKey[0].time = 0.0f;
         alphaKey[1].time = 1f;
-        
+
         txt.fontStyle = FontStyles.Italic;
         txt.outlineColor = colSO.Level1;
         alphaKey[1].alpha =
         timer /= 1.5f;
-           
+
         gradient.SetKeys(keys, alphaKey);
         while (timer > 0f)
         {
             txt.color = gradient.Evaluate(((lifeTime / 2) - timer) / (lifeTime / 2));
             timer -= Time.deltaTime;
-            text.transform.localScale += dScaler * Time.deltaTime * Vector3.one;
+            p.tr.localScale += dScaler * Time.deltaTime * Vector3.one;
             yield return null;
         }
 
@@ -269,11 +315,11 @@ public class UIManager : MonoBehaviour
         while (timer > 0f)
         {
             timer -= Time.deltaTime;
-            text.transform.localScale -= Vector3.one * (dScaler * Time.deltaTime);
+            p.tr.localScale -= Vector3.one * (dScaler * Time.deltaTime);
             dScaler += Time.deltaTime;
             yield return null;
         }
-        Destroy(text);
+        ReleaseDmgText(p);
     }
 
     public static void CloseAllUIs()

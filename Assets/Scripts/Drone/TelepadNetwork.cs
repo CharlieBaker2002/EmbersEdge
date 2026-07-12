@@ -38,6 +38,19 @@ public static class TelepadNetwork
             list.RemoveAt(list.Count - 1);
     }
 
+    /// <summary>Standing drill-drone demand across live base pads (tombstones skipped) —
+    /// registry walk instead of scanning every Building.</summary>
+    public static int BaseDrillDemand()
+    {
+        int n = 0;
+        for (int k = 0; k < basePads.Count; k++)
+        {
+            var tp = basePads[k];
+            if (tp != null && tp.IsOperational) n += tp.reqDrill;
+        }
+        return n;
+    }
+
     /// <summary>The same-numbered pad on the other side; null when none exists (yet).</summary>
     public static Telepad LinkOf(Telepad t)
     {

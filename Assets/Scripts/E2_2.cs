@@ -32,7 +32,7 @@ public class E2_2 : Unit
                     {
                         break;
                     }
-                    yield return new WaitForFixedUpdate();
+                    yield return GS.WFFU;
                 }
                 la.FadeInQuick();
                 GS.VP(1, transform, transform.position, 50);

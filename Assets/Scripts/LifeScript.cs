@@ -20,7 +20,46 @@ public class LifeScript : MonoBehaviour
     private bool isProjectile = false;
     private bool hasBlood;
     [HideInInspector] public GameObject bloodHold;
-    private float bloodTimer = 0f;
+    private float bloodReadyAt = 0f;
+
+    //ring pools per blood prefab: splatters are fire-and-forget under the FX parent, so a small
+    //ring of reusable instances replaces the per-hit Instantiate + DestroyAfterTime churn
+    const int bloodPoolSize = 24;
+    static readonly Dictionary<GameObject, GameObject[]> bloodPools = new();
+    static readonly Dictionary<GameObject, int> bloodPoolNext = new();
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetBloodPools()
+    {
+        bloodPools.Clear();
+        bloodPoolNext.Clear();
+    }
+
+    void SpawnBlood(GameObject prefab)
+    {
+        if (!bloodPools.TryGetValue(prefab, out var ring))
+        {
+            ring = new GameObject[bloodPoolSize];
+            bloodPools[prefab] = ring;
+            bloodPoolNext[prefab] = 0;
+        }
+        int i = bloodPoolNext[prefab];
+        bloodPoolNext[prefab] = (i + 1) % bloodPoolSize;
+        GameObject g = ring[i];
+        if (g == null)
+        {
+            g = Instantiate(prefab, transform.position, transform.rotation, FXtransform);
+            foreach (var dat in g.GetComponentsInChildren<DestroyAfterTime>(true))
+            {
+                Destroy(dat);
+            }
+            ring[i] = g;
+            return;
+        }
+        g.SetActive(false); //restarts the play-on-awake systems at the new spot
+        g.transform.SetPositionAndRotation(transform.position, transform.rotation);
+        g.SetActive(true);
+    }
     [HideInInspector] public bool isCharacter = false;
     Transform FXtransform;
     [HideInInspector] public bool hasDied = false;
@@ -63,11 +102,6 @@ public class LifeScript : MonoBehaviour
             hp = maxHp;
         }
         LimitCheck();
-    }
-    
-    void Update()
-    {
-        bloodTimer -= Time.deltaTime;
     }
     
     public void LimitCheck()
@@ -146,20 +180,20 @@ public class LifeScript : MonoBehaviour
             {
                 onDamageDelegate?.Invoke(value);
             }
-            if ((value <= 0f && bloodTimer < 0f) || forceFX || XShowText)
+            if ((value <= 0f && Time.time > bloodReadyAt) || forceFX || XShowText)
             {
-                if (!isProjectile && hasBlood && bloodTimer < 0f)
+                if (!isProjectile && hasBlood && Time.time > bloodReadyAt)
                 {
-                    bloodTimer = 0.15f;
+                    bloodReadyAt = Time.time + 0.15f;
                     if (value == 0f && shieldBlood != null)
                     {
-                        Instantiate(shieldBlood,transform.position,transform.rotation,FXtransform);
+                        SpawnBlood(shieldBlood);
                     }
                     else
                     {
-                        Instantiate(blood, transform.position, transform.rotation, FXtransform);
+                        SpawnBlood(blood);
                     }
-                  
+
                 }
                 if (!isProjectile)
                 {
@@ -264,7 +298,7 @@ public class LifeScript : MonoBehaviour
             {
                 Change(value * (Time.fixedDeltaTime / time), dmgType, false, false, noKill, true);
             }
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
         }
         if (time != 0)
         {
@@ -278,7 +312,7 @@ public class LifeScript : MonoBehaviour
         hasDied = true;
         if (hasBlood)
         {
-            Instantiate(blood, transform.position, transform.rotation, FXtransform);
+            SpawnBlood(blood);
         }
         if (makeOrbs && orbs != null)
         {
@@ -320,7 +354,7 @@ public class LifeScript : MonoBehaviour
                 }
             }
         }
-        else
+        else if (!SpawnManager.TryReleaseProjectile(gameObject))   // pooled projectiles park, everything else dies
         {
             Destroy(gameObject);
         }

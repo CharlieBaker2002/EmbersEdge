@@ -98,7 +98,6 @@ public class Worm : MonoBehaviour
                 targetPoint = (positions[i] - positions[i - 1]).normalized * interSpace + positions[i - 1];
                 if (transform.localRotation.eulerAngles.z > 270 || transform.localRotation.eulerAngles.z < 90)
                 {
-                    Debug.Log(name + transform.localRotation.eulerAngles.z.ToString());
                     targetPoint += coef * Mathf.Sin(Time.time * wiggleSpeed * (0.5f + coef)) * wiggleCap * transform.parent.right;
                 }
                 else

@@ -70,7 +70,7 @@ public class Fireball : MonoBehaviour
             for (int i = 0; i < 5; i++)
             {
                 transform.Translate(direction* 0.17f * (1f + 0.5f * level),Space.World);
-                yield return new WaitForFixedUpdate();
+                yield return GS.WFFU;
             }
             hit = true;
         }

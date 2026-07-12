@@ -39,13 +39,13 @@ public class EmberCable : MonoBehaviour
         {
             sr.sprite = sprs[0];
             sr.sortingOrder = 0;
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
             sr.sprite = sprs[1];
             sr.sortingOrder = 1;
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
             sr.sprite = sprs[2];
             sr.sortingOrder = 2;
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
             sr.sprite = sprs[3];
             sr.sortingOrder = 3;
         }
@@ -53,13 +53,13 @@ public class EmberCable : MonoBehaviour
         {
             sr.sprite = sprs[2];
             sr.sortingOrder = 2;
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
             sr.sprite = sprs[1];
             sr.sortingOrder = 1;
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
             sr.sprite = sprs[0];
             sr.sortingOrder = 0;
-            yield return new WaitForFixedUpdate();
+            yield return GS.WFFU;
             sr.sprite = sprs[3];
             sr.sortingOrder = 3;
         }

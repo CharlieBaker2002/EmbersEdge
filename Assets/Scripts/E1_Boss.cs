@@ -159,7 +159,7 @@ public class E1_Boss : Unit, IOnDeath, IRoomUnit
             }
             for(int i = UnityEngine.Random.Range(0,2); i < 3; i++)
             {
-                yield return new WaitForFixedUpdate();
+                yield return GS.WFFU;
                 timer -= Time.fixedDeltaTime;
             }
         }
