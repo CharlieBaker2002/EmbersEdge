@@ -14,6 +14,8 @@ public class DroneEquipmentItem : MonoBehaviour
 
     public DroneEquipment kind;
     public SpriteRenderer sr;
+    /// <summary>Spare drone flying in to take this kit (colony self-assignment) — one at a time.</summary>
+    [HideInInspector] public Drone claimedBy;
 
     void OnEnable() => all.Add(this);
 

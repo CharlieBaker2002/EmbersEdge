@@ -458,12 +458,17 @@ public static class MinePath
     /// Convenience for steering-style movement: the direction to move RIGHT NOW to head toward a
     /// specific destination along a real path (A* under the hood — use for a locked target, not a
     /// crowd). False = unreachable; fall back to direct steering or give up.
+    /// Pass <paramref name="bodyRadius"/> &gt; 0 to LOS-simplify the path first: the raw A* cell
+    /// chain staircases along diagonals (N,E,N,E…) and steering at its first waypoint reads as
+    /// zigzag walking — simplified, the first waypoint is the farthest directly-reachable point,
+    /// so diagonal routes are flown dead straight.
     /// </summary>
     static readonly List<Vector2> _stepScratch = new List<Vector2>();
-    public static bool StepToward(Vector2 from, Vector2 to, out Vector2 dir, int maxExpansions = 4096)
+    public static bool StepToward(Vector2 from, Vector2 to, out Vector2 dir, int maxExpansions = 4096, float bodyRadius = 0f)
     {
         dir = Vector2.zero;
         if (!FindPath(from, to, _stepScratch, maxExpansions)) return false;
+        if (bodyRadius > 0f) SimplifyPath(_stepScratch, bodyRadius);
         // waypoint 0 is our own cell centre — skip it, aim at the first real step ahead
         for (int i = 1; i < _stepScratch.Count; i++)
         {

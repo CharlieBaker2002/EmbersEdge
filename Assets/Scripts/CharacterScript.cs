@@ -192,6 +192,23 @@ public class CharacterScript : Unit
         ls.onDamageDelegate += _ => ColourControllerRed(_);
         
         healthSlider.InitialiseSlider(10f * GS.Era1());
+
+        // Display-only: left interactable, stray mid-screen drags grab this slider
+        // and its faint fill renders as a giant band across the screen.
+        respawnSlider.interactable = false;
+        foreach (Graphic g in respawnSlider.GetComponentsInChildren<Graphic>(true)) g.raycastTarget = false;
+
+        // Its old parent canvas (the deleted ControllerCursor overlay) is gone, leaving it
+        // orphaned at scene root where it can't render — re-home it centred on the HUD canvas.
+        if (respawnSlider.GetComponentInParent<Canvas>() == null)
+        {
+            Canvas hud = healthSlider.GetComponentInParent<Canvas>();
+            RectTransform rt = (RectTransform)respawnSlider.transform;
+            rt.SetParent(hud.transform, false);
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.localScale = Vector3.one;
+        }
     }
     #endregion
     
@@ -404,7 +421,7 @@ public class CharacterScript : Unit
                 aim = aim.normalized;
                 aimQ = GS.VTQ(aim);
             }
-            if (IM.i.controllerCursor.gameObject.activeInHierarchy)  return;
+            if (IM.i.CActive())  return;
         }
         else
         {
@@ -590,29 +607,6 @@ public class CharacterScript : Unit
             UIManager.CloseAllUIs();
             OpenGroup();
         }
-        //if (groupUIParent.activeInHierarchy)
-        //{
-        //    List<Transform> ts = new List<Transform>();
-        //    foreach (Transform t in groupUIParent.transform)
-        //    {
-        //        ts.Add(t);
-        //    }
-        //    while(ts.Count > 0)
-        //    {
-        //        Destroy(ts[0].gameObject);
-        //        ts.RemoveAt(0);
-        //    }
-        //    for (int i = 0; i < group.Count; i++)
-        //    {
-        //        GroupTile t = Instantiate(groupTile, BM.i.UIspots[i].position, Quaternion.identity, groupUIParent.transform);
-        //        t.Init(group[i].name, group[i].spr, group[i].groupCost, group[i].ls);
-        //    }
-        //}
-        //else
-        //{
-        //    UIManager.CloseAllUIs();
-        //    OpenGroup();
-        //}
     }
 
     private void OpenGroup()

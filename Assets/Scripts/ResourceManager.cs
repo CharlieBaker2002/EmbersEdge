@@ -86,37 +86,6 @@ public class ResourceManager : MonoBehaviour
         // fuelConsumption = 0f;
         // fuelToEnergy = 2f;
 
-        // float effiencyN = StatModifierPart.all.Count(x => x.modifier == StatModifierPart.modifierType.efficiencyThrottle && x.power > 0);
-        // if (effiencyN > 0)
-        // {
-        //     float efficiencyToConverterRatio = effiencyN / (effiencyN + StatModifierPart.all.Count(x => x.modifier == StatModifierPart.modifierType.converter && x.power > 0));
-        //     fuelToEnergy = Mathf.Lerp(2f, 5f,  efficiencyToConverterRatio);
-        // }
-        // else
-        // {
-        //     fuelToEnergy = 2f;
-        // }
-        //
-        // foreach (StatModifierPart p in StatModifierPart.all)
-        // {
-        //     switch (p.modifier)
-        //     {
-        //         case StatModifierPart.modifierType.converter:
-        //             fuelConsumption += 0.1f * p.power;
-        //             break;
-        //         case StatModifierPart.modifierType.staticGenerator:
-        //             staticGeneration += p.power;
-        //             break;
-        //         case StatModifierPart.modifierType.solarPannel:
-        //             solarGeneration += p.power;
-        //             break;
-        //         case StatModifierPart.modifierType.emberCondenser:
-        //             absorptionGeneration += p.power;
-        //             break;
-        //         case StatModifierPart.modifierType.munitions:
-        //             return;
-        //     }
-        // }
     }
     private IEnumerator Start()
     {

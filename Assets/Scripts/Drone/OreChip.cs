@@ -32,6 +32,10 @@ public class OreChip : MonoBehaviour
     float born;
     public float Age => Time.time - born;
 
+    // Half-extent of the chip's SPRITE (7px @ 32ppu, scaled by size) — wall tests pad by this
+    // so the visible chip stays inside the cavity, not just its centre point.
+    public float WallPad => 0.06f + 0.035f * sizeClass;
+
     void OnEnable()
     {
         all.Add(this);
@@ -85,8 +89,10 @@ public class OreChip : MonoBehaviour
     }
 
     /// <summary>Dungeon walls are hard geometry to a skidding chip: reflect off the mine grid
-    /// like a projectile, losing 40% speed per bounce. Axis-separated tile reflection (a corner
-    /// hit flips both); base-side positions are out of the grid's bounds so this no-ops there.</summary>
+    /// like a projectile, losing 40% speed per bounce. Tests are padded by the sprite's
+    /// half-extent so the VISIBLE chip never overlaps a wall tile, not just its centre.
+    /// Axis-separated tile reflection (a corner hit flips both); base-side positions are out
+    /// of the grid's bounds so this no-ops there.</summary>
     void FixedUpdate()
     {
         if (rb == null || !rb.simulated) return;
@@ -96,10 +102,16 @@ public class OreChip : MonoBehaviour
         if (v.sqrMagnitude < 1e-4f) return;
         Vector2 p = rb.position;
         Vector2 next = p + v * Time.fixedDeltaTime;
-        if (!mf.IsSolid(mf.WorldToCell(next))) return;
-        bool hitX = mf.IsSolid(mf.WorldToCell(new Vector2(next.x, p.y)));
-        bool hitY = mf.IsSolid(mf.WorldToCell(new Vector2(p.x, next.y)));
-        if (!hitX && !hitY) { hitX = true; hitY = true; }
+        float pad = WallPad;
+        float ex = next.x + Mathf.Sign(v.x) * pad;   // leading sprite edge, per axis
+        float ey = next.y + Mathf.Sign(v.y) * pad;
+        bool hitX = v.x != 0f && mf.IsSolidWorld(new Vector2(ex, p.y));
+        bool hitY = v.y != 0f && mf.IsSolidWorld(new Vector2(p.x, ey));
+        if (!hitX && !hitY)
+        {
+            if (!mf.IsSolidWorld(new Vector2(ex, ey))) return;   // corner clip
+            hitX = true; hitY = true;
+        }
         if (hitX) v.x = -v.x;
         if (hitY) v.y = -v.y;
         rb.linearVelocity = v * 0.6f;

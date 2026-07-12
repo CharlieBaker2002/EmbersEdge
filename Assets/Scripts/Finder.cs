@@ -143,7 +143,7 @@ public class Finder : MonoBehaviour
     public Transform FindFresh()
     {
          T = PROXIMAL ? GS.FindNearestEnemy(tag, transform.position, radius, preferBuildings, allowBuildings) : GS.FindEnemy(transform,radius,GS.BoolsToSearch(true,allowBuildings,false),cols);
-        had = T == null;
+        had = T != null;
         return T;
     }
 }

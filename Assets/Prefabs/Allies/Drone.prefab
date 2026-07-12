@@ -111,16 +111,18 @@ MonoBehaviour:
   chipLargeSpace: 3
   batterySpace: 4
   equipmentSpace: 3
-  kickGain: 40
-  maxSwingDeg: 30
-  kLoose: 25
-  kFull: 55
-  cLoose: 6
-  cFull: 2.5
-  mEmpty: 1
-  mFull: 2.6
-  segmentLag: 0.7
+  sloshKick: 0.5
+  shapeKLoose: 26
+  shapeKFull: 15
+  dragLoose: 5
+  dragFull: 1.2
+  distLoose: 0.4
+  distFull: 1
+  pressureK: 0.8
+  maxOffsetFrac: 0.55
   fullScaleBump: 1.08
+  stringSpread: 0.1
+  stringAnchorY: -0.17
 --- !u!1 &4736884495727669850
 GameObject:
   m_ObjectHideFlags: 0
@@ -228,7 +230,6 @@ MonoBehaviour:
   sr: {fileID: 7164448715437815792}
   frameRate: 18
   jitterAmp: 0.03
-  dps: 2
   hitRadius: 0.55
 --- !u!1 &7760198855803968002
 GameObject:
@@ -486,7 +487,7 @@ MonoBehaviour:
   AS: {fileID: 5393450491866073953}
   anim: {fileID: 0}
   sr: {fileID: 9117125140294814298}
-  iconPlacer: {x: 0, y: 0, z: 0}
+  iconPlacer: {x: 0, y: 0.2, z: 0}
   stati: []
   statVulnerability: 1
   bodySize: 0
@@ -535,6 +536,7 @@ MonoBehaviour:
   drillBit: {fileID: 0}
   sack: {fileID: 0}
   energy: 1
+  chatPartner: {fileID: 0}
 --- !u!114 &5056663678020072757
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -171,6 +171,8 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             BEnable();
         }
 
+        BuildingHealthBar.Attach(this);
+
         startCalled = true;
     }
 
@@ -450,7 +452,10 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         {
             if (!builtYet || icons.Count > 0 || upgradeAction != null) return false;
             if (droneRepairGhost) return true;
-            return physic != null && !physic.hasDied && physic.hp < maxHealth - 0.01f;
+            // Live buildings heal toward the PHYSIC's maxHp, not the maxHealth field: pre-placed
+            // buildings keep their authored physic (the Throne is 25 hp vs maxHealth 10), and
+            // comparing against maxHealth made anything above that field invisible to drones.
+            return physic != null && !physic.hasDied && physic.hp < physic.maxHp - 0.01f;
         }
     }
 
@@ -476,7 +481,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             return used;
         }
         if (physic == null || physic.hasDied) return 0f;
-        float applied = Mathf.Min(hp, maxHealth - physic.hp);
+        float applied = Mathf.Min(hp, physic.maxHp - physic.hp);
         if (applied <= 0f) return 0f;
         physic.Change(applied, -1, false);
         return applied;

@@ -51,21 +51,4 @@ public class Baron : MonoBehaviour
       //ConvertListToCore(ref thirds);
    }
 
-   // private void ConvertListToCore(ref Blueprint[] bps)
-   // {
-   //    for (int i = 0; i < bps.Length; i++)
-   //    {
-   //       string nam = bps[i].name;
-   //       bps[i] = Instantiate(bps[i]);
-   //       bps[i].name = nam;
-   //       if (bps[i].classifier == Blueprint.Classifier.Inner_Manifestor)
-   //       {
-   //          bps[i].classifier = Blueprint.Classifier.Core_Mechanism;
-   //       }
-   //       else if (bps[i].classifier == Blueprint.Classifier.Outer_Manifestor)
-   //       {
-   //          bps[i].classifier = Blueprint.Classifier.Outer_Mechanism;
-   //       }
-   //    }
-   //}
 }

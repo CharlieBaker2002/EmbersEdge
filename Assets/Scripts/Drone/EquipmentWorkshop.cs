@@ -63,6 +63,10 @@ public class EquipmentWorkshop : Building
 
     public Vector2 WaitPoint => transform.position;
 
+    /// <summary>Stock not yet spoken for by a drone already flying in — the colony job board's
+    /// dispatch gate, so exactly as many drones come as there are kits on the shelf.</summary>
+    public bool HasUnclaimedStock => enabled && stock > waiting.Count;
+
     /// <summary>Drag-assignment entry: the drone flies to the workshop and collects its kit
     /// there (TryHandOver on arrival) — never an instant remote pickup.</summary>
     public void TryClaim(Drone d)

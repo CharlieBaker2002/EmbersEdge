@@ -48,8 +48,8 @@ public class OrbManager : MonoBehaviour
             if (OrbScript.tot > 1752 * 3 * (0.01f + SetM.OrbQuality))
             {
                 if (Random.Range(0, 2) == 0)
-                {   
-                    return;
+                {
+                    continue;   // over budget: skip this orb's tick, not the whole loop
                 }
             }
             switch (o.state)
@@ -58,8 +58,11 @@ public class OrbManager : MonoBehaviour
                     o.timeLeft -= Time.deltaTime;
                     if (o.timeLeft <= 0f)
                     {
+                        // Release deactivates the orb, whose OnDisable removes it from allOrbs —
+                        // the list shifts left, so step back to not skip the orb that slid in.
                         o.ReturnToPool();
-                        return;
+                        i--;
+                        continue;
                     }
                     if (o.timeLeft > 74f)
                     {

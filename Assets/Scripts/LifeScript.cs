@@ -126,50 +126,6 @@ public class LifeScript : MonoBehaviour
         }
         if (value < 0)
         {
-            // float crit = 0f;
-            // switch (dmgType)
-            // {
-            //     case 0:
-            //         if (race == 3)
-            //         {
-            //             crit = -0.25f;
-            //         }
-            //         break;
-            //     case 1:
-            //         if (race == 2)
-            //         {
-            //             crit = 0.334f;
-            //         }
-            //         else if (race == 1)
-            //         {
-            //             crit = -0.333f;
-            //         }
-            //         break;
-            //     case 2:
-            //         if (race == 3)
-            //         {
-            //             crit = 0.334f;
-            //         }
-            //         else if (race == 2)
-            //         {
-            //             crit = -0.333f;
-            //         }
-            //         break;
-            //     case 3:
-            //         if (race == 0)
-            //         {
-            //             crit = 0.334f;
-            //         }
-            //         else if (race == 3)
-            //         {
-            //             crit = -0.333f;
-            //         }
-            //         break;
-            //     default:
-            //         crit = 0f;
-            //         break;
-            // }
-            // value *= 1 + crit;
             if (invulnerable && !ignoreDodging)
             {
                 return;

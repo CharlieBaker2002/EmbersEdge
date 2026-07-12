@@ -194,7 +194,6 @@ public class IM : MonoBehaviour //Input Manager
         if (Gamepad.current == null)
         {
             controller = false;
-            controllerCursor.gameObject.SetActive(false);
         }
         else
         {
@@ -310,7 +309,7 @@ public class IM : MonoBehaviour //Input Manager
         if (controller)
         {
             cursorSensitivity = Screen.width * 0.4f;
-            if (controllerCursor.gameObject.activeInHierarchy)
+            if (CActive())
             {
                 MoveCursor();
             }
@@ -461,6 +460,7 @@ public class IM : MonoBehaviour //Input Manager
 
     public void MoveCursor()
     {
+        if (controllerCursor == null) return;
         Vector3 v = controllerCursor.position + cursorSensitivity * Time.unscaledDeltaTime * (Vector3)pi.Player.Aim.ReadValue<Vector2>();
         if (v.x > Screen.width)
         {
@@ -483,16 +483,18 @@ public class IM : MonoBehaviour //Input Manager
 
     public bool CActive()
     {
-        return controllerCursor.gameObject.activeInHierarchy;
+        // Cursor object is optional — the World scene ships without one (mouse play).
+        return controllerCursor != null && controllerCursor.gameObject.activeInHierarchy;
     }
 
     public void CloseCursor()
     {
-        controllerCursor.gameObject.SetActive(false);
+//        controllerCursor.gameObject.SetActive(false);
     }
 
     public void OpenCursor()
     {
+        if (controllerCursor == null) return;
         if (controller)
         {
             controllerCursor.gameObject.SetActive(true);
@@ -502,7 +504,8 @@ public class IM : MonoBehaviour //Input Manager
 
     public Vector3 CWorldPoint()
     {
-        Vector3 v = CameraScript.i.cam.ScreenToWorldPoint(controllerCursor.position);
+        Vector3 v = CameraScript.i.cam.ScreenToWorldPoint(
+            controllerCursor != null ? controllerCursor.position : (Vector3)Mouse.current.position.ReadValue());
         return new Vector3(v.x, v.y, -100);
     }
 

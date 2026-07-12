@@ -143,24 +143,6 @@ public class Room : MonoBehaviour, IRoom
         CharacterScript.speedy = true;
         if (!defeated && makeDungeonPoints != 0)
         {
-            //Loot
-            // float[] lucks = new float[Mathf.Max(makeDungeonPoints + Random.Range(0, 2), 2)]; //chance to add 1
-            // float affinity = 1 + (initWaveDp * GS.Sigma(waves) / DM.GetStandardDPFromEra());
-            // affinity = 0.31f + Mathf.Log(affinity); //such that standard number of dps gives multiplier of 1, 2 x gives 1.41 and 0.5 x gives 0.71
-            //
-            // if (lucks.Length == 2)
-            // {
-            //     lucks[0] = 0.25f * affinity;
-            //     lucks[1] = 0.25f * affinity; //if 2 have equal luck
-            // }
-            // else //otherwise scale luck over range
-            // {
-            //     float range = 2 * affinity;
-            //     for (int i = 0; i < lucks.Length; i++)
-            //     {
-            //         lucks[i] = Mathf.Lerp(0f, 0.25f * range, (float)i / (lucks.Length - 1));
-            //     }
-            // }
             if (!MechaSuit.lastlife)
             {
                 SpawnChest();

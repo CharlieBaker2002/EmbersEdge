@@ -97,7 +97,8 @@ public class Tentacle : MonoBehaviour, IOnCollide
         //less wrinkling, smart turning.
         var holdStillParameter = HoldStillParameter();
         float proximityLimit = N * segLength * 0.5f;
-        float theta = -Vector2.SignedAngle(positions[^1] - attachPoint.position, positions[^5] - attachPoint.position);
+        // ChangeN shrinks positions on damage — a heavily-damaged short tentacle can drop below 5 segments
+        float theta = -Vector2.SignedAngle(positions[^1] - attachPoint.position, positions[Mathf.Max(0, positions.Length - 5)] - attachPoint.position);
         if (Vector2.Distance(targetEnd.position,attachPoint.position) < proximityLimit) //If donny is close, then try and get around donny unless hes v slow, in which case go closer to him.
         {
             targetPosition = attachPoint.position + (targetEnd.position - attachPoint.position).normalized * proximityLimit;

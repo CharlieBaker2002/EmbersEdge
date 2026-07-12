@@ -220,7 +220,8 @@ public class Move : MonoBehaviour
 
     public void Undo()
     {
-        positions.RemoveRange(positions.Count - lastUsedN - 1, lastUsedN);
+        int n = Mathf.Min(lastUsedN, positions.Count);
+        positions.RemoveRange(positions.Count - n, n);
     }
 
     private void OnDrawGizmosSelected()

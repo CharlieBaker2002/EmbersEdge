@@ -30,6 +30,8 @@ public class DroneDock : Building
     readonly List<Coroutine> pendingDraws = new List<Coroutine>();
     int outstanding;
     Coroutine overlayCo;
+    readonly HashSet<Drone> charging = new HashSet<Drone>();   // trickle draws in flight
+    float trickleT;
 
     public Vector2 SlotPosition(int slot)
         => transform.position + slotOffsets[Mathf.Abs(slot) % slotOffsets.Length];
@@ -73,6 +75,28 @@ public class DroneDock : Building
         d.Recharge();
         residents[slot] = d;
         g.SetActive(true);
+    }
+
+    /// <summary>The dock is a charger ALL day, not just at daybreak: a resident that comes home
+    /// spent starts a fresh grid draw as soon as it's sitting in its slot (same tariff as the
+    /// daily top-up — DailyRecharge stays as the overnight sweep for drones that die out or
+    /// come home after the grid ran dry).</summary>
+    void Update()
+    {
+        if (!enabled || !builtYet) return;
+        if ((trickleT -= Time.deltaTime) > 0f) return;
+        trickleT = 1f;
+        for (int k = 0; k < residents.Count; k++)
+        {
+            Drone d = residents[k];
+            if (d == null || charging.Contains(d)) continue;
+            if (d.energy >= 0.999f || d.transform.InDungeon()) continue;
+            if (d.state != Drone.State.Docked) continue;
+            if (((Vector2)d.transform.position - SlotPosition(k)).sqrMagnitude > 1.5f * 1.5f) continue;
+            Drone dd = d;
+            charging.Add(dd);
+            BeginDraw(() => { charging.Remove(dd); if (dd != null) dd.Recharge(); });
+        }
     }
 
     public void NotifyResidentDied(Drone d)

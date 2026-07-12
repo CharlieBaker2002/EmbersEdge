@@ -48,6 +48,12 @@ public class Connectable : MonoBehaviour
     public Action<Vector3> OnDraggedRelease;
     /// <summary>Fires when release landed on a Building but Validate returned false (host can flash etc.).</summary>
     public Action<Building> OnRejected;
+    /// <summary>
+    /// Optional fallback when a real drag releases on no valid Building: the host inspects the
+    /// release world point (e.g. a base ore tile) and returns true to claim it. The cable
+    /// retracts either way — world targets never keep a standing cable.
+    /// </summary>
+    public Func<Vector3, bool> TryWorldTarget;
 
     private static Connectable currentDragger;
 
@@ -174,7 +180,9 @@ public class Connectable : MonoBehaviour
         Building target = BuildingUnderCursor(release);
         if (target == null || target == owner)
         {
-            // Released on empty space → snap the cable back into the pylon.
+            // Released on empty space → offer the point to the world-target hook (ore tiles
+            // etc.), then snap the cable back into the pylon either way.
+            TryWorldTarget?.Invoke(release);
             if (lr != null) StartCoroutine(Retract(lr, start));
             return;
         }
@@ -182,8 +190,11 @@ public class Connectable : MonoBehaviour
         bool accept = Validate == null || Validate(target);
         if (!accept)
         {
-            // Invalid target (out of range, already connected, wrong type) → flash + retract.
-            OnRejected?.Invoke(target);
+            // Invalid building — the player may still have been aiming at what's UNDER it
+            // (ore tiles sit beneath building colliders); only flash rejection if the world
+            // hook doesn't claim the spot.
+            if (TryWorldTarget == null || !TryWorldTarget(release))
+                OnRejected?.Invoke(target);
             if (lr != null) StartCoroutine(Retract(lr, start));
             return;
         }

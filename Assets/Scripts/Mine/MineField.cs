@@ -1172,15 +1172,16 @@ public class MineField : MonoBehaviour
             drop[orb] = OreYield[orb];
             GS.CallSpawnOrbs(grid.GetCellCenterWorld(cell), drop);
         }
-        // Every broken wall scatters ore-chip debris (size class by hardness tier, element-lit
-        // when the cell carried ore). Chips persist until the player returns to base.
-        DroneManager.SpawnChips(grid.GetCellCenterWorld(cell), brokenTier, orb);
-
         data[idx].type = CellType.Empty;
         data[idx].durability = 0;
         data[idx].explored = true;
         data[idx].ore = -1;
         SolidVersion++;
+
+        // Every broken wall scatters ore-chip debris (size class by hardness tier, element-lit
+        // when the cell carried ore). Chips persist until the player returns to base. Spawned
+        // AFTER the cell reads empty so the in-cavity scatter check accepts the broken cell.
+        DroneManager.SpawnChips(grid.GetCellCenterWorld(cell), brokenTier, orb);
 
         if (spawnerOfCell.TryGetValue(idx, out var minedSpawner))
         {

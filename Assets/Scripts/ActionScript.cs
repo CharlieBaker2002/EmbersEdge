@@ -339,15 +339,6 @@ public class ActionScript : MonoBehaviour
                         {
                             recentlyHit.Add((oASID,Time.time));
                             float dmg = sharpness;
-                            // float dmg = 0.35f * sharpness * mass / oAS.mass;
-                            // if(immaterial && !oAS.immaterial)
-                            // {
-                            //     dmg *= Mathf.Max(1,1.75f * rb.velocity.magnitude);
-                            // }
-                            // else
-                            // {
-                            //     dmg *= collision.relativeVelocity.magnitude;
-                            // }
                             if (collision.rigidbody.CompareTag(tag))
                             {
                                 if (!CheckCCs(new string[] { "push" }))
@@ -545,14 +536,6 @@ public class ActionScript : MonoBehaviour
             {
                 contactIDs.Remove(id);
             }
-            //else 
-            //{
-            //    id = collision.collider.GetEntityId(); //removal has been taken of (and made more robust) through addition of third boolean tuple parameter in wallNormals
-            //    if (wallNormals.ContainsKey(id))
-            //    {
-            //        wallNormals.Remove(id);
-            //    }
-            //}
         }
     }
     #endregion collisionFuncs
@@ -643,17 +626,6 @@ public class ActionScript : MonoBehaviour
         if (ramSelfRecoil > 0f)
             TryAddForce(oAS.mass * relVel * -normal * 30f * ramSelfRecoil, true);
     }
-
-    //private void WallCollision(Collision2D collision, bool spring = false)
-    //{
-    //    if (PS == null)
-    //    {
-    //        if(collision.contactCount > 0)
-    //        {
-    //            rb.velocity = Reflect(collision.GetContact(0).normal, true,spring);
-    //        }
-    //    }
-    //}
 
     public Vector3 Reflect(Vector2 n, bool change = true, bool spring = false) //irrespective of pushable
     {

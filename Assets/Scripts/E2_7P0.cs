@@ -77,7 +77,7 @@ public class E2_7P0 : MonoBehaviour
 
     private IEnumerator Fade()
     {
-        for(float i = 0f; i < 0.5f; i-= Time.fixedDeltaTime)
+        for(float i = 0f; i < 0.5f; i += Time.fixedDeltaTime)
         {
             sr.color = Color.Lerp(sr.color, Color.clear, 3*Time.fixedDeltaTime);
             yield return new WaitForFixedUpdate();

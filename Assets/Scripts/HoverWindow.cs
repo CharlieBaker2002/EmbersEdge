@@ -18,7 +18,7 @@ public class HoverWindow : MonoBehaviour, IClickable
     {
         hover = false;
         PointerEventData PED = new PointerEventData(EventSystem.current);
-        PED.position = (IM.controller) ? mainCamera.WorldToScreenPoint(IM.i.controllerCursor.position) : Mouse.current.position.ReadValue();
+        PED.position = (IM.controller && IM.i.CActive()) ? mainCamera.WorldToScreenPoint(IM.i.controllerCursor.position) : Mouse.current.position.ReadValue();
         List<RaycastResult> results = new List<RaycastResult>();
         gr.Raycast(PED, results);
         if (results.Count > 0)

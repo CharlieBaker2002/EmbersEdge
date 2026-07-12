@@ -88,16 +88,6 @@ public class BlueprintManager : MonoBehaviour
             }
         }
         
-        // for(int i = 0; i < allbps.Count; i++)
-        // {
-        //     allbps[i] = Instantiate(allbps[i]);
-        // }
-        // for(int i = 0; i < prepared.Count; i++)
-        // {
-        //     string nam = prepared[i].name;
-        //     prepared[i] = Instantiate(prepared[i]);
-        //     prepared[i].name = nam;
-        // }
         foreach(Blueprint b in prepared)
         {
             foreach(Blueprint x in b.relevents)
@@ -156,60 +146,6 @@ public class BlueprintManager : MonoBehaviour
         if (researched.Contains(b)) return;
         toDiscover.Add(b);
     }
-    //
-    //
-    // public static WeaponBP[] GetWeapons(List<Blueprint> check)
-    // {
-    //     List<WeaponBP> bps = new List<WeaponBP>();
-    //     foreach(Blueprint b in check)
-    //     {
-    //         if (b.g.GetComponent<WeaponScript>() != null)
-    //         {
-    //             bps.Add((WeaponBP)b);
-    //         }
-    //     }
-    //     return bps.ToArray();
-    // }
-    //
-    // public static AutomationBP[] GetAutomations(List<Blueprint> check)
-    // {
-    //     List<AutomationBP> bps = new List<AutomationBP>();
-    //     foreach (Blueprint b in check)
-    //     {
-    //         if (b.g.GetComponentInChildren<IRelic>() != null)
-    //         {
-    //             bps.Add((AutomationBP)b);
-    //         }
-    //     }
-    //     return bps.ToArray();
-    // }
-    //
-    // public static Blueprint[] GetBoosts(List<Blueprint> check)
-    // {
-    //     List<Blueprint> bps = new List<Blueprint>();
-    //     foreach (Blueprint b in check)
-    //     {
-    //         if (b.g.GetComponent<IPotion>() != null)
-    //         {
-    //             bps.Add(b);
-    //         }
-    //     }
-    //     return bps.ToArray();
-    // }
-    //
-    // public static AbilityBP[] GetAbilities(List<Blueprint> check)
-    // {
-    //     List<AbilityBP> bps = new List<AbilityBP>();
-    //     foreach (Blueprint b in check)
-    //     {
-    //         if (b.g.GetComponentInChildren<ISpell>() != null)
-    //         {
-    //             bps.Add((AbilityBP)b);
-    //         }
-    //     }
-    //     return bps.ToArray();
-    // }
-    //
     public static Blueprint[] GetBuildings(List<Blueprint> check)
     {
         List<Blueprint> bps = new List<Blueprint>();
@@ -350,15 +286,6 @@ public class BlueprintManager : MonoBehaviour
             var l = Instantiate(BlueprintManager.i.loot, UIManager.i.lootUI);
             
             l.bp = current;
-
-            // if (l.bp.classifier == Blueprint.Classifier.Inner_Manifestor && Random.Range(0, 3) == 0)
-            // {
-            //     l.bp.classifier = Blueprint.Classifier.Core_Mechanism;
-            // }
-            // else if (l.bp.classifier == Blueprint.Classifier.Outer_Manifestor && Random.Range(0, 2) == 0)
-            // {
-            //     l.bp.classifier = Blueprint.Classifier.Outer_Mechanism;
-            // }
 
             loots[i] = l;
         }

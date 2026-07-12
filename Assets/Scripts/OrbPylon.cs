@@ -65,38 +65,6 @@ public class OrbPylon : Building
         }
     }
 
-    //IEnumerator ChiefPylon()
-    //{
-    //    while (true)
-    //    {
-    //        for (int i = 0; i < magnets.Count; i++)
-    //        {
-    //            if(magnets.Count <= i)
-    //            {
-    //                continue;
-    //            }
-    //            if (magnets[i] == null)
-    //            {
-    //                continue;
-    //            }
-    //            OrbMagnet m = magnets[i];
-    //            if (m.typ == "pylon")
-    //            {
-    //                if (m.n < mag.n)
-    //                {
-    //                    if (m.n < m.capacity && mag.n > 0)
-    //                    {
-    //                        mag.SendOrb(m, true, false); //try make all local pylons even
-    //                        yield return new WaitForSeconds(refreshRate);
-    //                        yield return new WaitForSeconds(refreshRate);
-    //                    }
-    //                }
-    //            }
-    //        }
-    //        yield return new WaitForSeconds(refreshRate);
-    //    }
-    //}
-
     IEnumerator Obtain()
     {
         for (int i = 0; i < magnets.Count; i++)

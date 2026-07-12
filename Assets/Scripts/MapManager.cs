@@ -1351,7 +1351,7 @@ public class MapManager : MonoBehaviour
             {
                 return true;
             }
-            if (i.poly.OverlapPoint(p + 0.5f * Vector2.one))
+            if (i.poly.OverlapPoint(p + 0.5f * -Vector2.one))
             {
                 return true;
             }

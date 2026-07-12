@@ -33,6 +33,8 @@ public class PilotedVehicle : MonoBehaviour, IOnDeath
 
     public bool Active { get; private set; }
     public LifeScript Ls { get; private set; }
+    /// <summary>Base pad this vehicle deployed through (attack slot) — recall landing point.</summary>
+    [HideInInspector] public Telepad deployedVia;
 
     Behaviour brain;
     Rigidbody2D rb;
@@ -124,6 +126,50 @@ public class PilotedVehicle : MonoBehaviour, IOnDeath
         }
     }
 
+    /// <summary>Fully crewed (with charge in the batteries) and ready to ride a telepad?</summary>
+    public bool ReadyForDeploy
+    {
+        get
+        {
+            if (Ls == null || Ls.hasDied) return false;
+            int able = 0;
+            for (int k = 0; k < crew.Count; k++)
+                if (crew[k] != null && crew[k].Charged) able++;
+            return able >= pilotsRequired;
+        }
+    }
+
+    /// <summary>Attack-slot deployment: crew is forced aboard instantly (the dive can't wait for
+    /// flights across the base), the hull warps to the dungeon pad and registers as a dungeon
+    /// body + ally target. Mirrors Drone.Deploy.</summary>
+    public void DeployTo(Telepad basePad, Vector2 dungeonPos)
+    {
+        for (int k = crew.Count - 1; k >= 0; k--)
+        {
+            var d = crew[k];
+            if (d == null) { crew.RemoveAt(k); continue; }
+            if (!aboard.Contains(d) && d.gameObject.activeInHierarchy) Board(d);
+        }
+        if (!Active) Activate();   // full crew is a precondition (ReadyForDeploy)
+        deployedVia = basePad;
+        transform.position = (Vector3)dungeonPos + GS.RandCircle(0.3f, 0.8f);
+        if (rb != null) rb.linearVelocity = Vector2.zero;
+        if (MineField.i != null && rb != null) MineField.i.Register(rb);
+        MinePathManager.RegisterAllyTarget(transform, 3);   // a war machine is worth shooting at
+    }
+
+    /// <summary>Forced ride home on the player's return teleport. Lands at its base pad, then
+    /// stands down unless a base wave is raging (in which case it fights on arrival).</summary>
+    public void RecallHome()
+    {
+        Vector2 landing = deployedVia != null ? (Vector2)deployedVia.transform.position : Vector2.zero;
+        transform.position = (Vector3)landing + GS.RandCircle(0.3f, 0.8f);
+        if (rb != null) rb.linearVelocity = Vector2.zero;
+        if (MineField.i != null && rb != null) MineField.i.Unregister(rb);
+        MinePathManager.UnregisterAllyTarget(transform);
+        if (!SpawnManager.eeactive) WaveEnded();   // quiet base: park, pilots heal + recharge
+    }
+
     /// <summary>Wave incoming: everyone back in.</summary>
     public void WaveStarting()
     {
@@ -162,6 +208,8 @@ public class PilotedVehicle : MonoBehaviour, IOnDeath
         }
         crew.Clear();
         BasePathManager.UntargetableAllies.Remove(transform);
+        MinePathManager.UnregisterAllyTarget(transform);   // died deployed — clear dungeon seats
+        if (MineField.i != null && rb != null) MineField.i.Unregister(rb);
     }
 
     void SetDormantPresentation(bool dormant, bool keepSimulated = false)

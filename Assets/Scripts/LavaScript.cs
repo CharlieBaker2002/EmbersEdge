@@ -18,47 +18,41 @@ public class LavaScript : MonoBehaviour
     private void OnTriggerExit2D(Collider2D collision)
     {
         RemoveElements(contacts.IndexOf(collision.transform));
-        
     }
 
     private void OnTriggerStay2D(Collider2D collision)
     {
-        collision.GetComponentInParent<LifeScript>().Change(-Time.deltaTime * damageCoef, 3);
+        LifeScript ls = collision.GetComponentInParent<LifeScript>();
+        if (ls != null)
+        {
+            ls.Change(-Time.deltaTime * damageCoef, 3);
+        }
     }
-    
+
     private void Update()
     {
-        if(contacts.Count > 0)
+        for (int i = contacts.Count - 1; i >= 0; i--)
         {
-            for(int i = 0; i < contacts.Count; i++)
+            if (contacts[i] == null)
             {
-                if (contacts[i] == null)
-                {
-                    RemoveElements(i);
-                }
+                RemoveElements(i);
             }
-            for (int i = 0; i < fires.Count; i++)
+            else if (fires[i] != null)
             {
-                if (fires[i] != null && contacts[i].position != null)
-                {
-                    fires[i].position = contacts[i].position;
-                }
+                fires[i].position = contacts[i].position;
             }
         }
     }
 
+    // The two lists are index-paired; always add and remove them together.
     private void RemoveElements(int index)
     {
-        Transform theFX = fires[index];
+        if (index < 0 || index >= contacts.Count) return;
+        if (fires[index] != null)
+        {
+            Destroy(fires[index].gameObject);
+        }
         fires.RemoveAt(index);
-        Destroy(theFX.gameObject);
-        try
-        {
-            contacts.RemoveAt(index);
-        }
-        catch
-        {
-            Debug.Log("Remove element bug in lava script");
-        }
+        contacts.RemoveAt(index);
     }
 }

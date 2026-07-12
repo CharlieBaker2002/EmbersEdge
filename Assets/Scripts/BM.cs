@@ -69,36 +69,6 @@ public class BM : MonoBehaviour //Building Manager
 
     public void ChangeBuildingColour(bool on)
     {
-        // if (!on && sampled) return;
-        // sampled = !on;
-        // if(!on && buildings[0].GetComponentInChildren<SpriteRenderer>().color == new Color(1f,1f,1f,0.1f)) return; //if already off return
-        // if(on && buildings[0].GetComponentInChildren<SpriteRenderer>().color == new Color(1f,1f,1f,1f)) return; //if already on return
-        // foreach (SpriteRenderer s in buildings.SelectMany(x => x.hasExtraParent ? x.transform.parent.GetComponentsInChildren<SpriteRenderer>()  : x.gameObject.GetComponentsInChildren<SpriteRenderer>()))
-        // {
-        //     if (!on)
-        //     {
-        //         // Remember the sprite's existing colour the first time we dim it
-        //         if (!originalColors.ContainsKey(s))
-        //         {
-        //             originalColors.Add(s, s.color);
-        //         }
-        //         s.color = new Color(1f, 1f, 1f, 0.2f);
-        //     }
-        //     else
-        //     {
-        //         // Revert to the stored colour, or white if we somehow never stored it
-        //         if (originalColors.TryGetValue(s, out var original))
-        //         {
-        //             s.color = original;
-        //         }
-        //     }
-        // }
-        //
-        // // Once colours are restored we can clear the cache
-        // if (on)
-        // {
-        //     originalColors.Clear();
-        // }
     }
 
     private void Start()
@@ -513,7 +483,7 @@ public class BM : MonoBehaviour //Building Manager
     void PositionDungeon()
     {
         if (MineField.i == null || redBuilding == null) return;
-        Vector2 worldMouse = IM.controller ? (Vector2)IM.i.controllerCursor.position : IM.i.MousePosition();
+        Vector2 worldMouse = IM.controller && IM.i.CActive() ? (Vector2)IM.i.controllerCursor.position : IM.i.MousePosition();
         dungeonAnchor = MineField.i.WorldToCell(worldMouse);
         redBuilding.transform.position = MineField.i.CellCenterWorld(dungeonAnchor);
         bool clear = DungeonAreaClear();
@@ -562,8 +532,8 @@ public class BM : MonoBehaviour //Building Manager
         {
             Vector2 eff = EffectiveSize();
             Vector2 vAdjust = new Vector2(-0.125f + 0.5f * eff.x, -0.125f + 0.5f * eff.y);
-            Vector2 worldMouse = IM.controller
-                ? IM.i.controllerCursor.position
+            Vector2 worldMouse = IM.controller && IM.i.CActive()
+                ? (Vector2)IM.i.controllerCursor.position
                 : IM.i.MousePosition();
             worldMouse -= vAdjust;
             anchorCell = GridManager.i.WorldToGrid(worldMouse);
