@@ -106,7 +106,6 @@ GameObject:
   - component: {fileID: 989189526}
   - component: {fileID: -92953846455997860}
   - component: {fileID: 746088154243107304}
-  - component: {fileID: 2332517974432172581}
   - component: {fileID: 6423697280110047942}
   - component: {fileID: 3924004500368482797}
   m_Layer: 7
@@ -267,6 +266,8 @@ MonoBehaviour:
   isWall: 0
   multiDrag: 0
   dungeonBuildable: 0
+  rotatable: 1
+  noBody: 0
   physic: {fileID: 4760292924330976936}
   builtBlasts: 1
   icons: []
@@ -278,6 +279,7 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0, z: 0}
   energyIconScale: 1
+  demolisher: {fileID: 0}
   unit: {fileID: 37244155027457356, guid: e74072699d40d442a8a5e3ffb645c31a, type: 3}
   cost: 05000000000000000000000000000000
   rallyPoint: {x: 0, y: 0}
@@ -319,7 +321,7 @@ MonoBehaviour:
   transientOrbs: 0
   n: 0
   orbType: 0
-  capacity: 40
+  capacity: 80
   siblingTs: []
   demand: 0
   init: 1
@@ -389,28 +391,6 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
---- !u!114 &2332517974432172581
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4300919736548973067}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 213b29fb0ad684122a297fef29858033, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  typ: 0
-  orbs: []
-  transientOrbs: 0
-  n: 0
-  orbType: 3
-  capacity: 2
-  siblingTs: []
-  demand: 0
-  init: 1
-  initialMag: 0
 --- !u!114 &6423697280110047942
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -438,6 +418,14 @@ MonoBehaviour:
   mats: []
   pad: {fileID: 0}
   padSlot: -1
+  lastChargeDay: -1
+  claimedBy: {fileID: 0}
+  homePad: {fileID: 0}
+  homeSlot: -1
+  homePos: {x: 0, y: 0}
+  hasHome: 0
+  following: 0
+  padSwapWindow: 0
 --- !u!114 &3924004500368482797
 MonoBehaviour:
   m_ObjectHideFlags: 0

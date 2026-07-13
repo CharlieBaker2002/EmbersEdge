@@ -5,6 +5,12 @@ TextureImporter:
   - first:
       213: -2552300590618039491
     second: BatteryStation_0
+  - first:
+      213: -4848448488105275132
+    second: BatteryStation_1
+  - first:
+      213: 656140029272672398
+    second: BatteryStation_2
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -142,12 +148,12 @@ TextureImporter:
       name: BatteryStation_0
       rect:
         serializedVersion: 2
-        x: 3
+        x: 0
         y: 0
-        width: 61
+        width: 64
         height: 32
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -156,6 +162,50 @@ TextureImporter:
       bones: []
       spriteID: d3b2130b228649cd0800000000000000
       internalID: -2552300590618039491
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BatteryStation_1
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 0
+        width: 64
+        height: 32
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 40194bac9c9d6bcb0800000000000000
+      internalID: -4848448488105275132
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BatteryStation_2
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 0
+        width: 64
+        height: 32
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e8846b751e31b1900800000000000000
+      internalID: 656140029272672398
       vertices: []
       indices: 
       edges: []
@@ -172,9 +222,13 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     spriteCustomMetadata:
-      entries: []
+      entries:
+      - key: SpriteEditor.SliceSettings
+        value: '{"sliceOnImport":false,"gridCellCount":{"x":3.0,"y":1.0},"gridSpriteSize":{"x":64.0,"y":32.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":2,"keepEmptyRects":false,"isAlternate":false}'
     nameFileIdTable:
       BatteryStation_0: -2552300590618039491
+      BatteryStation_1: -4848448488105275132
+      BatteryStation_2: 656140029272672398
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

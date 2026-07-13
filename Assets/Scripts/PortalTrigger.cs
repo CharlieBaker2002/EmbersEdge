@@ -15,16 +15,6 @@ public class PortalTrigger : MonoBehaviour
         i = this;
     }
 
-    // Morph-overlay tints pulled from the current dungeon era, so the portal
-    // flash matches GS.MatByEra()/ColFromEra() like the rest of the portal VFX.
-    // (The overlay fades its colour tint, so ColFromEra is the right lever here
-    //  rather than the era Material the additive glow sprites swap to.)
-    private Color BrightEraCol() => Color.Lerp(GS.ColFromEra(), Color.white, 0.35f);
-    private Color DimEraCol()    => Color.Lerp(GS.ColFromEra(), Color.black, 0.5f);
-
-    private static bool Approx(Color a, Color b) =>
-        Mathf.Abs(a.r - b.r) + Mathf.Abs(a.g - b.g) + Mathf.Abs(a.b - b.b) < 0.02f;
-
     public void OffForT(float t)
     {
         StopAllCoroutines();
@@ -63,51 +53,24 @@ public class PortalTrigger : MonoBehaviour
         }
     }
 
+    // The portal's body keeps its natural sprite colours at all times — its look only changes with
+    // era (the animator's Blend/OnNewEra sprite-sheet swaps). These used to tint sr toward a
+    // bright/dim era colour on every approach, teleport and death-return, which drifted the centre
+    // building's colour permanently; now they only guarantee the tint is reset.
     public void FadeIn()
     {
-        if (sr.color != BrightEraCol())
-        {
-            StopAllCoroutines();
-            StartCoroutine(Fade(true));
-            col.enabled = true;
-        }
+        StopAllCoroutines();
+        sr.color = Color.white;
+        col.enabled = true;
     }
 
     public void FadeOut(bool safe = false)
     {
-        if(sr.color != DimEraCol())
+        sr.color = Color.white;
+        if (!safe)
         {
-            if (!safe)
-            {
-                StopAllCoroutines();
-                col.enabled = true;
-            }
-            StartCoroutine(Fade(false));
-        }
-    }
-
-    private IEnumerator Fade(bool fadeIn)
-    {
-        if (fadeIn)
-        {
-            Color target = BrightEraCol();
-            while (!Approx(sr.color, target))
-            {
-                sr.color = Color.Lerp(sr.color, target, 1.75f * Time.deltaTime);
-                yield return null;
-            }
-            sr.color = target;
-        }
-        else
-        {
-            yield return new WaitForSeconds(1.5f);
-            Color target = DimEraCol();
-            while (!Approx(sr.color, target))
-            {
-                sr.color = Color.Lerp(sr.color, target, 3f * Time.deltaTime);
-                yield return null;
-            }
-            sr.color = target;
+            StopAllCoroutines();
+            col.enabled = true;
         }
     }
 

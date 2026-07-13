@@ -16,7 +16,7 @@ public static class DroneKitBuilder
 {
     const string DronePath = "Assets/Prefabs/Allies/Drone.prefab";
     const string DockPath = "Assets/Prefabs/Buildings/Defence/DroneDock.prefab";
-    const string TelepadPath = "Assets/Prefabs/Buildings/Defence/Telepad.prefab";
+    const string TelepadPath = "Assets/Resources/Telepad.prefab";
     const string ForgePath = "Assets/Prefabs/Buildings/Defence/Drill Forge.prefab";
     const string CargoloftPath = "Assets/Prefabs/Buildings/Defence/Cargoloft.prefab";
     const string ChipPath = "Assets/Resources/OreChip.prefab";

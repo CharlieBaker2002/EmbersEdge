@@ -5,9 +5,9 @@ using System.Linq;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-public class Extractor : Building
+public class Expander : Building
 {
-    public static List<Extractor> extractors;
+    public static List<Expander> expanders;
     // Start is called before the first frame update
     [SerializeField] private Transform mesh;
     [SerializeField] private SpriteRenderer ring;
@@ -44,13 +44,13 @@ public class Extractor : Building
 
     protected override void BEnable()
     {
-        extractors.Add(this);
+        expanders.Add(this);
         EnergyManager.i.CreateCableConnections();
     }
     
     protected override void BDisable()
     {
-        extractors.Remove(this);
+        expanders.Remove(this);
         EnergyManager.i.CreateCableConnections();
     }
     
@@ -107,7 +107,7 @@ public class Extractor : Building
         float dist = Vector2.Distance(transform.position, p);
         if (dist > maxDistance)
         {
-            Debug.Log("Reached Max Distance For Extractor!");
+            Debug.Log("Reached Max Distance For Expander!");
             enabled = false;
             sr.color = Color.gray;
             yield break;
@@ -159,6 +159,6 @@ public class Extractor : Building
 
     private void OnDisable()
     {
-        extractors.Remove(this);
+        expanders.Remove(this);
     }
 }

@@ -17,8 +17,20 @@ public static class BuildMenuClassifier
     const string ChipCondensorPath = "Assets/Prefabs/Buildings/Core Infrastructure/Chip Condensor.prefab";
 
     // old daddy GameObject name -> (new name, building prefab paths; null = new row)
+    // SYNCED 2026-07-13 to the hand-arranged World-scene layout (restored from git after a
+    // Reclassify run clobbered it) — if you rearrange tiles in the scene, mirror it here
+    // BEFORE ever running Reclassify again, because this table overwrites the scene wholesale.
     static readonly (string oldName, string newName, string[] paths)[] Categories =
     {
+        ("Defence", "Defence", new[]
+        {
+            "Assets/Prefabs/Buildings/Defence/PelterTurret.prefab",
+            "Assets/Prefabs/Buildings/Defence/Push Tower.prefab",
+            "Assets/Prefabs/Buildings/Defence/Mine Sprayer.prefab",
+            null,
+            "Assets/Prefabs/Buildings/Core Infrastructure/Wall.prefab",
+            "Assets/Prefabs/Buildings/Defence/Force Field.prefab",
+        }),
         ("Utlity", "Drones & Batteries", new[]
         {
             "Assets/Prefabs/EnergyHub.prefab",
@@ -26,29 +38,19 @@ public static class BuildMenuClassifier
             null,
             "Assets/Prefabs/Buildings/Defence/DroneDock.prefab",
             "Assets/Prefabs/BatteryStation.prefab",
+            "Assets/Resources/Telepad.prefab",
             null,
             "Assets/Prefabs/Buildings/Defence/Drill Forge.prefab",
             "Assets/Prefabs/Buildings/Defence/Cargoloft.prefab",
-        }),
-        ("Resource Generation", "Pylons & Generators", new[]
-        {
-            "Assets/Prefabs/EnergyPylon.prefab",
-            "Assets/Prefabs/LongRangePylon.prefab",
-            "Assets/Prefabs/MultiPylon.prefab",
             null,
-            "Assets/Prefabs/Buildings/Resource Generation/White Generator.prefab",
-            "Assets/Prefabs/Buildings/Resource Generation/Blue Generator.prefab",
-            "Assets/Prefabs/Buildings/Resource Generation/Pulse Generator.prefab",
-            null,
-            "Assets/Prefabs/Buildings/Resource Generation/Small Soui Generator.prefab",
-            "Assets/Prefabs/Buildings/Resource Generation/Soul Generator.prefab",
-            null,
-            "Assets/Prefabs/Buildings/Resource Generation/Ember Generator.prefab",
+            "Assets/Prefabs/Buildings/Defence/Fighter Ship Factory.prefab",
+            "Assets/Prefabs/Buildings/Defence/ClawBot Factory.prefab",
         }),
         ("Core Infrastructure", "Ember Infrastructure", new[]
         {
             ChipCondensorPath,
-            "Assets/Prefabs/Buildings/Core Infrastructure/Extractor.prefab",
+            "Assets/Prefabs/Buildings/Core Infrastructure/Expander.prefab",
+            "Assets/Prefabs/Buildings/Core Infrastructure/Refiner.prefab",
             "Assets/Prefabs/Buildings/Core Infrastructure/EmberCannon.prefab",
             null,
             "Assets/Prefabs/Buildings/Storage/Small Ember Store.prefab",
@@ -65,18 +67,21 @@ public static class BuildMenuClassifier
             "Assets/Prefabs/Buildings/Storage/Store Blue.prefab",
             "Assets/Prefabs/Buildings/Storage/Store Red.prefab",
         }),
-        ("Defence", "Defence", new[]
+        ("Resource Generation", "Pylons & Generators", new[]
         {
-            "Assets/Prefabs/Buildings/Defence/PelterTurret.prefab",
-            "Assets/Prefabs/Buildings/Defence/Push Tower.prefab",
-            "Assets/Prefabs/Buildings/Defence/Mine Sprayer.prefab",
-            "Assets/Prefabs/Buildings/Defence/SwordTurret.prefab",
-            "Assets/Prefabs/Buildings/Old/EmitterTurret.prefab",
-            "Assets/Prefabs/Buildings/Core Infrastructure/Wall.prefab",
-            "Assets/Prefabs/Buildings/Defence/Force Field.prefab",
-            "Assets/Prefabs/Buildings/Defence/Telepad.prefab",
-            "Assets/Prefabs/Buildings/Defence/ClawBot Factory.prefab",
-            "Assets/Prefabs/Buildings/Defence/Fighter Ship Factory.prefab",
+            "Assets/Prefabs/EnergyPylon.prefab",
+            "Assets/Prefabs/LongRangePylon.prefab",
+            "Assets/Prefabs/MultiPylon.prefab",
+            null,
+            "Assets/Prefabs/Buildings/Resource Generation/Small Ember Generator.prefab",
+            "Assets/Prefabs/Buildings/Resource Generation/Ember Generator.prefab",
+            null,
+            "Assets/Prefabs/Buildings/Resource Generation/White Generator.prefab",
+            "Assets/Prefabs/Buildings/Resource Generation/Blue Generator.prefab",
+            "Assets/Prefabs/Buildings/Resource Generation/Pulse Generator.prefab",
+            null,
+            "Assets/Prefabs/Buildings/Resource Generation/Small Soui Generator.prefab",
+            "Assets/Prefabs/Buildings/Resource Generation/Soul Generator.prefab",
         }),
     };
 

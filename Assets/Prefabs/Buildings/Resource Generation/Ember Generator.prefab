@@ -116,9 +116,13 @@ MonoBehaviour:
   hasExtraParent: 0
   icon: {fileID: 0}
   size: {x: 1, y: 1}
+  isWall: 0
+  multiDrag: 0
+  dungeonBuildable: 0
+  rotatable: 1
+  noBody: 0
   physic: {fileID: 1657885784904452869}
   builtBlasts: 2
-  rebuildCost: 00000000000000000000000000000000
   icons: []
   prevN: 0
   numIconsTrue: 0
@@ -128,9 +132,7 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0, z: 0}
   energyIconScale: 1
-  energyMinShowTime: 5
-  throttleLingerTime: 2
-  energyFlashPeriod: 0.4
+  demolisher: {fileID: 0}
   sprs:
   - {fileID: 230899506, guid: c05f26d8bfda046dd9e5398876873399, type: 3}
   - {fileID: 2006730091, guid: c05f26d8bfda046dd9e5398876873399, type: 3}
@@ -149,8 +151,11 @@ MonoBehaviour:
   limit: 1
   current: 1
   FX: {fileID: 3189509133760383441, guid: 3ebfa320f58fc4e8a9c4219ecef7f00b, type: 3}
-  internalCapacity: 10
-  drawRate: 2
+  connect: {fileID: 0}
+  overrideBattery: 0
+  batteryCapacity: 0
+  batteryDrawRate: 0
+  batteryInstabuffer: 0
 --- !u!114 &1919429571480737283
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -167,8 +172,8 @@ MonoBehaviour:
   orbs: []
   transientOrbs: 0
   n: 0
-  orbType: 0
-  capacity: 10
+  orbType: 1
+  capacity: 50
   siblingTs: []
   demand: 0
   init: 1

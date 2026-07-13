@@ -193,6 +193,54 @@ public static class BatteryDistribution
         return pick;
     }
 
+    /// <summary>Meaningful gain gate for a wave-end pad upgrade: a spare must beat the slotted
+    /// battery by this much before a drone trades them (churn guard — the station swap's
+    /// tighter BatteryStation.SwapMargin is for trips that also charge).</summary>
+    public const float UpgradeMargin = 1.5f;
+
+    /// <summary>Wave-end pad UPGRADE, the stationless swap: the drained battery on a working
+    /// pad most in need (returned), plus the fullest free-floating <paramref name="spare"/>
+    /// that beats it by <see cref="UpgradeMargin"/>. Free-floating = loose with no home claim —
+    /// the scene's game-start batteries and player drops, exactly the stock the station economy
+    /// doesn't own. Works with no station built; when one stands the charge run usually gets to
+    /// a drained pad battery first (and charges it) — this catches what stations can't serve
+    /// (no qualifying stock, or the once-a-day charge already spent). One trade per pad battery
+    /// per swap window, the same day-tick/homecoming cadence as station trips. Claims nothing —
+    /// the drone claims BOTH batteries.</summary>
+    public static Battery FindUpgradeSwap(Drone forDrone, out Battery spare)
+    {
+        spare = null;
+        int window = BatteryStation.SwapWindow;
+        // the fullest free spare — no spare, no trade (dregs below 1 upgrade nothing)
+        Battery best = null;
+        for (int k = 0; k < Battery.all.Count; k++)
+        {
+            var b = Battery.all[k];
+            if (b == null || b.transform.InDungeon() || b.following || b == Battery.held) continue;
+            if (b.IsPulse || b.pad != null || b.hasHome) continue;
+            if (b.claimedBy != null && b.claimedBy != forDrone) continue;
+            if (!PathZone.AtBase(b.transform.position)) continue;
+            if (best == null || b.energy > best.energy) best = b;
+        }
+        if (best == null || best.energy <= 1f) return null;
+        // the neediest working-pad battery it meaningfully beats
+        Battery outB = null;
+        for (int k = 0; k < Battery.all.Count; k++)
+        {
+            var b = Battery.all[k];
+            if (b == null || b.transform.InDungeon() || b.following || b == Battery.held) continue;
+            if (b.IsPulse || b.pad == null || b.pad is BatteryStation) continue;
+            if (!b.pad.builtYet || !b.pad.enabled || !b.pad.gameObject.activeInHierarchy) continue;
+            if (b.claimedBy != null && b.claimedBy != forDrone) continue;
+            if (b.padSwapWindow == window) continue;          // already served this window
+            if (best.energy < b.energy + UpgradeMargin) continue;
+            if (outB == null || b.energy < outB.energy) outB = b;
+        }
+        if (outB == null) return null;
+        spare = best;
+        return outB;
+    }
+
     /// <summary>How many buildings actually draw from this pad: its presence in their resolved
     /// BuildingPower sources. Read-only — PowerOrNull never materialises a power view.
     /// <paramref name="feedsDock"/> flags a DroneDock among them (the priority consumer).</summary>

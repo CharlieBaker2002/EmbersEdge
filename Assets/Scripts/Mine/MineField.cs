@@ -975,6 +975,14 @@ public class MineField : MonoBehaviour
                !crateCells.Contains(idx);
     }
 
+    /// <summary>Part of a placed spawner's registered footprint (its art owns those walls)?</summary>
+    public bool IsSpawnerCell(Vector3Int c)
+        => InBounds(c) && spawnerOfCell.ContainsKey(Idx(c));
+
+    /// <summary>An authored pocket RING wall (e.g. the boss room's shell)?</summary>
+    public bool IsPocketRingWall(Vector3Int c)
+        => InBounds(c) && wallPocketOfCell != null && wallPocketOfCell[Idx(c)] >= 0;
+
     /// <summary>May a DRONE break this cell? Everything IsPlainWall allows plus ore cells, but
     /// NEVER anything pocket-related: a disguised cavity cell, an authored ring wall, a cell whose
     /// break would fire the revealed-pocket border trigger, or a spawner's footprint (drones don't

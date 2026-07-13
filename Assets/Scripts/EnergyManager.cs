@@ -226,7 +226,7 @@ public class EnergyManager : MonoBehaviour
 
     private void Start()
     {
-        SpawnManager.instance.onWaveComplete += () => StartCoroutine(DoExtractors());
+        SpawnManager.instance.onWaveComplete += () => StartCoroutine(DoExpanders());
         GS.OnNewEra += _ => RegenerateCables();
     }
 
@@ -343,16 +343,16 @@ public class EnergyManager : MonoBehaviour
         emberStores = emberStores.OrderBy(x => x.connect.maxEmber).ToList();
     }
 
-    public IEnumerator DoExtractors()
+    public IEnumerator DoExpanders()
     {
         if(extracting) yield break;
         extracting = true;
         yield return null;
-        // All extractors pulse together — MapManager commits each expansion instantly and just
+        // All expanders pulse together — MapManager commits each expansion instantly and just
         // retargets the animated outline, so simultaneous ChangeMapAsync calls are safe. Snapshot
-        // the list first: an extractor that hits max distance disables itself and self-removes.
+        // the list first: an expander that hits max distance disables itself and self-removes.
         List<Coroutine> running = new List<Coroutine>();
-        foreach (Extractor ex in Extractor.extractors.ToList())
+        foreach (Expander ex in Expander.expanders.ToList())
         {
             running.Add(StartCoroutine(ex.Animate()));
         }
@@ -374,13 +374,13 @@ public class EnergyManager : MonoBehaviour
     static int EmberRoom(EmberConnector c) => c == null ? 0 : c.maxEmber - c.ember - c.emberTravel;
 
     /// <summary>
-    /// Route ONE freshly-collected extractor ember to the connector that wants it — constructors,
+    /// Route ONE freshly-collected expander ember to the connector that wants it — constructors,
     /// then ember generators, then stores (the same priority <see cref="UpdateEmber"/>'s full
     /// replan fills in) — along the shortest cable route. Deliberately NOT a full UpdateEmber:
     /// a global replan per collected ember re-decides the whole network once a second during a
     /// pulse and shuttles already-settled ember around (the same per-arrival-rebalance trap
     /// documented on <see cref="EmberStore.Deliver"/>). Routing just the new ember leaves every
-    /// existing plan alone; <see cref="DoExtractors"/> runs one settling replan at pulse end.
+    /// existing plan alone; <see cref="DoExpanders"/> runs one settling replan at pulse end.
     /// </summary>
     public void RouteExtractedEmber(EmberConnector from)
     {
@@ -409,7 +409,7 @@ public class EnergyManager : MonoBehaviour
                 if (committed < fewest) { fewest = committed; dest = s.connect; }
             }
         }
-        if (dest == null) return;   // network full — the ember waits at the extractor
+        if (dest == null) return;   // network full — the ember waits at the expander
 
         List<List<EmberConnector>> paths = CalculateShortestRoutes(
             new List<EmberConnector> { from }, new List<EmberConnector> { dest });
@@ -442,7 +442,7 @@ public class EnergyManager : MonoBehaviour
             g.connect.desiredEmber = 0;
         }
 
-        foreach (EmberConnector c in Extractor.extractors.Select(x=>x.connect).Concat(EmberCannon.ecs.Select(x=>x.connect)))
+        foreach (EmberConnector c in Expander.expanders.Select(x=>x.connect).Concat(EmberCannon.ecs.Select(x=>x.connect)).Concat(Refiner.all.Where(r => r != null && r.connect != null).Select(x=>x.connect)))
         {
             // Net of queued jobs: an ember routed but not yet dispatched still sits in c.ember
             // while the destination's emberTravel already counts it — c.emberTravel is -1 for
@@ -485,7 +485,7 @@ public class EnergyManager : MonoBehaviour
   
         List<EmberConnector> starts = new List<EmberConnector>();
         List<EmberConnector> ends = new List<EmberConnector>();
-        IEnumerable<EmberConnector> ecs = constructors.Select(x => x.connect).Concat(emberStores.Select(x => x.connect)).Concat(Extractor.extractors.Select(x => x.connect)).Concat(EmberCannon.ecs.Select(x => x.connect)).Concat(emberGens.Where(g => g != null && g.connect != null).Select(g => g.connect));
+        IEnumerable<EmberConnector> ecs = constructors.Select(x => x.connect).Concat(emberStores.Select(x => x.connect)).Concat(Expander.expanders.Select(x => x.connect)).Concat(EmberCannon.ecs.Select(x => x.connect)).Concat(emberGens.Where(g => g != null && g.connect != null).Select(g => g.connect)).Concat(Refiner.all.Where(r => r != null && r.connect != null).Select(r => r.connect));
         foreach(EmberConnector e in ecs)
         {
             if (e.desiredEmber > e.ember + e.emberTravel)
@@ -593,11 +593,15 @@ public class EnergyManager : MonoBehaviour
         routeConnectorSet.Clear();
         foreach (var x in emberStores) AddRouteConnector(x.connect);
         foreach (var x in constructors) AddRouteConnector(x.connect);
-        foreach (var x in Extractor.extractors) AddRouteConnector(x.connect);
+        foreach (var x in Expander.expanders) AddRouteConnector(x.connect);
         foreach (var x in EmberCannon.ecs) AddRouteConnector(x.connect);
         foreach (var g in emberGens)
         {
             if (g != null && g.connect != null) AddRouteConnector(g.connect);
+        }
+        foreach (var r in Refiner.all)
+        {
+            if (r != null && r.connect != null) AddRouteConnector(r.connect);
         }
         var allConnectors = routeConnectors;
 
@@ -775,8 +779,9 @@ public class EnergyManager : MonoBehaviour
         // Get all ember connectors
         var allConnectors = emberStores.Select(x => x.connect)
             .Concat(constructors.Select(x => x.connect))
-            .Concat(Extractor.extractors.Select(x => x.connect)).Concat(EmberCannon.ecs.Select(x=> x.connect))
+            .Concat(Expander.expanders.Select(x => x.connect)).Concat(EmberCannon.ecs.Select(x=> x.connect))
             .Concat(emberGens.Where(g => g != null && g.connect != null).Select(g => g.connect))
+            .Concat(Refiner.all.Where(r => r != null && r.connect != null).Select(r => r.connect))
             .ToList();
         
         // Create connections based on type rules

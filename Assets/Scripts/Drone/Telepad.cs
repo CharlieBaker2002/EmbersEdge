@@ -17,7 +17,7 @@ public class Telepad : Building
 {
     [Header("Telepad")]
     [Tooltip("Total request slots on this pad (drill + bag + attack).")]
-    public int capacity = 4;
+    public int capacity = 6;
 
     [HideInInspector] public int index = -1;
     [Tooltip("Standing deployment requests, filled at every dive.")]
@@ -42,6 +42,13 @@ public class Telepad : Building
     }
 
     public Telepad Linked => TelepadNetwork.LinkOf(this);
+
+    // Telepads are infrastructure, not fortifications: no collider, no hp, nothing for enemies to
+    // target or paths to route around. Set in code so every pad (prefab, scene, spawned) complies.
+    void Awake()
+    {
+        noBody = true;
+    }
 
     /// <summary>Built, alive and enabled — a ghost awaiting drone repair is not operational.</summary>
     public bool IsOperational => builtYet && enabled && !IsGhostAwaitingRepair;

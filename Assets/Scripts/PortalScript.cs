@@ -426,10 +426,10 @@ public class PortalScript : MonoBehaviour
         emitRate = 0f;
     }
 
-    static Ember extractEmberPrefab;   // the extractor's collect-ember (Resources/ExtractEmber)
+    static Ember extractEmberPrefab;   // the expander's collect-ember (Resources/ExtractEmber)
 
     // The dungeon harvest arriving home: every ember held from completed pockets charges up at the
-    // arrival point and shoots out of (0,0) into a building that wants it — the extractor's collect
+    // arrival point and shoots out of (0,0) into a building that wants it — the expander's collect
     // animation (same prefab: charge-up, flicker, bezier flight, landing burst) run in reverse,
     // outward from the player instead of in from the map edge. Targets come from the cable network's
     // own demand order (constructors → ember generators → stores); each landing deposits for real.

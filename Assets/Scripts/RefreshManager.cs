@@ -115,7 +115,7 @@ public class RefreshManager : MonoBehaviour
         Phasor.mitigators = new List<Phasor>();
         Copter.copters = new List<Copter>();
         Copter.coptersAvailable = 0;
-        Extractor.extractors = new List<Extractor>();
+        Expander.expanders = new List<Expander>();
         EmberCannon.ecs = new List<EmberCannon>();
         GS.qutting = false;
         Application.quitting += () => GS.qutting = true;

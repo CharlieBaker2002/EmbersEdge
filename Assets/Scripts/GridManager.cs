@@ -157,6 +157,8 @@ public class GridManager : MonoBehaviour
         baseColour = new Color[width, height];
         overlay    = new SpriteRenderer[width, height];
 
+        StampExistingBuildings();
+
         if (buildRoutine != null) StopCoroutine(buildRoutine);
         buildRoutine = StartCoroutine(BuildOverlayRoutine());
     }
@@ -206,6 +208,34 @@ public class GridManager : MonoBehaviour
             if (squarePool[k] != null) squarePool[k].gameObject.SetActive(false);
 
         buildRoutine = null;
+    }
+
+    /// <summary>
+    /// Re-stamp every live BUILT building's footprint straight from its transform onto the freshly
+    /// allocated occupancy array. Starter buildings register in their Start against whatever grid
+    /// exists at that moment (often the pre-map fallback, or a frame that later re-anchors), so
+    /// without this sweep their cells read free and new buildings can be placed on top of them.
+    /// Same footprint math as Building.RegisterGridOccupancy; anchorCell/gridSize are refreshed so
+    /// demolition frees exactly these cells.
+    /// </summary>
+    void StampExistingBuildings()
+    {
+        for (int k = 0; k < Building.buildings.Count; k++)
+        {
+            var b = Building.buildings[k];
+            if (b == null || !b.builtYet || !PathZone.AtBase(b.transform.position)) continue;
+
+            var sizeCells = new Vector2Int(
+                Mathf.Max(1, Mathf.RoundToInt(b.size.x / cellSize)),
+                Mathf.Max(1, Mathf.RoundToInt(b.size.y / cellSize)));
+            Vector2Int a = WorldToGrid(b.transform.position)
+                           - new Vector2Int(sizeCells.x / 2, sizeCells.y / 2);
+            b.anchorCell = a;
+            b.gridSize = sizeCells;
+            for (int x = 0; x < sizeCells.x; x++)
+                for (int y = 0; y < sizeCells.y; y++)
+                    if (Inside(a.x + x, a.y + y)) occupied[a.x + x, a.y + y] = true;
+        }
     }
 
     #endregion

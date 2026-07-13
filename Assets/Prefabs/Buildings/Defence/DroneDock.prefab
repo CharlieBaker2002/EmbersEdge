@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 6805854319886092687}
   - component: {fileID: 1719418023942538870}
   - component: {fileID: 9028443882697971191}
-  - component: {fileID: 1558800225457061951}
   m_Layer: 7
   m_Name: DroneDock
   m_TagString: Untagged
@@ -118,6 +117,8 @@ MonoBehaviour:
   isWall: 0
   multiDrag: 0
   dungeonBuildable: 0
+  rotatable: 1
+  noBody: 0
   physic: {fileID: 0}
   builtBlasts: 2
   icons: []
@@ -129,6 +130,7 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0, z: 0}
   energyIconScale: 1
+  demolisher: {fileID: 0}
   dronePrefab: {fileID: 7760198855803968002, guid: 2deaaff915fc943749b03b1822f98ae7, type: 3}
   residentCount: 4
   energyPerDronePerDay: 1
@@ -154,29 +156,7 @@ MonoBehaviour:
   transientOrbs: 0
   n: 0
   orbType: 0
-  capacity: 10
-  siblingTs: []
-  demand: 0
-  init: 1
-  initialMag: 0
---- !u!114 &1558800225457061951
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4154213052136245432}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 213b29fb0ad684122a297fef29858033, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::OrbMagnet
-  typ: 0
-  orbs: []
-  transientOrbs: 0
-  n: 0
-  orbType: 1
-  capacity: 6
+  capacity: 50
   siblingTs: []
   demand: 0
   init: 1

@@ -5,7 +5,7 @@ using UnityEngine;
 /// A constant screen-distortion band shaped like the map's outline (the boundary spline).
 /// Builds a thin ribbon mesh straddling MapManager's polygon and renders it with the
 /// Shockwave2D_Boundary shader. Rebuilds as the map is reshaped/repositioned (placing an EE,
-/// extractor expansion) and follows the map's scale (Shrink) by parenting to the collider.
+/// expander expansion) and follows the map's scale (Shrink) by parenting to the collider.
 ///
 /// Drop this component on an empty GameObject — it wires its own MeshFilter/MeshRenderer/material.
 /// Needs the renderer's "Camera Sorting Layer Texture" enabled (same requirement as Shockwave2D).

@@ -54,13 +54,13 @@ public class EmberStore : MonoBehaviour
    /// <summary>
    /// One animated payout ember landed on a building: tally it and deposit it straight into that
    /// connector. Stores flash their impact statics from the arrival direction, the same way an
-   /// extractor hit does. A target destroyed mid-flight falls back to the plain bank so the ember
+   /// expander hit does. A target destroyed mid-flight falls back to the plain bank so the ember
    /// is never lost.
    /// Deliberately NO UpdateEmber here: the payout flights already land each ember where demand
    /// wants it, and the network can't see the embers still in flight — a per-arrival rebalance
    /// reads every landing as an imbalance and sets stores shuttling ember back and forth through
    /// the cables. The next naturally-triggered UpdateEmber (constructor spend, generator burn,
-   /// extractor collection) settles any genuine leftover drift.
+   /// expander collection) settles any genuine leftover drift.
    /// </summary>
    public static void Deliver(EmberConnector c, Vector3 from)
    {

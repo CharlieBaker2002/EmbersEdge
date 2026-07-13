@@ -93,7 +93,7 @@ SpriteRenderer:
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 0.5, y: 0.5}
+  m_Size: {x: 1.90625, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
@@ -123,6 +123,7 @@ MonoBehaviour:
   multiDrag: 0
   dungeonBuildable: 0
   rotatable: 1
+  noBody: 0
   physic: {fileID: 0}
   builtBlasts: 1
   icons: []
@@ -151,6 +152,7 @@ MonoBehaviour:
   eatSpot: {fileID: 7179083288785653074}
   juice: 0
   inboundChipSpace: 0
+  chipTier: 0
 --- !u!114 &5906971196468631169
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -167,7 +169,7 @@ MonoBehaviour:
   orbs: []
   transientOrbs: 0
   n: 0
-  orbType: 0
+  orbType: 1
   capacity: 10
   siblingTs: []
   demand: 0

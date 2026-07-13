@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-public class EmberCannon : Extractor
+public class EmberCannon : Expander
 {
     [SerializeField] EmbersEdge ee;
     [SerializeField] private Transform stick;

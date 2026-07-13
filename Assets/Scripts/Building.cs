@@ -30,7 +30,12 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     public bool dungeonBuildable = false;
     [Tooltip("May the player spin this building with R AFTER placement (footprint permitting)? The placement ghost always rotates regardless.")]
     public bool rotatable = true;
+    [Tooltip("No physic body at all: no collider, no hp — can't be hit, die or block pathing (telepads).")]
+    public bool noBody = false;
     public LifeScript physic;
+    // noBody click target: rigidbody-less trigger on the UI layer — cursor raycasts see it,
+    // combat masks and enemy target scans (which skip triggers) never do
+    private GameObject clickBody;
     // pathfinding footprint bookkeeping — what we registered, so unregistration is exact
     private bool footprintRegistered;
     private Vector2Int regAnchor, regSize;
@@ -172,9 +177,10 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         // Mark this building’s footprint on the grid if it already exists at game start.
         if (builtYet)
         {
+            if (noBody) EnsureClickBody();   // granted/pre-placed bodiless buildings (telepads)
             RegisterGridOccupancy();
             RegisterPathFootprint();   // pre-placed buildings block/chew from the start
-            BEnable();
+            DoBEnable();
         }
 
         BuildingHealthBar.Attach(this);
@@ -319,8 +325,8 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
                 beh.enabled = mode;
             }
         }
-        if(mode == false && !init) BDisable();
-        else if(!init) BEnable();
+        if(mode == false && !init) DoBDisable();
+        else if(!init) DoBEnable();
         foreach (SpriteRenderer s in spriterenderers)
         {
             if (s != null)
@@ -333,7 +339,13 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             LeanTween.cancel(sr.gameObject);   // kill any lingering ghost/repair tint tween
             sr.color = Color.white;
         }
-        if (mode)
+        if (mode && noBody)
+        {
+            // Bodiless building: no physic (no hp, no blocking, no enemy target) — but the player
+            // still needs something to press, so give it the trigger-only click body.
+            EnsureClickBody();
+        }
+        else if (mode)
         {
             physic = Instantiate(Resources.Load<GameObject>(box?"Physic":"PhysicCircle"), transform.position, Quaternion.Euler(0f,0f,Random.Range(0f,360f)), transform).GetComponent<LifeScript>();
             if (hasAuthoredCollider)
@@ -364,6 +376,24 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         }
     }
 
+    /// <summary>
+    /// Cursor target for noBody buildings. A static (no rigidbody) TRIGGER collider on the UI
+    /// layer: FocusRouter's world raycast masks UI in, so pressing the pad opens its slot UI,
+    /// while every combat query stays blind to it — enemy target scans reject triggers and
+    /// rigidbody-less colliders, no combat layer mask includes UI, and there is no LifeScript
+    /// so nothing has hp to hit.
+    /// </summary>
+    void EnsureClickBody()
+    {
+        if (!noBody || clickBody != null) return;
+        clickBody = new GameObject("ClickBody") { layer = LayerMask.NameToLayer("UI") };
+        clickBody.transform.SetParent(transform, false);
+        var col = clickBody.AddComponent<BoxCollider2D>();
+        col.isTrigger = true;
+        col.size = size;
+        clickBody.AddComponent<IClickableCarrier>().clickable = this;
+    }
+
     public virtual void OnDestroy()
     {
         if(GS.qutting) return;
@@ -373,7 +403,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         if (BM.i != null) BM.i.buildings.Remove(this);
         if (UIParent != null) Destroy(UIParent);   // lives under UIManager.buildingsUI, not us
         UnregisterPathFootprint();
-        BDisable();
+        DoBDisable();
         // Dungeon-placed buildings (telepads) never registered with the base grid.
         if (GridManager.i != null && PathZone.AtBase(transform.position))
             GridManager.i.SetArea(anchorCell, gridSize, false);
@@ -674,11 +704,30 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         }
     }
 
+    // BEnable/BDisable must stay a strict pair: ghosts (BM placement previews) and demolish paths
+    // can hit BDisable without a matching BEnable (OnDestroy fires for never-built instances,
+    // and SwitchMonos(false) + OnDestroy would run it twice), corrupting orbCaps and friends.
+    private bool bEnabled;
+
+    protected void DoBEnable()
+    {
+        if (bEnabled) return;
+        bEnabled = true;
+        BEnable();
+    }
+
+    protected void DoBDisable()
+    {
+        if (!bEnabled) return;
+        bEnabled = false;
+        BDisable();
+    }
+
     protected virtual void BEnable()
     {
-        
+
     }
-    
+
     protected virtual void BDisable()
     {
 

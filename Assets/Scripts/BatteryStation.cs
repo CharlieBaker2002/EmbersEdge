@@ -8,18 +8,25 @@ using UnityEngine;
 /// slotted batteries at most ONCE per battery per day.
 ///
 /// Chips are ground by suction: any loose, unclaimed chip inside <see cref="suctionRadius"/>
-/// eases into the grinder mouth and shrinks away (OreChip.AbsorbInto), crediting juice — so
-/// both drone deliveries (dropped beside the station) and player-swept piles get eaten.
+/// that the grinder can TAKE eases into the grinder mouth and shrinks away (OreChip.AbsorbInto),
+/// crediting juice — so both drone deliveries (dropped beside the station) and player-swept
+/// piles get eaten.
+///
+/// The grinder starts small-bore: only SMALL chips fit. Two one-time upgrades widen the intake
+/// (<see cref="chipTier"/>) to medium and then large chips — and the fleet always feeds it the
+/// largest class it takes (IChipConsumer/ChipConsumers is that seam, shared with the coming
+/// chip walls, ammunition turrets and ember refiner).
 ///
 /// The overnight logistics the drones run (haul discharged batteries in, feed chips, return
 /// batteries home) coordinate through the static Claim* methods here; per-station inbound
 /// counters stop the fleet from over-fetching.
 /// </summary>
-public class BatteryStation : EnergyPad
+public class BatteryStation : EnergyPad, IChipConsumer
 {
     [Header("Battery Station")]
-    [Tooltip("Energy credited per unit of chip space ground down (small chip = 1, big = 2, large = 3).")]
-    public float juicePerChipSpace = 0.5f;
+    [Tooltip("Approximate energy expected per unit of inbound bag space — used only for the drone " +
+             "demand heuristics. Actual credit on grinding comes from OreChip.JuiceValue (per size).")]
+    public float juicePerChipSpace = 0.25f;
     [Tooltip("Energy/sec pumped into each charging battery while juice remains.")]
     public float chargeRate = 1.5f;
     [Tooltip("Loose chips inside this radius are dragged into the grinder whenever juice is wanted.")]
@@ -33,6 +40,9 @@ public class BatteryStation : EnergyPad
     [HideInInspector] public float juice;
     /// <summary>Chip space (units) in drone bags currently bound for this station.</summary>
     [HideInInspector] public int inboundChipSpace;
+    /// <summary>Intake bore: the largest chip size class the grinder takes (0 small only,
+    /// 1 +medium, 2 +large). Widened by the station's two one-time upgrades.</summary>
+    [HideInInspector] public int chipTier;
     // (inboundBatteries lives on EnergyPad now — pads track their own inbound distribution too)
 
     // Batteries that received ANY juice this visit: unslotting stamps their once-a-day charge,
@@ -79,17 +89,46 @@ public class BatteryStation : EnergyPad
     /// <summary>Stations spawn a full rack — this is where the colony's batteries come from.</summary>
     protected override int InitialBatteryCount => 4;
 
+    public override void Start()
+    {
+        base.Start();
+        // Intake upgrades, staged: the large-bore slot only appears once the medium bore is
+        // ground in. Tile icons are the chips themselves (first medium / first large slice).
+        var chips = DroneManager.LoadStripNumeric("OreChips");
+        Sprite medIcon = chips.Length >= 12 ? chips[4] : null;
+        Sprite largeIcon = chips.Length >= 12 ? chips[8] : null;
+        AddUpgradeSlot(new int[] { 0, 20, 0, 0 }, "Medium Chip Intake", medIcon, true,
+            () => chipTier = Mathf.Max(chipTier, 1), 4, true);
+        AddUpgradeSlot(new int[] { 0, 60, 0, 0 }, "Large Chip Intake", largeIcon, true,
+            () => chipTier = Mathf.Max(chipTier, 2), 6, true,
+            null, null, () => chipTier >= 1);
+    }
+
     protected override void BEnable()
     {
         base.BEnable();
         if (!all.Contains(this)) all.Add(this);
+        ChipConsumers.Register(this);
     }
 
     protected override void BDisable()
     {
         base.BDisable();
         all.Remove(this);
+        ChipConsumers.Unregister(this);
     }
+
+    // ------------------------------------------------------------------ chip intake (IChipConsumer)
+
+    public bool ChipIntakeActive => builtYet && enabled;
+    public Vector2 ChipDropPoint => transform.position;
+    public float ChipIntakeRadius => suctionRadius;
+    public int ChipPriority => 0;   // the grinder is baseline work — ammo/refining may outrank it
+    /// <summary>Juice still wanted, in bag-space units — what the fleet plans hauls against.</summary>
+    public float ChipDemandSpace => JuiceDemand / Mathf.Max(0.01f, juicePerChipSpace);
+    public int InboundChipSpace { get => inboundChipSpace; set => inboundChipSpace = value; }
+    /// <summary>The bore gate: element never matters to the grinder, size must fit the tier.</summary>
+    public bool AcceptsChip(int sizeClass, int element) => sizeClass <= chipTier;
 
     // ------------------------------------------------------------------ grind + charge
 
@@ -133,8 +172,9 @@ public class BatteryStation : EnergyPad
             if (chip == null || chip.Absorbing || chip.transform.InDungeon()) continue;
             if (chip.claimedBy != null) continue;                  // a drone is flying for it
             if (chip.Age < 0.35f) continue;                        // let fresh drops pop in first
+            if (!AcceptsChip(chip.sizeClass, chip.element)) continue;   // too big for the bore
             if (((Vector2)chip.transform.position - pos).sqrMagnitude > suctionRadius * suctionRadius) continue;
-            juice = Mathf.Min(maxJuice, juice + chip.SpaceCost * juicePerChipSpace);
+            juice = Mathf.Min(maxJuice, juice + chip.JuiceValue);
             chip.AbsorbInto(eatSpot);                            // the ease-in + shrink grind
             if (juice >= maxJuice) break;
         }
@@ -167,7 +207,9 @@ public class BatteryStation : EnergyPad
 
     // ------------------------------------------------------------------ fleet job board
 
-    /// <summary>"No more chip / all chip is being used": nothing left to grind for this station.</summary>
+    /// <summary>"No more chip / all chip is being used": nothing left to grind for this station.
+    /// Chips the bore can't take don't count — a tier-0 grinder beside a pile of large chips
+    /// is starved all the same.</summary>
     public bool Starved
     {
         get
@@ -179,7 +221,8 @@ public class BatteryStation : EnergyPad
                 if (chip == null || chip.Absorbing || chip.transform.InDungeon()) continue;
                 if (chip.claimedBy != null) continue;
                 if (chip.Age < OreChip.SettleSeconds) continue;
-                return false;   // an unclaimed base-side chip exists somewhere
+                if (!AcceptsChip(chip.sizeClass, chip.element)) continue;
+                return false;   // an unclaimed base-side chip THIS grinder can eat exists
             }
             return true;
         }
@@ -191,17 +234,24 @@ public class BatteryStation : EnergyPad
     public const float SwapMargin = 0.5f;
 
     /// <summary>Is there anything to charge WITH, fleet-wide: banked juice, chips in flight, or
-    /// any base-side chip on the ground (claimed or not — the charging economy is alive).</summary>
+    /// any base-side chip on the ground (claimed or not — the charging economy is alive) that
+    /// SOME station's bore can actually take.</summary>
     public static bool ChargingPossible()
     {
+        int widestTier = -1;
         foreach (var st in all)
-            if (st != null && st.builtYet && st.enabled && (st.juice > 0f || st.inboundChipSpace > 0))
-                return true;
+        {
+            if (st == null || !st.builtYet || !st.enabled) continue;
+            if (st.juice > 0f || st.inboundChipSpace > 0) return true;
+            if (st.chipTier > widestTier) widestTier = st.chipTier;
+        }
+        if (widestTier < 0) return false;   // no live station at all
         for (int k = 0; k < OreChip.all.Count; k++)
         {
             var chip = OreChip.all[k];
             if (chip == null || chip.Absorbing || chip.transform.InDungeon()) continue;
             if (chip.Age < OreChip.SettleSeconds) continue;
+            if (chip.sizeClass > widestTier) continue;   // no grinder takes it (yet)
             return true;
         }
         return false;
@@ -302,6 +352,7 @@ public class BatteryStation : EnergyPad
             var chip = OreChip.all[k];
             if (chip == null || chip.Absorbing || chip.transform.InDungeon()) continue;
             if (chip.claimedBy != null) continue;
+            if (!AcceptsChip(chip.sizeClass, chip.element)) continue;
             if (((Vector2)chip.transform.position - pos).sqrMagnitude > suctionRadius * suctionRadius) continue;
             selfFeedCached = true;
             break;
@@ -418,45 +469,8 @@ public class BatteryStation : EnergyPad
         return best;
     }
 
-    /// <summary>A settled, unclaimed base-side chip worth hauling to a station that wants juice.
-    /// Chips already inside a station's suction ring are left alone — the grinder has them.</summary>
-    public static OreChip FindChipForStation(Drone forDrone, out BatteryStation station)
-    {
-        station = null;
-        BatteryStation want = null;
-        foreach (var st in all)
-        {
-            if (st == null || !st.builtYet || !st.enabled) continue;
-            if (st.JuiceDemand - st.inboundChipSpace * st.juicePerChipSpace > 0f) { want = st; break; }
-        }
-        if (want == null) return null;
-        OreChip best = null;
-        float bestSqr = float.MaxValue;
-        Vector2 dronePos = forDrone.transform.position;
-        for (int k = 0; k < OreChip.all.Count; k++)
-        {
-            var chip = OreChip.all[k];
-            if (chip == null || chip.Absorbing || chip.transform.InDungeon()) continue;
-            if (chip.claimedBy != null && chip.claimedBy != forDrone) continue;
-            if (chip.Age < OreChip.SettleSeconds) continue;
-            if (InsideAnySuction(chip.transform.position)) continue;
-            float d = ((Vector2)chip.transform.position - dronePos).sqrMagnitude;
-            if (d < bestSqr) { bestSqr = d; best = chip; }
-        }
-        station = want;
-        return best;
-    }
-
-    static bool InsideAnySuction(Vector2 p)
-    {
-        foreach (var st in all)
-        {
-            if (st == null || !st.builtYet) continue;
-            if (((Vector2)st.transform.position - p).sqrMagnitude <= st.suctionRadius * st.suctionRadius)
-                return true;
-        }
-        return false;
-    }
+    // (Chip fetching lives in ChipConsumers.FindChipJob/FindChipFor now — shared with every
+    // chip-eating building, size-preference rule included.)
 
     /// <summary>A slotted battery whose station visit is over — full, already stamped for today,
     /// or the grinder is starved — and that has a home to go back to.</summary>

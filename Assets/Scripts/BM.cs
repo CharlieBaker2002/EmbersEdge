@@ -695,6 +695,9 @@ public class BM : MonoBehaviour //Building Manager
         
         private List<GameObject> GetAllBuildings()
         {
-            return BlueprintManager.GetBuildings(BlueprintManager.researched).Select((x => x.g)).Union(BlueprintManager.i.defaultBuildings).ToList();
+            // Telepads are never player-buildable: base pads come from expansion events, dungeon
+            // pads from dungeon generation. Filter them out of every palette (base AND dungeon).
+            return BlueprintManager.GetBuildings(BlueprintManager.researched).Select((x => x.g)).Union(BlueprintManager.i.defaultBuildings)
+                .Where(g => g == null || g.GetComponentInChildren<Telepad>(true) == null).ToList();
         }
 }

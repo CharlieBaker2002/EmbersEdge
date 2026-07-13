@@ -212,6 +212,11 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
     /// this wholesale with its crate animation.</summary>
     protected virtual void UpdateVisual()
     {
+        // A battery without its visual rig (renderer/coil/sprite strips unassigned) has nothing
+        // to draw — bail instead of indexing empty arrays every frame.
+        if (sr == null || coil == null || mats == null || mats.Length == 0 ||
+            energysprs == null || energysprs.Length == 0) return;
+
         energyBuffer = Mathf.Lerp(energyBuffer, energy, Time.deltaTime * 3f);
         buffer = Mathf.Lerp(buffer, 0f, Time.deltaTime);
 

@@ -91,13 +91,15 @@ public class Drone : AllyAI, IOnDeath
     float stuckWatchT;
 
     // ---- battery-station logistics (base-side bag drones, see TickBatteryWork) ----
-    enum BatteryTask { None, PickupForStation, DeliverToStation, GatherChips, DeliverChips, PickupReturn, DeliverReturn, PickupForPad, DeliverToPad, BailToStation }
+    enum BatteryTask { None, PickupForStation, DeliverToStation, GatherChips, DeliverChips, PickupReturn, DeliverReturn, PickupForPad, DeliverToPad, BailToStation, PickupForUpgrade, DeliverUpgrade }
     BatteryTask batteryTask;
     Battery batteryHaul;          // claimed battery: loose/pad-slotted (charge run) or in a station (return run)
+    Battery upgradeTarget;        // pad-upgrade run: the drained slotted battery being traded out
     BatteryStation stationTarget;
     EnergyPad padTarget;          // distribution destination (BatteryDistribution.FindPlacement)
-    OreChip stationChipTarget;    // chip currently being fetched for the grinder
-    int chipsForStationSpace;     // chip space in the bag earmarked for the station
+    IChipConsumer chipConsumer;   // chip-run customer (station grinders today; walls/ammo/refiner tomorrow)
+    OreChip consumerChipTarget;   // chip currently being fetched for it
+    int chipsForConsumerSpace;    // chip space in the bag earmarked for it
     Battery carriedBattery;       // physically riding under the drone (deactivated)
     // BAG BATCH: extra flat batteries stowed in the sack on a station run (bag drones haul
     // several per trip; the hand slot above stays the one the swap dance works with)
@@ -1278,8 +1280,11 @@ public class Drone : AllyAI, IOnDeath
             }
         }
 
-        // 1) chips — the bag drone's bread and butter
+        // 1) chips — the bag drone's bread and butter. Chips somebody at base can EAT come
+        // first, larger classes before smaller (more value per bag space and per daily quota);
+        // inedible debris still rides home last, stockpile for the coming intake upgrades.
         float bestSqr = float.MaxValue;
+        int bestRank = -1;
         OreChip bestChip = null;
         for (int k = 0; k < OreChip.all.Count; k++)
         {
@@ -1289,8 +1294,11 @@ public class Drone : AllyAI, IOnDeath
             if (Time.time < chip.unreachableUntil) continue;  // a drone recently failed to reach it
             if (chip.claimedBy != null && chip.claimedBy != this) continue;
             if (chip.SpaceCost > spaceLeft) continue;
+            int rank = ChipConsumers.AnyoneAccepts(chip.sizeClass, chip.element) ? 1 + chip.sizeClass : 0;
+            if (rank < bestRank) continue;
             float d = ((Vector2)chip.transform.position - pos).sqrMagnitude;
-            if (d < bestSqr) { bestSqr = d; bestChip = chip; }
+            if (rank == bestRank && d >= bestSqr) continue;
+            bestRank = rank; bestSqr = d; bestChip = chip;
         }
         if (bestChip != null)
         {
@@ -1519,18 +1527,18 @@ public class Drone : AllyAI, IOnDeath
     {
         if (!HasCargo) { state = State.ReturningToDock; return; }
 
-        // Chips land where they're WANTED first: any grinder still short of juice gets fed
-        // before anything hits the scrap pile. Works flat too — dumping costs no charge.
+        // Chips land where they're WANTED first: any chip-eater still short — and able to TAKE
+        // something aboard — gets fed before anything hits the scrap pile. Works flat too —
+        // dumping costs no charge.
         if (CargoChipSpace() > 0)
         {
-            var st = StationWantingChips();
-            if (st != null)
+            var c = ConsumerWantingChips();
+            if (c != null)
             {
-                if (!MoveToward(st.transform.position, Mathf.Max(0.4f, st.suctionRadius * 0.7f))) return;
-                int wantSpace = Mathf.CeilToInt((st.JuiceDemand - st.inboundChipSpace * st.juicePerChipSpace)
-                                                / Mathf.Max(0.01f, st.juicePerChipSpace));
-                DumpChipsForStation(st, wantSpace);
-                return;   // next tick: another hungry station, or the scrap pile with the rest
+                if (!MoveToward(c.ChipDropPoint, Mathf.Max(0.4f, c.ChipIntakeRadius * 0.7f))) return;
+                int wantSpace = Mathf.CeilToInt(ChipConsumers.NetDemandSpace(c));
+                DumpChipsFor(c, wantSpace);
+                return;   // next tick: another hungry customer, or the scrap pile with the rest
             }
         }
 
@@ -1813,57 +1821,81 @@ public class Drone : AllyAI, IOnDeath
     // ------------------------------------------------------------------ battery-station logistics
 
     /// <summary>The overnight battery run, in priority order: haul a discharged battery onto a
-    /// station, feed the grinder chips, take a finished battery back to its home spot. Fires
-    /// from the job board each new day (batteries drained yesterday aren't ChargedToday, so
-    /// they qualify the moment the day turns).</summary>
+    /// station, feed the chip-eaters, take a finished battery back to its home spot, trade a
+    /// fuller free spare onto a drained working pad, distribute spares. Fires from the job
+    /// board each new day (batteries drained yesterday aren't ChargedToday, so they qualify
+    /// the moment the day turns). Only the station legs need a station — chips, the upgrade
+    /// swap and distribution serve the colony from day one, before any station is built.</summary>
     bool TryTakeBatteryWork()
     {
-        if (BatteryStation.all.Count == 0) return false;
-
-        Battery b = BatteryStation.FindBatteryForCharge(this, out BatteryStation st);
-        if (b != null)
+        if (BatteryStation.all.Count > 0)
         {
-            b.claimedBy = this;
-            st.inboundBatteries++;
-            batteryHaul = b;
-            stationTarget = st;
-            batteryTask = BatteryTask.PickupForStation;
-            state = State.BatteryWork;
-            return true;
+            Battery b = BatteryStation.FindBatteryForCharge(this, out BatteryStation st);
+            if (b != null)
+            {
+                b.claimedBy = this;
+                st.inboundBatteries++;
+                batteryHaul = b;
+                stationTarget = st;
+                batteryTask = BatteryTask.PickupForStation;
+                state = State.BatteryWork;
+                return true;
+            }
         }
 
         // chips are BAG work only — regular drones have nothing to carry them in — and a chip
-        // sweep spends the daily haul quota like any other pickup
+        // sweep spends the daily haul quota like any other pickup. EVERY chip-eating building
+        // posts here through ChipConsumers (grinders today; walls/ammo/refiner tomorrow), and
+        // the search already prefers the largest chip class the customer takes.
+        IChipConsumer eater = null;
         OreChip chip = equipment == DroneEquipment.Bag && HasDailyHaulQuota
-            ? BatteryStation.FindChipForStation(this, out st) : null;
-        if (chip != null && chip.SpaceCost <= EffectiveSpaceLeft)
+            ? ChipConsumers.FindChipJob(this, EffectiveSpaceLeft, out eater) : null;
+        if (chip != null)
         {
             chip.claimedBy = this;
-            stationChipTarget = chip;
-            stationTarget = st;
+            consumerChipTarget = chip;
+            chipConsumer = eater;
             batteryTask = BatteryTask.GatherChips;
             state = State.BatteryWork;
             return true;
         }
 
-        b = BatteryStation.FindBatteryToReturn(this, out st);
-        if (b != null)
+        if (BatteryStation.all.Count > 0)
         {
-            b.claimedBy = this;
-            batteryHaul = b;
-            stationTarget = st;
-            batteryTask = BatteryTask.PickupReturn;
+            Battery b = BatteryStation.FindBatteryToReturn(this, out BatteryStation st);
+            if (b != null)
+            {
+                b.claimedBy = this;
+                batteryHaul = b;
+                stationTarget = st;
+                batteryTask = BatteryTask.PickupReturn;
+                state = State.BatteryWork;
+                return true;
+            }
+        }
+
+        // wave-end pad upgrade: a fuller free-floating spare (the scene's game-start batteries,
+        // player drops — stock the station economy doesn't own) trades onto a drained working
+        // pad. BOTH batteries are claimed so no other drone grabs either half of the trade.
+        Battery outgoing = BatteryDistribution.FindUpgradeSwap(this, out Battery spare);
+        if (outgoing != null)
+        {
+            spare.claimedBy = this;
+            outgoing.claimedBy = this;
+            batteryHaul = spare;
+            upgradeTarget = outgoing;
+            batteryTask = BatteryTask.PickupForUpgrade;
             state = State.BatteryWork;
             return true;
         }
 
         // distribution: stock powered pads/hubs from spares — pins first, then evenly by consumers
-        b = BatteryDistribution.FindPlacement(this, out EnergyPad padDest);
-        if (b != null)
+        Battery place = BatteryDistribution.FindPlacement(this, out EnergyPad padDest);
+        if (place != null)
         {
-            b.claimedBy = this;
+            place.claimedBy = this;
             padDest.inboundBatteries++;
-            batteryHaul = b;
+            batteryHaul = place;
             padTarget = padDest;
             batteryTask = BatteryTask.PickupForPad;
             state = State.BatteryWork;
@@ -2026,34 +2058,34 @@ public class Drone : AllyAI, IOnDeath
 
             case BatteryTask.GatherChips:
             {
-                var st = stationTarget;
-                if (st == null || !st.builtYet)
+                var c = chipConsumer;
+                if (!ChipConsumers.Active(c))
                 {
                     ReleaseBatteryWork();               // chips stay aboard; DumpLoot banks them later
                     state = HasCargo ? State.DumpLoot : State.Loitering;
                     if (state == State.Loitering) GoLoiter();
                     return;
                 }
-                var chip = stationChipTarget;
+                var chip = consumerChipTarget;
                 if (chip == null || chip.Absorbing || chip.claimedBy != this || chip.SpaceCost > EffectiveSpaceLeft)
                 {
                     if (chip != null && chip.claimedBy == this) chip.claimedBy = null;
-                    stationChipTarget = null;
-                    // keep gathering while the grinder still wants more than the fleet has
+                    consumerChipTarget = null;
+                    // keep gathering while the customer still wants more than the fleet has
                     // inbound — and this drone still has quota to spend on it
                     bool wantMore = EffectiveSpaceLeft > 0 && HasDailyHaulQuota
-                        && st.JuiceDemand > st.inboundChipSpace * st.juicePerChipSpace;
+                        && ChipConsumers.NetDemandSpace(c) > 0f;
                     if (wantMore)
                     {
-                        var next = BatteryStation.FindChipForStation(this, out _);
-                        if (next != null && next.SpaceCost <= EffectiveSpaceLeft)
+                        var next = ChipConsumers.FindChipFor(c, this, EffectiveSpaceLeft);
+                        if (next != null)
                         {
                             next.claimedBy = this;
-                            stationChipTarget = next;
+                            consumerChipTarget = next;
                             return;
                         }
                     }
-                    if (chipsForStationSpace > 0) { batteryTask = BatteryTask.DeliverChips; return; }
+                    if (chipsForConsumerSpace > 0) { batteryTask = BatteryTask.DeliverChips; return; }
                     ReleaseBatteryWork();
                     if (!TryDispatchWork()) GoLoiter();
                     return;
@@ -2061,29 +2093,29 @@ public class Drone : AllyAI, IOnDeath
                 Vector2 cpos = chip.transform.position;
                 if (!MoveToward(cpos, 0.32f)) return;
                 FaceDir(cpos - (Vector2)transform.position);
-                // swallowed on the normal bag tariff, earmarked for the station
+                // swallowed on the normal bag tariff, earmarked for the customer
                 AddCargo(new CargoEntry { kind = 0, space = chip.SpaceCost, sizeClass = chip.sizeClass, element = chip.element });
-                chipsForStationSpace += chip.SpaceCost;
-                st.inboundChipSpace += chip.SpaceCost;
+                chipsForConsumerSpace += chip.SpaceCost;
+                c.InboundChipSpace += chip.SpaceCost;
                 chip.AbsorbInto(transform);
-                stationChipTarget = null;
+                consumerChipTarget = null;
                 return;
             }
 
             case BatteryTask.DeliverChips:
             {
-                var st = stationTarget;
-                if (st == null || !st.builtYet)
+                var c = chipConsumer;
+                if (!ChipConsumers.Active(c))
                 {
                     ReleaseBatteryWork();
                     state = HasCargo ? State.DumpLoot : State.Loitering;
                     if (state == State.Loitering) GoLoiter();
                     return;
                 }
-                if (!MoveToward(st.transform.position, Mathf.Max(0.4f, st.suctionRadius * 0.7f))) return;
-                DumpChipsForStation(st);
+                if (!MoveToward(c.ChipDropPoint, Mathf.Max(0.4f, c.ChipIntakeRadius * 0.7f))) return;
+                DumpChipsFor(c);
                 batteryTask = BatteryTask.None;
-                stationTarget = null;
+                chipConsumer = null;
                 if (!TryDispatchWork()) GoLoiter();
                 return;
             }
@@ -2221,6 +2253,76 @@ public class Drone : AllyAI, IOnDeath
                 return;
             }
 
+            case BatteryTask.PickupForUpgrade:
+            {
+                var spare = batteryHaul;
+                var outB = upgradeTarget;
+                if (spare == null || spare.claimedBy != this || spare.pad != null
+                    || spare.following || spare == Battery.held
+                    || outB == null || outB.claimedBy != this || outB.pad == null
+                    || outB.pad is BatteryStation || !outB.pad.builtYet)
+                {
+                    ReleaseBatteryWork();
+                    if (!TryDispatchWork()) GoLoiter();
+                    return;
+                }
+                Vector2 bpos = spare.transform.position;
+                if (!MoveToward(bpos, 0.4f)) return;
+                FaceDir(bpos - (Vector2)transform.position);
+                CarryBattery(spare);
+                batteryTask = BatteryTask.DeliverUpgrade;
+                return;
+            }
+
+            case BatteryTask.DeliverUpgrade:
+            {
+                var spare = carriedBattery;
+                var outB = upgradeTarget;
+                var pad = outB != null ? outB.pad : null;
+                // margin re-check at the tighter delivery floor: a generator may have been
+                // refilling the slotted battery mid-flight — never land a downgrade
+                if (spare == null || outB == null || outB.claimedBy != this
+                    || pad == null || pad is BatteryStation || !pad.builtYet
+                    || spare.energy < outB.energy + BatteryStation.SwapMargin)
+                {
+                    if (outB != null && outB.claimedBy == this) outB.claimedBy = null;
+                    upgradeTarget = null;
+                    ReleaseBatteryWork();               // sets the carried spare down where we are
+                    if (!TryDispatchWork()) GoLoiter();
+                    return;
+                }
+                if (!MoveToward(pad.transform.position, 0.5f)) return;
+                // THE TRADE: fuller spare into the slot the drained cell vacates
+                SetDownBattery();
+                spare.claimedBy = null;
+                batteryHaul = null;
+                upgradeTarget = null;
+                pad.UnslotBattery(outB);
+                if (!pad.TrySlotBattery(spare, playerAction: false))
+                {
+                    // rack changed mid-flight — undo the pull, the spare lies loose right here
+                    pad.TrySlotBattery(outB, playerAction: false);
+                    outB.claimedBy = null;
+                    batteryTask = BatteryTask.None;
+                    if (!TryDispatchWork()) GoLoiter();
+                    return;
+                }
+                // the drained one: bank it at a station when one stands (stock for the next
+                // charge run), else set it down beside the pad as the colony's next spare
+                CarryBattery(outB);
+                if (BatteryStation.all.Count > 0)
+                {
+                    batteryHaul = outB;
+                    BailBatteryWorkToStation();
+                    return;
+                }
+                SetDownBattery();
+                outB.claimedBy = null;
+                batteryTask = BatteryTask.None;
+                if (!TryDispatchWork()) GoLoiter();
+                return;
+            }
+
             default:
                 ReleaseBatteryWork();
                 if (!TryDispatchWork()) GoLoiter();
@@ -2298,37 +2400,50 @@ public class Drone : AllyAI, IOnDeath
         return s;
     }
 
-    /// <summary>Nearest station still short of juice, counting chips already flying its way.</summary>
-    BatteryStation StationWantingChips()
+    /// <summary>Nearest chip-eater still short of chips (counting what's already flying its way)
+    /// that can TAKE at least one chip riding in this bag — never fly a load nobody can eat.</summary>
+    IChipConsumer ConsumerWantingChips()
     {
-        BatteryStation best = null;
+        IChipConsumer best = null;
         float bd = float.MaxValue;
-        foreach (var st in BatteryStation.all)
+        for (int k = 0; k < ChipConsumers.all.Count; k++)
         {
-            if (st == null || !st.builtYet || !st.enabled) continue;
-            if (st.JuiceDemand - st.inboundChipSpace * st.juicePerChipSpace <= 0f) continue;
-            float d = ((Vector2)st.transform.position - (Vector2)transform.position).sqrMagnitude;
-            if (d < bd) { bd = d; best = st; }
+            var c = ChipConsumers.all[k];
+            if (!ChipConsumers.Active(c)) continue;
+            if (ChipConsumers.NetDemandSpace(c) <= 0f) continue;
+            if (!CargoHasChipFor(c)) continue;
+            float d = (c.ChipDropPoint - (Vector2)transform.position).sqrMagnitude;
+            if (d < bd) { bd = d; best = c; }
         }
         return best;
     }
 
-    /// <summary>Spill up to <paramref name="maxSpace"/> of the bagged chips beside the grinder —
-    /// its suction pulls each one in with the ease-in shrink. Non-chip cargo (orbs, payloads)
-    /// stays aboard, as does any chip beyond what this station wants.</summary>
-    void DumpChipsForStation(BatteryStation st, int maxSpace = int.MaxValue)
+    /// <summary>Any bagged chip this customer can take?</summary>
+    bool CargoHasChipFor(IChipConsumer c)
+    {
+        for (int k = 0; k < cargo.Count; k++)
+            if (cargo[k].kind == 0 && c.AcceptsChip(cargo[k].sizeClass, cargo[k].element)) return true;
+        return false;
+    }
+
+    /// <summary>Spill up to <paramref name="maxSpace"/> of the bagged chips the customer can
+    /// TAKE beside its intake — a station's suction pulls each one in with the ease-in shrink.
+    /// Non-chip cargo (orbs, payloads) stays aboard, as do chips it can't eat and any chip
+    /// beyond what it wants.</summary>
+    void DumpChipsFor(IChipConsumer c, int maxSpace = int.MaxValue)
     {
         for (int k = cargo.Count - 1; k >= 0 && maxSpace > 0; k--)
         {
             if (cargo[k].kind != 0) continue;
+            if (!c.AcceptsChip(cargo[k].sizeClass, cargo[k].element)) continue;
             maxSpace -= cargo[k].space;
-            DroneManager.SpawnScrap(st.transform.position + GS.RandCircle(0.15f, 0.45f),
+            DroneManager.SpawnScrap((Vector3)c.ChipDropPoint + GS.RandCircle(0.15f, 0.45f),
                 cargo[k].sizeClass, cargo[k].element);
             cargoSpaceUsed -= cargo[k].space;
             cargo.RemoveAt(k);
         }
-        st.inboundChipSpace = Mathf.Max(0, st.inboundChipSpace - chipsForStationSpace);
-        chipsForStationSpace = 0;
+        c.InboundChipSpace = Mathf.Max(0, c.InboundChipSpace - chipsForConsumerSpace);
+        chipsForConsumerSpace = 0;
         cargoSpaceUsed = Mathf.Max(0, cargoSpaceUsed);
         SetCargoUnits(cargoSpaceUsed);
         if (sack != null) sack.SetFill(cargoSpaceUsed / (float)SackMaxSpace);
@@ -2356,19 +2471,23 @@ public class Drone : AllyAI, IOnDeath
     /// then ditch it at the nearest station (BailToStation leg) for the rest of the fleet.</summary>
     void BailBatteryWorkToStation()
     {
-        if (stationChipTarget != null && stationChipTarget.claimedBy == this) stationChipTarget.claimedBy = null;
-        stationChipTarget = null;
-        if (stationTarget != null)
-        {
-            if (batteryTask == BatteryTask.PickupForStation || batteryTask == BatteryTask.DeliverToStation)
-                stationTarget.inboundBatteries = Mathf.Max(0, stationTarget.inboundBatteries - 1);
-            if (chipsForStationSpace > 0)
-                stationTarget.inboundChipSpace = Mathf.Max(0, stationTarget.inboundChipSpace - chipsForStationSpace);
-        }
+        if (consumerChipTarget != null && consumerChipTarget.claimedBy == this) consumerChipTarget.claimedBy = null;
+        consumerChipTarget = null;
+        // an interrupted upgrade run releases its slotted-battery claim (the spare in hand,
+        // if any, is what rides to the station)
+        if (upgradeTarget != null && upgradeTarget != carriedBattery && upgradeTarget.claimedBy == this)
+            upgradeTarget.claimedBy = null;
+        upgradeTarget = null;
+        if (chipConsumer != null && chipsForConsumerSpace > 0)
+            chipConsumer.InboundChipSpace = Mathf.Max(0, chipConsumer.InboundChipSpace - chipsForConsumerSpace);
+        chipConsumer = null;
+        chipsForConsumerSpace = 0;
+        if (stationTarget != null
+            && (batteryTask == BatteryTask.PickupForStation || batteryTask == BatteryTask.DeliverToStation))
+            stationTarget.inboundBatteries = Mathf.Max(0, stationTarget.inboundBatteries - 1);
         if (padTarget != null && (batteryTask == BatteryTask.PickupForPad || batteryTask == BatteryTask.DeliverToPad))
             padTarget.inboundBatteries = Mathf.Max(0, padTarget.inboundBatteries - 1);
         padTarget = null;
-        chipsForStationSpace = 0;
         if (batteryHaul != null && batteryHaul != carriedBattery && batteryHaul.claimedBy == this)
             batteryHaul.claimedBy = null;
         batteryHaul = carriedBattery;
@@ -2402,30 +2521,31 @@ public class Drone : AllyAI, IOnDeath
     /// survives, so a later run still returns it to its rack).</summary>
     void ReleaseBatteryWork()
     {
-        if (batteryTask == BatteryTask.None && carriedBattery == null && chipsForStationSpace == 0
+        if (batteryTask == BatteryTask.None && carriedBattery == null && chipsForConsumerSpace == 0
             && batteryBatch.Count == 0) return;
-        if (stationChipTarget != null && stationChipTarget.claimedBy == this) stationChipTarget.claimedBy = null;
-        stationChipTarget = null;
-        if (stationTarget != null)
+        if (consumerChipTarget != null && consumerChipTarget.claimedBy == this) consumerChipTarget.claimedBy = null;
+        consumerChipTarget = null;
+        if (upgradeTarget != null && upgradeTarget.claimedBy == this) upgradeTarget.claimedBy = null;
+        upgradeTarget = null;
+        if (chipConsumer != null && chipsForConsumerSpace > 0)
+            chipConsumer.InboundChipSpace = Mathf.Max(0, chipConsumer.InboundChipSpace - chipsForConsumerSpace);
+        chipConsumer = null;
+        chipsForConsumerSpace = 0;
+        if (stationTarget != null
+            && (batteryTask == BatteryTask.PickupForStation || batteryTask == BatteryTask.DeliverToStation
+                || batteryTask == BatteryTask.BailToStation))
         {
-            if (batteryTask == BatteryTask.PickupForStation || batteryTask == BatteryTask.DeliverToStation
-                || batteryTask == BatteryTask.BailToStation)
-            {
-                // one inbound reservation per outstanding claim: the battery in hand, every one
-                // stowed in the bag, and a mid-batch pending pickup (batteryHaul beyond the hand)
-                int outstanding = (carriedBattery != null ? 1 : 0) + batteryBatch.Count
-                    + (batteryHaul != null && batteryHaul != carriedBattery ? 1 : 0);
-                stationTarget.inboundBatteries = Mathf.Max(0,
-                    stationTarget.inboundBatteries - Mathf.Max(1, outstanding));
-            }
-            if (chipsForStationSpace > 0)
-                stationTarget.inboundChipSpace = Mathf.Max(0, stationTarget.inboundChipSpace - chipsForStationSpace);
+            // one inbound reservation per outstanding claim: the battery in hand, every one
+            // stowed in the bag, and a mid-batch pending pickup (batteryHaul beyond the hand)
+            int outstanding = (carriedBattery != null ? 1 : 0) + batteryBatch.Count
+                + (batteryHaul != null && batteryHaul != carriedBattery ? 1 : 0);
+            stationTarget.inboundBatteries = Mathf.Max(0,
+                stationTarget.inboundBatteries - Mathf.Max(1, outstanding));
         }
         ReleaseBatteryBatch();   // stowed batteries come back out beside the drone
         if (padTarget != null && (batteryTask == BatteryTask.PickupForPad || batteryTask == BatteryTask.DeliverToPad))
             padTarget.inboundBatteries = Mathf.Max(0, padTarget.inboundBatteries - 1);
         padTarget = null;
-        chipsForStationSpace = 0;
         if (batteryHaul != null && batteryHaul.claimedBy == this) batteryHaul.claimedBy = null;
         batteryHaul = null;
         stationTarget = null;

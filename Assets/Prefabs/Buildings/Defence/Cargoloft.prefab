@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 7105726453447704442}
   - component: {fileID: 2083807891448285300}
   - component: {fileID: 1986306936798091461}
-  - component: {fileID: 6012812249561010960}
   - component: {fileID: 2415036485059814054}
   m_Layer: 7
   m_Name: Cargoloft
@@ -118,6 +117,8 @@ MonoBehaviour:
   isWall: 0
   multiDrag: 0
   dungeonBuildable: 0
+  rotatable: 1
+  noBody: 0
   physic: {fileID: 0}
   builtBlasts: 2
   icons: []
@@ -129,33 +130,12 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0, z: 0}
   energyIconScale: 1
+  demolisher: {fileID: 0}
   produces: 2
   stock: 0
   maxStock: 4
   itemCost: 05000000000000000300000000000000
   slotSprite: {fileID: 0}
---- !u!114 &6012812249561010960
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2562246030231687990}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 213b29fb0ad684122a297fef29858033, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::OrbMagnet
-  typ: 0
-  orbs: []
-  transientOrbs: 0
-  n: 0
-  orbType: 0
-  capacity: 8
-  siblingTs: []
-  demand: 0
-  init: 1
-  initialMag: 0
 --- !u!114 &2415036485059814054
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -172,8 +152,8 @@ MonoBehaviour:
   orbs: []
   transientOrbs: 0
   n: 0
-  orbType: 2
-  capacity: 4
+  orbType: 0
+  capacity: 50
   siblingTs: []
   demand: 0
   init: 1

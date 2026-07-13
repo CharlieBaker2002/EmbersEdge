@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 1688845524213222780}
   - component: {fileID: 3140180098171544268}
   - component: {fileID: 1919429571480737283}
-  - component: {fileID: 1849563433891789727}
   m_Layer: 7
   m_Name: Small Ember Generator
   m_TagString: Allies
@@ -108,7 +107,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   buildingBehaviours:
-  - {fileID: 1849563433891789727}
+  - {fileID: 3140180098171544268}
   sr: {fileID: 1688845524213222780}
   groundEdit: {fileID: 0}
   tiles: []
@@ -117,9 +116,13 @@ MonoBehaviour:
   hasExtraParent: 0
   icon: {fileID: 0}
   size: {x: 0.5, y: 0.5}
+  isWall: 0
+  multiDrag: 0
+  dungeonBuildable: 0
+  rotatable: 1
+  noBody: 0
   physic: {fileID: 6755307317151360810}
   builtBlasts: 2
-  rebuildCost: 00000000000000000000000000000000
   icons: []
   prevN: 0
   numIconsTrue: 0
@@ -129,9 +132,7 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0, z: 0}
   energyIconScale: 1
-  energyMinShowTime: 5
-  throttleLingerTime: 2
-  energyFlashPeriod: 0.4
+  demolisher: {fileID: 0}
   sprs:
   - {fileID: 1045818724, guid: 13513fabea23b48a483b4f5dc28d0736, type: 3}
   - {fileID: 681195295, guid: 13513fabea23b48a483b4f5dc28d0736, type: 3}
@@ -146,8 +147,11 @@ MonoBehaviour:
   limit: 1
   current: 1
   FX: {fileID: 3189509133760383441, guid: 3ebfa320f58fc4e8a9c4219ecef7f00b, type: 3}
-  internalCapacity: 10
-  drawRate: 2
+  connect: {fileID: 0}
+  overrideBattery: 0
+  batteryCapacity: 0
+  batteryDrawRate: 0
+  batteryInstabuffer: 0
 --- !u!114 &1919429571480737283
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -164,39 +168,12 @@ MonoBehaviour:
   orbs: []
   transientOrbs: 0
   n: 0
-  orbType: 0
-  capacity: 10
+  orbType: 1
+  capacity: 15
   siblingTs: []
   demand: 0
   init: 1
   initialMag: 0
---- !u!114 &1849563433891789727
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8949586911344664711}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d1c410497b8a647eb9b4ccd17e78066f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  energy: 0
-  maxEnergy: 10
-  drawRate: 1
-  instaBufferMax: 2
-  sr: {fileID: 0}
-  visual: 1
-  coil: {fileID: 0}
-  coil0Sprs: []
-  coil1Sprs: []
-  coil2Sprs: []
-  quickChargeSprs: []
-  energysprs: []
-  mats: []
-  pad: {fileID: 0}
-  padSlot: -1
 --- !u!1001 &8649925464865359807
 PrefabInstance:
   m_ObjectHideFlags: 0

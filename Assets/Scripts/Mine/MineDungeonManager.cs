@@ -41,6 +41,11 @@ public class MineDungeonManager : MonoBehaviour
 
     readonly List<Pocket> pockets = new List<Pocket>();
     readonly List<MineSpawner> spawners = new List<MineSpawner>();
+    // This era's dungeon telepads (all torn down on regen). Buried extras sit in solid rock like ore
+    // finds — inactive until the wall at their cell is mined, then they come online with a flash.
+    readonly List<Telepad> dungeonPads = new List<Telepad>();
+    readonly List<(GameObject go, Vector3Int cell)> buriedPads = new List<(GameObject, Vector3Int)>();
+    GameObject telepadPrefab;
     Vector3Int entryCell;
     bool showPocketsApplied;
 
@@ -98,6 +103,19 @@ public class MineDungeonManager : MonoBehaviour
         else if (!showPockets)
         {
             showPocketsApplied = false;
+        }
+
+        // Buried telepads surface the moment the wall at their cell is dug out (O(1) per pad).
+        for (int k = buriedPads.Count - 1; k >= 0; k--)
+        {
+            var (go, cell) = buriedPads[k];
+            if (go == null) { buriedPads.RemoveAt(k); continue; }
+            if (MineField.i == null || !MineField.i.IsExcavated(cell)) continue;
+            buriedPads.RemoveAt(k);
+            go.SetActive(true);
+            var pad = go.GetComponent<Telepad>();
+            if (pad != null) pad.enabled = true;   // registers with the network & serves requests
+            MineFX.EnemySpawnFlash(go.transform.position);
         }
     }
 
@@ -177,6 +195,82 @@ public class MineDungeonManager : MonoBehaviour
         if (showPockets) RevealAllPockets();   // cheat already on when a new dungeon generates — one batch
 
         PlaceSpawners(em, era, placed, W, H);
+        SpawnTelepads(era, placed, W, H);
+    }
+
+    // =====================================================================================
+    //  Dungeon telepads — one live pad at the entry, plus era+1 extras buried out in the rock
+    //  (stratified rings like ore clusters; the first always lands inside the nearer half).
+    //  Buried pads activate when the wall at their cell is mined (poll in Update).
+    // =====================================================================================
+
+    void SpawnTelepads(int era, List<PocketInstance> placed, int W, int H)
+    {
+        if (telepadPrefab == null) telepadPrefab = Resources.Load<GameObject>("Telepad");
+        if (telepadPrefab == null || MineField.i == null) return;
+
+        // The centre pad: live from the start, a couple of cells above the landing point so the
+        // player doesn't materialise standing on it.
+        SpawnPad(new Vector3Int(0, 2, 0), buried: false);
+
+        int extras = Mathf.Clamp(era + 1, 1, 3);
+        float radius = 0.5f * Mathf.Min(W, H);
+        for (int k = 0; k < extras; k++)
+        {
+            // stratified like ore sub-bands, scaled so the single era-1 extra sits at 0.45 —
+            // inside the first 50% of the normalized centre-to-edge distance
+            float dTarget = 0.9f * (k + 0.5f) / extras;
+            if (TryFindPadCell(dTarget, radius, placed, out Vector3Int cell))
+                SpawnPad(cell, buried: true);
+        }
+    }
+
+    void SpawnPad(Vector3Int cell, bool buried)
+    {
+        Vector3 pos = MineField.i.CellCenterWorld(cell);
+        var go = Instantiate(telepadPrefab, pos, Quaternion.identity, transform);
+        go.name = "Telepad (dungeon)";
+        var pad = go.GetComponent<Telepad>();
+        if (pad == null) { Destroy(go); return; }
+        pad.builtYet = true;                    // granted pre-built — never a construction ghost
+        BM.DungeonOccupancy.Add(cell);          // Telepad.OnDestroy releases the cell
+        dungeonPads.Add(pad);
+        if (buried)
+        {
+            go.SetActive(false);                // hidden in the rock until its wall is mined
+            buriedPads.Add((go, cell));
+        }
+        else
+        {
+            pad.enabled = true;                 // prefab ships disabled (unbuilt state) — wake it
+        }
+    }
+
+    // One plain-wall cell on the target ring (normalized distance from the entry), clear of the
+    // entry cavity and every pocket rect (+2 pad) — the same sampling idea as ore seeds, with the
+    // ring slack widening only as rejections mount.
+    bool TryFindPadCell(float dTarget, float radius, List<PocketInstance> placed, out Vector3Int cell)
+    {
+        int entryClear = entryCavityRadius + 2;
+        for (int a = 0; a < 96; a++)
+        {
+            float slack = (a / 95f) * 0.15f;
+            float d = Mathf.Clamp01(dTarget + Random.Range(-slack, slack));
+            float ang = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+            float r = d * radius;
+            var c = new Vector3Int(Mathf.RoundToInt(Mathf.Cos(ang) * r), Mathf.RoundToInt(Mathf.Sin(ang) * r), 0);
+            if (Mathf.Abs(c.x) < entryClear && Mathf.Abs(c.y) < entryClear) continue;
+            if (!MineField.i.IsPlainWall(c)) continue;
+            if (MineField.i.IsSpawnerCell(c) || MineField.i.IsPocketRingWall(c)) continue;
+            bool blocked = false;
+            foreach (var p in placed)
+                if (Inflate(p.cellRect, 2).Contains(new Vector2Int(c.x, c.y))) { blocked = true; break; }
+            if (blocked) continue;
+            cell = c;
+            return true;
+        }
+        cell = default;
+        return false;
     }
 
     // Fill the rock with spawners against the era's SPAWNER budget (MineField.eraNSpawnerPoints,
@@ -1012,6 +1106,17 @@ public class MineDungeonManager : MonoBehaviour
         pockets.Clear();
         foreach (var s in spawners) if (s != null) Destroy(s.gameObject);
         spawners.Clear();
+        // era regen deletes the dungeon-side pads (base pads persist; the network renumbers).
+        // Unregister NOW, not in the deferred OnDestroy — the new era's pads register this same
+        // frame and must find slot #0 free, or base↔dungeon numbering skews for a whole era.
+        foreach (var t in dungeonPads)
+            if (t != null)
+            {
+                TelepadNetwork.Unregister(t);
+                Destroy(t.gameObject);
+            }
+        dungeonPads.Clear();
+        buriedPads.Clear();
         // era regen: the old dungeon's frozen enemies belong to a dungeon that no longer exists
         if (dungeonRespawn != null) { StopCoroutine(dungeonRespawn); dungeonRespawn = null; }
         foreach (var g in frozen) if (g != null) Destroy(g);

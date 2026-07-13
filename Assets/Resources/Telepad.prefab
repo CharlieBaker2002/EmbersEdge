@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 2227852798765427851}
   - component: {fileID: 3406805028154921318}
   - component: {fileID: 5436316533039378756}
-  - component: {fileID: 7678318544583727454}
   m_Layer: 7
   m_Name: Telepad
   m_TagString: Untagged
@@ -117,6 +116,8 @@ MonoBehaviour:
   isWall: 0
   multiDrag: 0
   dungeonBuildable: 1
+  rotatable: 1
+  noBody: 0
   physic: {fileID: 0}
   builtBlasts: 0
   icons: []
@@ -128,27 +129,9 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0, z: 0}
   energyIconScale: 1
-  capacity: 4
-  index: -1
---- !u!114 &7678318544583727454
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8397005363367721448}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 213b29fb0ad684122a297fef29858033, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::OrbMagnet
-  typ: 0
-  orbs: []
-  transientOrbs: 0
-  n: 0
-  orbType: 0
+  demolisher: {fileID: 0}
   capacity: 6
-  siblingTs: []
-  demand: 0
-  init: 1
-  initialMag: 0
+  index: -1
+  reqDrill: 0
+  reqBag: 0
+  reqAttack: 0

@@ -70,6 +70,10 @@ public class MapManager : MonoBehaviour
   private const float containEpsilon     = 0.02f;  // Inward nudge: sub‑epsilon coincidence counts as enclosed
   private const float containStep        = 0.06f;  // Minimum outward push per pass (world units)
   bool fff = false; //finish follow flag
+  // Snapshot of the CURRENT (committed) map bounds taken when follow‑placement starts. The follow loop
+  // leaves poly.points holding the previewed NEW bounds, so the confirm click is judged against this
+  // instead: a click inside the new bounds confirms, a click inside the current bounds does not.
+  Vector2[] committedFollowPoly;
 
     public List<ActionScript> asses = new List<ActionScript>();
     
@@ -1287,7 +1291,10 @@ public class MapManager : MonoBehaviour
     {
         // Code‑based containment (not poly.OverlapPoint) so the click that commits placement is judged
         // against the same up‑to‑date geometry as the follow loop — Physics2D AutoSyncTransforms is OFF.
-        Vector2[] pts = poly.points;
+        // Judge against the CURRENT map bounds (committedFollowPoly), NOT poly.points: the follow loop
+        // leaves poly.points at the previewed new bounds, so a click inside the new map should confirm —
+        // only a click inside the current map should be ignored.
+        Vector2[] pts = committedFollowPoly ?? poly.points;
         if (pts != null && pts.Length >= 3 && PointInPolygon(IM.i.MouseWorld(), pts))
         {
             return;
@@ -1306,6 +1313,10 @@ public class MapManager : MonoBehaviour
         Vector2 vprev = EE.transform.position;
         Vector2 vEE;
         if (!instant) yield return new WaitForSeconds(1f);
+        // Freeze the current (pre‑preview) bounds so the confirm click can tell "inside the new map"
+        // (confirm) from "inside the current map" (ignore). The loop below mutates poly.points.
+        UpdatePolyFromLR();
+        committedFollowPoly = poly.points;
         IM.i.pi.Player.Interact.performed += StopFollowMouse;
         while (fff == false)
         {
@@ -1344,6 +1355,7 @@ public class MapManager : MonoBehaviour
         yield return new WaitForSeconds(0.1f);
         OnUpdateMap.Invoke();
         fff = false;
+        committedFollowPoly = null;
     }
 
     //Cannot be during shift-phase or code must be changed.
@@ -1751,7 +1763,7 @@ public class MapManager : MonoBehaviour
     // from the outline currently on screen to the committed outline. Every commit re‑encloses the
     // previous outline and every retarget starts from exactly what is displayed, so the drawn
     // boundary only ever moves outward — no snap‑back when expansions overlap. That also makes
-    // concurrent expansions safe: several extractors at once each just retarget the blend.
+    // concurrent expansions safe: several expanders at once each just retarget the blend.
     private Vector2[] animSrc;               // where each outline point started this blend
     private Vector2[] animDst;               // committed outline the blend is heading to
     private float animProgress;              // 0→1 over animationDuration

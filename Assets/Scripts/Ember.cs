@@ -38,7 +38,7 @@ public class Ember : MonoBehaviour
     public bool portalEmber = false;
     public bool reversePortalEmber = false;
     public bool charEmber = false;
-    public Extractor extract = null;
+    public Expander extract = null;
     [SerializeField] public ParticleSystem[] trailPS;
 
     [SerializeField] private ParticleSystemRenderer[] r;

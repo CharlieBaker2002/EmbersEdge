@@ -118,7 +118,6 @@ GameObject:
   - component: {fileID: 4816399736014682656}
   - component: {fileID: 2889625729449508185}
   - component: {fileID: 5570864781393850251}
-  - component: {fileID: 5362328450872351841}
   m_Layer: 7
   m_Name: Mine Sprayer
   m_TagString: Allies
@@ -271,8 +270,8 @@ MonoBehaviour:
   orbs: []
   transientOrbs: 0
   n: 0
-  orbType: 0
-  capacity: 60
+  orbType: 2
+  capacity: 3
   siblingTs: []
   demand: 0
   init: 1
@@ -290,28 +289,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   decompressionTime: 25
---- !u!114 &5362328450872351841
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4816399736014682658}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 213b29fb0ad684122a297fef29858033, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  typ: 0
-  orbs: []
-  transientOrbs: 0
-  n: 0
-  orbType: 3
-  capacity: 2
-  siblingTs: []
-  demand: 0
-  init: 1
-  initialMag: 0
 --- !u!1 &4816399736768080809
 GameObject:
   m_ObjectHideFlags: 0
@@ -431,9 +408,13 @@ MonoBehaviour:
   hasExtraParent: 1
   icon: {fileID: 0}
   size: {x: 1, y: 1}
+  isWall: 0
+  multiDrag: 0
+  dungeonBuildable: 0
+  rotatable: 1
+  noBody: 0
   physic: {fileID: 285555946240544839}
   builtBlasts: 1
-  rebuildCost: 0a000000000000000000000000000000
   icons: []
   prevN: 0
   numIconsTrue: 0
@@ -443,6 +424,7 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0, z: 0}
   energyIconScale: 1
+  demolisher: {fileID: 0}
   p: {fileID: 4783886860522150799, guid: 39aac824a6cd3484686ae388eaaa9303, type: 3}
   find: {fileID: 4816399736768080802}
   frames:

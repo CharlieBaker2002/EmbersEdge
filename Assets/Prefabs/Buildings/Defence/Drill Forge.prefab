@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 7471485236414318205}
   - component: {fileID: 6438846247573640324}
   - component: {fileID: 5930660079593207089}
-  - component: {fileID: 2153698407533232518}
   - component: {fileID: 5429170783998044663}
   m_Layer: 7
   m_Name: Drill Forge
@@ -118,6 +117,8 @@ MonoBehaviour:
   isWall: 0
   multiDrag: 0
   dungeonBuildable: 0
+  rotatable: 1
+  noBody: 0
   physic: {fileID: 0}
   builtBlasts: 2
   icons: []
@@ -129,33 +130,12 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0, z: 0}
   energyIconScale: 1
+  demolisher: {fileID: 0}
   produces: 1
   stock: 0
   maxStock: 4
   itemCost: 05000000030000000000000000000000
   slotSprite: {fileID: 0}
---- !u!114 &2153698407533232518
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3236425706926957504}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 213b29fb0ad684122a297fef29858033, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::OrbMagnet
-  typ: 0
-  orbs: []
-  transientOrbs: 0
-  n: 0
-  orbType: 0
-  capacity: 8
-  siblingTs: []
-  demand: 0
-  init: 1
-  initialMag: 0
 --- !u!114 &5429170783998044663
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -173,7 +153,7 @@ MonoBehaviour:
   transientOrbs: 0
   n: 0
   orbType: 1
-  capacity: 4
+  capacity: 10
   siblingTs: []
   demand: 0
   init: 1

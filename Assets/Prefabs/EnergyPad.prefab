@@ -118,9 +118,13 @@ MonoBehaviour:
   hasExtraParent: 0
   icon: {fileID: 0}
   size: {x: 1, y: 1}
+  isWall: 0
+  multiDrag: 0
+  dungeonBuildable: 0
+  rotatable: 1
+  noBody: 0
   physic: {fileID: 0}
   builtBlasts: 1
-  rebuildCost: 00000000000000000000000000000000
   icons: []
   prevN: 0
   numIconsTrue: 0
@@ -128,13 +132,17 @@ MonoBehaviour:
   builtYet: 0
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0, z: 0}
+  energyIconScale: 1
+  demolisher: {fileID: 0}
   batteryPrefab: {fileID: 6756930137817037866, guid: a0931eeec8e434f718cf1aac8a9f5725, type: 3}
   slotTransforms:
   - {fileID: 1780123806940025293}
   - {fileID: 8524153962668826664}
   - {fileID: 5012812465591450447}
   - {fileID: 3730242322807824021}
-  initialBatteryCount: 4
+  inboundBatteries: 0
+  pinnedMin: 0
   hub: 0
 --- !u!114 &5906971196468631169
 MonoBehaviour:
@@ -152,7 +160,7 @@ MonoBehaviour:
   orbs: []
   transientOrbs: 0
   n: 0
-  orbType: 0
+  orbType: 1
   capacity: 10
   siblingTs: []
   demand: 0

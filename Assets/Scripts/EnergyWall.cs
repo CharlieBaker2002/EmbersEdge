@@ -64,6 +64,11 @@ public class EnergyWall : MonoBehaviour, IOnCollide
     /// <summary>Live span polyline (world-space bezier samples) — placement checks read it to keep
     /// new spans clear of standing walls. Null until the first weave.</summary>
     public IReadOnlyList<Vector3> ShapePoints => shapePts;
+    /// <summary>Where the span WILL sit: the reweave destination while moving, the live span
+    /// otherwise. Placement checks and no-go paint read this so a mid-flight wall reserves its
+    /// landing spot rather than vanishing from the map.</summary>
+    public IReadOnlyList<Vector3> PlannedShapePoints => weaving && plannedPts != null ? plannedPts : shapePts;
+    private Vector3[] plannedPts;
     /// <summary>Physically present: collider live and charge not emptied. Dead or mid-reshape
     /// walls block nothing — matching their path registration.</summary>
     public bool Standing => col != null && col.enabled && ls != null && !ls.hasDied;
@@ -158,6 +163,7 @@ public class EnergyWall : MonoBehaviour, IOnCollide
     private IEnumerator ReweaveI(Vector2 aWorld, Vector2 bWorld, float t)
     {
         weaving = true;
+        plannedPts = BuildBezier(aWorld, bWorld, (Vector2)transform.position, Mathf.Max(8, segments), out _);
         col.enabled = false;
         BaseBlockMap.UnregisterWall(ls);   // the moving span blocks nothing until it re-lands
         Vector2 a0 = a, b0 = b;

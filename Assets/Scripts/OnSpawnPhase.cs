@@ -8,23 +8,32 @@ public class OnSpawnPhase : MonoBehaviour
     public Unit u;
     public ActionScript AS;
     [SerializeField] float speedCoef = 1f;
+    bool armed;   // set once in Awake; lets OnEnable restart the phase-in after a dungeon-freeze SetActive cycle
 
     private void Awake()
     {
         if (transform.InDungeon())
         {
             AS.prepared = false;
-            foreach (SpriteRenderer sr in srs)
-            {
-                Phase(sr, false);
-            }
-            u.UpdateLineColour(true);
-            StartCoroutine(Phase());
+            armed = true;
         }
         else
         {
             Destroy(this);
         }
+    }
+
+    // Runs at spawn (right after Awake) AND on re-enable after a dimension thaw — SetActive(false)
+    // kills the Phase coroutine, so a frozen mid-phase enemy must restart it or stay translucent.
+    private void OnEnable()
+    {
+        if (!armed) return;
+        foreach (SpriteRenderer sr in srs)
+        {
+            Phase(sr, false);
+        }
+        u.UpdateLineColour(true);
+        StartCoroutine(Phase());
     }
 
     IEnumerator Phase()

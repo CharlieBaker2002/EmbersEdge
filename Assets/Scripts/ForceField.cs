@@ -67,7 +67,9 @@ public class ForceField : Building
 
     protected override void BEnable()
     {
-        if (wall == null) SpawnWall(2f); // a thin seed wall comes up with the tower
+        // A thin seed wall comes up with the tower — unless the default span lands on another
+        // tower or field: then no wall spawns until the player draws a valid one (Move Field).
+        if (wall == null && !SpanBlocked(World(endA), World(endB))) SpawnWall(2f);
         if (loop == null) loop = StartCoroutine(Run());
     }
 
@@ -111,11 +113,18 @@ public class ForceField : Building
             if (wall == null)
             {
                 // Wall fell: bank charge from zero, re-weave once one full energy is stored.
-                float step = DrawStep(chargeRate, 1f - rebuildCharge);
-                rebuildCharge += step;
-                ReportEnergyDraw(chargeRate);
+                bool full = rebuildCharge >= 1f - 1e-4f;
+                if (!full)
+                {
+                    float step = DrawStep(chargeRate, 1f - rebuildCharge);
+                    rebuildCharge += step;
+                    ReportEnergyDraw(chargeRate);
+                }
+                else ClearEnergyStatus(); // charged and waiting — not the grid's fault
                 SetChargeSprite(rebuildCharge);
-                if (rebuildCharge >= 1f - 1e-4f)
+                // If the stored span is blocked (e.g. the tower came up under another field),
+                // hold the banked charge: the wall waits for a valid Move Field placement.
+                if (full && !SpanBlocked(World(endA), World(endB)))
                 {
                     SpawnWall(rebuildCharge * hpPerCharge);
                     rebuildCharge = 0f;
@@ -232,6 +241,7 @@ public class ForceField : Building
     // stamp chewable wall cells across the tower's solid BLOCKED footprint and the capsule would
     // cut straight through the building — and may not TOUCH another tower's standing wall (two
     // capsules merging into one visual barrier hide where one ends and its weaknesses sit).
+    // A wall mid-reweave counts at its DESTINATION span — it reserves where it's going to land.
     // Tested on the same bezier the wall will weave: producer footprints grown by the capsule's
     // half-bulk, other spans by centerline distance under wallClearance. The tower's OWN wall is
     // exempt — that's the span being replaced.
@@ -254,8 +264,8 @@ public class ForceField : Building
                     if (pts[k].x > xMin && pts[k].x < xMax && pts[k].y > yMin && pts[k].y < yMax)
                         return true;
             }
-            if (ff == this || ff.Wall == null || !ff.Wall.Standing) continue;
-            var span = ff.Wall.ShapePoints;
+            if (ff == this || ff.Wall == null || !(ff.Wall.Standing || ff.Wall.Weaving)) continue;
+            var span = ff.Wall.PlannedShapePoints;   // a mid-flight wall reserves its landing spot
             if (span == null || span.Count < 2) continue;
             for (int k = 0; k < pts.Length; k++)
                 if (DistToPolyline(pts[k], span) < wallClearance) return true;
@@ -306,6 +316,13 @@ public class ForceField : Building
             wall.SetMaxHp(MaxHpForWidth(width));
             wall.Reweave(na, nb, reshapeTime);
         }
+        else
+        {
+            // No wall up (blocked default span, or it fell and the respawn spot was blocked):
+            // a valid placement weaves it here, spending whatever charge was banked meanwhile.
+            SpawnWall(Mathf.Max(2f, rebuildCharge * hpPerCharge));
+            rebuildCharge = 0f;
+        }
     }
 
     private void Update()
@@ -341,6 +358,9 @@ public class ForceField : Building
             moveText = Instantiate(UIManager.i.numText, transform.position, Quaternion.identity);
             moveText.gameObject.SetActive(true);
             moveText.alignment = TextAlignmentOptions.Center;
+            // the source rect is narrow — without this the "Can't place over…" line wraps
+            // into a tall stack; explicit \n still breaks lines where we want them
+            moveText.textWrappingMode = TextWrappingModes.NoWrap;
             moveText.fontSize = Mathf.Max(2f, moveText.fontSize * 0.7f);
             moveText.color = new Color(0.75f, 1f, 0.95f, 0.95f);
             moveText.transform.localScale = Vector3.one * 0.6f;
@@ -388,8 +408,8 @@ public class ForceField : Building
                 rect.SetPosition(3, new Vector3(xMin, yMax));
                 noGoLRs.Add(rect);
             }
-            if (ff == this || ff.Wall == null || !ff.Wall.Standing) continue;
-            var span = ff.Wall.ShapePoints;
+            if (ff == this || ff.Wall == null || !(ff.Wall.Standing || ff.Wall.Weaving)) continue;
+            var span = ff.Wall.PlannedShapePoints;   // moving walls paint the band where they'll land
             if (span == null || span.Count < 2) continue;
             var band = MakeLR(wallClearance * 2f, new Color(1f, 0.4f, 0.35f, 0.16f), 3);
             band.numCapVertices = 8;

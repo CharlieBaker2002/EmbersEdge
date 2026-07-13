@@ -120,9 +120,11 @@ public class TilemapCorruption : MonoBehaviour
         extras.color = col;
         int[] ns = GS.era switch
         {
+            // Signal is the telepad unlocker now — EXACTLY one per era (base pads persist across
+            // eras while the dungeon-side pads regenerate, so one new base pad per dungeon).
             0 => new int[] { 3, 2, 1, 1, 1 }, //Small Threat, Random, Big Threat, Signal, Bonus
-            1 => new int[] { 5, 3, 2, 2, 1 },
-            _ => new int[] { 7, 4, 3, 3, 1 },
+            1 => new int[] { 5, 3, 2, 1, 1 },
+            _ => new int[] { 7, 4, 3, 1, 1 },
         };
         Vector3Int v;
         Vector2 v2;
@@ -322,9 +324,25 @@ public class TilemapCorruption : MonoBehaviour
         Instantiate(lootbox, p, Quaternion.identity, GS.FindParent(GS.Parent.misc));
     }
 
+    // Expansion reaching a Signal tile grants a BASE TELEPAD, pre-built where the event fired.
+    // (This replaced the old easter-egg connect-base artifact — pads aren't player-buildable,
+    // so the one-per-era Signal is the only base-side source after the scene-authored first pad.)
     private void Signal(Vector2 p)
     {
-        connectBase = Instantiate(connectBasePrefab, p, Quaternion.identity, GS.FindParent(GS.Parent.misc));
+        var prefab = Resources.Load<GameObject>("Telepad");
+        if (prefab == null)
+        {
+            Debug.LogWarning("TilemapCorruption: Telepad prefab missing from Resources — no pad granted.");
+            return;
+        }
+        var go = Instantiate(prefab, p, Quaternion.identity, GS.FindParent(GS.Parent.misc));
+        go.name = "Telepad";
+        var pad = go.GetComponent<Telepad>();
+        if (pad != null)
+        {
+            pad.builtYet = true;   // granted pre-built — Start() registers it with the network
+            pad.enabled = true;    // prefab ships disabled (unbuilt state)
+        }
     }
 
 }
