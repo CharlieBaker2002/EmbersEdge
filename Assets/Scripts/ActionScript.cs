@@ -113,6 +113,13 @@ public class ActionScript : MonoBehaviour
         {
             return;
         }
+        // Ember-core placement pan: hold every unit dead still (projectiles and the player are
+        // exempt). Velocity is pinned each tick so stray forces/tweens can't creep movement in.
+        if (Unit.globalFreeze && !PS && (CharacterScript.CS == null || transform != CharacterScript.CS.transform))
+        {
+            rb.linearVelocity = Vector2.zero;
+            return;
+        }
         Vector2 vel = rb.linearVelocity + (Vector2)force * Time.fixedDeltaTime / mass;
         if (!PS)
         {

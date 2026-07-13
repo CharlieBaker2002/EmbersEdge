@@ -69,7 +69,6 @@ public class MapManager : MonoBehaviour
   private const int   containSamples     = 512;    // Dense boundary resolution for catching thin slivers
   private const float containEpsilon     = 0.02f;  // Inward nudge: sub‑epsilon coincidence counts as enclosed
   private const float containStep        = 0.06f;  // Minimum outward push per pass (world units)
-  private Vector2[] asyncPreOutline;               // Pre‑change outline captured for the animated (extractor) path
   bool fff = false; //finish follow flag
 
     public List<ActionScript> asses = new List<ActionScript>();
@@ -201,13 +200,15 @@ public class MapManager : MonoBehaviour
         maskMesh.RecalculateBounds();
     }
 
-    public void GenerateSpriteFromPoly()
+    // syncPolyFromSpline=false lets the animated-boundary path build the mask from the outline it
+    // just wrote into poly, instead of snapping poly back to the (already-committed) spline.
+    public void GenerateSpriteFromPoly(bool syncPolyFromSpline = true)
     {
         if (awaitingReadback) return;   // Skip if a previous request hasn't returned yet
         awaitingReadback = true;
         // Combined GPU + NativeArray upload path
         EnsureTextureAndBuffer();
-        UpdatePolyFromLR();
+        if (syncPolyFromSpline) UpdatePolyFromLR();
 
         // ---------- GPU render ----------
         if (maskMesh == null || meshDirty)
@@ -383,14 +384,14 @@ public class MapManager : MonoBehaviour
             homeTexture = new RenderTexture(bigger ? 1024 : low, bigger ? 1024 : low, 32);
             raw.texture = homeTexture;
             cams[0].targetTexture = homeTexture;
-            homeCamNextRender = 0f;   // fresh (empty) RT — render into it this frame, not next tick
+            homeCamFrameCounter = MinimapFrameDivider;   // fresh (empty) RT — render into it this frame, not next tick
         }
         else
         {
             //dungeonTex = new RenderTexture(bigger ? 2048 : 1024, bigger ? 2048 : 1024, 32);
             raw.texture = dungeonTex;
             cams[1].targetTexture = dungeonTex;
-            dungeonCamNextRender = 0f;
+            dungeonCamFrameCounter = MinimapFrameDivider;
         }
     }
 
@@ -1069,6 +1070,35 @@ public class MapManager : MonoBehaviour
         return PointInPolygon(p, pts) || DistanceToPolygonEdge(p, pts) < margin;
     }
 
+    // poly.points allocates a fresh copy per call, so per-orb/per-frame callers of
+    // InsideBoundsWithClearance share one snapshot refreshed at most once per frame.
+    private Vector2[] cachedBoundaryPts;
+    private int cachedBoundaryFrame = -1;
+
+    private Vector2[] BoundaryPtsCached()
+    {
+        if (cachedBoundaryFrame != Time.frameCount)
+        {
+            cachedBoundaryFrame = Time.frameCount;
+            cachedBoundaryPts = poly != null && poly.points.Length >= 3 ? poly.points : null;
+        }
+        return cachedBoundaryPts;
+    }
+
+    /// <summary>
+    /// True when p is inside the map boundary with at least <paramref name="clearance"/> world-units
+    /// to spare — i.e. clear of the boundary line's own drawn width. Code-based (poly.points, no
+    /// Physics2D) so it stays correct in builds and while the collider is disabled for placement.
+    /// Returns true when the map isn't built yet, so callers never clamp against a missing boundary.
+    /// </summary>
+    public static bool InsideBoundsWithClearance(Vector2 p, float clearance)
+    {
+        Vector2[] pts = i != null ? i.BoundaryPtsCached() : null;
+        if (pts == null) return true;
+        if (!PointInPolygon(p, pts)) return false;
+        return clearance <= 0f || DistanceToPolygonEdge(p, pts) >= clearance;
+    }
+
     // Densely sample the boundary spline into world‑space points — finer than the 100‑pt collider,
     // so containment tests catch thin slivers that fall between collider vertices.
     private Vector2[] SampleSplineDense(int count)
@@ -1402,6 +1432,7 @@ public class MapManager : MonoBehaviour
         IM.i.pi.Player.LockMap.Disable();
         IM.i.pi.Player.Movement.Disable();
         CameraScript.i.locked = false;
+        Unit.SetGlobalFreeze(true);
 
         // Snap straight to the home/map overview (no dive-through). Matches the dive target in PlaceNewEE.
         Transform camT = CameraScript.i.transform;
@@ -1416,6 +1447,7 @@ public class MapManager : MonoBehaviour
         CameraScript.i.locked = true;
         UIManager.i.FadeInCanvas();
         CameraScript.ZoomPermanent(CameraScript.i.DimScale, 0.01f);
+        Unit.SetGlobalFreeze(false);
         CameraScript.i.StartCoroutine(CameraScript.i.ReturnToPlayer());
         PortalScript.i.QuickOffSlider();
         yield return new WaitForSeconds(0.5f);
@@ -1429,6 +1461,7 @@ public class MapManager : MonoBehaviour
         IM.i.pi.Player.LockMap.Disable();
         IM.i.pi.Player.Movement.Disable();
         CameraScript.i.locked = false;
+        Unit.SetGlobalFreeze(true);   // the world holds its breath while the camera is away placing the core
         int id = 0;
         if (SetM.quickTransition)
         {
@@ -1477,6 +1510,7 @@ public class MapManager : MonoBehaviour
             UIManager.i.FadeInCanvas();
             CameraScript.ZoomPermanent(CameraScript.i.DimScale,0.01f);
         }
+        Unit.SetGlobalFreeze(false);
         CameraScript.i.StartCoroutine(CameraScript.i.ReturnToPlayer());
         PortalScript.i.QuickOffSlider();
         yield return new WaitForSeconds(0.5f);
@@ -1592,10 +1626,13 @@ public class MapManager : MonoBehaviour
     //
     // Unlike the old follow-the-player behaviour, the camera is framed ONCE (to the exact extent of the
     // current dungeon's cell area) and then held fixed — it does not track the player.
-    // Minimap RT refresh rate: cameras render one frame per interval and the RT holds the image
-    // in between — the world doesn't change fast enough for a 60Hz minimap to earn its cost.
-    const float MinimapRefreshInterval = 0.1f;
-    float homeCamNextRender, dungeonCamNextRender;
+    // Minimap RT refresh rate: cameras render every 4th game frame and the RT holds the image
+    // in between — the world doesn't change fast enough for a full-rate minimap to earn its cost.
+    // While the map is held enlarged (mapBigger) it renders every frame for full quality.
+    const int MinimapFrameDivider = 4;
+    int homeCamFrameCounter, dungeonCamFrameCounter;
+    float homeCamBaseSize = -1f;        // authored base-minimap ortho size, captured on first fit
+    const float HomeCamFitPad = 2f;     // world-units of breathing room outside the boundary line
 
     private void LateUpdate()
     {
@@ -1603,9 +1640,10 @@ public class MapManager : MonoBehaviour
         // frame; Camera.Render() is a no-op under SRP, so gate via .enabled instead).
         if (cams != null && cams.Length > 0 && cams[0] != null && cams[0].gameObject.activeSelf)
         {
-            bool homeDue = Time.unscaledTime >= homeCamNextRender;
-            if (homeDue) homeCamNextRender = Time.unscaledTime + MinimapRefreshInterval;
+            bool homeDue = mapBigger || ++homeCamFrameCounter >= MinimapFrameDivider;
+            if (homeDue) homeCamFrameCounter = 0;
             if (cams[0].enabled != homeDue) cams[0].enabled = homeDue;
+            if (homeDue) FitHomeCam();
         }
 
         if (MineDungeonManager.i == null || cams == null || cams.Length < 2 || cams[1] == null) return;
@@ -1618,13 +1656,13 @@ public class MapManager : MonoBehaviour
             if (!cams[1].gameObject.activeSelf)
             {
                 cams[1].gameObject.SetActive(true);
-                dungeonCamNextRender = 0f;   // just opened — render this frame
+                dungeonCamFrameCounter = MinimapFrameDivider;   // just opened — render this frame
             }
 
             if (MineField.i != null) FrameDungeonMap();   // re-fit every frame — cheap, and self-heals if the layout changes
 
-            bool due = Time.unscaledTime >= dungeonCamNextRender;
-            if (due) dungeonCamNextRender = Time.unscaledTime + MinimapRefreshInterval;
+            bool due = mapBigger || ++dungeonCamFrameCounter >= MinimapFrameDivider;
+            if (due) dungeonCamFrameCounter = 0;
             if (cams[1].enabled != due) cams[1].enabled = due;
 
             dungeonCamRunning = true;
@@ -1635,6 +1673,28 @@ public class MapManager : MonoBehaviour
             cams[1].gameObject.SetActive(false);
             dungeonCamRunning = false;
         }
+    }
+
+    // Zooms the base minimap camera out once the boundary outgrows its authored view: while the map
+    // still fits, the camera holds its scene-authored framing; once an expansion pushes the boundary
+    // past it, the view grows to the furthest boundary point plus padding (and eases back if the map
+    // shrinks). Reads poly.points — the visible outline — so the zoom tracks the expansion blend.
+    void FitHomeCam()
+    {
+        Camera c = cams[0];
+        if (homeCamBaseSize < 0f) homeCamBaseSize = c.orthographicSize;
+        Vector2[] pts = poly != null ? poly.points : null;
+        if (pts == null || pts.Length < 3) return;
+        Vector2 cp = c.transform.position;
+        float halfW = 0f, halfH = 0f;
+        for (int k = 0; k < pts.Length; k++)
+        {
+            Vector2 w = poly.transform.TransformPoint(pts[k]);
+            halfW = Mathf.Max(halfW, Mathf.Abs(w.x - cp.x));
+            halfH = Mathf.Max(halfH, Mathf.Abs(w.y - cp.y));
+        }
+        float need = Mathf.Max(halfH, halfW / Mathf.Max(0.0001f, c.aspect)) + HomeCamFitPad;
+        c.orthographicSize = Mathf.Max(homeCamBaseSize, need);
     }
 
     // Sizes and centres cams[1] so its orthographic view exactly covers the current dungeon's cell area,
@@ -1685,284 +1745,116 @@ public class MapManager : MonoBehaviour
     }
     
         
-     // Add these fields to MapManager class at the top with other fields:
-private Dictionary<int, KnotAnimation> activeAnimations = new Dictionary<int, KnotAnimation>();
-private int animationIdCounter = 0;
-private Coroutine updateCoroutine;
+    // ── Animated boundary expansion ──────────────────────────────────────────────────────────
+    // The spline COMMITS instantly (a full MapChange: smoothing + no‑regress containment) and only
+    // the visuals — line renderer, colliders, GPU mask — animate toward it, as a per‑point blend
+    // from the outline currently on screen to the committed outline. Every commit re‑encloses the
+    // previous outline and every retarget starts from exactly what is displayed, so the drawn
+    // boundary only ever moves outward — no snap‑back when expansions overlap. That also makes
+    // concurrent expansions safe: several extractors at once each just retarget the blend.
+    private Vector2[] animSrc;               // where each outline point started this blend
+    private Vector2[] animDst;               // committed outline the blend is heading to
+    private float animProgress;              // 0→1 over animationDuration
+    private const float animationDuration = 5f;
+    private bool animMaskDirty;              // a commit in this batch wants the mask/EE side effects
+    private Coroutine updateCoroutine;
 
-// Helper class for tracking knot animations
-private class KnotAnimation
-{
-    public int knotIndex;
-    public Vector3 startPosition;
-    public Vector3 targetPosition;
-    public float progress;
-    public bool isNewKnot;
-    public int insertIndex;
-    
-    public KnotAnimation(int index, Vector3 start, Vector3 target, bool isNew = false, int insertAt = -1)
+    public void ChangeMapAsync(Vector3 pos, bool updateMask)
     {
-        knotIndex = index;
-        startPosition = start;
-        targetPosition = target;
-        progress = 0f;
-        isNewKnot = isNew;
-        insertIndex = insertAt;
-    }
-}
+        // Outline the player can currently see (mid‑blend when an expansion is already animating).
+        Vector2[] visualNow = updateCoroutine != null ? BlendedOutline() : SampleSplineDense(splineSampleCount);
 
-// Main async function
-public void ChangeMapAsync(Vector3 pos, bool updateMask)
-{
-    
-    // Initialize if needed
-    if (activeAnimations == null)
-    {
-        activeAnimations = new Dictionary<int, KnotAnimation>();
-    }
-    
-    // Calculate what would happen with a normal MapChange
-    var changeData = CalculateMapChange(pos);
-    
-    if (changeData.isReplacement)
-    {
-        // Check if this knot is already being animated
-        KnotAnimation existingAnim = null;
-        foreach (var anim in activeAnimations.Values)
-        {
-            if (anim.knotIndex == changeData.knotIndex && !anim.isNewKnot)
-            {
-                existingAnim = anim;
-                break;
-            }
-        }
-        
-        if (existingAnim != null)
-        {
-            // Update the target position of existing animation
-            existingAnim.targetPosition = pos;
-            existingAnim.progress = 0f; // Reset progress to start new interpolation
-        }
-        else
-        {
-            // Create new animation for knot replacement
-            var knot = sc.Spline.Knots.ElementAt(changeData.knotIndex);
-            var newAnim = new KnotAnimation(changeData.knotIndex, knot.Position, pos);
-            activeAnimations[animationIdCounter++] = newAnim;
-        }
-    }
-    else
-    {
-        // Handle knot insertion - more complex due to index shifting
-        // First, update all animation indices that would be affected by insertion
-        foreach (var anim in activeAnimations.Values)
-        {
-            if (!anim.isNewKnot && anim.knotIndex >= changeData.insertIndex)
-            {
-                anim.knotIndex++;
-            }
-            if (anim.isNewKnot && anim.insertIndex >= changeData.insertIndex)
-            {
-                anim.insertIndex++;
-            }
-        }
-        
-        // Create animation for new knot
-        var nearestPoint = ProximityData(pos, 0f).Item1;
-        var newAnim = new KnotAnimation(-1, nearestPoint, pos, true, changeData.insertIndex);
-        activeAnimations[animationIdCounter++] = newAnim;
-    }
-    
-    // Start update coroutine if not already running
-    if (updateCoroutine == null)
-    {
-        // Snapshot the outline before this batch of animated edits, so the finished boundary can be
-        // guaranteed to still enclose all of it (no‑regress, same as the sync MapChange path).
-        asyncPreOutline = SampleSplineDense(containSamples);
-        updateCoroutine = StartCoroutine(UpdateAnimationsCoroutine(updateMask));
-    }
-}
+        // Commit the real change now — identical shape to the sync path. Only the visuals lag.
+        (int, BezierKnot) change = MapChange(pos, false, smoothShape: true);
 
-// Helper structure for change calculation
-private struct MapChangeData
-{
-    public bool isReplacement;
-    public int knotIndex;
-    public int insertIndex;
-}
+        if (change.Item1 == -1 && updateCoroutine == null) return;   // no growth, nothing animating
 
-// Calculate what MapChange would do without actually changing anything
-private MapChangeData CalculateMapChange(Vector3 EEpos)
-{
-    MapChangeData result = new MapChangeData();
-    
-    // Find three closest knots (same logic as MapChange)
-    (Vector2, float)[] knots = new (Vector2, float)[sc.Spline.Count];
-    int i = 0;
-    float minDist = 99999f;
-    int minindex = -1;
-    
-    foreach (BezierKnot k in sc.Spline.Knots)
-    {
-        knots[i] = ((Vector2)(Vector3)k.Position, ((Vector2)(EEpos - (Vector3)k.Position)).sqrMagnitude);
-        if (knots[i].Item2 < minDist)
+        if (change.Item1 != -1)
         {
-            minDist = knots[i].Item2;
-            minindex = i;
+            if (updateMask) animMaskDirty = true;
+            animDst = SampleSplineDense(splineSampleCount);          // the committed outline
+            animSrc = MapToNearest(animDst, visualNow);              // grow out of the visible edge
+            animProgress = 0f;
         }
-        i++;
-    }
-    
-    int[] indexs = new int[2] { GetNextIndex(minindex - 1), GetNextIndex(minindex + 1) };
-    
-    if (PointInTriangle(knots[minindex].Item1, knots[indexs[0]].Item1, EEpos, knots[indexs[1]].Item1))
-    {
-        result.isReplacement = true;
-        result.knotIndex = minindex;
-    }
-    else
-    {
-        result.isReplacement = false;
-        
-        // Calculate insertion index
-        SplineUtility.GetNearestPoint(sc.Spline, EEpos, out _, out float t);
-        SplineUtility.GetNearestPoint(sc.Spline, (Vector3)knots[minindex].Item1, out _, out float torg);
-        
-        int ind = minindex;
-        if (t > torg)
-        {
-            if (ind == 0)
-            {
-                ind = (t > 0.5f) ? 0 : 1;
-            }
-            else
-            {
-                ind = minindex + 1;
-            }
-        }
-        result.insertIndex = ind;
-    }
-    
-    return result;
-}
 
-// Coroutine that handles all active animations
-private IEnumerator UpdateAnimationsCoroutine(bool updateMask)
-{
-    float animationDuration = 5f;
-    
-    while (activeAnimations.Count > 0)
-    {
-        float deltaTime = Time.deltaTime;
-        List<int> completedAnimations = new List<int>();
-        
-        // First pass: insert any new knots that are ready
-        foreach (var kvp in activeAnimations)
-        {
-            var anim = kvp.Value;
-            if (anim.isNewKnot && anim.knotIndex == -1)
-            {
-                // Insert the knot at its start position
-                sc.Spline.Insert(anim.insertIndex, new BezierKnot(anim.startPosition), TangentMode.AutoSmooth);
-                anim.knotIndex = anim.insertIndex;
-                
-                // Update other animations' indices
-                foreach (var otherAnim in activeAnimations.Values)
-                {
-                    if (otherAnim != anim && !otherAnim.isNewKnot && otherAnim.knotIndex >= anim.insertIndex)
-                    {
-                        otherAnim.knotIndex++;
-                    }
-                }
-            }
-        }
-        
-        // Second pass: update positions
-        foreach (var kvp in activeAnimations)
-        {
-            var anim = kvp.Value;
-            anim.progress += deltaTime / animationDuration;
-
-            // Safety‑check – the spline may have changed unexpectedly
-            if (anim.knotIndex < 0 || anim.knotIndex >= sc.Spline.Count)
-            {
-                // Index became invalid – abort this animation gracefully
-                Debug.LogWarning($"[MapManager] Skipping animation id {kvp.Key}: invalid knot index {anim.knotIndex}");
-                completedAnimations.Add(kvp.Key);
-                continue;
-            }
-
-            if (anim.progress >= 1f)
-            {
-                // Snap to final position
-                sc.Spline.SetKnot(anim.knotIndex, new BezierKnot(anim.targetPosition));
-                completedAnimations.Add(kvp.Key);
-            }
-            else
-            {
-                // Interpolate position
-                Vector3 currentPos = Vector3.Lerp(anim.startPosition, anim.targetPosition, anim.progress);
-                sc.Spline.SetKnot(anim.knotIndex, new BezierKnot(currentPos));
-            }
-        }
-        
-        // Update tangent mode for smooth curves
-        sc.Spline.SetTangentMode(TangentMode.AutoSmooth);
-        
-        // Update visual representations - call the existing method via reflection or make it public
-        UpdateSplineVisuals();
-        
-        if (updateMask)
-        {
-            // Calculate center of all changing positions for optimized mask update
-            Vector3 centerPos = Vector3.zero;
-            int count = 0;
-            foreach (var anim in activeAnimations.Values)
-            {
-                centerPos += Vector3.Lerp(anim.startPosition, anim.targetPosition, anim.progress);
-                count++;
-            }
-            if (count > 0)
-            {
-                centerPos /= count;
-                GenerateSpriteFromPoly();
-            }
-        }
-        
-        // Remove completed animations
-        foreach (int id in completedAnimations)
-        {
-            activeAnimations.Remove(id);
-        }
-        
-        yield return null;
+        // MapChange snapped the line renderer + colliders to the committed spline; put the animated
+        // outline back before anything renders or queries them.
+        ApplyVisualOutline(BlendedOutline());
+        if (updateCoroutine == null) updateCoroutine = StartCoroutine(AnimateBoundary());
     }
-    
-    // Final updates
-    if (updateMask)
+
+    private IEnumerator AnimateBoundary()
     {
-        // Re‑enclose the pre‑animation outline before committing, then rebuild visuals + mask.
+        while (animProgress < 1f)   // retargets reset animProgress, extending the loop seamlessly
+        {
+            yield return null;
+            animProgress += Time.deltaTime / animationDuration;
+            ApplyVisualOutline(BlendedOutline());
+            if (animMaskDirty) GenerateSpriteFromPoly(false);   // mask follows the animated outline
+        }
+
+        animSrc = null;
+        animDst = null;
+        animProgress = 0f;
+        // Land exactly on the committed spline, then run the commit side effects once per batch.
+        UpdateLRFromSpline();
         UpdatePolyFromLR();
-        EnforceContainment(asyncPreOutline);
-        UpdateLRFromSpline();          // sync the line renderer to the pushed‑out boundary
-        GenerateSpriteFromPoly();      // re‑samples poly + rebuilds the mask
-        PushBackEE();
-        CheckExtras();
-        OnUpdateMap?.Invoke();
+        if (animMaskDirty)
+        {
+            animMaskDirty = false;
+            GenerateSpriteFromPoly();
+            PushBackEE();
+            CheckExtras();
+            OnUpdateMap?.Invoke();
+        }
+        updateCoroutine = null;
     }
 
-    updateCoroutine = null;
-}
-
-// Add this public method to update spline visuals
-private void UpdateSplineVisuals()
-{
-    Vector3[] vs = new Vector3[splineSampleCount];
-    for (int i = 0; i < splineSampleCount; i++)
+    // Per‑point blend of the animated outline. Falls back to the live spline when idle.
+    private Vector2[] BlendedOutline()
     {
-        vs[i] = sc.Spline.EvaluatePosition(i / (float)splineSampleCount);
+        if (animSrc == null || animDst == null) return SampleSplineDense(splineSampleCount);
+        float t = Mathf.Clamp01(animProgress);
+        var v = new Vector2[animDst.Length];
+        for (int k = 0; k < v.Length; k++)
+            v[k] = Vector2.Lerp(animSrc[k], animDst[k], t);
+        return v;
     }
-    lr.SetPositions(vs);
-    meshDirty = true;   // spline changed – force mask mesh rebuild
-}
+
+    // For every target‑outline point, its nearest point on the currently‑visible outline: points on
+    // unchanged stretches map onto themselves (they hold still) and a new bulge grows out of the
+    // nearest piece of visible edge. Parameterisation‑independent, so a knot insert can't slide the
+    // rest of the boundary sideways.
+    private Vector2[] MapToNearest(Vector2[] dst, Vector2[] visible)
+    {
+        var src = new Vector2[dst.Length];
+        for (int k = 0; k < dst.Length; k++)
+        {
+            Vector2 p = dst[k], best = visible[0];
+            float bestD = float.MaxValue;
+            for (int a = 0, b = visible.Length - 1; a < visible.Length; b = a++)
+            {
+                Vector2 pa = visible[b], pb = visible[a], ab = pb - pa;
+                float len2 = ab.sqrMagnitude;
+                float t = len2 > 1e-8f ? Mathf.Clamp01(Vector2.Dot(p - pa, ab) / len2) : 0f;
+                Vector2 q = pa + t * ab;
+                float d = (p - q).sqrMagnitude;
+                if (d < bestD) { bestD = d; best = q; }
+            }
+            src[k] = best;
+        }
+        return src;
+    }
+
+    // Drive every representation of the boundary from an explicit outline (instead of the spline):
+    // line renderer, map collider (+ inset push collider) and the GPU mask mesh.
+    private void ApplyVisualOutline(Vector2[] v)
+    {
+        var vs = new Vector3[v.Length];
+        for (int k = 0; k < v.Length; k++) vs[k] = v[k];
+        lr.SetPositions(vs);
+        poly.points = v;
+        SyncPushPoly();
+        meshDirty = true;   // mask mesh rebuilds from poly.points
+    }
 }

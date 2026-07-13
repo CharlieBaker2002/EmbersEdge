@@ -12,11 +12,34 @@ public class EnergyPad : Building, IEnergyAccumulator
     [Header("Battery slotting")]
     [SerializeField] private Battery batteryPrefab;
     [SerializeField] private Transform[] slotTransforms = new Transform[4];
-    [Tooltip("Batteries spawned at game start. Max slots is fixed at 4; loose batteries can fill the remainder.")]
-    [SerializeField] private int initialBatteryCount = 3;
+
+    /// <summary>Batteries spawned when first built. Pads and hubs are EMPTY housings now —
+    /// batteries come from the Battery Station (which overrides this to stock itself).</summary>
+    protected virtual int InitialBatteryCount => 0;
 
     public readonly Battery[] slots = new Battery[4];
     private bool spawned;
+
+    /// <summary>Usable slot count — the hub authors a single slot transform, pads four.</summary>
+    public int SlotCapacity => Mathf.Min(slots.Length, slotTransforms.Length);
+
+    public int SlottedCount
+    {
+        get
+        {
+            int n = 0;
+            for (int i = 0; i < slots.Length; i++) if (slots[i] != null) n++;
+            return n;
+        }
+    }
+
+    /// <summary>Batteries en route on a drone, bound for this pad (distribution/station claims).</summary>
+    [HideInInspector] public int inboundBatteries;
+
+    /// <summary>Player promise: manually ADDING a battery pins the pad's count as a minimum the
+    /// distribution must keep stocked, spares or not. Removing never changes the pin — re-adding
+    /// re-stamps it at the new count.</summary>
+    [HideInInspector] public int pinnedMin;
 
     public event Action<float> OnUpdate;
     public event Action OnUse;
@@ -91,11 +114,26 @@ public class EnergyPad : Building, IEnergyAccumulator
         EnergyManager.i?.UnregisterPad(this);
     }
 
+    /// <summary>Rotation re-faced (and possibly moved) the pad. HubAccessibleFrom reads
+    /// transform.up live, but consumers only re-resolve on OnPadsChanged — so re-stamp the source
+    /// claim: pull it off the pre-rotation cells, register the new footprint. Both calls fire
+    /// OnPadsChanged, which is what flips the hub's forward column to the new facing. Ghost/dead
+    /// pads (never registered — BEnable hasn't run or BDisable already ran) stay unregistered.</summary>
+    protected override void OnRotated(Vector2Int oldAnchor, Vector2Int oldSize)
+    {
+        if (EnergyManager.i == null) return;
+        EnergyManager.i.UnregisterPadArea(this, oldAnchor, oldSize);
+        if (builtYet && enabled) EnergyManager.i.RegisterPad(this);
+        // the housing turned but the batteries riding in it stay upright
+        foreach (var b in slots)
+            if (b != null) b.transform.rotation = Quaternion.identity;
+    }
+
     void SpawnInitialBatteries()
     {
         if (spawned || batteryPrefab == null) return;
         spawned = true;
-        int count = Mathf.Clamp(initialBatteryCount, 0, slots.Length);
+        int count = Mathf.Clamp(InitialBatteryCount, 0, slots.Length);
         for (int i = 0; i < count && i < slotTransforms.Length; i++)
         {
             if (slotTransforms[i] == null) continue;
@@ -104,15 +142,26 @@ public class EnergyPad : Building, IEnergyAccumulator
         }
     }
 
-    /// <summary>Try to place a loose battery into the first empty slot. Returns false if all full.</summary>
-    public bool TrySlotBattery(Battery b)
+    /// <summary>Try to place a loose battery into the first empty slot. Returns false if all full.
+    /// Bounded by slotTransforms — the hub authors a single slot, so its array is shorter than
+    /// the fixed 4-wide slots[] (indexing past it threw once slot 0 was taken).
+    /// <paramref name="playerAction"/> distinguishes the player's hand from drone logistics:
+    /// a manual add PINS the pad's current count as a distribution minimum.</summary>
+    public bool TrySlotBattery(Battery b, bool playerAction = true)
     {
         if (b == null) return false;
-        for (int i = 0; i < slots.Length; i++)
+        for (int i = 0; i < slots.Length && i < slotTransforms.Length; i++)
         {
             if (slots[i] == null && slotTransforms[i] != null)
             {
                 SlotInternal(b, i);
+                if (this is not BatteryStation)
+                {
+                    if (playerAction) pinnedMin = Mathf.Min(SlottedCount, SlotCapacity);
+                    // drone-placed: the battery's station trip for the current swap window is
+                    // spent — it holds this pad until the next window (day tick / homecoming)
+                    else b.padSwapWindow = BatteryStation.SwapWindow;
+                }
                 return true;
             }
         }
@@ -127,6 +176,9 @@ public class EnergyPad : Building, IEnergyAccumulator
         // worldPositionStays=true so the battery's current world position becomes its
         // localPosition relative to the slot — SnapToSlot then lerps that to (0,0,0).
         b.transform.SetParent(slotTransforms[idx], true);
+        // slotted batteries always sit upright, whatever the pad's facing or however the
+        // battery arrived (drone-carried ones inherit the drone's spin)
+        b.transform.rotation = Quaternion.identity;
         StartCoroutine(SnapToSlot(b.transform));
         b.OnUpdate -= ForwardUpdate;
         b.OnUpdate += ForwardUpdate;
@@ -193,7 +245,10 @@ public class EnergyPad : Building, IEnergyAccumulator
         }
     }
 
-    public void UnslotBattery(Battery b)
+    /// <summary><paramref name="playerAction"/>: the player lifting a battery LOWERS the pad's
+    /// pin to what's left — otherwise the drones shove the battery straight back where it was.
+    /// Drone unslots (charge hauls, swaps) never touch the pin.</summary>
+    public virtual void UnslotBattery(Battery b, bool playerAction = false)
     {
         if (b == null) return;
         if (b.padSlot >= 0 && b.padSlot < slots.Length && slots[b.padSlot] == b)
@@ -203,6 +258,8 @@ public class EnergyPad : Building, IEnergyAccumulator
         b.OnUpdate -= ForwardUpdate;
         b.pad = null;
         b.padSlot = -1;
+        if (playerAction && this is not BatteryStation)
+            pinnedMin = Mathf.Min(pinnedMin, SlottedCount);
         OnUpdate?.Invoke(Energy);
     }
 

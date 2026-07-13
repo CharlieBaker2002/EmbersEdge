@@ -77,10 +77,10 @@ public class DroneDock : Building
         g.SetActive(true);
     }
 
-    /// <summary>The dock is a charger ALL day, not just at daybreak: a resident that comes home
-    /// spent starts a fresh grid draw as soon as it's sitting in its slot (same tariff as the
-    /// daily top-up — DailyRecharge stays as the overnight sweep for drones that die out or
-    /// come home after the grid ran dry).</summary>
+    /// <summary>ONE charge cycle per drone per day. The dock still charges at any hour — but only
+    /// drones that haven't drawn their day's charge yet (missed the overnight sweep, starved grid,
+    /// or a full drone that saved its cycle). A drone that spent its recharge is done: it sleeps
+    /// in its slot until the next day's sweep.</summary>
     void Update()
     {
         if (!enabled || !builtYet) return;
@@ -91,6 +91,7 @@ public class DroneDock : Building
             Drone d = residents[k];
             if (d == null || charging.Contains(d)) continue;
             if (d.energy >= 0.999f || d.transform.InDungeon()) continue;
+            if (d.ChargedToday) continue;   // today's cycle already spent — lights out till dawn
             if (d.state != Drone.State.Docked) continue;
             if (((Vector2)d.transform.position - SlotPosition(k)).sqrMagnitude > 1.5f * 1.5f) continue;
             Drone dd = d;
@@ -118,7 +119,7 @@ public class DroneDock : Building
             Drone d = residents[k];
             if (d == null)
                 BeginDraw(() => SpawnResident(slot));
-            else if (d.energy < 0.999f)
+            else if (d.energy < 0.999f && !d.ChargedToday)   // a race-stamped drone doesn't bill twice
                 BeginDraw(() => { if (d != null) d.Recharge(); });
         }
     }
@@ -157,5 +158,72 @@ public class DroneDock : Building
             overlayCo = null;
             ClearEnergyStatusImmediate();
         }
+    }
+
+    // ------------------------------------------------------------------ roster UI
+
+    public override void OnClick()
+    {
+        // Rebuild the roster fresh on every open — residents swap kit / die / rebuild between clicks.
+        if (enabled && UIParent != null && !UIParent.activeInHierarchy) RefreshEquipmentTiles();
+        base.OnClick();
+    }
+
+    /// <summary>Dock roster panel: one tile per resident slot showing that drone's kit. Clicking
+    /// a kit tile SCRAPS the kit outright (Drone.DestroyEquipment — no drop, no refund); kitless
+    /// and rebuilding slots just flash red. Tiles are snapshots — a drone that swapped kit since
+    /// the panel opened refuses the click (optParam) instead of scrapping the wrong thing.</summary>
+    void RefreshEquipmentTiles()
+    {
+        for (int k = 0; k < tiles.Count; k++)
+            if (tiles[k] != null) Destroy(tiles[k].gameObject);
+        tiles.Clear();
+        int[] free = { 0, 0, 0, 0 };
+        for (int k = 0; k < residents.Count; k++)
+        {
+            Drone d = residents[k];
+            if (d == null)
+            {
+                AddSlot(free, "Rebuilding", KitIcon(DroneEquipment.None), false, () => { },
+                    optionalParameter: () => false);
+            }
+            else
+            {
+                Drone dd = d;
+                DroneEquipment kind = d.equipment;
+                AddSlot(free,
+                    kind == DroneEquipment.None ? "No Kit" : "Destroy " + kind,
+                    KitIcon(kind), false,
+                    () =>
+                    {
+                        if (dd != null) dd.DestroyEquipment();
+                        RefreshEquipmentTiles();   // panel stays open — show the now-empty hands
+                    },
+                    optionalParameter: () => kind != DroneEquipment.None && dd != null && dd.equipment == kind);
+            }
+            tiles[^1].SetTextN(k + 1);
+        }
+        UpdateUI();
+    }
+
+    // kit icons for the roster tiles, loaded once and shared by every dock (null-check re-loads
+    // after a domain-reload-off play-stop unloads them)
+    static Sprite drillIcon, bagIcon, droneIcon;
+
+    static Sprite KitIcon(DroneEquipment kind)
+    {
+        if (droneIcon == null)
+        {
+            var s = DroneManager.LoadStripNumeric("DroneDrill");
+            drillIcon = s.Length > 0 ? s[0] : null;
+            s = DroneManager.LoadStripNumeric("DroneBag");
+            bagIcon = s.Length > 0 ? s[0] : null;
+            s = DroneManager.LoadStripNumeric("Drone");
+            droneIcon = s.Length > 0 ? s[0] : null;
+        }
+        // pilot kit has no sprite of its own and an empty slot shows the drone itself
+        return kind == DroneEquipment.Drill ? drillIcon
+            : kind == DroneEquipment.Bag ? bagIcon
+            : droneIcon;
     }
 }

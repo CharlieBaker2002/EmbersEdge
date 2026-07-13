@@ -415,9 +415,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 565, y: -1675}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 620.0001, y: -1673}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &20487706
@@ -817,9 +817,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 390, y: -1175}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 445.00012, y: -1173}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &35026677
@@ -1389,9 +1389,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 390, y: -739}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 445.00012, y: -737.00006}
   m_SizeDelta: {x: 500, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &89402264
@@ -1908,10 +1908,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 231, y: -875}
-  m_SizeDelta: {x: 408.6, y: 100}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 286.00012, y: -873.0001}
+  m_SizeDelta: {x: 408.59998, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &109071392
 GameObject:
@@ -3075,7 +3075,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Resource Generation
+  m_text: Pylons & Generators
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: fd214b5b143674af9a1e10282f074f56, type: 2}
   m_sharedMaterial: {fileID: -16246915363667908, guid: fd214b5b143674af9a1e10282f074f56, type: 2}
@@ -6106,6 +6106,7 @@ MonoBehaviour:
   - {fileID: 8397005363367721448, guid: 47ef15a7918344200956c7fec9f6ac7c, type: 3}
   - {fileID: 3236425706926957504, guid: bb4a28dabca2d4e2cbb2c002cc77c2d2, type: 3}
   - {fileID: 2562246030231687990, guid: 75838d3abf8a64d6384c2905279a4992, type: 3}
+  - {fileID: 323440563046157391, guid: d25a859398dc84488929e9206995f574, type: 3}
   baseBuildingSciences: []
   barons:
   - {fileID: 1402483098}
@@ -6198,11 +6199,11 @@ MonoBehaviour:
   mainDaddyT: {fileID: 88528163}
   backButton: {fileID: 1866645347}
   daddies:
-  - {fileID: 654929498}
   - {fileID: 992945648}
-  - {fileID: 1990433202}
   - {fileID: 1362306590}
+  - {fileID: 654929498}
   - {fileID: 1649397431}
+  - {fileID: 1990433202}
   daddyTs:
   - {fileID: 1067135193}
   - {fileID: 108497750}
@@ -6642,9 +6643,9 @@ MonoBehaviour:
   baseOreCostPerOrb: 0.05
   oreMarkHoldSeconds: 1
   repairCostPerHp: 0.025
-  drillCostRegular: 0.05
-  drillCostHard: 0.15
-  drillCostVeryHard: 0.3
+  drillCostRegular: 0.025
+  drillCostHard: 0.075
+  drillCostVeryHard: 0.15
   chipsMinPerBreak: 1
   chipsMaxPerBreak: 3
   maxChips: 300
@@ -6724,6 +6725,7 @@ MonoBehaviour:
   isWall: 0
   multiDrag: 0
   dungeonBuildable: 0
+  rotatable: 1
   physic: {fileID: 1664369627}
   builtBlasts: 2
   icons: []
@@ -6735,6 +6737,7 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
+  demolisher: {fileID: 0}
 --- !u!114 &282472131
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7494,10 +7497,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 231, y: -1145}
-  m_SizeDelta: {x: 408.6, y: 100}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 286.00012, y: -1143}
+  m_SizeDelta: {x: 408.59998, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &325313648
 GameObject:
@@ -16701,6 +16704,8 @@ MonoBehaviour:
   era1SpawnerPoints: {x: 30, y: 60}
   era2SpawnerPoints: {x: 90, y: 180}
   era3SpawnerPoints: {x: 270, y: 540}
+  pulseCrateCount: 6
+  crateMinSpacing: 8
   excavateSeconds:
   - 0.2
   - 0.2
@@ -17120,9 +17125,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 214, y: -925}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 269.00012, y: -923.0001}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &506087443
@@ -17411,9 +17416,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 565, y: -1425}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 620.0001, y: -1423}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &519420028
@@ -19332,10 +19337,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 231, y: -1280}
-  m_SizeDelta: {x: 408.6, y: 100}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 286.00012, y: -1278}
+  m_SizeDelta: {x: 408.59998, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &634210952
 GameObject:
@@ -19849,7 +19854,7 @@ GameObject:
   - component: {fileID: 654929499}
   - component: {fileID: 654929498}
   m_Layer: 5
-  m_Name: Core Infrastructure
+  m_Name: Ember Infrastructure
   m_TagString: UI
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -19870,9 +19875,9 @@ RectTransform:
   - {fileID: 1764662035}
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 197, y: -715}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 252.00012, y: -713.00006}
   m_SizeDelta: {x: 500, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &654929498
@@ -19888,14 +19893,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   buildings:
-  - {fileID: 323440563046157391, guid: bc024c4044cb24255aabb3d97bc4b96d, type: 3}
-  - {fileID: 323440563046157391, guid: e2161ff026b2b48899f7cd40ac500ff1, type: 3}
-  - {fileID: 323440563046157391, guid: b5ddb25a104a54785b79e82ef5cb2157, type: 3}
-  - {fileID: 323440563046157391, guid: 4ebad86a49c3f4f4ab997551f0a990e3, type: 3}
-  - {fileID: 323440563046157391, guid: ab64099e038884b9f92acf5ed93a96be, type: 3}
+  - {fileID: 4205949646515624380, guid: 295f9dcb3ee964d348d6ab617651ec02, type: 3}
   - {fileID: 5015000612375107076, guid: 4a728914cd4d84cd7acb268ed1420301, type: 3}
   - {fileID: 5015000612375107076, guid: be600958fede34aecbc6b892ccf95daa, type: 3}
-  - {fileID: 4116005223152699529, guid: 58d0c298cbdb14859abfe9d04f02fd52, type: 3}
+  - {fileID: 0}
+  - {fileID: 7926129472078753466, guid: 9774a4455fdf8468493ba45345dad493, type: 3}
+  - {fileID: 1517340900197829438, guid: 805f6552ad38f4e80b73f71addefa600, type: 3}
+  - {fileID: 8703573291081529796, guid: d34e5631dbe8d4504a93975a078eb1c0, type: 3}
 --- !u!114 &654929499
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20799,6 +20803,7 @@ MonoBehaviour:
   isWall: 0
   multiDrag: 0
   dungeonBuildable: 0
+  rotatable: 1
   physic: {fileID: 0}
   builtBlasts: 2
   icons: []
@@ -20810,6 +20815,7 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
+  demolisher: {fileID: 0}
   radius: 6.1
   mag: {fileID: 1272465380}
   magnetsOfficial: []
@@ -21823,9 +21829,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 214, y: -675}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 269.00012, y: -673.00006}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &773659897
@@ -22911,9 +22917,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 390, y: -1425}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 445.00012, y: -1423}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &812103505
@@ -28614,9 +28620,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 390, y: -1675}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 445.00012, y: -1673}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &858198876
@@ -28649,10 +28655,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 231, y: -1010}
-  m_SizeDelta: {x: 408.6, y: 100}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 286.00012, y: -1008.0001}
+  m_SizeDelta: {x: 408.59998, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!4 &864334606 stripped
 Transform:
@@ -29029,9 +29035,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 40, y: -1175}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 95.00012, y: -1173}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &942203391
@@ -29064,9 +29070,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 214, y: -1425}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 269.00012, y: -1423}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &946560809
@@ -29185,6 +29191,7 @@ MonoBehaviour:
   isWall: 0
   multiDrag: 0
   dungeonBuildable: 0
+  rotatable: 1
   physic: {fileID: 0}
   builtBlasts: 2
   icons: []
@@ -29196,6 +29203,7 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
+  demolisher: {fileID: 0}
 --- !u!1 &947558060
 GameObject:
   m_ObjectHideFlags: 0
@@ -30064,9 +30072,9 @@ RectTransform:
   - {fileID: 1569924356}
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 197.00006, y: -847}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 252.00012, y: -845.0001}
   m_SizeDelta: {x: 500, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &992945648
@@ -30085,16 +30093,9 @@ MonoBehaviour:
   - {fileID: 8717592895239521666, guid: 2913575db97684212923989f97c3294f, type: 3}
   - {fileID: 4994082856562482934, guid: dd10bc9f728de4133919ed1d2555d1c7, type: 3}
   - {fileID: 4816399736014682658, guid: 0a47e1787406249bc926c46a87f266e9, type: 3}
-  - {fileID: 4300919736548973067, guid: 56d28556c420d448bb94af695f3b216c, type: 3}
-  - {fileID: 4994082856562482934, guid: d97ca10ca83294ed4869d7b510b84a61, type: 3}
-  - {fileID: 4816399736014682658, guid: 577d626d98ae043299b4a94bdbe94b4b, type: 3}
-  - {fileID: 4300919736548973067, guid: e2b77368adf1b4663a1eed1b2b5cb0b4, type: 3}
+  - {fileID: 0}
   - {fileID: 9010514658136673332, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
   - {fileID: 5300000000012001, guid: 6a7b8c9d0e1f42539647585a6b7c8d14, type: 3}
-  - {fileID: 4154213052136245432, guid: 5166357e25bea4dd9a302f909f18501f, type: 3}
-  - {fileID: 8397005363367721448, guid: 47ef15a7918344200956c7fec9f6ac7c, type: 3}
-  - {fileID: 3236425706926957504, guid: bb4a28dabca2d4e2cbb2c002cc77c2d2, type: 3}
-  - {fileID: 2562246030231687990, guid: 75838d3abf8a64d6384c2905279a4992, type: 3}
 --- !u!114 &992945649
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -32032,9 +32033,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 214, y: -1175}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 269.00012, y: -1173}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1067135192
@@ -32067,10 +32068,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 231, y: -740}
-  m_SizeDelta: {x: 408.6, y: 100}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 286.00012, y: -738.00006}
+  m_SizeDelta: {x: 408.59998, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1071926592
 GameObject:
@@ -34542,6 +34543,7 @@ MonoBehaviour:
   isWall: 0
   multiDrag: 0
   dungeonBuildable: 0
+  rotatable: 1
   physic: {fileID: 0}
   builtBlasts: 2
   icons: []
@@ -34553,6 +34555,7 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
+  demolisher: {fileID: 0}
   radius: 5.1
   mag: {fileID: 1770628851}
   magnetsOfficial: []
@@ -37628,7 +37631,7 @@ GameObject:
   - component: {fileID: 1362306591}
   - component: {fileID: 1362306590}
   m_Layer: 5
-  m_Name: Utlity
+  m_Name: Drones & Batteries
   m_TagString: UI
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -37649,9 +37652,9 @@ RectTransform:
   - {fileID: 1517565449}
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 197.00006, y: -1140}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 252.00012, y: -1138}
   m_SizeDelta: {x: 500, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1362306590
@@ -37666,7 +37669,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 416b99345ee5c460db95fe43861a96ce, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  buildings: []
+  buildings:
+  - {fileID: 323440563046157391, guid: bc024c4044cb24255aabb3d97bc4b96d, type: 3}
+  - {fileID: 323440563046157391, guid: e2161ff026b2b48899f7cd40ac500ff1, type: 3}
+  - {fileID: 0}
+  - {fileID: 4154213052136245432, guid: 5166357e25bea4dd9a302f909f18501f, type: 3}
+  - {fileID: 323440563046157391, guid: d25a859398dc84488929e9206995f574, type: 3}
+  - {fileID: 8397005363367721448, guid: 47ef15a7918344200956c7fec9f6ac7c, type: 3}
+  - {fileID: 0}
+  - {fileID: 3236425706926957504, guid: bb4a28dabca2d4e2cbb2c002cc77c2d2, type: 3}
+  - {fileID: 2562246030231687990, guid: 75838d3abf8a64d6384c2905279a4992, type: 3}
+  - {fileID: 0}
+  - {fileID: 4300919736548973067, guid: 56d28556c420d448bb94af695f3b216c, type: 3}
+  - {fileID: 4300919736548973067, guid: e2b77368adf1b4663a1eed1b2b5cb0b4, type: 3}
 --- !u!114 &1362306591
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -38386,6 +38401,7 @@ MonoBehaviour:
   isWall: 0
   multiDrag: 0
   dungeonBuildable: 0
+  rotatable: 1
   physic: {fileID: 0}
   builtBlasts: 2
   icons: []
@@ -38397,6 +38413,7 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
+  demolisher: {fileID: 0}
 --- !u!1 &1417212843
 GameObject:
   m_ObjectHideFlags: 0
@@ -39368,9 +39385,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 390, y: -675}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 445.00012, y: -673.00006}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1488991355
@@ -39664,9 +39681,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 40, y: -1425}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 95.00012, y: -1423}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1510386306
@@ -40364,7 +40381,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Utility
+  m_text: Drones & Batteries
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: fd214b5b143674af9a1e10282f074f56, type: 2}
   m_sharedMaterial: {fileID: -16246915363667908, guid: fd214b5b143674af9a1e10282f074f56, type: 2}
@@ -40501,7 +40518,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Storage
+  m_text: Orb Infrastructure
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: fd214b5b143674af9a1e10282f074f56, type: 2}
   m_sharedMaterial: {fileID: -16246915363667908, guid: fd214b5b143674af9a1e10282f074f56, type: 2}
@@ -40660,6 +40677,7 @@ MonoBehaviour:
   isWall: 0
   multiDrag: 0
   dungeonBuildable: 0
+  rotatable: 1
   physic: {fileID: 0}
   builtBlasts: 2
   icons: []
@@ -40671,6 +40689,7 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
+  demolisher: {fileID: 0}
   radius: 5.1
   mag: {fileID: 1369899390}
   magnetsOfficial: []
@@ -47393,7 +47412,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Defense
+  m_text: Defence
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: fd214b5b143674af9a1e10282f074f56, type: 2}
   m_sharedMaterial: {fileID: -16246915363667908, guid: fd214b5b143674af9a1e10282f074f56, type: 2}
@@ -48999,7 +49018,7 @@ GameObject:
   - component: {fileID: 1649397432}
   - component: {fileID: 1649397431}
   m_Layer: 5
-  m_Name: Storage
+  m_Name: Orb Infrastructure
   m_TagString: UI
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -49020,9 +49039,9 @@ RectTransform:
   - {fileID: 1521337504}
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 197.00006, y: -1284}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 252.00012, y: -1282}
   m_SizeDelta: {x: 500, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1649397431
@@ -49038,13 +49057,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   buildings:
+  - {fileID: 3997989416841428125, guid: b7d50516c3efa4caab7548e9779f0e96, type: 3}
+  - {fileID: 2467364739664431249, guid: a45cbdfeaf6e048e8ae0557be469f59c, type: 3}
+  - {fileID: 0}
   - {fileID: 5982873851202269136, guid: 51ea994a7248d418db39585b955b1b1a, type: 3}
   - {fileID: 6824026069347418877, guid: b89dad762eb48404aa11697a0c463675, type: 3}
   - {fileID: 7392214813360835918, guid: 021468752872a4bbcb58bbea0207dc5e, type: 3}
   - {fileID: 2006053928042136465, guid: ea16377e53ade4227b3b2ae4b87b9b62, type: 3}
-  - {fileID: 7926129472078753466, guid: 9774a4455fdf8468493ba45345dad493, type: 3}
-  - {fileID: 1517340900197829438, guid: 805f6552ad38f4e80b73f71addefa600, type: 3}
-  - {fileID: 8703573291081529796, guid: d34e5631dbe8d4504a93975a078eb1c0, type: 3}
 --- !u!114 &1649397432
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -49591,9 +49610,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 40, y: -925}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 95.00012, y: -923.0001}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1668304787
@@ -49626,9 +49645,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 214, y: -1675}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 269.00012, y: -1673}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1669815687
@@ -50210,6 +50229,7 @@ MonoBehaviour:
   isWall: 0
   multiDrag: 0
   dungeonBuildable: 0
+  rotatable: 1
   physic: {fileID: 0}
   builtBlasts: 2
   icons: []
@@ -50221,6 +50241,7 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
+  demolisher: {fileID: 0}
   radius: 7.1
   mag: {fileID: 773659899}
   magnetsOfficial: []
@@ -51431,7 +51452,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Core Infrastructure
+  m_text: Ember Infrastructure
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: fd214b5b143674af9a1e10282f074f56, type: 2}
   m_sharedMaterial: {fileID: -16246915363667908, guid: fd214b5b143674af9a1e10282f074f56, type: 2}
@@ -52976,9 +52997,9 @@ RectTransform:
   - {fileID: 1515119594}
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 40, y: -739}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 95.00012, y: -737.00006}
   m_SizeDelta: {x: 150, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1866645349
@@ -53115,7 +53136,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1868222713
 RectTransform:
   m_ObjectHideFlags: 0
@@ -53307,6 +53328,7 @@ MonoBehaviour:
   isWall: 0
   multiDrag: 0
   dungeonBuildable: 0
+  rotatable: 1
   physic: {fileID: 0}
   builtBlasts: 2
   icons: []
@@ -53318,6 +53340,7 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
+  demolisher: {fileID: 0}
 --- !u!1 &1887166915
 GameObject:
   m_ObjectHideFlags: 0
@@ -53348,9 +53371,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 390, y: -925}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 445.00012, y: -923.0001}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1891532464
@@ -53383,9 +53406,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 565, y: -925}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 620.0001, y: -923.0001}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1893336107
@@ -55005,7 +55028,7 @@ GameObject:
   - component: {fileID: 1990433203}
   - component: {fileID: 1990433202}
   m_Layer: 5
-  m_Name: Resource Generation
+  m_Name: Pylons & Generators
   m_TagString: UI
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -55026,9 +55049,9 @@ RectTransform:
   - {fileID: 192677647}
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 197.00006, y: -990}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 252.00012, y: -988.0002}
   m_SizeDelta: {x: 500, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1990433202
@@ -55044,17 +55067,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   buildings:
-  - {fileID: 3997989416841428125, guid: b7d50516c3efa4caab7548e9779f0e96, type: 3}
-  - {fileID: 2467364739664431249, guid: a45cbdfeaf6e048e8ae0557be469f59c, type: 3}
+  - {fileID: 323440563046157391, guid: b5ddb25a104a54785b79e82ef5cb2157, type: 3}
+  - {fileID: 323440563046157391, guid: 4ebad86a49c3f4f4ab997551f0a990e3, type: 3}
+  - {fileID: 323440563046157391, guid: ab64099e038884b9f92acf5ed93a96be, type: 3}
+  - {fileID: 0}
   - {fileID: 8949586911344664711, guid: 17161f9b0eaf04871b03601ab7673049, type: 3}
-  - {fileID: 4464479778263070814, guid: ffe893d2c949d4b83a265550d4f6d0d4, type: 3}
-  - {fileID: 2000541545583142029, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
   - {fileID: 8949586911344664711, guid: 72c08a139899e4ade8cff549617bc608, type: 3}
+  - {fileID: 0}
+  - {fileID: 4464479778263070814, guid: ffe893d2c949d4b83a265550d4f6d0d4, type: 3}
   - {fileID: 5580220471824109513, guid: 7623ba60574d1474cab851c5d472766f, type: 3}
   - {fileID: 2000541545583142029, guid: 22813059b8262459ea73bf3d73148974, type: 3}
-  - {fileID: 4309717612728443263, guid: 4ad98b295555746fb951c722b82db47d, type: 3}
+  - {fileID: 0}
+  - {fileID: 2000541545583142029, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
   - {fileID: 2000541545583142029, guid: 57b5ed99e5daf4d9c83744849227d3c3, type: 3}
-  - {fileID: 5400000000013001, guid: 64f005b434e746d9bee443e9913e2fbe, type: 3}
 --- !u!114 &1990433203
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -55305,9 +55330,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 40, y: -675}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 95, y: -673}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1993462211
@@ -55651,9 +55676,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 565, y: -675}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 620.0001, y: -673.00006}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!850595691 &2040964030
@@ -55753,9 +55778,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 40, y: -1675}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 95.00012, y: -1673}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &2045896381
@@ -56152,8 +56177,8 @@ RectTransform:
   - {fileID: 15773809}
   - {fileID: 88528163}
   - {fileID: 1866645348}
-  - {fileID: 654929497}
   - {fileID: 992945647}
+  - {fileID: 654929497}
   - {fileID: 1990433201}
   - {fileID: 1649397430}
   - {fileID: 1362306589}
@@ -56164,10 +56189,10 @@ RectTransform:
   - {fileID: 629719596}
   m_Father: {fileID: 495788527}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 50, y: -50}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2076002713
 MonoBehaviour:
@@ -56377,9 +56402,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2076002712}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 565, y: -1175}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 620.0001, y: -1173}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &2080136763
@@ -57827,6 +57852,7 @@ MonoBehaviour:
   isWall: 0
   multiDrag: 0
   dungeonBuildable: 0
+  rotatable: 1
   physic: {fileID: 0}
   builtBlasts: 2
   icons: []
@@ -57838,6 +57864,7 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
+  demolisher: {fileID: 0}
   defaults:
   - {fileID: 11400000, guid: f71a62f95877f4fb2a9a645980589e66, type: 2}
   - {fileID: 11400000, guid: 050092785df38472f993d04a65d2a734, type: 2}
@@ -58137,6 +58164,7 @@ MonoBehaviour:
   isWall: 0
   multiDrag: 0
   dungeonBuildable: 0
+  rotatable: 1
   physic: {fileID: 0}
   builtBlasts: 2
   icons: []
@@ -58148,6 +58176,7 @@ MonoBehaviour:
   gridSize: {x: 1, y: 1}
   energyIconOffset: {x: 0, y: 0.7, z: 0}
   energyIconScale: 0.75
+  demolisher: {fileID: 0}
   healingOrbPrefab: {fileID: 0}
   platformCollider: {fileID: 0}
   txt: {fileID: 479228266}

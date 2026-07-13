@@ -331,12 +331,13 @@ public class MineDungeonManager : MonoBehaviour
     readonly List<GameObject> frozen = new List<GameObject>();       // dungeon-side sleepers
     readonly List<GameObject> frozenBase = new List<GameObject>();   // base-side sleepers
     Coroutine baseRespawn;
-    const float BASE_WAKE_MIN = 5f;   // frozen base enemies rematerialise this long after the
-    const float BASE_WAKE_MAX = 10f;  // teleport home — each on its own beat, like a spawner arming
+    Coroutine dungeonRespawn;
+    const float WAKE_MIN = 5f;   // frozen enemies rematerialise this long after the teleport
+    const float WAKE_MAX = 10f;  // into their dimension — each on its own beat, like a spawner arming
 
     /// <summary>Teleported INTO the dungeon: the base dimension freezes (every enemy still at base
-    /// sleeps where it stands), the dungeon thaws instantly, then every spawner that already has the
-    /// dig in range arms its day plan (fires 0–30s from now).</summary>
+    /// sleeps where it stands), the dungeon's frozen enemies rematerialise over the next few seconds,
+    /// then every spawner that already has the dig in range arms its day plan (fires 0–30s from now).</summary>
     public void OnEnterDungeon()
     {
         // any base sleeper still waiting on its respawn beat just stays frozen for the next return
@@ -345,15 +346,8 @@ public class MineDungeonManager : MonoBehaviour
         if (parent != null)
             foreach (Transform t in parent)
                 if (t.gameObject.activeSelf && !t.InDungeon()) { t.gameObject.SetActive(false); frozenBase.Add(t.gameObject); }
-        foreach (var g in frozen)
-        {
-            if (g == null) continue;
-            g.SetActive(true);
-            // Re-enabling doesn't re-run Start(), and SetActive(false) killed each enemy's brain
-            // coroutine on the way out — relaunch it so frozen patrollers resume chasing.
-            if (g.TryGetComponent<Unit>(out var u)) u.OnThaw();
-        }
-        frozen.Clear();
+        if (dungeonRespawn != null) StopCoroutine(dungeonRespawn);
+        dungeonRespawn = frozen.Count > 0 ? StartCoroutine(RespawnEnemiesI(frozen)) : null;
         foreach (var s in spawners) if (s != null) s.OnEnterDungeon();
     }
 
@@ -363,39 +357,49 @@ public class MineDungeonManager : MonoBehaviour
     public void OnLeaveDungeon()
     {
         foreach (var s in spawners) if (s != null) s.OnLeaveDungeon();
+        // any dungeon sleeper still waiting on its wake beat just stays frozen for the next dive
+        if (dungeonRespawn != null) { StopCoroutine(dungeonRespawn); dungeonRespawn = null; }
         var parent = GS.FindParent(GS.Parent.enemies);
         if (parent != null)
             foreach (Transform t in parent)
                 if (t.gameObject.activeSelf && t.InDungeon()) { t.gameObject.SetActive(false); frozen.Add(t.gameObject); }
         if (baseRespawn != null) StopCoroutine(baseRespawn);
-        baseRespawn = frozenBase.Count > 0 ? StartCoroutine(RespawnBaseEnemiesI()) : null;
+        baseRespawn = frozenBase.Count > 0 ? StartCoroutine(RespawnEnemiesI(frozenBase)) : null;
     }
 
-    // Base time resumes: each sleeper wakes BASE_WAKE_MIN..MAX seconds after the teleport with the
-    // spawner materialise flash, keeping whatever hp it went to sleep with (nothing is re-instantiated,
-    // SetActive preserves LifeScript state).
-    IEnumerator RespawnBaseEnemiesI()
+    // A dimension's time resumes: each sleeper wakes WAKE_MIN..MAX seconds after the teleport with
+    // the spawner materialise flash, keeping whatever hp it went to sleep with (nothing is
+    // re-instantiated, SetActive preserves LifeScript state). Re-enabling doesn't re-run Start(),
+    // and SetActive(false) killed each enemy's brain coroutine on the way out — OnThaw relaunches
+    // it so frozen patrollers resume chasing.
+    IEnumerator RespawnEnemiesI(List<GameObject> sleepers)
     {
         var wake = new List<float>();
-        for (int i = 0; i < frozenBase.Count; i++) wake.Add(Random.Range(BASE_WAKE_MIN, BASE_WAKE_MAX));
+        for (int i = 0; i < sleepers.Count; i++) wake.Add(Random.Range(WAKE_MIN, WAKE_MAX));
         float t = 0f;
-        while (frozenBase.Count > 0)
+        while (sleepers.Count > 0)
         {
             t += Time.deltaTime;
-            for (int i = frozenBase.Count - 1; i >= 0; i--)
+            for (int i = sleepers.Count - 1; i >= 0; i--)
             {
                 if (t < wake[i]) continue;
-                var g = frozenBase[i];
-                frozenBase.RemoveAt(i);
+                var g = sleepers[i];
+                sleepers.RemoveAt(i);
                 wake.RemoveAt(i);
                 if (g == null) continue;
                 MineFX.EnemySpawnFlash(g.transform.position);
                 g.SetActive(true);
-                if (g.TryGetComponent<Unit>(out var u)) u.OnThaw();
+                if (g.TryGetComponent<Unit>(out var u))
+                {
+                    u.OnThaw();
+                    // woken mid core-placement pan: start frozen like everyone else
+                    // (Unit.SetGlobalFreeze(false) recomputes every active unit on release)
+                    if (Unit.globalFreeze) u.UpdateActRate();
+                }
             }
             yield return null;
         }
-        baseRespawn = null;
+        if (sleepers == frozen) dungeonRespawn = null; else baseRespawn = null;
     }
 
     // =====================================================================================
@@ -1009,6 +1013,7 @@ public class MineDungeonManager : MonoBehaviour
         foreach (var s in spawners) if (s != null) Destroy(s.gameObject);
         spawners.Clear();
         // era regen: the old dungeon's frozen enemies belong to a dungeon that no longer exists
+        if (dungeonRespawn != null) { StopCoroutine(dungeonRespawn); dungeonRespawn = null; }
         foreach (var g in frozen) if (g != null) Destroy(g);
         frozen.Clear();
         activePocket = null;

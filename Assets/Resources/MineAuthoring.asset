@@ -110,8 +110,8 @@ MonoBehaviour:
       height: 24
       isBoss: 1
       core:
-        present: 0
-        pos: {x: 4.9117646, y: 6.5588236}
+        present: 1
+        pos: {x: 12, y: 12}
       weightRange: {x: 1, y: 3}
       ember: 1
       costOverridden: 1
@@ -3299,35 +3299,35 @@ MonoBehaviour:
         placed:
         - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
           prefab: {fileID: 0}
-          pos: {x: 5.5, y: 14.5}
+          pos: {x: 6, y: 14}
           chance: 0
         - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
           prefab: {fileID: 0}
-          pos: {x: 14.5, y: 14.5}
+          pos: {x: 14, y: 14}
           chance: 0
         - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
           prefab: {fileID: 0}
-          pos: {x: 14.5, y: 5.5}
+          pos: {x: 14, y: 6}
           chance: 0
         - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
           prefab: {fileID: 0}
-          pos: {x: 5.5, y: 5.5}
+          pos: {x: 6, y: 6}
           chance: 0
         - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
           prefab: {fileID: 0}
-          pos: {x: 5.5, y: 10}
+          pos: {x: 6, y: 10}
           chance: 0
         - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
           prefab: {fileID: 0}
-          pos: {x: 10, y: 14.5}
+          pos: {x: 10, y: 14}
           chance: 0
         - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
           prefab: {fileID: 0}
-          pos: {x: 10, y: 5.5}
+          pos: {x: 10, y: 6}
           chance: 0
         - enemy: {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
           prefab: {fileID: 0}
-          pos: {x: 14.5, y: 10}
+          pos: {x: 14, y: 10}
           chance: 0
         - enemy: {fileID: 11400000, guid: f45ef91775aad440a87b23d6553ea327, type: 2}
           prefab: {fileID: 0}

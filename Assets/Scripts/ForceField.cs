@@ -46,6 +46,10 @@ public class ForceField : Building
     // Two capsules "touch" once their centerlines come within a cap radius each (~0.4 + 0.4);
     // a hair more keeps the rendered glows from kissing. Centerline-to-centerline, world units.
     private const float wallClearance = 0.85f;
+    // How far a tower's blocked footprint grows for the span test (and the red no-go box, which
+    // must match it exactly). Needs the capsule's half-bulk (~0.4) plus real breathing room —
+    // the old 0.25 let a wall's body drape straight over the tower that wove it.
+    private const float footprintBulk = 0.65f;
 
     // ---- Move Field mode ----
     private bool moveMode, armed, dragging;
@@ -234,7 +238,7 @@ public class ForceField : Building
     private bool SpanBlocked(Vector2 na, Vector2 nb)
     {
         const int n = 20;
-        const float bulk = 0.25f;
+        const float bulk = footprintBulk;
         var pts = EnergyWall.BuildBezier(na, nb, (Vector2)transform.position, n, out _);
         float cs = BaseBlockMap.CellSize;
         for (int b = 0; b < Building.buildings.Count; b++)
@@ -364,7 +368,7 @@ public class ForceField : Building
     // towers mid-mode repaint on the next entry.
     private void DrawNoGo()
     {
-        const float bulk = 0.25f;
+        const float bulk = footprintBulk;
         float cs = BaseBlockMap.CellSize;
         for (int b = 0; b < Building.buildings.Count; b++)
         {

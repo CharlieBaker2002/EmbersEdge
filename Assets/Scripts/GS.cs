@@ -157,9 +157,9 @@ public static class GS
             : SpawnManager.day - daysforeraComplete[0] - daysforeraComplete[1];
     }
 
-    public static void CallSpawnOrbs(Vector2 pos, int[] orbs, Transform p = null)
+    public static void CallSpawnOrbs(Vector2 pos, int[] orbs, Transform p = null, int wildKind = -1)
     {
-        spawn.CallSpawnOrbs(pos, orbs, p);
+        spawn.CallSpawnOrbs(pos, orbs, p, wildKind);
     }
 
     public static void CallSpawnOrbs(Vector2 pos, float[] orbs, Transform p = null, bool harvest = false)

@@ -486,15 +486,23 @@ public static class MinePath
     /// </summary>
     static readonly List<Vector2> _stepScratch = new List<Vector2>();
     public static bool StepToward(Vector2 from, Vector2 to, out Vector2 dir, int maxExpansions = 4096, float bodyRadius = 0f)
+        => StepToward(from, to, out dir, out _, maxExpansions, bodyRadius);
+
+    /// <summary>Overload that also hands back the WAYPOINT the direction aims at, for movers that
+    /// re-steer between (throttled) path queries: aiming at the fixed point every tick stays true
+    /// as the body advances, where replaying a frozen direction overshoots corners. Falls back to
+    /// <paramref name="to"/> itself when start and goal share a cell.</summary>
+    public static bool StepToward(Vector2 from, Vector2 to, out Vector2 dir, out Vector2 waypoint, int maxExpansions = 4096, float bodyRadius = 0f)
     {
         dir = Vector2.zero;
+        waypoint = to;
         if (!FindPath(from, to, _stepScratch, maxExpansions)) return false;
         if (bodyRadius > 0f) SimplifyPath(_stepScratch, bodyRadius);
         // waypoint 0 is our own cell centre — skip it, aim at the first real step ahead
         for (int i = 1; i < _stepScratch.Count; i++)
         {
             Vector2 d = _stepScratch[i] - from;
-            if (d.sqrMagnitude > 0.01f) { dir = d.normalized; return true; }
+            if (d.sqrMagnitude > 0.01f) { dir = d.normalized; waypoint = _stepScratch[i]; return true; }
         }
         Vector2 tail = to - from;
         if (tail.sqrMagnitude > 0.01f) dir = tail.normalized;   // same cell as goal — home in directly

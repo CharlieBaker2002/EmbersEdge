@@ -26,7 +26,7 @@ public class Drone : AllyAI, IOnDeath
         Docked, ReturningToDock, Evading,
         RepairSweep, TravelToPad, DeployedTravel, Drilling, Collecting, Fleeing, RallyFight,
         ShuttleHome, DumpLoot, TravelToStation, WaitingAtStation, BoardingVehicle, HealVehicle,
-        Loitering, Chatting, MineBaseOre, Playing, FetchKit, PadPause,
+        Loitering, Chatting, MineBaseOre, Playing, FetchKit, PadPause, Demolishing, BatteryWork,
     }
 
     [Header("Drone")]
@@ -60,6 +60,7 @@ public class Drone : AllyAI, IOnDeath
     public int drillScanRadius = 8;
 
     Building repairTarget;
+    Building demolishTarget;
     float repairTickTimer;
     [HideInInspector] public DroneDrillBit drillBit;
     [HideInInspector] public SackWobble sack;
@@ -79,6 +80,36 @@ public class Drone : AllyAI, IOnDeath
     OrbScript orbTarget;
     Battery batteryTarget;
     DroneEquipmentItem equipmentTarget;
+    // harvest run (base-side bag drones): lift a ready harvester's parked orbs, fly them to a
+    // pylon (store as fallback) — the walk-up chore, automated
+    SoulHarvester harvesterTarget;
+    float harvestTakeT;   // pacing so the hoover reads as orbs, not a blink
+    // unreachable-loot watchdog (Collect): net displacement sampled while chasing — pinned
+    // against rock chasing something the A* can't route to means give the target up
+    Component stuckWatch;
+    Vector2 stuckWatchPos;
+    float stuckWatchT;
+
+    // ---- battery-station logistics (base-side bag drones, see TickBatteryWork) ----
+    enum BatteryTask { None, PickupForStation, DeliverToStation, GatherChips, DeliverChips, PickupReturn, DeliverReturn, PickupForPad, DeliverToPad, BailToStation }
+    BatteryTask batteryTask;
+    Battery batteryHaul;          // claimed battery: loose/pad-slotted (charge run) or in a station (return run)
+    BatteryStation stationTarget;
+    EnergyPad padTarget;          // distribution destination (BatteryDistribution.FindPlacement)
+    OreChip stationChipTarget;    // chip currently being fetched for the grinder
+    int chipsForStationSpace;     // chip space in the bag earmarked for the station
+    Battery carriedBattery;       // physically riding under the drone (deactivated)
+    // BAG BATCH: extra flat batteries stowed in the sack on a station run (bag drones haul
+    // several per trip; the hand slot above stays the one the swap dance works with)
+    readonly System.Collections.Generic.List<Battery> batteryBatch
+        = new System.Collections.Generic.List<Battery>();
+    float kitScanT;               // throttled "was I summoned for equipment?" check mid-battery-work
+
+    /// <summary>Carried batteries leave Battery.all (deactivated) — expose them so the
+    /// distribution planner can still count one toward its home pad mid-flight.</summary>
+    public Battery Carried => carriedBattery;
+    /// <summary>Bag-batched batteries riding to a station (deactivated, like <see cref="Carried"/>).</summary>
+    public System.Collections.Generic.IReadOnlyList<Battery> BatchCarried => batteryBatch;
 
     // per-drone excavation heading: seeded outward through the pad on first deploy, then only
     // nudged a few degrees per broken tile — lines stay roughly straight instead of scribbly
@@ -86,8 +117,21 @@ public class Drone : AllyAI, IOnDeath
     bool headingSeeded;
     /// <summary>Deploy-order spoke dealer — spreads drill headings across the map.</summary>
     static int spokeCounter;
+    /// <summary>Fleet-wide soft claims on drill target cells — two drills never chew the same wall.</summary>
+    static readonly System.Collections.Generic.Dictionary<Vector3Int, Drone> drillClaims
+        = new System.Collections.Generic.Dictionary<Vector3Int, Drone>();
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetSpokeCounter() => spokeCounter = 0;   // no-domain-reload: statics survive play-stop
+    static void ResetSpokeCounter()   // no-domain-reload: statics survive play-stop
+    {
+        spokeCounter = 0;
+        drillClaims.Clear();
+    }
+
+    void ReleaseDrillClaim()
+    {
+        if (hasDrillTarget && drillClaims.TryGetValue(drillTarget, out var owner) && owner == this)
+            drillClaims.Remove(drillTarget);
+    }
     bool hasDrillTarget;
     Vector3Int drillTarget;
     Vector2 drillApproach;
@@ -115,8 +159,9 @@ public class Drone : AllyAI, IOnDeath
     bool threatened;
     bool baseZoneHot;   // enemies within RallyLeash of the (0,0) base rally point (0.3s cadence)
     float repathTimer;
-    Vector2 pathDir;
+    Vector2 pathPoint;   // current A* waypoint — steered at LIVE each tick (never a frozen direction)
     bool pathValid;
+    bool pathDirect;     // target in direct line of sight — home on the live point, skip the A*
     float frameTimer;
     int frameIndex;
 
@@ -242,14 +287,38 @@ public class Drone : AllyAI, IOnDeath
         BreakChat();
         LeaveCards();
         ReleaseFetch();
+        ReleaseCollectTarget();   // orb/chip/harvester claims must not outlive the job
         if (waitingStation != null) { waitingStation.LeaveQueue(this); waitingStation = null; }
         if (waitingWorkshop != null) { waitingWorkshop.LeaveQueue(this); waitingWorkshop = null; }
+        ReleaseBatteryWork();
         pendingWorkshop = null;
         returningKit = false;
         if (pilotOf != null) pilotOf.RemovePilot(this);
         if (!keepPad) assignedPad = null;
         if (!keepPad) ReleaseOre();
         if (equipment == DroneEquipment.Pilot) SetEquipment(DroneEquipment.None);
+    }
+
+    /// <summary>Player-ordered scrapping (dock roster UI): the kit is DESTROYED outright — no
+    /// ground drop, no workshop restock, no refund. Bag cargo spills where the drone floats (it
+    /// can't exist without the bag); a parked pilot pops out beside its hull first (boarding
+    /// deactivated it, so the brain needs the OnThaw relaunch).</summary>
+    public void DestroyEquipment()
+    {
+        if (equipment == DroneEquipment.None) return;
+        if (pilotOf != null && !gameObject.activeInHierarchy)
+        {
+            transform.position = pilotOf.transform.position + GS.RandCircle(0.4f, 0.8f);
+            gameObject.SetActive(true);
+            OnThaw();
+        }
+        LeaveCurrentRole(keepPad: true);   // vehicle/station/battery ties cut; deployment binding survives
+        ReleaseDrillClaim();
+        hasDrillTarget = false;
+        SetEquipment(DroneEquipment.None, dropReplaced: false);
+        Emote(DroneEmote.Grumble, 2f);
+        state = transform.InDungeon() ? State.DeployedTravel
+            : assignedPad != null ? State.TravelToPad : State.ReturningToDock;
     }
 
     /// <summary>Queue at a station (factory with no free seat / workshop with no stock).</summary>
@@ -317,7 +386,16 @@ public class Drone : AllyAI, IOnDeath
 
     // ------------------------------------------------------------------ energy
 
-    public void Recharge() => energy = 1f;
+    // One charge cycle per day: the stamp is set when a recharge actually LANDS (dock draws are
+    // async), so subscription-order races around the day++ tick can't hand out a second cycle.
+    [HideInInspector] public int lastChargeDay = -1;
+    public bool ChargedToday => lastChargeDay == SpawnManager.day;
+
+    public void Recharge()
+    {
+        energy = 1f;
+        lastChargeDay = SpawnManager.day;
+    }
 
     public bool TrySpend(float amount)
     {
@@ -365,6 +443,14 @@ public class Drone : AllyAI, IOnDeath
                     TickRepairSweep();
                     break;
 
+                case State.Demolishing:
+                    TickDemolish();
+                    break;
+
+                case State.BatteryWork:
+                    TickBatteryWork();
+                    break;
+
                 case State.TravelToPad:
                     // Wait at the pad for the player to dive (deployment rides the teleport).
                     if (threatened && !HasCargo) { state = State.Evading; break; }
@@ -408,7 +494,7 @@ public class Drone : AllyAI, IOnDeath
 
                 case State.Fleeing:
                     bool atRally = MoveToward(RallySpot(), 0.55f);
-                    if (atRally && equipment == DroneEquipment.Drill && threatened && Charged)
+                    if (atRally && equipment == DroneEquipment.Drill && threatened)
                     {
                         // touched the rally point under threat: turn and fight — the stim/shield
                         // only pops on actual engagement (TickRallyFight), not here. Works in
@@ -474,7 +560,7 @@ public class Drone : AllyAI, IOnDeath
                 case State.Evading:
                     // Survival overrides the energy gate — an uncharged drone still flees.
                     bool atRefuge = MoveToward(RefugePoint());
-                    if (atRefuge && equipment == DroneEquipment.Drill && threatened && Charged)
+                    if (atRefuge && equipment == DroneEquipment.Drill && threatened)
                     {
                         // drill drones don't cower at the refuge: same turn-and-fight as the
                         // dungeon rally, with (0,0) as the rally point base-side
@@ -618,13 +704,15 @@ public class Drone : AllyAI, IOnDeath
         }
         transform.position = dungeonPad.transform.position + GS.RandCircle(0.2f, 0.6f);
         if (AS != null && AS.rb != null) AS.rb.linearVelocity = Vector2.zero;
-        // Bag drones obey the ore like any dungeon body (collision is code-based — kinematic
+        // All drones obey the ore like any dungeon body (collision is code-based — kinematic
         // bodies ignore physics colliders, so only registered rbs get depenetrated). Drill
-        // drones stay unregistered: pressing INTO the wall face is how they grind.
-        if (equipment == DroneEquipment.Bag && MineField.i != null && AS != null && AS.rb != null)
+        // grinding still works: contact is distance-gated (≤0.85 of the face centre), and a
+        // depenetrated body rests at ~0.75 — pressed against the face, never inside it.
+        if (MineField.i != null && AS != null && AS.rb != null)
             MineField.i.Register(AS.rb);
         inDungeon = true;
         repairTarget = null;
+        ReleaseDemolition();
         threatened = false;
         if (HasCargo) MinePathManager.RegisterAllyTarget(transform, 2);   // dimension changed — re-register
         state = State.DeployedTravel;
@@ -647,7 +735,9 @@ public class Drone : AllyAI, IOnDeath
         if (MineField.i != null && AS != null && AS.rb != null) MineField.i.Unregister(AS.rb);
         inDungeon = false;
         repairTarget = null;
+        ReleaseDemolition();
         ReleaseCollectTarget();   // dungeon claims don't follow home
+        ReleaseDrillClaim();
         hasDrillTarget = false;
         threatened = false;
         MinePathManager.UnregisterAllyTarget(transform);   // dungeon aggro seat doesn't follow home
@@ -742,6 +832,42 @@ public class Drone : AllyAI, IOnDeath
         energy = Mathf.Max(0f, energy - applied * costPerHp);
     }
 
+    // ------------------------------------------------------------------ demolition duty
+
+    /// <summary>Deconstruct player-condemned buildings (DemolitionMarks): fly to the nearest
+    /// claim and grind it down at the repair tariff. Unmarking mid-teardown (Delete pressed
+    /// again) releases the job on the next tick — the building keeps standing, no harm done.</summary>
+    void TickDemolish()
+    {
+        if (threatened && !HasCargo) { ReleaseDemolition(); state = State.Evading; return; }
+        if (!Peaceful() || !Charged) { ReleaseDemolition(); state = State.ReturningToDock; return; }
+        if (demolishTarget == null || !DemolitionMarks.IsMarked(demolishTarget))
+        {
+            ReleaseDemolition();
+            demolishTarget = DemolitionMarks.ClaimFor(this, transform.position);
+            if (demolishTarget == null) { GoLoiter(); return; }   // all reprieved or rubble — back on patrol
+        }
+        if (!MoveToward(demolishTarget.transform.position, 0.7f)) return;
+
+        // Channel in coarse ticks, same cadence and tariff as repair — a teardown is repair run backwards.
+        repairTickTimer -= Time.fixedDeltaTime;
+        if (repairTickTimer > 0f) return;
+        float tick = 0.25f;
+        repairTickTimer = tick;
+        float costPerHp = DroneManager.RepairCostPerHp;
+        float hpBudget = repairRate * DroneManager.Haste * Mathf.Max(0.2f, actRate) * tick;
+        if (costPerHp > 0f) hpBudget = Mathf.Min(hpBudget, energy / costPerHp);
+        if (hpBudget <= 0f) { ReleaseDemolition(); state = State.ReturningToDock; return; }
+        float applied = demolishTarget.DemolishTick(hpBudget);
+        energy = Mathf.Max(0f, energy - applied * costPerHp);
+    }
+
+    void ReleaseDemolition()
+    {
+        if (demolishTarget != null && demolishTarget.demolisher == this) demolishTarget.demolisher = null;
+        demolishTarget = null;
+    }
+
     void UpdateThreat()
     {
         threatTimer -= Time.fixedDeltaTime;
@@ -757,12 +883,13 @@ public class Drone : AllyAI, IOnDeath
             threatened = foes.Count > 0;
             if (!threatened && baseZoneHot)
             {
-                // A charged drill drone treats a hot rally zone as its own threat, so it
-                // rallies in and fights (Evading carries it to the refuge, then turn-and-
-                // fight) instead of only reacting to enemies near itself. A bag drone does
-                // the OPPOSITE: caught inside the arena, it runs out to the standoff ring
-                // (see RefugePoint) and leaves the fighting to the drills.
-                if (equipment == DroneEquipment.Drill && Charged)
+                // A drill drone treats a hot rally zone as its own threat, so it rallies in
+                // and fights (Evading carries it to the refuge, then turn-and-fight) instead
+                // of only reacting to enemies near itself — flat battery included: the drill
+                // fights for free, charge is only mining/repair budget. A bag drone does the
+                // OPPOSITE: caught inside the arena, it runs out to the standoff ring (see
+                // RefugePoint) and leaves the fighting to the drills.
+                if (equipment == DroneEquipment.Drill)
                     threatened = true;
                 else if (equipment == DroneEquipment.Bag &&
                          ((Vector2)transform.position).sqrMagnitude
@@ -780,6 +907,20 @@ public class Drone : AllyAI, IOnDeath
             {
                 if (foes[k] == null) continue;
                 if (ThreatVisible(transform.position, foes[k].position)) { threatened = true; break; }
+            }
+            if (!threatened && equipment == DroneEquipment.Drill)
+            {
+                // Dungeon counterpart of baseZoneHot: the rally point under attack calls EVERY
+                // drill in (flat ones too — fighting is free), not the ones wandered past. The
+                // rock-free-LOS gate is from the RALLY POINT, so an enemy stuck behind ore
+                // can't lock the whole fleet into a rally it can never resolve.
+                Vector2 rally = RallySpot();
+                var zone = GS.FindEnemies(tag, rally, DroneManager.RallyLeash, false, false);
+                for (int k = 0; k < zone.Count; k++)
+                {
+                    if (zone[k] == null) continue;
+                    if (ThreatVisible(rally, zone[k].position)) { threatened = true; break; }
+                }
             }
         }
         if (threatened && !was) Emote(DroneEmote.Startled, 1f);
@@ -816,7 +957,15 @@ public class Drone : AllyAI, IOnDeath
 
     void TickDrilling()
     {
-        if (threatened) { StopDrillVisual(); state = State.Fleeing; return; }
+        if (threatened)
+        {
+            // Combat interrupts drilling but must not poison it: the fight drags the drone away
+            // from its face, so the approach watchdog's best-distance is stale on return — left
+            // alone it times out and blacklists a perfectly good wall after every skirmish.
+            drillBestDist = float.MaxValue;
+            drillStallTimer = 0f;
+            StopDrillVisual(); state = State.Fleeing; return;
+        }
         var mf = MineField.i;
         if (mf == null || !transform.InDungeon()) { StopDrillVisual(); state = State.DeployedTravel; return; }
         if (!CanAffordDrill)
@@ -863,6 +1012,7 @@ public class Drone : AllyAI, IOnDeath
             else if ((drillStallTimer += Time.fixedDeltaTime) > 3f)
             {
                 drillBlacklist.Add((drillTarget, Time.time + 20f));
+                ReleaseDrillClaim();
                 hasDrillTarget = false;
                 return;
             }
@@ -884,6 +1034,7 @@ public class Drone : AllyAI, IOnDeath
         if (mf.DroneChip(drillTarget, ms, out bool broke, out CellType tier) && broke)
         {
             TrySpend(DroneManager.DrillCost(tier));
+            ReleaseDrillClaim();
             hasDrillTarget = false;
             headingDeg += Random.Range(-8f, 8f);   // organic drift, still roughly one direction
         }
@@ -895,6 +1046,7 @@ public class Drone : AllyAI, IOnDeath
     /// one deep bore, and hardness only nudges (soft preferred, not law). Ore is the prize.</summary>
     bool FindDrillTarget(MineField mf)
     {
+        ReleaseDrillClaim();   // rescanning — the old cell is up for grabs again
         Vector3Int myCell = mf.WorldToCell(transform.position);
         Vector2 hd = HeadingDir();
         Vector2 origin = mf.CellCenterWorld(new Vector3Int(0, 0, 0));   // entry cavity centre
@@ -909,6 +1061,8 @@ public class Drone : AllyAI, IOnDeath
             {
                 var c = new Vector3Int(myCell.x + dx, myCell.y + dy, 0);
                 if (!mf.DroneMineable(c)) continue;
+                // hive rule: a wall another live drill is already working stays theirs
+                if (drillClaims.TryGetValue(c, out var owner) && owner != null && owner != this) continue;
                 bool banned = false;
                 for (int k = 0; k < drillBlacklist.Count; k++)
                     if (drillBlacklist[k].cell == c) { banned = true; break; }
@@ -943,6 +1097,7 @@ public class Drone : AllyAI, IOnDeath
             }
         }
         hasDrillTarget = found;
+        if (found) drillClaims[drillTarget] = this;
         return found;
     }
 
@@ -959,6 +1114,17 @@ public class Drone : AllyAI, IOnDeath
     // energy, so capacity is whichever runs out first — physical room or remaining charge.
     float CollectCostPerSpace => 1f / SackMaxSpace;
     int EffectiveSpaceLeft => Mathf.Min(SpaceLeft, Mathf.FloorToInt(energy * SackMaxSpace + 1e-3f));
+
+    // ---- the daily haul quota ----
+    // Every bag gets ONE bag's worth of loot pickup per day, wherever it's swallowed: a dungeon
+    // hauler spends it on the dive, a base bag spends it sweeping orbs and running chip to the
+    // grinders. After that the drone calls it a day — one bag never does ALL the base work, and
+    // a returned dungeon hauler doesn't start vacuuming old chip off the floor. Dungeon pickups
+    // only COUNT toward the quota (the dive loop stays energy-gated, so a second dive still
+    // collects) — base pickups also CHECK it.
+    int hauledDay = -1;
+    int hauledSpaceToday;
+    public bool HasDailyHaulQuota => hauledDay != SpawnManager.day || hauledSpaceToday < SackMaxSpace;
 
     void TickCollecting()
     {
@@ -990,13 +1156,43 @@ public class Drone : AllyAI, IOnDeath
         Vector2 tpos = chipTarget != null ? (Vector2)chipTarget.transform.position
             : orbTarget != null ? (Vector2)orbTarget.transform.position
             : equipmentTarget != null ? (Vector2)equipmentTarget.transform.position
+            : harvesterTarget != null ? (Vector2)harvesterTarget.transform.position
             : (Vector2)batteryTarget.transform.position;
-        // chips are collected by TOUCH: close to actual contact, present the front, swallow
-        float reach = chipTarget != null ? 0.32f : 0.45f;
+        // chips are collected by TOUCH: close to actual contact, present the front, swallow.
+        // Harvesters are buildings — hover at the footprint's edge and lift from there.
+        float reach = chipTarget != null ? 0.32f : harvesterTarget != null ? 0.9f : 0.45f;
         if (MoveToward(tpos, reach))
         {
             FaceDir(tpos - (Vector2)transform.position);
             PickupTarget();
+            stuckWatch = null;
+            return;
+        }
+        // Unreachable-loot watchdog: loot the A* can't route to leaves MoveToward's straight-line
+        // fallback pressing the drone against rock forever (the wedged-on-a-corner look). Chasing
+        // while going nowhere → cool the chip off fleet-wide and pick something else.
+        Component tgt = chipTarget != null ? (Component)chipTarget
+            : orbTarget != null ? orbTarget
+            : equipmentTarget != null ? (Component)equipmentTarget
+            : harvesterTarget != null ? (Component)harvesterTarget : batteryTarget;
+        if (tgt != stuckWatch)
+        {
+            stuckWatch = tgt;
+            stuckWatchT = 0f;
+            stuckWatchPos = transform.position;
+        }
+        else if ((stuckWatchT += Time.fixedDeltaTime) >= 0.8f)
+        {
+            if (((Vector2)transform.position - stuckWatchPos).sqrMagnitude < 0.06f * 0.06f)
+            {
+                if (chipTarget != null) chipTarget.unreachableUntil = Time.time + 8f;
+                if (harvesterTarget != null) harvesterTarget.droneRetryAt = Time.time + 8f;
+                ReleaseCollectTarget();
+                stuckWatch = null;
+                return;
+            }
+            stuckWatchT = 0f;
+            stuckWatchPos = transform.position;
         }
     }
 
@@ -1005,12 +1201,25 @@ public class Drone : AllyAI, IOnDeath
         if (chipTarget != null && chipTarget.claimedBy == this && chipTarget.SpaceCost <= EffectiveSpaceLeft) return true;
         chipTarget = null;
         if (orbTarget != null && orbTarget.gameObject.activeInHierarchy && orbTarget.state == OrbScript.OrbState.wild
+            && orbTarget.claimedBy == this
             && orbTarget.transform.InDungeon() == transform.InDungeon()) return true;
+        if (orbTarget != null && orbTarget.claimedBy == this) orbTarget.claimedBy = null;
         orbTarget = null;
-        if (equipmentTarget != null && equipmentTarget.transform.InDungeon()) return true;
+        if (equipmentTarget != null && equipmentTarget.transform.InDungeon()
+            && (equipmentTarget.claimedBy == null || equipmentTarget.claimedBy == this)) return true;
+        if (equipmentTarget != null && equipmentTarget.claimedBy == this) equipmentTarget.claimedBy = null;
         equipmentTarget = null;
-        if (batteryTarget != null && batteryTarget.transform.InDungeon()) return true;
+        if (batteryTarget != null && batteryTarget.transform.InDungeon() && !batteryTarget.following
+            && batteryTarget.pad == null && batteryTarget != Battery.held
+            && (batteryTarget.claimedBy == null || batteryTarget.claimedBy == this)) return true;
+        if (batteryTarget != null && batteryTarget.claimedBy == this) batteryTarget.claimedBy = null;
         batteryTarget = null;
+        if (harvesterTarget != null && harvesterTarget.gameObject.activeInHierarchy
+            && harvesterTarget.claimedBy == this && harvesterTarget.HasDroneCollectable
+            && !transform.InDungeon()
+            && (sack != null ? sack.orbSpace : 1) <= EffectiveSpaceLeft) return true;
+        if (harvesterTarget != null && harvesterTarget.claimedBy == this) harvesterTarget.claimedBy = null;
+        harvesterTarget = null;
         return false;
     }
 
@@ -1018,9 +1227,14 @@ public class Drone : AllyAI, IOnDeath
     {
         if (chipTarget != null && chipTarget.claimedBy == this) chipTarget.claimedBy = null;
         chipTarget = null;
+        if (orbTarget != null && orbTarget.claimedBy == this) orbTarget.claimedBy = null;
         orbTarget = null;
+        if (batteryTarget != null && batteryTarget.claimedBy == this) batteryTarget.claimedBy = null;
         batteryTarget = null;
+        if (equipmentTarget != null && equipmentTarget.claimedBy == this) equipmentTarget.claimedBy = null;
         equipmentTarget = null;
+        if (harvesterTarget != null && harvesterTarget.claimedBy == this) harvesterTarget.claimedBy = null;
+        harvesterTarget = null;
     }
 
     bool FindCollectTarget()
@@ -1028,13 +1242,40 @@ public class Drone : AllyAI, IOnDeath
         Vector2 pos = transform.position;
         int spaceLeft = EffectiveSpaceLeft;
 
-        // Base-side sweeps take ORBS ONLY — the ore that base-mining drills shake loose. Chips
-        // and dropped kit at base are dump-pile products; hauling those would just loop them.
+        // Base-side sweeps take ORBS ONLY — the ore that base-mining drills shake loose, plus
+        // any harvester holding today's takings. Chips and dropped kit at base are dump-pile
+        // products; hauling those would just loop them. Wild orbs first: they decay.
         if (!transform.InDungeon())
         {
+            if (!HasDailyHaulQuota) return false;   // quota ran out mid-sweep: bank what's aboard
             var baseOrb = NearestBaseOrb(pos, spaceLeft);
-            if (baseOrb != null) { orbTarget = baseOrb; return true; }
+            if (baseOrb != null) { baseOrb.claimedBy = this; orbTarget = baseOrb; return true; }
+            var hv = NearestReadyHarvester(pos, spaceLeft);
+            if (hv != null) { hv.claimedBy = this; harvesterTarget = hv; harvestTakeT = 0f; return true; }
             return false;
+        }
+
+        // 0) PULSE BATTERIES — the prize haul: a crate freed from the rock outranks everything
+        int pulseSpace = sack != null ? sack.batterySpace : 4;
+        if (pulseSpace <= spaceLeft)
+        {
+            float pulseBestSqr = float.MaxValue;
+            Battery bestPulse = null;
+            for (int k = 0; k < Battery.all.Count; k++)
+            {
+                var bat = Battery.all[k];
+                if (bat == null || !bat.IsPulse || !bat.transform.InDungeon()) continue;
+                if (bat.pad != null || bat == Battery.held || bat.following) continue;
+                if (bat.claimedBy != null && bat.claimedBy != this) continue;
+                float d = ((Vector2)bat.transform.position - pos).sqrMagnitude;
+                if (d < pulseBestSqr) { pulseBestSqr = d; bestPulse = bat; }
+            }
+            if (bestPulse != null)
+            {
+                bestPulse.claimedBy = this;
+                batteryTarget = bestPulse;
+                return true;
+            }
         }
 
         // 1) chips — the bag drone's bread and butter
@@ -1045,6 +1286,7 @@ public class Drone : AllyAI, IOnDeath
             var chip = OreChip.all[k];
             if (chip == null || !chip.transform.InDungeon()) continue;
             if (chip.Age < OreChip.SettleSeconds) continue;   // let debris visibly land first
+            if (Time.time < chip.unreachableUntil) continue;  // a drone recently failed to reach it
             if (chip.claimedBy != null && chip.claimedBy != this) continue;
             if (chip.SpaceCost > spaceLeft) continue;
             float d = ((Vector2)chip.transform.position - pos).sqrMagnitude;
@@ -1068,10 +1310,11 @@ public class Drone : AllyAI, IOnDeath
                 var o = OrbManager.allOrbs[k];
                 if (o == null || !o.gameObject.activeInHierarchy) continue;
                 if (o.state != OrbScript.OrbState.wild || !o.transform.InDungeon()) continue;
+                if (o.claimedBy != null && o.claimedBy != this) continue;
                 float d = ((Vector2)o.transform.position - pos).sqrMagnitude;
                 if (d < bestSqr) { bestSqr = d; bestOrb = o; }
             }
-            if (bestOrb != null) { orbTarget = bestOrb; return true; }
+            if (bestOrb != null) { bestOrb.claimedBy = this; orbTarget = bestOrb; return true; }
         }
 
         // 3) dropped drone kit (dead drill drones leave their drills behind)
@@ -1084,10 +1327,11 @@ public class Drone : AllyAI, IOnDeath
             {
                 var it = DroneEquipmentItem.all[k];
                 if (it == null || !it.transform.InDungeon()) continue;
+                if (it.claimedBy != null && it.claimedBy != this) continue;
                 float d = ((Vector2)it.transform.position - pos).sqrMagnitude;
                 if (d < bestSqr) { bestSqr = d; bestItem = it; }
             }
-            if (bestItem != null) { equipmentTarget = bestItem; return true; }
+            if (bestItem != null) { bestItem.claimedBy = this; equipmentTarget = bestItem; return true; }
         }
 
         // 4) rarer finds: loose batteries (registry walk, no scene scan)
@@ -1100,11 +1344,12 @@ public class Drone : AllyAI, IOnDeath
             {
                 var bat = Battery.all[k];
                 if (bat == null || !bat.transform.InDungeon()) continue;
-                if (bat.pad != null || bat == Battery.held) continue;   // slotted/held ones aren't loot
+                if (bat.pad != null || bat == Battery.held || bat.following) continue;   // slotted/held/ring aren't loot
+                if (bat.claimedBy != null && bat.claimedBy != this) continue;
                 float d = ((Vector2)bat.transform.position - pos).sqrMagnitude;
                 if (d < bestSqr) { bestSqr = d; bestBat = bat; }
             }
-            if (bestBat != null) { batteryTarget = bestBat; return true; }
+            if (bestBat != null) { bestBat.claimedBy = this; batteryTarget = bestBat; return true; }
         }
         return false;
     }
@@ -1122,6 +1367,7 @@ public class Drone : AllyAI, IOnDeath
             var o = OrbManager.allOrbs[k];
             if (o == null || !o.gameObject.activeInHierarchy) continue;
             if (o.state != OrbScript.OrbState.wild || o.transform.InDungeon()) continue;
+            if (o.claimedBy != null && o.claimedBy != this) continue;
             Vector2 op = o.transform.position;
             if ((op - DroneManager.ScrapPoint).sqrMagnitude < 2.5f * 2.5f) continue;
             float d = (op - pos).sqrMagnitude;
@@ -1130,13 +1376,43 @@ public class Drone : AllyAI, IOnDeath
         return best;
     }
 
-    /// <summary>Docked-bag dispatch check, throttled — a parked drone shouldn't walk the whole
-    /// orb registry every physics tick.</summary>
-    bool BaseOrbAvailable()
+    /// <summary>Nearest harvester holding today's takings whose element still has room in the
+    /// pylon/store network (orbCaps counts both) — no room means the orbs STAY on the harvester
+    /// until space frees up. A claim only binds while the claimant is still on the job, so a
+    /// drone yanked away (pad reservation, kit summons) never blacklists a harvester.</summary>
+    SoulHarvester NearestReadyHarvester(Vector2 pos, int spaceLeft)
     {
+        if ((sack != null ? sack.orbSpace : 1) > spaceLeft) return null;
+        var rm = ResourceManager.instance;
+        SoulHarvester best = null;
+        float bestSqr = float.MaxValue;
+        for (int race = 0; race < 4; race++)
+        {
+            if (rm != null && rm.orbs[race] >= rm.orbCaps[race]) continue;
+            var list = SoulHarvester.shs[race];
+            for (int k = 0; k < list.Count; k++)
+            {
+                var sh = list[k];
+                if (sh == null || !sh.gameObject.activeInHierarchy || !sh.HasDroneCollectable) continue;
+                if (Time.time < sh.droneRetryAt) continue;   // a drone recently failed to reach it
+                var claim = sh.claimedBy;
+                if (claim != null && claim != this && claim.harvesterTarget == sh) continue;
+                float d = ((Vector2)sh.transform.position - pos).sqrMagnitude;
+                if (d < bestSqr) { bestSqr = d; best = sh; }
+            }
+        }
+        return best;
+    }
+
+    /// <summary>Docked-bag dispatch check, throttled — a parked drone shouldn't walk the whole
+    /// orb registry (or the harvester roster) every physics tick.</summary>
+    bool BaseCollectAvailable()
+    {
+        if (!HasDailyHaulQuota) return false;   // today's bagful is spent — the sweep is tomorrow's
         if ((orbScanT -= Time.fixedDeltaTime) > 0f) return false;
         orbScanT = 0.5f;
-        return NearestBaseOrb(transform.position, EffectiveSpaceLeft) != null;
+        return NearestBaseOrb(transform.position, EffectiveSpaceLeft) != null
+            || NearestReadyHarvester(transform.position, EffectiveSpaceLeft) != null;
     }
 
     void PickupTarget()
@@ -1149,6 +1425,7 @@ public class Drone : AllyAI, IOnDeath
         }
         else if (orbTarget != null)
         {
+            if (orbTarget.claimedBy == this) orbTarget.claimedBy = null;
             if (orbTarget.state == OrbScript.OrbState.wild)
             {
                 AddCargo(new CargoEntry { kind = 1, space = sack != null ? sack.orbSpace : 1, element = orbTarget.orbType });
@@ -1159,6 +1436,7 @@ public class Drone : AllyAI, IOnDeath
         else if (equipmentTarget != null)
         {
             var go = equipmentTarget.gameObject;
+            if (equipmentTarget.claimedBy == this) equipmentTarget.claimedBy = null;
             AddCargo(new CargoEntry { kind = 2, space = sack != null ? sack.equipmentSpace : 3, payload = go });
             go.transform.SetParent(transform);
             go.SetActive(false);
@@ -1167,17 +1445,59 @@ public class Drone : AllyAI, IOnDeath
         else if (batteryTarget != null)
         {
             var go = batteryTarget.gameObject;
+            if (batteryTarget.claimedBy == this) batteryTarget.claimedBy = null;
             AddCargo(new CargoEntry { kind = 2, space = sack != null ? sack.batterySpace : 4, payload = go });
             go.transform.SetParent(transform);
             go.SetActive(false);
             batteryTarget = null;
         }
+        else if (harvesterTarget != null)
+        {
+            if ((harvestTakeT -= Time.fixedDeltaTime) > 0f) return;
+            harvestTakeT = 0.12f;
+            // take only what the pylon/store network can still absorb (counting what's already
+            // bagged) — anything beyond that STAYS parked on the harvester, safe, for later
+            var rm = ResourceManager.instance;
+            int race = Mathf.Clamp(harvesterTarget.race, 0, 3);
+            if (rm != null && rm.orbs[race] + CargoOrbCount(race) >= rm.orbCaps[race])
+            {
+                if (harvesterTarget.claimedBy == this) harvesterTarget.claimedBy = null;
+                harvesterTarget = null;
+                return;
+            }
+            OrbScript o = harvesterTarget.TakeOrbForDrone();
+            if (o != null)
+            {
+                AddCargo(new CargoEntry { kind = 1, space = sack != null ? sack.orbSpace : 1,
+                    element = Mathf.Clamp(o.orbType, 0, 3) });
+                o.ReturnToPool();
+            }
+            if (o == null || !harvesterTarget.HasDroneCollectable)
+            {
+                if (harvesterTarget != null && harvesterTarget.claimedBy == this) harvesterTarget.claimedBy = null;
+                harvesterTarget = null;
+            }
+        }
+    }
+
+    /// <summary>Orbs riding in the bag — of one element, or any with -1.</summary>
+    int CargoOrbCount(int element)
+    {
+        int n = 0;
+        for (int k = 0; k < cargo.Count; k++)
+            if (cargo[k].kind == 1 && (element < 0 || cargo[k].element == element)) n++;
+        return n;
     }
 
     void AddCargo(CargoEntry e)
     {
         cargo.Add(e);
         cargoSpaceUsed += e.space;
+        if (e.kind != 2)   // chips and orbs spend the daily haul quota; carried items don't
+        {
+            if (hauledDay != SpawnManager.day) { hauledDay = SpawnManager.day; hauledSpaceToday = 0; }
+            hauledSpaceToday += e.space;
+        }
         // the bag's tariff: space swallowed is charge spent, so one full charge = one full bag
         energy = Mathf.Max(0f, energy - e.space * CollectCostPerSpace);
         SetCargoUnits(cargoSpaceUsed);
@@ -1198,17 +1518,123 @@ public class Drone : AllyAI, IOnDeath
     void TickDumpLoot()
     {
         if (!HasCargo) { state = State.ReturningToDock; return; }
+
+        // Chips land where they're WANTED first: any grinder still short of juice gets fed
+        // before anything hits the scrap pile. Works flat too — dumping costs no charge.
+        if (CargoChipSpace() > 0)
+        {
+            var st = StationWantingChips();
+            if (st != null)
+            {
+                if (!MoveToward(st.transform.position, Mathf.Max(0.4f, st.suctionRadius * 0.7f))) return;
+                int wantSpace = Mathf.CeilToInt((st.JuiceDemand - st.inboundChipSpace * st.juicePerChipSpace)
+                                                / Mathf.Max(0.01f, st.juicePerChipSpace));
+                DumpChipsForStation(st, wantSpace);
+                return;   // next tick: another hungry station, or the scrap pile with the rest
+            }
+        }
+
+        // Orbs land where they're WANTED too: fly the haul to the nearest matching pylon
+        // (stores when every pylon is full) and beam it in with the classic deposit glide.
+        // Elements with no room anywhere ride on to the scrap pile with everything else.
+        if (CargoOrbCount(-1) > 0)
+        {
+            OrbMagnet drop = NearestOrbDropoff();
+            if (drop != null)
+            {
+                if (!MoveToward(drop.transform.position, 1.1f)) return;
+                int before = cargoSpaceUsed;
+                BankOrbCargo(drop);
+                if (!HasCargo)
+                {
+                    if (!TryDispatchWork()) GoLoiter();
+                    return;
+                }
+                // progress → next tick: another element's pylon, or the pile with the rest;
+                // no progress (network filled mid-flight) → fall through to the pile now
+                if (cargoSpaceUsed != before) return;
+            }
+        }
+
         if (!MoveToward(DroneManager.ScrapPoint, 0.6f)) return;
-        DumpCargoAt(DroneManager.ScrapPoint);
+        DumpCargoAt(DroneManager.ScrapPoint, bankOrbs: true);   // orbs beam into the pylons/stores
         // No solo hop back down — the next deployment rides the player's dive (or a freshly
         // built pad's TryDeployNow). More work if there is any, else patrol; a spent charge
         // routes home by itself (the loiter tick sends flat drones to the charger).
         if (!TryDispatchWork()) GoLoiter();
     }
 
+    /// <summary>Where this bag's orbs should land: the nearest pylon serving any bagged element
+    /// that still has pool room — pylons outrank stores, stores catch the overflow when every
+    /// matching pylon's ring is full. Null → nothing bankable (the scrap spill handles it).</summary>
+    OrbMagnet NearestOrbDropoff()
+    {
+        var rm = ResourceManager.instance;
+        if (rm == null) return null;
+        int want = 0;
+        for (int k = 0; k < cargo.Count; k++)
+        {
+            if (cargo[k].kind != 1) continue;
+            int e = cargo[k].element;
+            if (e >= 0 && e <= 3 && rm.orbs[e] < rm.orbCaps[e]) want |= 1 << e;
+        }
+        if (want == 0) return null;
+        Vector2 pos = transform.position;
+        OrbMagnet best = null;
+        float bd = float.MaxValue;
+        var pylons = rm.pylons;
+        for (int k = 0; k < pylons.Count; k++)
+        {
+            var p = pylons[k];
+            if (p == null || !p.gameObject.activeInHierarchy || p.mag == null) continue;
+            if (p.orbType < 0 || p.orbType > 3 || (want & (1 << p.orbType)) == 0) continue;
+            if (p.mag.n >= p.mag.capacity) continue;
+            float d = ((Vector2)p.mag.transform.position - pos).sqrMagnitude;
+            if (d < bd) { bd = d; best = p.mag; }
+        }
+        if (best != null) return best;
+        var mags = rm.magnets;
+        for (int k = 0; k < mags.Count; k++)
+        {
+            var m = mags[k];
+            if (m == null || m.typ != OrbMagnet.OrbType.Store || !m.gameObject.activeInHierarchy) continue;
+            if (m.orbType < 0 || m.orbType > 3 || (want & (1 << m.orbType)) == 0) continue;
+            if (m.n >= m.capacity) continue;
+            float d = ((Vector2)m.transform.position - pos).sqrMagnitude;
+            if (d < bd) { bd = d; best = m; }
+        }
+        return best;
+    }
+
+    /// <summary>Beam every bankable orb in the bag into the network from where the drone floats.
+    /// Orbs matching <paramref name="at"/>'s element land in THAT magnet (the flight's whole
+    /// point); other elements ride the normal next-pylon routing. Unbankable orbs (their pool
+    /// filled mid-flight) stay aboard for the scrap-pile spill.</summary>
+    void BankOrbCargo(OrbMagnet at)
+    {
+        var rm = ResourceManager.instance;
+        if (rm == null) return;
+        for (int k = cargo.Count - 1; k >= 0; k--)
+        {
+            if (cargo[k].kind != 1) continue;
+            int e = cargo[k].element;
+            if (e < 0 || e > 3) continue;
+            bool banked = at != null && at.orbType == e
+                ? rm.TryBankOrbInto(at, e, transform.position)
+                : rm.TryBankOrbFrom(e, transform.position);
+            if (!banked) continue;
+            cargoSpaceUsed = Mathf.Max(0, cargoSpaceUsed - cargo[k].space);
+            cargo.RemoveAt(k);
+        }
+        SetCargoUnits(cargoSpaceUsed);
+        if (sack != null) sack.SetFill(cargoSpaceUsed / (float)SackMaxSpace);
+    }
+
     /// <summary>Spill everything: chips re-scatter as scrap, orbs burst out wild, carried items
-    /// (batteries/equipment) drop as real objects. Also the death-drop path.</summary>
-    void DumpCargoAt(Vector2 p)
+    /// (batteries/equipment) drop as real objects. Also the death-drop path. With
+    /// <paramref name="bankOrbs"/> (the scrap-point delivery), orbs are deposited into the pylon
+    /// network instead — only what the pool has no room for spills wild with the chips.</summary>
+    void DumpCargoAt(Vector2 p, bool bankOrbs = false)
     {
         var orbCounts = new int[4];
         foreach (var e in cargo)
@@ -1219,17 +1645,24 @@ public class Drone : AllyAI, IOnDeath
             }
             else if (e.kind == 1)
             {
-                if (e.element >= 0 && e.element < 4) orbCounts[e.element]++;
+                if (e.element < 0 || e.element > 3) continue;
+                if (bankOrbs && ResourceManager.instance != null
+                    && ResourceManager.instance.TryBankOrbFrom(e.element, transform.position))
+                    continue;   // beamed straight into a pylon — nothing to spill
+                orbCounts[e.element]++;
             }
             else if (e.payload != null)
             {
                 e.payload.transform.SetParent(GS.FindParent(GS.Parent.loot));
                 e.payload.transform.position = (Vector3)p + GS.RandCircle(0.2f, 0.8f);
+                e.payload.transform.rotation = Quaternion.identity;   // batteries/kit land upright
                 e.payload.SetActive(true);
             }
         }
         if (orbCounts[0] + orbCounts[1] + orbCounts[2] + orbCounts[3] > 0)
-            GS.CallSpawnOrbs(p, orbCounts);
+            // scrap-point spills are "nowhere else to put it" piles — they live until the next
+            // return from the dungeon (cohort 2); other spills stamp day/wave lazily
+            GS.CallSpawnOrbs(p, orbCounts, null, bankOrbs ? 2 : -1);
         cargo.Clear();
         cargoSpaceUsed = 0;
         SetCargoUnits(0);
@@ -1257,7 +1690,6 @@ public class Drone : AllyAI, IOnDeath
         bool dungeon = transform.InDungeon();
         Vector2 rallyCenter = RallySpot();
         float leash = DroneManager.RallyLeash;
-        if (!Charged) { EndRallyFight(dungeon ? State.DeployedTravel : State.ReturningToDock); return; }
         if (!threatened)
         {
             EndRallyFight(!dungeon ? State.ReturningToDock
@@ -1348,20 +1780,657 @@ public class Drone : AllyAI, IOnDeath
             state = State.MineBaseOre;
             return true;
         }
+        // healing is the no-kit housekeepers' trade — bags haul, they don't patch
         if (equipment == DroneEquipment.None && Peaceful()
             && DroneManager.RepairWorkAvailable(PathZone.AtBase(transform.position)))
         {
             state = State.RepairSweep;
             return true;
         }
+        // demolition: deconstruct player-condemned buildings (Delete key — marks are base-side only)
+        if (equipment == DroneEquipment.None && Peaceful() && !transform.InDungeon() && DemolitionMarks.Any)
+        {
+            state = State.Demolishing;
+            return true;
+        }
+        // grabbing equipment outranks ANY battery action — kit first, then crewing
         if (equipment == DroneEquipment.None && TryTakeKitJob()) return true;
         if (equipment == DroneEquipment.None && TryTakePilotSeat()) return true;
-        if (equipment == DroneEquipment.Bag && Peaceful() && BaseOrbAvailable())
+        // battery logistics after the wave: REGULAR drones and bags both run the station swaps
+        // (bags are usually reserved for telepad dives, so the housekeeping fleet must qualify).
+        // For bags it outranks the orb sweep.
+        if ((equipment == DroneEquipment.None || equipment == DroneEquipment.Bag)
+            && Peaceful() && !transform.InDungeon() && TryTakeBatteryWork())
+            return true;
+        if (equipment == DroneEquipment.Bag && Peaceful() && BaseCollectAvailable())
         {
             state = State.Collecting;
             return true;
         }
         return false;
+    }
+
+    // ------------------------------------------------------------------ battery-station logistics
+
+    /// <summary>The overnight battery run, in priority order: haul a discharged battery onto a
+    /// station, feed the grinder chips, take a finished battery back to its home spot. Fires
+    /// from the job board each new day (batteries drained yesterday aren't ChargedToday, so
+    /// they qualify the moment the day turns).</summary>
+    bool TryTakeBatteryWork()
+    {
+        if (BatteryStation.all.Count == 0) return false;
+
+        Battery b = BatteryStation.FindBatteryForCharge(this, out BatteryStation st);
+        if (b != null)
+        {
+            b.claimedBy = this;
+            st.inboundBatteries++;
+            batteryHaul = b;
+            stationTarget = st;
+            batteryTask = BatteryTask.PickupForStation;
+            state = State.BatteryWork;
+            return true;
+        }
+
+        // chips are BAG work only — regular drones have nothing to carry them in — and a chip
+        // sweep spends the daily haul quota like any other pickup
+        OreChip chip = equipment == DroneEquipment.Bag && HasDailyHaulQuota
+            ? BatteryStation.FindChipForStation(this, out st) : null;
+        if (chip != null && chip.SpaceCost <= EffectiveSpaceLeft)
+        {
+            chip.claimedBy = this;
+            stationChipTarget = chip;
+            stationTarget = st;
+            batteryTask = BatteryTask.GatherChips;
+            state = State.BatteryWork;
+            return true;
+        }
+
+        b = BatteryStation.FindBatteryToReturn(this, out st);
+        if (b != null)
+        {
+            b.claimedBy = this;
+            batteryHaul = b;
+            stationTarget = st;
+            batteryTask = BatteryTask.PickupReturn;
+            state = State.BatteryWork;
+            return true;
+        }
+
+        // distribution: stock powered pads/hubs from spares — pins first, then evenly by consumers
+        b = BatteryDistribution.FindPlacement(this, out EnergyPad padDest);
+        if (b != null)
+        {
+            b.claimedBy = this;
+            padDest.inboundBatteries++;
+            batteryHaul = b;
+            padTarget = padDest;
+            batteryTask = BatteryTask.PickupForPad;
+            state = State.BatteryWork;
+            return true;
+        }
+        return false;
+    }
+
+    void TickBatteryWork()
+    {
+        if (threatened && !HasCargo && carriedBattery == null)
+        {
+            ReleaseBatteryWork();
+            state = State.Evading;
+            return;
+        }
+        if (!Charged || transform.InDungeon()
+            || (equipment != DroneEquipment.Bag && equipment != DroneEquipment.None))
+        {
+            ReleaseBatteryWork();
+            state = State.ReturningToDock;
+            return;
+        }
+
+        // Equipment outranks ANY battery action: a kit summons mid-job ditches the battery at
+        // the nearest station and leaves the rest to the fleet.
+        if (equipment == DroneEquipment.None && batteryTask != BatteryTask.BailToStation
+            && (kitScanT -= Time.fixedDeltaTime) <= 0f)
+        {
+            kitScanT = 1f;
+            if (KitWorkAvailable())
+            {
+                if (carriedBattery == null)
+                {
+                    ReleaseBatteryWork();
+                    if (!TryDispatchWork()) GoLoiter();
+                    return;
+                }
+                BailBatteryWorkToStation();
+                return;
+            }
+        }
+
+        switch (batteryTask)
+        {
+            case BatteryTask.PickupForStation:
+            {
+                var b = batteryHaul;
+                if (b == null || b.claimedBy != this || b.following || b == Battery.held
+                    || b.pad is BatteryStation || stationTarget == null || !stationTarget.builtYet)
+                {
+                    // mid-batch a spoiled pickup doesn't end the RUN: drop that one claim and
+                    // fly what's already aboard to the station
+                    if (carriedBattery != null && stationTarget != null && stationTarget.builtYet)
+                    {
+                        if (b != null && b.claimedBy == this) b.claimedBy = null;
+                        stationTarget.inboundBatteries = Mathf.Max(0, stationTarget.inboundBatteries - 1);
+                        batteryHaul = carriedBattery;
+                        batteryTask = BatteryTask.DeliverToStation;
+                        return;
+                    }
+                    ReleaseBatteryWork();
+                    if (!TryDispatchWork()) GoLoiter();
+                    return;
+                }
+                Vector2 bpos = b.transform.position;
+                if (!MoveToward(bpos, 0.4f)) return;
+                FaceDir(bpos - (Vector2)transform.position);
+                b.RememberHome();                       // capture the rack BEFORE unslotting
+                if (b.pad != null) b.pad.UnslotBattery(b);
+                if (carriedBattery == null) CarryBattery(b);
+                else StowBatteryInBag(b);
+                // BAG BATCH: with sack room, more flat batteries about and a rack that can still
+                // absorb them, keep collecting before flying the station leg — one round trip
+                // charges the lot. Regular drones stay single-carry (nothing to stow them in).
+                if (equipment == DroneEquipment.Bag
+                    && (sack != null ? sack.batterySpace : 4) <= EffectiveSpaceLeft)
+                {
+                    Battery next = stationTarget.FindBatteryForBatch(this);
+                    if (next != null)
+                    {
+                        next.claimedBy = this;
+                        stationTarget.inboundBatteries++;
+                        batteryHaul = next;
+                        return;   // stay on this leg — next stop, the next battery
+                    }
+                }
+                batteryHaul = carriedBattery;
+                batteryTask = BatteryTask.DeliverToStation;
+                return;
+            }
+
+            case BatteryTask.DeliverToStation:
+            {
+                var st = stationTarget;
+                if (st == null || !st.builtYet)
+                {
+                    ReleaseBatteryWork();               // sets the carried battery down where we are
+                    if (!TryDispatchWork()) GoLoiter();
+                    return;
+                }
+                if (!MoveToward(st.transform.position, 0.55f)) return;
+                // bag batch lands first: each stowed battery takes a rack slot (its recorded
+                // home rides along for the return leg); overflow lies beside the station as stock
+                for (int k = batteryBatch.Count - 1; k >= 0; k--)
+                {
+                    var extra = batteryBatch[k];
+                    batteryBatch.RemoveAt(k);
+                    RemoveCargoPayload(extra != null ? extra.gameObject : null);
+                    st.inboundBatteries = Mathf.Max(0, st.inboundBatteries - 1);
+                    if (extra == null) continue;
+                    extra.transform.SetParent(GS.FindParent(GS.Parent.loot), true);
+                    extra.transform.position = st.transform.position + GS.RandCircle(0.2f, 0.5f);
+                    extra.transform.rotation = Quaternion.identity;
+                    extra.gameObject.SetActive(true);
+                    extra.claimedBy = null;
+                    st.TrySlotBattery(extra, playerAction: false);   // rack full → lies beside
+                }
+                var flat = carriedBattery;
+                SetDownBattery();
+                st.inboundBatteries = Mathf.Max(0, st.inboundBatteries - 1);
+                stationTarget = null;
+                batteryHaul = null;
+                if (flat == null)
+                {
+                    batteryTask = BatteryTask.None;
+                    if (!TryDispatchWork()) GoLoiter();
+                    return;
+                }
+
+                // THE SWAP: a meaningfully-fuller station battery comes out first (freeing its
+                // slot for the flat one) and rides home to the flat one's rack spot. The flat one
+                // stays behind as station stock — once the grinder charges it, it's the next swap-out.
+                Battery swap = st.PickSwapOut(this, flat);
+                if (swap != null) st.UnslotBattery(swap);
+                if (!st.TrySlotBattery(flat, playerAction: false))
+                {
+                    // no slot and nothing to swap (rack changed mid-flight) — take it back home
+                    if (swap != null) st.TrySlotBattery(swap, playerAction: false);   // undo the pull, keep the rack whole
+                    batteryHaul = flat;
+                    CarryBattery(flat);
+                    batteryTask = BatteryTask.DeliverReturn;
+                    return;
+                }
+                flat.claimedBy = null;
+                if (swap != null)
+                {
+                    swap.TransferHomeFrom(flat);        // the charged one inherits the rack spot
+                    flat.ForgetHome();                  // the flat one is station stock now
+                    swap.claimedBy = this;
+                    batteryHaul = swap;
+                    CarryBattery(swap);
+                    batteryTask = BatteryTask.DeliverReturn;
+                    return;
+                }
+                batteryTask = BatteryTask.None;
+                if (!TryDispatchWork()) GoLoiter();
+                return;
+            }
+
+            case BatteryTask.GatherChips:
+            {
+                var st = stationTarget;
+                if (st == null || !st.builtYet)
+                {
+                    ReleaseBatteryWork();               // chips stay aboard; DumpLoot banks them later
+                    state = HasCargo ? State.DumpLoot : State.Loitering;
+                    if (state == State.Loitering) GoLoiter();
+                    return;
+                }
+                var chip = stationChipTarget;
+                if (chip == null || chip.Absorbing || chip.claimedBy != this || chip.SpaceCost > EffectiveSpaceLeft)
+                {
+                    if (chip != null && chip.claimedBy == this) chip.claimedBy = null;
+                    stationChipTarget = null;
+                    // keep gathering while the grinder still wants more than the fleet has
+                    // inbound — and this drone still has quota to spend on it
+                    bool wantMore = EffectiveSpaceLeft > 0 && HasDailyHaulQuota
+                        && st.JuiceDemand > st.inboundChipSpace * st.juicePerChipSpace;
+                    if (wantMore)
+                    {
+                        var next = BatteryStation.FindChipForStation(this, out _);
+                        if (next != null && next.SpaceCost <= EffectiveSpaceLeft)
+                        {
+                            next.claimedBy = this;
+                            stationChipTarget = next;
+                            return;
+                        }
+                    }
+                    if (chipsForStationSpace > 0) { batteryTask = BatteryTask.DeliverChips; return; }
+                    ReleaseBatteryWork();
+                    if (!TryDispatchWork()) GoLoiter();
+                    return;
+                }
+                Vector2 cpos = chip.transform.position;
+                if (!MoveToward(cpos, 0.32f)) return;
+                FaceDir(cpos - (Vector2)transform.position);
+                // swallowed on the normal bag tariff, earmarked for the station
+                AddCargo(new CargoEntry { kind = 0, space = chip.SpaceCost, sizeClass = chip.sizeClass, element = chip.element });
+                chipsForStationSpace += chip.SpaceCost;
+                st.inboundChipSpace += chip.SpaceCost;
+                chip.AbsorbInto(transform);
+                stationChipTarget = null;
+                return;
+            }
+
+            case BatteryTask.DeliverChips:
+            {
+                var st = stationTarget;
+                if (st == null || !st.builtYet)
+                {
+                    ReleaseBatteryWork();
+                    state = HasCargo ? State.DumpLoot : State.Loitering;
+                    if (state == State.Loitering) GoLoiter();
+                    return;
+                }
+                if (!MoveToward(st.transform.position, Mathf.Max(0.4f, st.suctionRadius * 0.7f))) return;
+                DumpChipsForStation(st);
+                batteryTask = BatteryTask.None;
+                stationTarget = null;
+                if (!TryDispatchWork()) GoLoiter();
+                return;
+            }
+
+            case BatteryTask.PickupReturn:
+            {
+                var b = batteryHaul;
+                if (b == null || b.claimedBy != this || stationTarget == null || b.pad != stationTarget)
+                {
+                    ReleaseBatteryWork();
+                    if (!TryDispatchWork()) GoLoiter();
+                    return;
+                }
+                Vector2 bpos = b.transform.position;
+                if (!MoveToward(bpos, 0.45f)) return;
+                FaceDir(bpos - (Vector2)transform.position);
+                stationTarget.UnslotBattery(b);         // stamps its once-a-day if it drank this visit
+                CarryBattery(b);
+                stationTarget = null;
+                batteryTask = BatteryTask.DeliverReturn;
+                return;
+            }
+
+            case BatteryTask.DeliverReturn:
+            {
+                var b = carriedBattery;
+                if (b == null)
+                {
+                    ReleaseBatteryWork();
+                    if (!TryDispatchWork()) GoLoiter();
+                    return;
+                }
+                bool padHome = b.hasHome && b.homePad != null && b.homePad.builtYet;
+                Vector2 home = padHome ? (Vector2)b.homePad.transform.position
+                    : b.hasHome ? b.homePos : DroneManager.ScrapPoint;
+                if (!MoveToward(home, 0.5f)) return;
+                SetDownBattery();
+                b.claimedBy = null;
+                batteryHaul = null;
+                if (padHome && !b.homePad.TrySlotBattery(b, playerAction: false))
+                {
+                    // its rack filled meanwhile — bank it at a station, never pile it at the pad
+                    b.ForgetHome();
+                    b.claimedBy = this;
+                    batteryHaul = b;
+                    CarryBattery(b);
+                    BailBatteryWorkToStation();
+                    return;
+                }
+                if (!padHome) b.transform.position = home;   // loose home — back on its old spot
+                b.ForgetHome();
+                batteryTask = BatteryTask.None;
+                if (!TryDispatchWork()) GoLoiter();
+                return;
+            }
+
+            case BatteryTask.BailToStation:
+            {
+                var st = stationTarget;
+                var b = carriedBattery;
+                if (b == null)
+                {
+                    ReleaseBatteryWork();
+                    if (!TryDispatchWork()) GoLoiter();
+                    return;
+                }
+                if (st == null || !st.builtYet)
+                {
+                    ReleaseBatteryWork();               // station died — battery lands here, still recoverable
+                    if (!TryDispatchWork()) GoLoiter();
+                    return;
+                }
+                if (!MoveToward(st.transform.position, 0.55f)) return;
+                SetDownBattery();
+                st.inboundBatteries = Mathf.Max(0, st.inboundBatteries - 1);
+                stationTarget = null;
+                batteryHaul = null;
+                b.claimedBy = null;
+                st.TrySlotBattery(b, playerAction: false);   // rack full → it lies beside the station
+                batteryTask = BatteryTask.None;
+                if (!TryDispatchWork()) GoLoiter();
+                return;
+            }
+
+            case BatteryTask.PickupForPad:
+            {
+                var b = batteryHaul;
+                if (b == null || b.claimedBy != this || b.following || b == Battery.held
+                    || padTarget == null || !padTarget.builtYet)
+                {
+                    ReleaseBatteryWork();
+                    if (!TryDispatchWork()) GoLoiter();
+                    return;
+                }
+                Vector2 bpos = b.transform.position;
+                if (!MoveToward(bpos, 0.4f)) return;
+                FaceDir(bpos - (Vector2)transform.position);
+                if (b.pad != null) b.pad.UnslotBattery(b);   // station stock stamps if it drank here
+                CarryBattery(b);
+                batteryTask = BatteryTask.DeliverToPad;
+                return;
+            }
+
+            case BatteryTask.DeliverToPad:
+            {
+                var pt = padTarget;
+                if (pt == null || !pt.builtYet)
+                {
+                    ReleaseBatteryWork();               // sets the carried battery down where we are
+                    if (!TryDispatchWork()) GoLoiter();
+                    return;
+                }
+                if (!MoveToward(pt.transform.position, 0.5f)) return;
+                var b = carriedBattery;
+                SetDownBattery();
+                pt.inboundBatteries = Mathf.Max(0, pt.inboundBatteries - 1);
+                padTarget = null;
+                batteryHaul = null;
+                if (b != null)
+                {
+                    b.claimedBy = null;
+                    b.ForgetHome();                     // this rack is its home now
+                    if (!pt.TrySlotBattery(b, playerAction: false))
+                    {
+                        // rack filled mid-flight — bank it at a station, never pile it at the pad
+                        b.claimedBy = this;
+                        batteryHaul = b;
+                        CarryBattery(b);
+                        BailBatteryWorkToStation();
+                        return;
+                    }
+                }
+                batteryTask = BatteryTask.None;
+                if (!TryDispatchWork()) GoLoiter();
+                return;
+            }
+
+            default:
+                ReleaseBatteryWork();
+                if (!TryDispatchWork()) GoLoiter();
+                return;
+        }
+    }
+
+    void CarryBattery(Battery b)
+    {
+        carriedBattery = b;
+        b.transform.SetParent(transform);
+        b.transform.localPosition = new Vector3(0f, -0.26f, 0f);   // rides at the work face
+        b.gameObject.SetActive(false);
+    }
+
+    void SetDownBattery()
+    {
+        var b = carriedBattery;
+        carriedBattery = null;
+        if (b == null) return;
+        b.transform.SetParent(GS.FindParent(GS.Parent.loot), true);
+        b.transform.position = transform.position;
+        b.transform.rotation = Quaternion.identity;   // never lands with the drone's spin
+        b.gameObject.SetActive(true);
+    }
+
+    /// <summary>Batch pickup (bag drones): an extra flat battery rides IN THE BAG on the normal
+    /// cargo tariff (space + charge), so batch size is bounded by sack capacity like any haul.</summary>
+    void StowBatteryInBag(Battery b)
+    {
+        batteryBatch.Add(b);
+        AddCargo(new CargoEntry { kind = 2, space = sack != null ? sack.batterySpace : 4, payload = b.gameObject });
+        b.transform.SetParent(transform);
+        b.gameObject.SetActive(false);
+    }
+
+    /// <summary>Remove a stowed payload's cargo entry (bag space refunds; spent charge doesn't).</summary>
+    void RemoveCargoPayload(GameObject go)
+    {
+        for (int k = 0; k < cargo.Count; k++)
+        {
+            if (cargo[k].kind != 2 || cargo[k].payload != go) continue;
+            cargoSpaceUsed = Mathf.Max(0, cargoSpaceUsed - cargo[k].space);
+            cargo.RemoveAt(k);
+            SetCargoUnits(cargoSpaceUsed);
+            if (sack != null) sack.SetFill(cargoSpaceUsed / (float)SackMaxSpace);
+            return;
+        }
+    }
+
+    /// <summary>Unwind the bag batch outside a delivery: stowed batteries come back out beside
+    /// the drone with claims released — the batch mirror of SetDownBattery. Home memory survives,
+    /// so later runs still know where each belongs.</summary>
+    void ReleaseBatteryBatch()
+    {
+        for (int k = batteryBatch.Count - 1; k >= 0; k--)
+        {
+            var b = batteryBatch[k];
+            batteryBatch.RemoveAt(k);
+            RemoveCargoPayload(b != null ? b.gameObject : null);
+            if (b == null) continue;
+            b.transform.SetParent(GS.FindParent(GS.Parent.loot), true);
+            b.transform.position = transform.position + GS.RandCircle(0.15f, 0.4f);
+            b.transform.rotation = Quaternion.identity;
+            b.gameObject.SetActive(true);
+            if (b.claimedBy == this) b.claimedBy = null;
+        }
+    }
+
+    /// <summary>Total chip space riding in the bag.</summary>
+    int CargoChipSpace()
+    {
+        int s = 0;
+        for (int k = 0; k < cargo.Count; k++) if (cargo[k].kind == 0) s += cargo[k].space;
+        return s;
+    }
+
+    /// <summary>Nearest station still short of juice, counting chips already flying its way.</summary>
+    BatteryStation StationWantingChips()
+    {
+        BatteryStation best = null;
+        float bd = float.MaxValue;
+        foreach (var st in BatteryStation.all)
+        {
+            if (st == null || !st.builtYet || !st.enabled) continue;
+            if (st.JuiceDemand - st.inboundChipSpace * st.juicePerChipSpace <= 0f) continue;
+            float d = ((Vector2)st.transform.position - (Vector2)transform.position).sqrMagnitude;
+            if (d < bd) { bd = d; best = st; }
+        }
+        return best;
+    }
+
+    /// <summary>Spill up to <paramref name="maxSpace"/> of the bagged chips beside the grinder —
+    /// its suction pulls each one in with the ease-in shrink. Non-chip cargo (orbs, payloads)
+    /// stays aboard, as does any chip beyond what this station wants.</summary>
+    void DumpChipsForStation(BatteryStation st, int maxSpace = int.MaxValue)
+    {
+        for (int k = cargo.Count - 1; k >= 0 && maxSpace > 0; k--)
+        {
+            if (cargo[k].kind != 0) continue;
+            maxSpace -= cargo[k].space;
+            DroneManager.SpawnScrap(st.transform.position + GS.RandCircle(0.15f, 0.45f),
+                cargo[k].sizeClass, cargo[k].element);
+            cargoSpaceUsed -= cargo[k].space;
+            cargo.RemoveAt(k);
+        }
+        st.inboundChipSpace = Mathf.Max(0, st.inboundChipSpace - chipsForStationSpace);
+        chipsForStationSpace = 0;
+        cargoSpaceUsed = Mathf.Max(0, cargoSpaceUsed);
+        SetCargoUnits(cargoSpaceUsed);
+        if (sack != null) sack.SetFill(cargoSpaceUsed / (float)SackMaxSpace);
+    }
+
+    /// <summary>Any equipment work on the board? Mirrors TryTakeKitJob's criteria — the check a
+    /// battery-hauling drone runs to notice it's been summoned for a kit.</summary>
+    bool KitWorkAvailable()
+    {
+        for (int k = 0; k < DroneEquipmentItem.all.Count; k++)
+        {
+            var it = DroneEquipmentItem.all[k];
+            if (it == null || it.transform.InDungeon()) continue;
+            if (it.claimedBy != null && it.claimedBy != this) continue;
+            return true;
+        }
+        var list = Building.buildings;
+        for (int k = 0; k < list.Count; k++)
+            if (list[k] is EquipmentWorkshop w && w.HasUnclaimedStock && PathZone.AtBase(w.transform.position))
+                return true;
+        return false;
+    }
+
+    /// <summary>Summoned to better work mid-haul: unwind every claim EXCEPT the battery in hand,
+    /// then ditch it at the nearest station (BailToStation leg) for the rest of the fleet.</summary>
+    void BailBatteryWorkToStation()
+    {
+        if (stationChipTarget != null && stationChipTarget.claimedBy == this) stationChipTarget.claimedBy = null;
+        stationChipTarget = null;
+        if (stationTarget != null)
+        {
+            if (batteryTask == BatteryTask.PickupForStation || batteryTask == BatteryTask.DeliverToStation)
+                stationTarget.inboundBatteries = Mathf.Max(0, stationTarget.inboundBatteries - 1);
+            if (chipsForStationSpace > 0)
+                stationTarget.inboundChipSpace = Mathf.Max(0, stationTarget.inboundChipSpace - chipsForStationSpace);
+        }
+        if (padTarget != null && (batteryTask == BatteryTask.PickupForPad || batteryTask == BatteryTask.DeliverToPad))
+            padTarget.inboundBatteries = Mathf.Max(0, padTarget.inboundBatteries - 1);
+        padTarget = null;
+        chipsForStationSpace = 0;
+        if (batteryHaul != null && batteryHaul != carriedBattery && batteryHaul.claimedBy == this)
+            batteryHaul.claimedBy = null;
+        batteryHaul = carriedBattery;
+
+        BatteryStation nearest = null;
+        float bd = float.MaxValue;
+        foreach (var st in BatteryStation.all)
+        {
+            if (st == null || !st.builtYet || !st.enabled) continue;
+            float d = ((Vector2)st.transform.position - (Vector2)transform.position).sqrMagnitude;
+            if (d < bd) { bd = d; nearest = st; }
+        }
+        stationTarget = nearest;
+        if (nearest != null)
+        {
+            nearest.inboundBatteries++;
+            batteryTask = BatteryTask.BailToStation;
+            return;
+        }
+        // no station standing — set it down and go
+        var b = carriedBattery;
+        SetDownBattery();
+        if (b != null && b.claimedBy == this) b.claimedBy = null;
+        batteryHaul = null;
+        batteryTask = BatteryTask.None;
+        if (!TryDispatchWork()) GoLoiter();
+    }
+
+    /// <summary>Abandon whatever leg of the battery run is active: claims released, inbound
+    /// counters unwound, any carried battery set down where the drone stands (home memory
+    /// survives, so a later run still returns it to its rack).</summary>
+    void ReleaseBatteryWork()
+    {
+        if (batteryTask == BatteryTask.None && carriedBattery == null && chipsForStationSpace == 0
+            && batteryBatch.Count == 0) return;
+        if (stationChipTarget != null && stationChipTarget.claimedBy == this) stationChipTarget.claimedBy = null;
+        stationChipTarget = null;
+        if (stationTarget != null)
+        {
+            if (batteryTask == BatteryTask.PickupForStation || batteryTask == BatteryTask.DeliverToStation
+                || batteryTask == BatteryTask.BailToStation)
+            {
+                // one inbound reservation per outstanding claim: the battery in hand, every one
+                // stowed in the bag, and a mid-batch pending pickup (batteryHaul beyond the hand)
+                int outstanding = (carriedBattery != null ? 1 : 0) + batteryBatch.Count
+                    + (batteryHaul != null && batteryHaul != carriedBattery ? 1 : 0);
+                stationTarget.inboundBatteries = Mathf.Max(0,
+                    stationTarget.inboundBatteries - Mathf.Max(1, outstanding));
+            }
+            if (chipsForStationSpace > 0)
+                stationTarget.inboundChipSpace = Mathf.Max(0, stationTarget.inboundChipSpace - chipsForStationSpace);
+        }
+        ReleaseBatteryBatch();   // stowed batteries come back out beside the drone
+        if (padTarget != null && (batteryTask == BatteryTask.PickupForPad || batteryTask == BatteryTask.DeliverToPad))
+            padTarget.inboundBatteries = Mathf.Max(0, padTarget.inboundBatteries - 1);
+        padTarget = null;
+        chipsForStationSpace = 0;
+        if (batteryHaul != null && batteryHaul.claimedBy == this) batteryHaul.claimedBy = null;
+        batteryHaul = null;
+        stationTarget = null;
+        SetDownBattery();   // never strand a battery inside a dead drone
+        batteryTask = BatteryTask.None;
     }
 
     /// <summary>Colony kit pickup: claim the nearest unclaimed ground kit, else fly to a
@@ -1858,7 +2927,9 @@ public class Drone : AllyAI, IOnDeath
 
     /// <summary>Physics-steered move with the ally A* (never chews walls, both dimensions).
     /// Returns true once within <paramref name="arrive"/> of the point. <paramref name="speedScale"/>
-    /// under 1 gives the lazy off-duty drift (work moves stay at 1).</summary>
+    /// under 1 gives the lazy off-duty drift (work moves stay at 1). Steering is recomputed from
+    /// the LIVE position every tick — only the path/sight QUERY is throttled; replaying a frozen
+    /// direction between queries read as weaving and orbiting around loot.</summary>
     protected bool MoveToward(Vector2 point, float arrive = 0.35f, float speedScale = 1f)
     {
         Vector2 offset = point - (Vector2)transform.position;
@@ -1870,13 +2941,23 @@ public class Drone : AllyAI, IOnDeath
         repathTimer -= Time.fixedDeltaTime;
         if (repathTimer <= 0f)
         {
-            repathTimer = 0.25f;   // cached A* cadence, same budget as ClawBot
-            // bodyRadius > 0 → LOS-simplified path: diagonals fly straight instead of the
-            // A* staircase zigzag
-            pathValid = MinePath.StepToward(transform.position, point, out pathDir, 4096, 0.25f)
-                && pathDir != Vector2.zero;
+            repathTimer = 0.25f;   // path/LOS query cadence, same budget as ClawBot
+            // Straight shot first: a directly visible point (the common case chasing chips) is
+            // homed on exactly — no cell-centre waypoints. The A* only runs while rock actually
+            // separates drone and target; bodyRadius > 0 → LOS-simplified path, so diagonal
+            // routes fly straight instead of the staircase zigzag.
+            pathDirect = MinePath.LineOfSightWide(transform.position, point, 0.2f);
+            if (!pathDirect)
+                pathValid = MinePath.StepToward(transform.position, point, out _, out pathPoint, 4096, 0.25f);
         }
-        Vector2 dir = pathValid ? pathDir : offset.normalized;
+        Vector2 dir;
+        if (pathDirect || !pathValid) dir = offset.normalized;
+        else
+        {
+            Vector2 leg = pathPoint - (Vector2)transform.position;
+            if (leg.sqrMagnitude <= 0.15f * 0.15f) repathTimer = 0f;   // waypoint reached — requery next tick
+            dir = leg.sqrMagnitude > 1e-4f ? leg.normalized : offset.normalized;
+        }
         AS.TryAddForce(moveForce * speedScale * DroneManager.Haste * Mathf.Max(0.2f, actRate) * dir, true);
         FaceDir(dir);
         return false;
@@ -1906,9 +2987,11 @@ public class Drone : AllyAI, IOnDeath
         allies.Remove(this);
         ClearPathRegistrations();
         ReleaseCollectTarget();
+        ReleaseDrillClaim();
+        ReleaseBatteryWork();                            // carried battery lands where the drone fell
         if (HasCargo) DumpCargoAt(transform.position);   // loot spills where the drone fell
         if (equipment == DroneEquipment.Drill || equipment == DroneEquipment.Bag)
-            DroneEquipmentItem.Spawn(equipment, transform.position);   // kit survives its owner
+            EquipmentWorkshop.QueueReplacement(equipment); // kit dies with its owner — the workshop forges a free one next day
         LeaveCurrentRole();
         if (dock != null) dock.NotifyResidentDied(this);
     }

@@ -28,6 +28,8 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     public bool multiDrag = false;
     [Tooltip("Offered by the build menu while in the DUNGEON (placed on excavated mine cells). Requires builtBlasts = 0 — dungeon builds complete on purchase, no ember/pylons exist there.")]
     public bool dungeonBuildable = false;
+    [Tooltip("May the player spin this building with R AFTER placement (footprint permitting)? The placement ghost always rotates regardless.")]
+    public bool rotatable = true;
     public LifeScript physic;
     // pathfinding footprint bookkeeping — what we registered, so unregistration is exact
     private bool footprintRegistered;
@@ -70,6 +72,10 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     private BuildingPower _power;
     /// <summary>Aggregate view onto adjacent EnergyPads. Use Power.Use/Add/Energy from consumer scripts.</summary>
     public BuildingPower Power => _power ??= new BuildingPower(this);
+
+    /// <summary>The power view WITHOUT materialising it — readers (battery distribution) must not
+    /// turn every building into a subscriber just by asking who consumes from a pad.</summary>
+    public BuildingPower PowerOrNull => _power;
 
     /// <summary>True while the grid this building draws from still has any energy. Aiming towers gate
     /// their tracking rotation on this so a fully-drained tower goes dormant (stops moving/looking).</summary>
@@ -361,6 +367,11 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     public virtual void OnDestroy()
     {
         if(GS.qutting) return;
+        // Deregister everywhere a live building is enumerated — a destroyed entry left in these
+        // lists throws the moment anything touches its (also destroyed) UIParent.
+        buildings.Remove(this);
+        if (BM.i != null) BM.i.buildings.Remove(this);
+        if (UIParent != null) Destroy(UIParent);   // lives under UIManager.buildingsUI, not us
         UnregisterPathFootprint();
         BDisable();
         // Dungeon-placed buildings (telepads) never registered with the base grid.
@@ -451,6 +462,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         get
         {
             if (!builtYet || icons.Count > 0 || upgradeAction != null) return false;
+            if (markedForDemolition) return false;   // condemned — wreckers work here, not medics
             if (droneRepairGhost) return true;
             // Live buildings heal toward the PHYSIC's maxHp, not the maxHealth field: pre-placed
             // buildings keep their authored physic (the Throne is 25 hp vs maxHealth 10), and
@@ -485,6 +497,58 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         if (applied <= 0f) return 0f;
         physic.Change(applied, -1, false);
         return applied;
+    }
+
+    // ------------------------------------------------------------------ drone demolition
+
+    /// <summary>Soft claim so a squad of wreckers spreads over marked buildings (mirrors Ore.miner).</summary>
+    [HideInInspector] public Drone demolisher;
+    bool markedForDemolition;
+    float demolishHp;   // deconstruction work banked so far (hp units, vs maxHealth)
+
+    public bool MarkedForDemolition => markedForDemolition;
+
+    static readonly Color DemolitionTint = new Color(1f, 0.45f, 0.4f, 0.8f);
+
+    /// <summary>Toggle owned by DemolitionMarks (Delete over the building — input in BM.Update).
+    /// Unmarking cancels the teardown: banked work is forgotten and the sprites repaint.</summary>
+    public void SetDemolitionMark(bool on)
+    {
+        if (markedForDemolition == on) return;
+        markedForDemolition = on;
+        demolishHp = 0f;
+        demolisher = null;
+        if (spriterenderers != null)
+        {
+            foreach (SpriteRenderer s in spriterenderers)
+            {
+                if (s == null) continue;
+                s.color = on ? DemolitionTint
+                    : builtYet && !droneRepairGhost ? Color.white : GS.ColFromEra();
+            }
+        }
+        // a destroyed ghost keeps its repair-progress fade (matches RepairTick's repaint)
+        if (!on && droneRepairGhost && sr != null)
+            sr.color = Color.Lerp(new Color(1f, 0.5f, 0.5f, 0.5f), Color.white, repairHp / Mathf.Max(0.01f, maxHealth));
+    }
+
+    /// <summary>Apply <paramref name="hp"/> of drone deconstruction. Work banks against maxHealth;
+    /// at completion the whole building object is destroyed (grid, path-footprint and power cleanup
+    /// all ride OnDestroy). Returns the hp actually applied so the drone bills real work only.</summary>
+    public float DemolishTick(float hp)
+    {
+        if (!markedForDemolition || hp <= 0f) return 0f;
+        float used = Mathf.Min(hp, maxHealth - demolishHp);
+        demolishHp += used;
+        // read the teardown: the condemned tint fades toward gone as the work lands
+        if (sr != null)
+            sr.color = Color.Lerp(DemolitionTint, new Color(1f, 0.3f, 0.25f, 0.15f), demolishHp / Mathf.Max(0.01f, maxHealth));
+        if (demolishHp >= maxHealth - 0.001f)
+        {
+            if (UIParent != null && UIParent.activeInHierarchy) OnClose?.Invoke();   // pop the escape handler
+            Destroy(hasExtraParent && transform.parent != null ? transform.parent.gameObject : gameObject);
+        }
+        return used;
     }
 
     void BuildFirst()
@@ -842,6 +906,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     {
         foreach (Building b in buildings)
         {
+            if (b == null || b.UIParent == null) continue;
             if (b.UIParent.activeInHierarchy)
             {
                 b.UIParent.SetActive(false);
@@ -854,6 +919,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     {
         foreach (Building b in buildings)
         {
+            if (b == null || b.UIParent == null) continue;
             if (b.UIParent.activeInHierarchy)
             {
                 return false;
@@ -907,6 +973,54 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         gridSize = sizeCells;
         GridManager.i.SetArea(anchor, sizeCells, true);
     }
+
+    /// <summary>
+    /// Rotate a PLACED building 90° clockwise about its footprint centre — the post-placement
+    /// counterpart of the ghost's R key (input lives in BM.Update). Square footprints just spin;
+    /// non-square ones swap their occupied cells, and the swap must fit (clear + in constructor
+    /// range) or nothing happens. Base grid only — dungeon cells are single-cell anyway.
+    /// </summary>
+    public bool TryRotate90()
+    {
+        if (!rotatable || GridManager.i == null || !PathZone.AtBase(transform.position)) return false;
+        Transform root = hasExtraParent && transform.parent != null ? transform.parent : transform;
+        Vector2Int newSize = new Vector2Int(gridSize.y, gridSize.x);
+        if (newSize == gridSize)   // square footprint: same cells, pure spin
+        {
+            root.rotation = Quaternion.Euler(0f, 0f, root.eulerAngles.z - 90f);
+            OnRotated(anchorCell, gridSize);
+            return true;
+        }
+        // keep the footprint centred: the anchor absorbs the whole-cell part of the size swap
+        Vector2Int newAnchor = anchorCell + new Vector2Int((gridSize.x - newSize.x) / 2, (gridSize.y - newSize.y) / 2);
+        GridManager.i.SetArea(anchorCell, gridSize, false);
+        if (!GridManager.i.AreaClear(newAnchor, newSize))
+        {
+            GridManager.i.SetArea(anchorCell, gridSize, true);   // no room — put our cells back
+            return false;
+        }
+        GridManager.i.SetArea(newAnchor, newSize, true);
+        // world shift = anchor shift + the sub-cell remainder of the swap (matches BM.Position's
+        // vAdjust convention: buildingPos = GridToWorld(anchor) + (-0.125 + 0.5*size))
+        Vector2 shift = (Vector2)(newAnchor - anchorCell) * GridManager.i.cellSize
+                      + 0.5f * new Vector2(size.y - size.x, size.x - size.y);
+        root.position += (Vector3)shift;
+        root.rotation = Quaternion.Euler(0f, 0f, root.eulerAngles.z - 90f);
+        if (UIParent != null) UIParent.transform.position += (Vector3)shift;
+        Vector2Int oldAnchor = anchorCell, oldSize = gridSize;
+        anchorCell = newAnchor;
+        gridSize = newSize;
+        size = new Vector2(size.y, size.x);   // size tracks the CURRENT world footprint
+        if (footprintRegistered) RegisterPathFootprint();   // blocked cells changed shape
+        _power?.Invalidate();   // our adjacent-cell ring moved with the footprint
+        OnRotated(oldAnchor, oldSize);
+        return true;
+    }
+
+    /// <summary>A successful TryRotate90 finished (transform, anchor and gridSize all updated).
+    /// The pre-rotation footprint is passed so subclasses can move any cell-keyed registration —
+    /// e.g. the energy pad/hub re-stamps its source claim so consumer connections follow the turn.</summary>
+    protected virtual void OnRotated(Vector2Int oldAnchor, Vector2Int oldSize) { }
 
     Vector2 PositionRegularly(int n, int max)
     {

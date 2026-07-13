@@ -29,6 +29,10 @@ public class ResourceManager : MonoBehaviour
     
     public int[] held = new int[] { 0, 0, 0, 0 };
     public int[] maxHeld = new int[] { 50, 25, 10, 4 };
+    // Daily on-person quota: every held orb that leaves the player (banked at base, spent via a
+    // drop) uses up carry capacity for the rest of the day — maxHeld is a per-day THROUGHPUT,
+    // not just a pack size. The full quota comes back at the day tick.
+    private int[] heldQuotaUsed = new int[] { 0, 0, 0, 0 };
     public LatentShield latentShield;
     public static float[] debt;
     [SerializeField] Animator[] coreAnims;
@@ -102,6 +106,9 @@ public class ResourceManager : MonoBehaviour
         }
         yield return null;
         DropResources();
+        // starting resources ride in via the held pack — that must not eat day 1's carry quota
+        ResetHeldQuota();
+        SpawnManager.instance.OnNewDay += ResetHeldQuota;
     }
 
     private void Update()
@@ -231,12 +238,31 @@ public class ResourceManager : MonoBehaviour
     }
 
 
+    /// <summary>What the player may still carry of an element TODAY — maxHeld minus the quota
+    /// already spent banking/spending held orbs since the last day tick.</summary>
+    public int MaxHeldToday(int index)
+    {
+        return Mathf.Max(0, maxHeld[index] - heldQuotaUsed[index]);
+    }
+
+    /// <summary>Fresh day (and game start): the full on-person quota is back, and attraction
+    /// re-opens for anything that was quota-capped.</summary>
+    private void ResetHeldQuota()
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            heldQuotaUsed[i] = 0;
+            OrbScript.canAttract[i] = held[i] < MaxHeldToday(i);
+        }
+        UpdateResourceUI();
+    }
+
     public bool HasRoom(int index)
     {
-        if (held[index] < maxHeld[index])
+        if (held[index] < MaxHeldToday(index))
         {
             held[index] += 1;
-            if (held[index] == maxHeld[index])
+            if (held[index] >= MaxHeldToday(index))
             {
                 OrbScript.canAttract[index] = false;
             }
@@ -255,7 +281,7 @@ public class ResourceManager : MonoBehaviour
         held = info;
         for(int i = 0; i < 4; i++)
         {
-            if (held[i] >= maxHeld[i])
+            if (held[i] >= MaxHeldToday(i))
             {
                 OrbScript.canAttract[i] = false;
             }
@@ -268,6 +294,12 @@ public class ResourceManager : MonoBehaviour
 
     public void DropResources(int ind = -1, bool swapres = true) //childs orbs to throne unless beyond max resources
     {
+        // A refundable build allocation is outstanding (building picked from the menu, not yet
+        // placed): freeze ALL held→pylon movement so cancelling restores the pool EXACTLY —
+        // banking now would inflate the pylons past their caps on refund, and eat the day's
+        // carry quota for a build that never happened. The auto-bank / pickup drops resume the
+        // moment the building is placed or the pick is cancelled.
+        if (BM.PlacementRefundPending) return;
         int[] info = new int[] {0,0,0,0};
         List<OrbScript> obuffer = new List<OrbScript>();
         foreach (OrbScript o in heldOrbs)
@@ -281,6 +313,7 @@ public class ResourceManager : MonoBehaviour
             if(orbs[o.orbType] < orbCaps[o.orbType])
             {
                 OneOrb(o.orbType);
+                heldQuotaUsed[o.orbType] += 1;   // banked off the person — today's quota shrinks
                 OrbMagnet om = GetNextPylon(o.orbType);
                 om.DepositOrb(o);
             }
@@ -297,6 +330,42 @@ public class ResourceManager : MonoBehaviour
         }
         ResetHeld(info);
         UpdateResourceUI();
+    }
+
+    /// <summary>Bank ONE orb into the pylon network from an arbitrary world point (drone hauls).
+    /// Same rules as the player's DropResources: gated on the pool cap, lands in a matching
+    /// pylon (throne as fallback; pylons overflow into stores on their own). Returns false when
+    /// that element's pool is full — the caller keeps its orb wild.</summary>
+    public bool TryBankOrbFrom(int type, Vector3 from)
+    {
+        if (type < 0 || type > 3 || orbs[type] >= orbCaps[type]) return false;
+        if (SpawnManager.instance == null) return false;
+        var orb = SpawnManager.instance.orbPools[type].Get();
+        var os = orb != null ? orb.GetComponent<OrbScript>() : null;
+        if (os == null) return false;
+        orb.transform.position = from;
+        OneOrb(type);
+        GetNextPylon(type).DepositOrb(os, from);
+        UpdateResourceUI();
+        return true;
+    }
+
+    /// <summary>Bank ONE orb into a SPECIFIC magnet — the pylon (or store) a drone flew its
+    /// haul to. Same pool gate as <see cref="TryBankOrbFrom"/>; a destination that filled
+    /// mid-flight falls back to the normal next-pylon routing so the orb is never lost.</summary>
+    public bool TryBankOrbInto(OrbMagnet dest, int type, Vector3 from)
+    {
+        if (type < 0 || type > 3 || orbs[type] >= orbCaps[type]) return false;
+        if (SpawnManager.instance == null) return false;
+        var orb = SpawnManager.instance.orbPools[type].Get();
+        var os = orb != null ? orb.GetComponent<OrbScript>() : null;
+        if (os == null) return false;
+        orb.transform.position = from;
+        OneOrb(type);
+        if (dest == null || dest.orbType != type || dest.n >= dest.capacity) dest = GetNextPylon(type);
+        dest.DepositOrb(os, from);
+        UpdateResourceUI();
+        return true;
     }
 
     private OrbMagnet GetNextPylon(int typ)
@@ -507,7 +576,7 @@ public class ResourceManager : MonoBehaviour
         {
             if (held[i] != 0)
             {
-                resourceUIs[i].text = "(" + held[i].ToString() + " / " + maxHeld[i].ToString() + (orbs[i] >= 0 ? ") + " : ") - ") + Mathf.Abs(orbs[i]).ToString() + " / " + orbCaps[i].ToString();
+                resourceUIs[i].text = "(" + held[i].ToString() + " / " + MaxHeldToday(i).ToString() + (orbs[i] >= 0 ? ") + " : ") - ") + Mathf.Abs(orbs[i]).ToString() + " / " + orbCaps[i].ToString();
             }
             else
             {

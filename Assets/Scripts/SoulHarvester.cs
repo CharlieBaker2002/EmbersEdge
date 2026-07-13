@@ -17,6 +17,13 @@ public class SoulHarvester : Building, IOnDeath
     public bool upgraded = false;
     [SerializeField] Sprite upgradeSprite;
     bool canGiveResources = false;
+    /// <summary>Bag-drone claim so two drones never fly for the same harvester's takings
+    /// (mirrors OreChip.claimedBy). The drone-side scan treats a claimant that is no longer
+    /// on the job as stale, so a yanked drone can't blacklist a harvester.</summary>
+    [HideInInspector] public Drone claimedBy;
+    /// <summary>Fleet-wide cool-off after a drone failed to reach this harvester (mirrors
+    /// OreChip.unreachableUntil) — stops a claim/release thrash loop against blocked ground.</summary>
+    [HideInInspector] public float droneRetryAt;
  
     public override void Start()
     {
@@ -92,6 +99,34 @@ public class SoulHarvester : Building, IOnDeath
         return null;
     }
 
+    /// <summary>Anything for a bag drone to lift? Same once-a-day gate as the walk-up sweep.</summary>
+    public bool HasDroneCollectable
+    {
+        get
+        {
+            if (!canGiveResources || full == null) return false;
+            for (int i = 0; i < full.Length; i++) if (full[i]) return true;
+            return false;
+        }
+    }
+
+    /// <summary>Hand ONE parked orb to a drone; its slot frees up for the generators. Taking
+    /// the last full slot consumes the day's collection, exactly like the player's walk-up
+    /// sweep — anything a drone leaves behind (bag full, pylons/stores full) stays claimable.</summary>
+    public OrbScript TakeOrbForDrone()
+    {
+        for (int i = 0; i < full.Length; i++)
+        {
+            if (!full[i]) continue;
+            full[i] = false;
+            OrbScript o = ts[i].GetComponentInChildren<OrbScript>();
+            if (o == null) continue;   // slot flag with no orb — keep scanning
+            if (Array.IndexOf(full, true) == -1) canGiveResources = false;
+            return o;
+        }
+        return null;
+    }
+
     private void CollectOrbs()
     {
         OrbScript o;
@@ -124,9 +159,10 @@ public class SoulHarvester : Building, IOnDeath
         foreach(OrbScript o in GetComponentsInChildren<OrbScript>())
         {
             if (upgraded)
-            {    
+            {
                 o.timeLeft = 75f;
                 o.state = OrbScript.OrbState.wild;
+                o.wildKind = -1;   // fresh wild life — re-stamp its cohort on the next tick
                 os.Add(o);
             }
             else

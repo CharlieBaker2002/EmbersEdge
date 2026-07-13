@@ -152,6 +152,13 @@ public class MineField : MonoBehaviour
     public Vector2 era2SpawnerPoints = new Vector2(90f, 180f);
     public Vector2 era3SpawnerPoints = new Vector2(270f, 540f);
 
+    [Header("Pulse battery crates")]
+    [Tooltip("Self-charging pulse batteries hidden in plain (non-ore, non-pocket) walls per dungeon. " +
+             "The crate glints on the wall face once defogged; breaking the wall frees the battery.")]
+    public int pulseCrateCount = 6;
+    [Tooltip("Minimum spacing between crates, in cells (relaxed if the map can't satisfy it).")]
+    public int crateMinSpacing = 8;
+
     [Header("Mining feel")]
     [Tooltip("Seconds of continuous drill CONTACT to excavate a cell, by hardness tier (Regular / Hard / " +
              "VeryHard). No knockback — you hold the drill on the rock until it gives.")]
@@ -223,6 +230,17 @@ public class MineField : MonoBehaviour
     // Mining out ANY ONE cell of a spawner's footprint destroys it — a single chip through the rock
     // kills it. Cells outside any footprint simply aren't in the dictionary.
     readonly Dictionary<int, MineSpawner> spawnerOfCell = new Dictionary<int, MineSpawner>();
+
+    // ----- pulse battery crates (walls with a battery inside) -----
+    // Crate cells are otherwise ordinary plain walls (drones may eat them); breaking one frees a
+    // PulseBattery. The embedded crate renders as a small animated SpriteRenderer above the wall art
+    // (below the fog, so it only shows once explored). IsPlainWall excludes crate cells so spawner
+    // footprints never stamp over one.
+    readonly HashSet<int> crateCells = new HashSet<int>();
+    readonly Dictionary<int, GameObject> crateOverlayByIdx = new Dictionary<int, GameObject>();
+    Sprite[] crateSprites;
+    Transform cratesParent;
+    int entryClearRadius;
 
     /// <summary>Track a spawner's footprint so mining out any one of its cells destroys it. Every
     /// footprint cell is force-set to VeryHard rock — whatever it replaced — so digging one out is a
@@ -319,6 +337,12 @@ public class MineField : MonoBehaviour
         CancelInto(rb, sep);
         return true;
     }
+
+    /// <summary>Circle-vs-tile push-out for unregistered loose props (ore chips): the separation
+    /// that lifts a circle of this radius out of any solid cells — zero when clear, and zero
+    /// anywhere outside the mine region. Same math the registered bodies use; exposed for things
+    /// too numerous to put in the bodies registry.</summary>
+    public Vector2 SeparationFor(Vector2 pos, float radius) => SeparationAt(pos, radius);
 
     // Circle-vs-tile push-out for a point of the given radius. Shared by the body collision and the
     // drill-tip hard stop. Returns the separation that lifts the circle out of any solid cells.
@@ -492,6 +516,10 @@ public class MineField : MonoBehaviour
         // 3b. lay the ore down in clusters (after pocket tagging + the entry carve, so blobs never
         //     land on a pocket cavity or the entry)
         ScatterOreClusters();
+
+        // 3c. hide the pulse battery crates in plain rock (after ore/pockets, so eligibility is final)
+        entryClearRadius = Mathf.Max(2, layout.entryCavityRadius) + 6;
+        ScatterPulseCrates();
 
         // 4. bulk-paint render + fog in one block op each (fast even at 100k+ cells)
         PaintAllBlocks();
@@ -768,6 +796,97 @@ public class MineField : MonoBehaviour
         ct == CellType.Hard ? hardPool : ct == CellType.VeryHard ? veryHardPool : regularPool;
 
     // =====================================================================================
+    //  Pulse battery crates
+    // =====================================================================================
+
+    /// <summary>Hide <see cref="pulseCrateCount"/> pulse-battery crates in plain rock: never ore,
+    /// never pocket space or an authored ring wall, clear of the entry cavity, spaced apart.
+    /// The crate face renders above the wall (under the fog) so a defogged wall shows its glint.</summary>
+    void ScatterPulseCrates()
+    {
+        ClearCrates();
+        if (pulseCrateCount <= 0) return;
+
+        if (crateSprites == null || crateSprites.Length == 0)
+            crateSprites = DroneManager.LoadStripNumeric("PulseEmberCrate");
+        if (cratesParent == null)
+        {
+            var go = new GameObject("PulseCrates");
+            go.transform.SetParent(transform, false);
+            cratesParent = go.transform;
+        }
+
+        var chosen = new List<Vector3Int>();
+        int spacing = Mathf.Max(0, crateMinSpacing);
+        for (int attempt = 0; attempt < 600 && chosen.Count < pulseCrateCount; attempt++)
+        {
+            // late attempts relax the spacing so a cramped map still gets its full count
+            int minSpacing = attempt < 300 ? spacing : spacing / 2;
+            var c = new Vector3Int(Random.Range(xMin + 2, xMin + w - 2), Random.Range(yMin + 2, yMin + h - 2), 0);
+            if (Mathf.Abs(c.x) < entryClearRadius && Mathf.Abs(c.y) < entryClearRadius) continue;
+            int idx = Idx(c);
+            if (!data[idx].IsSolid || data[idx].voidCell || data[idx].ore >= 0) continue;
+            if (pocketIdOfCell != null && pocketIdOfCell[idx] != -1) continue;
+            if (wallPocketOfCell != null && wallPocketOfCell[idx] != -1) continue;
+            if (crateCells.Contains(idx)) continue;
+            bool tooClose = false;
+            foreach (var other in chosen)
+                if ((other - c).sqrMagnitude < minSpacing * minSpacing) { tooClose = true; break; }
+            if (tooClose) continue;
+
+            chosen.Add(c);
+            crateCells.Add(idx);
+            crateOverlayByIdx[idx] = MakeCrateOverlay(c);
+        }
+    }
+
+    GameObject MakeCrateOverlay(Vector3Int cell)
+    {
+        var go = new GameObject("PulseCrate");
+        go.transform.SetParent(cratesParent, false);
+        go.transform.position = grid.GetCellCenterWorld(cell);
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sortingLayerName = sortingLayerName;
+        // above the rock AND the ore overlays, still under the fog
+        sr.sortingOrder = renderSortingOrder + oreOverlaySortingOrder + 1;
+        var mat = Resources.Load<Material>("Sprite-Unlit-Default");
+        if (mat != null) sr.sharedMaterial = mat;   // the crate core reads as its own glow in the dark
+        var glint = go.AddComponent<PulseCrateGlint>();
+        glint.sr = sr;
+        glint.frames = crateSprites;
+        return go;
+    }
+
+    void SpawnCrateBattery(Vector3Int cell, int idx)
+    {
+        if (crateOverlayByIdx.TryGetValue(idx, out var overlay))
+        {
+            crateOverlayByIdx.Remove(idx);
+            if (overlay != null) Destroy(overlay);
+        }
+        var prefab = Resources.Load<GameObject>("PulseBattery");
+        if (prefab == null)
+        {
+            Debug.LogWarning("[MineField] PulseBattery prefab missing from Resources — crate lost.");
+            return;
+        }
+        var go = Instantiate(prefab, grid.GetCellCenterWorld(cell), Quaternion.identity,
+            GS.FindParent(GS.Parent.loot));
+        go.SetActive(true);
+        // pops out of the rock like debris (single tween — only 6 per dungeon)
+        go.transform.localScale = Vector3.zero;
+        LeanTween.scale(go, Vector3.one, 0.45f).setEaseOutBack();
+    }
+
+    void ClearCrates()
+    {
+        crateCells.Clear();
+        foreach (var kv in crateOverlayByIdx)
+            if (kv.Value != null) Destroy(kv.Value);
+        crateOverlayByIdx.Clear();
+    }
+
+    // =====================================================================================
     //  Generation helpers
     // =====================================================================================
 
@@ -852,7 +971,8 @@ public class MineField : MonoBehaviour
         if (!InBounds(c)) return false;
         int idx = Idx(c);
         return data[idx].IsSolid && !data[idx].voidCell && data[idx].ore < 0 &&
-               (pocketIdOfCell == null || pocketIdOfCell[idx] == -1);
+               (pocketIdOfCell == null || pocketIdOfCell[idx] == -1) &&
+               !crateCells.Contains(idx);
     }
 
     /// <summary>May a DRONE break this cell? Everything IsPlainWall allows plus ore cells, but
@@ -1201,6 +1321,9 @@ public class MineField : MonoBehaviour
             spawnerOfCell.Remove(idx);
             if (minedSpawner != null) minedSpawner.MinedOut();
         }
+
+        // A crated pulse battery was walled in here — set it free.
+        if (crateCells.Remove(idx)) SpawnCrateBattery(cell, idx);
 
         renderMap.SetTile(cell, null);
         ClearOverlay(cell);

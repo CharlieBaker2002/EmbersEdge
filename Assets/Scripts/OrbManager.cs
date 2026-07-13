@@ -14,11 +14,86 @@ public class OrbManager : MonoBehaviour
     Vector2 dir;
     public static float distortion = 1f;
 
+    // ---- wild-orb lifetime cohorts ----
+    // Base wild orbs don't rot on a clock — each lives until the NEXT boundary of the kind
+    // that minted it: day-born → the next day tick, wave-born → the next wave start, dropped
+    // by a returning bag drone → the next return from the dungeon. Dungeon wild orbs keep the
+    // classic 75s rot AND die the moment the player teleports home.
+    static int dayN, waveN, returnN;
+    bool lastEeactive;
+    System.Action newDay;
+    System.Action<bool> teleport;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetCohorts()   // no-domain-reload: statics survive play-stop
+    {
+        dayN = 0;
+        waveN = 0;
+        returnN = 0;
+    }
+
+    /// <summary>The current counter for a cohort kind — what a fresh orb of that kind stamps.</summary>
+    public static int CohortStamp(int kind)
+        => kind == 0 ? dayN : kind == 1 ? waveN : kind == 2 ? returnN : 0;
+
     private void Start()
     {
         if (RefreshManager.i.CASUALNOTREALTIME)
         {
             speeds = new[] { 5f, 5f, 5f, 5f };
+        }
+        lastEeactive = SpawnManager.eeactive;
+        StartCoroutine(HookCohortEvents());
+    }
+
+    IEnumerator HookCohortEvents()
+    {
+        while (SpawnManager.instance == null || PortalScript.i == null) yield return null;
+        newDay = () => { dayN++; SweepWildCohort(0, dayN); };
+        SpawnManager.instance.OnNewDay += newDay;
+        teleport = nowInDungeon =>
+        {
+            if (nowInDungeon) return;
+            // home again: dungeon loot that wasn't hauled is gone, and the PREVIOUS return's
+            // drone-spill pile expires — this return mints the next cohort
+            returnN++;
+            SweepWildCohort(2, returnN);
+            KillDungeonWild();
+        };
+        PortalScript.i.onTeleport += teleport;
+    }
+
+    void OnDestroy()
+    {
+        if (SpawnManager.instance != null && newDay != null) SpawnManager.instance.OnNewDay -= newDay;
+        if (PortalScript.i != null && teleport != null) PortalScript.i.onTeleport -= teleport;
+    }
+
+    /// <summary>Retire every wild base orb of a cohort minted before the boundary that just
+    /// passed. Backwards walk — ReturnToPool's OnDisable removes from allOrbs in place.</summary>
+    static void SweepWildCohort(int kind, int stampBelow)
+    {
+        if (allOrbs == null) return;
+        for (int k = allOrbs.Count - 1; k >= 0; k--)
+        {
+            var o = allOrbs[k];
+            if (o == null || !o.isActiveAndEnabled || o.state != OrbScript.OrbState.wild) continue;
+            if (o.wildKind != kind || o.wildStamp >= stampBelow) continue;
+            o.ReturnToPool();
+        }
+    }
+
+    /// <summary>Teleport home: uncollected dungeon wild orbs die with the run (unstamped ones
+    /// included — the position is the truth here, not the cohort).</summary>
+    static void KillDungeonWild()
+    {
+        if (allOrbs == null) return;
+        for (int k = allOrbs.Count - 1; k >= 0; k--)
+        {
+            var o = allOrbs[k];
+            if (o == null || !o.isActiveAndEnabled || o.state != OrbScript.OrbState.wild) continue;
+            if (!o.transform.InDungeon()) continue;
+            o.ReturnToPool();
         }
     }
 
@@ -39,6 +114,13 @@ public class OrbManager : MonoBehaviour
         //    distortion = Mathf.Lerp(distortion, 1f, 0.003f * Time.deltaTime * Mathf.Pow(42.5f - p,2));
         //}
 
+        // wave start (no event exists — eeactive is the truth): the previous wave's cohort expires
+        if (SpawnManager.eeactive != lastEeactive)
+        {
+            lastEeactive = SpawnManager.eeactive;
+            if (lastEeactive) { waveN++; SweepWildCohort(1, waveN); }
+        }
+
         for(int i = 0; i < OrbScript.tot; i++)
         {
             if(i >= allOrbs.Count) { break; }
@@ -56,18 +138,43 @@ public class OrbManager : MonoBehaviour
             switch (o.state)
             {
                 case OrbScript.OrbState.wild:
+                    if (o.wildKind < 0) o.StampWildCohort();   // first wild tick — position settled
                     o.timeLeft -= Time.deltaTime;
                     if (o.timeLeft <= 0f)
                     {
-                        // Release deactivates the orb, whose OnDisable removes it from allOrbs —
-                        // the list shifts left, so step back to not skip the orb that slid in.
-                        o.ReturnToPool();
-                        i--;
-                        continue;
+                        // Only DUNGEON orbs rot on the clock; base orbs wait for their cohort's
+                        // boundary (day tick / wave start / dungeon return — see the sweeps).
+                        if (o.wildKind == 3)
+                        {
+                            // Release deactivates the orb, whose OnDisable removes it from allOrbs —
+                            // the list shifts left, so step back to not skip the orb that slid in.
+                            o.ReturnToPool();
+                            i--;
+                            continue;
+                        }
+                        o.timeLeft = 0f;
                     }
                     if (o.timeLeft > 74f)
                     {
                         tr.position += (o.rot+90) * (o.timeLeft - 74f) * 2f * disperseSpeeds[o.orbType] * Time.deltaTime * new Vector3(Mathf.Sin(o.theta),Mathf.Cos(o.theta))/360f * Random.Range(1.5f,2f);
+                        // Scattered into the ember's edge — shove the orb back inside the boundary
+                        // and end its scatter so it can't wander back out. Base side only (the
+                        // dungeon dimension has its own walls and no map boundary). Code-based test,
+                        // then one spline query only for the rare offender.
+                        Vector3 wp = tr.position;
+                        if (PathZone.AtBase(wp) && !MapManager.InsideBoundsWithClearance(wp, 0.2f))
+                        {
+                            Vector2 close = MapManager.i.ProximityData(wp).Item1;
+                            // inward = away from the nearest boundary point when already inside the
+                            // poly (just under the line), toward it when fully outside
+                            Vector2 inward = MapManager.InsideBoundsWithClearance(wp, 0f)
+                                ? (Vector2)wp - close : close - (Vector2)wp;
+                            // on-the-line degenerate case: fall back to "toward the base centre"
+                            inward = inward.sqrMagnitude > 1e-6f ? inward.normalized : -close.normalized;
+                            Vector2 fixedPos = close + inward * 0.35f;
+                            tr.position = new Vector3(fixedPos.x, fixedPos.y, wp.z);
+                            o.timeLeft = 74f;
+                        }
                     }
                     else
                     {

@@ -50,14 +50,22 @@ public class EnergyManager : MonoBehaviour
     public void UnregisterPad(EnergyPad pad)
     {
         if (pad == null) return;
-        var size = pad.gridSize;
+        UnregisterPadArea(pad, pad.anchorCell, pad.gridSize);
+    }
+
+    /// <summary>Unregister a pad's claim from an explicit footprint — used when the footprint the
+    /// pad registered under no longer matches its current one (rotation already swapped
+    /// anchorCell/gridSize by the time the claim moves).</summary>
+    public void UnregisterPadArea(EnergyPad pad, Vector2Int anchor, Vector2Int size)
+    {
+        if (pad == null) return;
         if (size.x <= 0 || size.y <= 0) size = Vector2Int.one;
         bool changed = false;
         for (int x = 0; x < size.x; x++)
         {
             for (int y = 0; y < size.y; y++)
             {
-                var cell = pad.anchorCell + new Vector2Int(x, y);
+                var cell = anchor + new Vector2Int(x, y);
                 if (padFootprintAt.TryGetValue(cell, out var existing) && existing == pad)
                     padFootprintAt.Remove(cell);
                 if (RemoveSourceAt(cell, pad)) changed = true;
@@ -219,7 +227,6 @@ public class EnergyManager : MonoBehaviour
     private void Start()
     {
         SpawnManager.instance.onWaveComplete += () => StartCoroutine(DoExtractors());
-        SpawnManager.instance.onWaveComplete += () => GS.QA(UpdateEmber, 3);
         GS.OnNewEra += _ => RegenerateCables();
     }
 
@@ -341,11 +348,77 @@ public class EnergyManager : MonoBehaviour
         if(extracting) yield break;
         extracting = true;
         yield return null;
-        for(int i = 0; i < Extractor.extractors.Count; i++)
+        // All extractors pulse together — MapManager commits each expansion instantly and just
+        // retargets the animated outline, so simultaneous ChangeMapAsync calls are safe. Snapshot
+        // the list first: an extractor that hits max distance disables itself and self-removes.
+        List<Coroutine> running = new List<Coroutine>();
+        foreach (Extractor ex in Extractor.extractors.ToList())
         {
-            yield return StartCoroutine(Extractor.extractors[i].Animate());
+            running.Add(StartCoroutine(ex.Animate()));
+        }
+        foreach (Coroutine co in running)
+        {
+            yield return co;
         }
         extracting = false;
+        // ONE settling replan once the whole pulse has landed (replaces the old wave-complete
+        // QA(UpdateEmber, 3), which raced the pulse: it launched the store→constructor refill
+        // first, so each collection's replan saw the constructor as covered and shipped fresh
+        // ember out to the very stores refilling the base — crossing flows that read as embers
+        // rebounding base→store→base).
+        UpdateEmber();
+    }
+
+    /// <summary>Uncommitted room on a connector — capacity minus what it holds AND what's already
+    /// promised to it (inbound flights / queued jobs, both tracked in emberTravel).</summary>
+    static int EmberRoom(EmberConnector c) => c == null ? 0 : c.maxEmber - c.ember - c.emberTravel;
+
+    /// <summary>
+    /// Route ONE freshly-collected extractor ember to the connector that wants it — constructors,
+    /// then ember generators, then stores (the same priority <see cref="UpdateEmber"/>'s full
+    /// replan fills in) — along the shortest cable route. Deliberately NOT a full UpdateEmber:
+    /// a global replan per collected ember re-decides the whole network once a second during a
+    /// pulse and shuttles already-settled ember around (the same per-arrival-rebalance trap
+    /// documented on <see cref="EmberStore.Deliver"/>). Routing just the new ember leaves every
+    /// existing plan alone; <see cref="DoExtractors"/> runs one settling replan at pulse end.
+    /// </summary>
+    public void RouteExtractedEmber(EmberConnector from)
+    {
+        if (from == null || from.ember + from.emberTravel <= 0) return;   // nothing uncommitted to send
+        UpdateEmberStores();   // constructors: neediest first; stores: smallest first
+
+        EmberConnector dest = null;
+        foreach (Constructor c in constructors)
+        {
+            if (c != null && EmberRoom(c.connect) > 0) { dest = c.connect; break; }
+        }
+        if (dest == null)
+        {
+            foreach (Generator g in emberGens)
+            {
+                if (g != null && EmberRoom(g.connect) > 0) { dest = g.connect; break; }
+            }
+        }
+        if (dest == null)
+        {
+            int fewest = int.MaxValue;   // emptiest store first — converges on the even spread the replan targets
+            foreach (EmberStoreBuilding s in emberStores)
+            {
+                if (s == null || s.connect == null || EmberRoom(s.connect) <= 0) continue;
+                int committed = s.connect.ember + s.connect.emberTravel;
+                if (committed < fewest) { fewest = committed; dest = s.connect; }
+            }
+        }
+        if (dest == null) return;   // network full — the ember waits at the extractor
+
+        List<List<EmberConnector>> paths = CalculateShortestRoutes(
+            new List<EmberConnector> { from }, new List<EmberConnector> { dest });
+        if (paths.Count == 0) return;   // no cable route — the next full replan retries
+        List<EmberConnector> path = paths[0];
+        from.emberTravel--;
+        dest.emberTravel++;
+        path.RemoveAt(0);
+        from.jobs.Add(path);
     }
     
     public void UpdateEmber()
@@ -371,7 +444,10 @@ public class EnergyManager : MonoBehaviour
 
         foreach (EmberConnector c in Extractor.extractors.Select(x=>x.connect).Concat(EmberCannon.ecs.Select(x=>x.connect)))
         {
-            sum += c.ember;
+            // Net of queued jobs: an ember routed but not yet dispatched still sits in c.ember
+            // while the destination's emberTravel already counts it — c.emberTravel is -1 for
+            // each such job, so ember + emberTravel counts every physical ember exactly once.
+            sum += c.ember + c.emberTravel;
             c.desiredEmber = 0;
         }
         while (sum > 0 && constructors.Any(c=>c.connect.desiredEmber < c.connect.maxEmber)) //add one evenly to each constructor until they are all full.

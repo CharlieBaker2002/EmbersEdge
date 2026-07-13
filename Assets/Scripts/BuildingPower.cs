@@ -56,6 +56,9 @@ public class BuildingPower : IEnergyAccumulator
         _onUpdate?.Invoke(Energy);
     }
 
+    /// <summary>The owner's footprint moved (rotation swapped its cells) — re-resolve adjacency.</summary>
+    public void Invalidate() => MarkDirty();
+
     void RefreshIfDirty()
     {
         if (!dirty) return;

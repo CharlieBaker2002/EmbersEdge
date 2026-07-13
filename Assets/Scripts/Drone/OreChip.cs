@@ -19,6 +19,9 @@ public class OreChip : MonoBehaviour
     [HideInInspector] public int sizeClass;    // 0 small, 1 big, 2 large
     [HideInInspector] public int element = -1; // -1 plain rock, else 0..3 white/green/blue/red
     [HideInInspector] public Drone claimedBy;  // a bag drone en route (avoids double pickup)
+    /// <summary>Fleet-wide cooldown stamped by a bag drone that gave up reaching this chip —
+    /// collect scans skip it until then (it may free itself, or the route may open).</summary>
+    [HideInInspector] public float unreachableUntil;
     public SpriteRenderer sr;
     [HideInInspector] public Rigidbody2D rb;
 
@@ -98,13 +101,23 @@ public class OreChip : MonoBehaviour
         if (rb == null || !rb.simulated) return;
         var mf = MineField.i;
         if (mf == null) return;
+        Vector2 p = rb.position;
+        float wallPad = WallPad;
+        // Squeeze rescue: the contact solver corrects POSITIONS — a body plowing a chip against
+        // rock (the miner stands right where chips burst out) buries it regardless of velocity,
+        // and the reflection below only steers, it can never un-bury. Lift the footprint back
+        // into the cavity here; no-ops (and costs a handful of array reads) when clear or at base.
+        Vector2 lift = mf.SeparationFor(p, wallPad);
+        if (lift != Vector2.zero)
+        {
+            p += lift;
+            rb.position = p;
+        }
         Vector2 v = rb.linearVelocity;
         if (v.sqrMagnitude < 1e-4f) return;
-        Vector2 p = rb.position;
         Vector2 next = p + v * Time.fixedDeltaTime;
-        float pad = WallPad;
-        float ex = next.x + Mathf.Sign(v.x) * pad;   // leading sprite edge, per axis
-        float ey = next.y + Mathf.Sign(v.y) * pad;
+        float ex = next.x + Mathf.Sign(v.x) * wallPad;   // leading sprite edge, per axis
+        float ey = next.y + Mathf.Sign(v.y) * wallPad;
         bool hitX = v.x != 0f && mf.IsSolidWorld(new Vector2(ex, p.y));
         bool hitY = v.y != 0f && mf.IsSolidWorld(new Vector2(p.x, ey));
         if (!hitX && !hitY)

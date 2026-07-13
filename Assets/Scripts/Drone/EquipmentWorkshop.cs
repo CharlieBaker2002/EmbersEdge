@@ -21,6 +21,20 @@ public class EquipmentWorkshop : Building
 
     readonly List<Drone> waiting = new List<Drone>();
     TextMeshPro stockText;
+    System.Action newDay;
+
+    // Kits destroyed with their dead drones, per DroneEquipment kind. The producing workshop
+    // forges free replacements at the start of the next day; losses queue up across days if
+    // no workshop of that kind stands yet.
+    static readonly int[] pendingLosses = new int[4];
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() => System.Array.Clear(pendingLosses, 0, pendingLosses.Length);
+
+    public static void QueueReplacement(DroneEquipment kind)
+    {
+        if (kind == DroneEquipment.Drill || kind == DroneEquipment.Bag) pendingLosses[(int)kind]++;
+    }
 
     public override void Start()
     {
@@ -44,6 +58,25 @@ public class EquipmentWorkshop : Building
             stockText.gameObject.SetActive(true);
         }
         UpdateStockText();
+        newDay ??= ReplaceLostKits;
+        if (SpawnManager.instance != null) SpawnManager.instance.OnNewDay += newDay;
+    }
+
+    protected override void BDisable()
+    {
+        base.BDisable();
+        if (SpawnManager.instance != null) SpawnManager.instance.OnNewDay -= newDay;
+    }
+
+    /// <summary>Day-start: forge free replacements for every kit of this kind that died with
+    /// its drone yesterday. Restock() handles a full shelf by dropping a physical item.</summary>
+    void ReplaceLostKits()
+    {
+        while (pendingLosses[(int)produces] > 0)
+        {
+            pendingLosses[(int)produces]--;
+            Restock();
+        }
     }
 
     void ProduceOne()

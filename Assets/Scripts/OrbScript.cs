@@ -30,6 +30,33 @@ public class OrbScript : MonoBehaviour
 
     [HideInInspector] public Transform tr; //cached: OrbManager touches thousands of orbs per frame
 
+    /// <summary>Bag-drone claim so two drones never fly for the same orb (mirrors OreChip.claimedBy).
+    /// The player outranks it implicitly — pickup flips state off wild and the claimant retargets.</summary>
+    [HideInInspector] public Drone claimedBy;
+
+    // Wild lifetime cohort: base wild orbs don't rot on a clock — each lives until the NEXT
+    // boundary of the kind that minted it (see OrbManager's cohort sweeps). -1 = unstamped;
+    // 0 day-born, 1 wave-born, 2 dropped by a returning bag drone, 3 dungeon-born (75s rot
+    // + dies on teleport home).
+    [HideInInspector] public int wildKind = -1;
+    [HideInInspector] public int wildStamp;
+
+    /// <summary>Stamp the wild cohort — lazily on the first wild tick (position is settled by
+    /// then), or eagerly with <paramref name="forceKind"/> by spawners that know better (the
+    /// bag-drone scrap spill).</summary>
+    public void StampWildCohort(int forceKind = -1)
+    {
+        if (forceKind >= 0)
+        {
+            wildKind = forceKind;
+            wildStamp = OrbManager.CohortStamp(forceKind);
+            return;
+        }
+        if (transform.InDungeon()) { wildKind = 3; wildStamp = 0; return; }
+        wildKind = SpawnManager.eeactive ? 1 : 0;
+        wildStamp = OrbManager.CohortStamp(wildKind);
+    }
+
     void Awake()
     {
         tr = transform;
@@ -81,6 +108,8 @@ public class OrbScript : MonoBehaviour
         state = OrbState.wild;
         timeLeft = 75f;
         chaseT = 0f;
+        claimedBy = null;   // pooled instances are reused — a stale claim would blacklist the orb
+        wildKind = -1;      // next wild life stamps its own cohort
         Start();
         theta = Random.Range(0f, 360f);
         transform.parent = SpawnManager.instance.orbParent;

@@ -39,6 +39,22 @@ public class BM : MonoBehaviour //Building Manager
     bool dragArmed;      // a deliberate click starts the sweep (guards against the menu click's held button)
     bool upfrontSpent;   // the menu click pre-charged ONE copy; later stamps charge per placement
 
+    /// <summary>A refundable up-front build charge is outstanding: a building was picked from
+    /// the menu (bank already debited) but nothing has been placed yet — Escape would refund
+    /// it in full. While this is true, held orbs must NOT bank into the pylons
+    /// (ResourceManager.DropResources gates on it): banking against the debited pool and then
+    /// cancelling would refund on top of the freshly-banked orbs and push the pylons past
+    /// their caps. The allocation itself stays — only the physical orb movement waits for the
+    /// placement click. Zero once a copy is committed (cost is consumed, nothing refunds).</summary>
+    public static bool PlacementRefundPending
+    {
+        get
+        {
+            if (i == null || !i.planting || i.redBuilding == null) return false;
+            return i.cost[0] != 0 || i.cost[1] != 0 || i.cost[2] != 0 || i.cost[3] != 0;
+        }
+    }
+
     // ---- dungeon placement (Building.dungeonBuildable, e.g. the Telepad) ----
     // The base grid doesn't exist down there: snap to mine cells, validate on excavated floor,
     // and keep occupancy in this set (mirrors GridManager.SetArea). Static + reload-off ⇒ reset.
@@ -87,6 +103,44 @@ public class BM : MonoBehaviour //Building Manager
             added = false;
             BackItUpOffDaddy(false);
         };
+    }
+
+    private void Update()
+    {
+        // Placed-building hotkeys. The placement ghost handles its own R inside the follow
+        // coroutine, so a live session owns the key exclusively.
+        if (planting || redBuilding != null) return;
+        if (Keyboard.current == null || IM.i == null || CharacterScript.dead) return;
+        bool rotate = Keyboard.current.rKey.wasPressedThisFrame;
+        // Mac keyboards label backspace "delete" — accept both for the demolition mark
+        bool demolish = Keyboard.current.deleteKey.wasPressedThisFrame
+                     || Keyboard.current.backspaceKey.wasPressedThisFrame;
+        if (!rotate && !demolish) return;
+        Building b = BuildingUnderCursor();
+        if (b == null) return;
+        if (rotate) b.TryRotate90();
+        // Delete toggles the drone-demolition mark: once to condemn, again to reprieve.
+        // Built base-side buildings only — construction flows and dungeon pads keep their own rules.
+        if (demolish && b.builtYet && PathZone.AtBase(b.transform.position)) DemolitionMarks.Toggle(b);
+    }
+
+    /// <summary>The placed building under the cursor — FocusRouter's raycast recipe: the live
+    /// physic carries an IClickableCarrier pointing back at its Building; ghosts (no physic yet)
+    /// are found through any collider parented under the building itself.</summary>
+    static Building BuildingUnderCursor()
+    {
+        Vector2 p = IM.controller ? (Vector2)IM.i.CWorldPoint() : IM.i.MousePosition();
+        var hits = Physics2D.RaycastAll(new Vector3(p.x, p.y, -100f), Vector3.forward, 1000f,
+            LayerMask.GetMask("Ally Buildings"));
+        foreach (var h in hits)
+        {
+            var rb = h.collider.attachedRigidbody;
+            if (rb != null && rb.TryGetComponent<IClickableCarrier>(out var rcar) && rcar.clickable is Building carried) return carried;
+            if (h.collider.TryGetComponent<IClickableCarrier>(out var car) && car.clickable is Building bb) return bb;
+            var direct = h.collider.GetComponentInParent<Building>();
+            if (direct != null) return direct;
+        }
+        return null;
     }
 
     public void AltUI() //inefficient but few lines so meh.
@@ -554,9 +608,17 @@ public class BM : MonoBehaviour //Building Manager
                     d.gameObject.SetActive(false);
                 }
             }
-            int adjust = 0;
+            // Palette layout: UIspots rows 2+ (index 4 onward), 4 tiles per row.
+            // A null entry in the daddy's buildings list = start a new row.
+            const int columns = 4;
+            int col = 0, row = 0;
             for (int i = 0; i < t.buildings.Length; i++)
             {
+                if (t.buildings[i] == null)
+                {
+                    if (col > 0) { row++; col = 0; }
+                    continue;
+                }
                 bool has = false;
                 foreach (GameObject g in GetAllBuildings())
                 {
@@ -566,12 +628,12 @@ public class BM : MonoBehaviour //Building Manager
                         break;
                     }
                 }
-                if (!has)
-                {
-                    adjust--;
-                    continue;
-                }
-                var a = Instantiate(UIPrefab, UIspots[i+4 + adjust].position, Quaternion.identity, UI.transform);
+                if (!has) continue;
+                int spot = 4 + row * columns + col;
+                if (spot >= UIspots.Length) break;
+                col++;
+                if (col == columns) { row++; col = 0; }
+                var a = Instantiate(UIPrefab, UIspots[spot].position, Quaternion.identity, UI.transform);
                 BuildingTile tile = a.GetComponent<BuildingTile>();
                 Building build = t.buildings[i].GetComponentInChildren<Building>(true);
                 tile.img.sprite = build.icon == null ? build.sr.sprite : build.icon;

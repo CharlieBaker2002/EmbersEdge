@@ -91,7 +91,7 @@ public class Unit : MonoBehaviour, IClickable
         }
         actRate = 1f - 0.1f * (3f - SetM.difficulty); //1f,0.9f,0.8f
         defaultActRate = actRate;
-        if (defaultActRate < 1f)
+        if (defaultActRate < 1f || globalFreeze)
         {
             UpdateActRate();
         }
@@ -131,12 +131,39 @@ public class Unit : MonoBehaviour, IClickable
     {
         foreach (var r in persistentRoutines) StartCoroutine(r());
     }
+
+    // World freeze for the ember-core placement pan: every unit except the player pins to actRate 0
+    // and full stop while the camera is away at the base overview. ActionScript.FixedUpdate holds
+    // velocity at zero for the duration, so no CC state is touched — unfreezing just recomputes
+    // actRate from whatever stati each unit already has.
+    public static bool globalFreeze { get; private set; }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetGlobalFreeze() => globalFreeze = false;
+
+    public static void SetGlobalFreeze(bool on)
+    {
+        if (globalFreeze == on) return;
+        globalFreeze = on;
+        foreach (var u in FindObjectsByType<Unit>(FindObjectsInactive.Exclude))
+        {
+            if (u.isCharacter) continue;
+            if (on && u.AS != null) u.AS.Stop();
+            u.UpdateActRate();
+        }
+    }
     
    
     
     
     public virtual void UpdateActRate() //Called when a stim or a slow is applied. Allows simunltaneous stimming and slowing (take the average). Automatically applies to animator if exists.
     {
+        if (globalFreeze && !isCharacter)
+        {
+            actRate = 0f;
+            if (anim != null) anim.speed = 0f;
+            return;
+        }
         if (staticEffectActivated)
         {
             actRate = 0f;

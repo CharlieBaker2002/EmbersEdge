@@ -297,16 +297,32 @@ public class DroneManager : MonoBehaviour
         holdConsumed = true;   // one toggle per press — release to mark another
     }
 
+    // Clearance an ore tile needs from the map boundary before it can be hold-marked: half the
+    // boundary line's drawn width (0.2) plus a small grace, so a tile partially under the ember's
+    // edge never reads as clickable.
+    const float edgeClearance = 0.15f;
+
     static Ore OreAt(Vector2 w)
     {
         for (int t = 0; t < 4 && t < TilemapResource.m.Length; t++)
         {
             var map = TilemapResource.m[t];
             if (map == null) continue;
-            var g = map.GetInstantiatedObject(map.WorldToCell(w));
+            var cell = map.WorldToCell(w);
+            var g = map.GetInstantiatedObject(cell);
             if (g == null) continue;
             var o = g.GetComponent<Ore>();
-            if (o != null && !o.Depleted) return o;
+            if (o == null || o.Depleted) continue;
+            // a tile partially obscured by the boundary line isn't selectable — every corner must
+            // sit inside the map with clearance for the line's width
+            Vector2 c = map.GetCellCenterWorld(cell);
+            Vector2 h = 0.5f * (Vector2)map.cellSize;
+            if (!MapManager.InsideBoundsWithClearance(new Vector2(c.x - h.x, c.y - h.y), edgeClearance) ||
+                !MapManager.InsideBoundsWithClearance(new Vector2(c.x + h.x, c.y - h.y), edgeClearance) ||
+                !MapManager.InsideBoundsWithClearance(new Vector2(c.x - h.x, c.y + h.y), edgeClearance) ||
+                !MapManager.InsideBoundsWithClearance(new Vector2(c.x + h.x, c.y + h.y), edgeClearance))
+                continue;
+            return o;
         }
         return null;
     }
@@ -353,6 +369,7 @@ public class DroneManager : MonoBehaviour
                 if (d.assignedPad != null || d.transform.InDungeon() || !d.Charged || d.equipment != kind) continue;
                 if (d.pilotOf != null || d.state == Drone.State.BoardingVehicle || d.HasCargo) continue;
                 if (d.state == Drone.State.PadPause) continue;   // mid-breather after a return
+                if (d.state == Drone.State.BatteryWork) continue;   // mid station-run: the battery/chip logistics finish first
                 float d2 = ((Vector2)d.transform.position - padPos).sqrMagnitude;
                 if (d2 < bestSqr) { bestSqr = d2; pick = d; }
             }
@@ -377,6 +394,9 @@ public class DroneManager : MonoBehaviour
         {
             RecallAllFromDungeon();
             DespawnAllChips();
+            // home again — the pad-restock window opens: only now (until the next day tick) may
+            // the fleet lift still-charged batteries off working pads for their station visit
+            BatteryStation.StampHomecoming();
         }
     }
 

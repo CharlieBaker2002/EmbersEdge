@@ -864,13 +864,13 @@ public class SpawnManager : MonoBehaviour
     
     
 
-    public void CallSpawnOrbs(Vector2 pos, int[] orbs, Transform p = null)
+    public void CallSpawnOrbs(Vector2 pos, int[] orbs, Transform p = null, int wildKind = -1)
     {
         for (int i = 0; i < orbs.Length; i++)
         {
             if (orbs[i] > 0)
             {
-                StartCoroutine(SpawnOrbs(pos, i.ToString(), orbs[i], p, false));
+                StartCoroutine(SpawnOrbs(pos, i.ToString(), orbs[i], p, false, wildKind));
             }
         }
     }
@@ -889,7 +889,7 @@ public class SpawnManager : MonoBehaviour
         }
     }
 
-    public IEnumerator SpawnOrbs(Vector2 pos, string orbType, int orbNum, Transform p, bool fillHarvest)
+    public IEnumerator SpawnOrbs(Vector2 pos, string orbType, int orbNum, Transform p, bool fillHarvest, int wildKind = -1)
     {
         int index = -1;
         switch (orbType)
@@ -942,6 +942,8 @@ public class SpawnManager : MonoBehaviour
                 var orb = orbPools[index].Get();
                 orb.transform.position = pos;
                 orb.transform.parent = p == null ? orbParent : p;
+                // spawner knows the lifetime cohort (bag-drone spill) — stamp it eagerly
+                if (wildKind >= 0) orb.GetComponent<OrbScript>().StampWildCohort(wildKind);
                 yield return null;
             }
         }

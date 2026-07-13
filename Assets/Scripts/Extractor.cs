@@ -131,7 +131,7 @@ public class Extractor : Building
         if (connect.ember > connect.maxEmber) connect.ember = connect.maxEmber;
         queue++;
         StartCoroutine(ActivateParticlesSequence(transformPosition,dir));
-        EnergyManager.i.UpdateEmber();
+        EnergyManager.i.RouteExtractedEmber(connect);
     }
     
     private IEnumerator ActivateParticlesSequence(Vector3 hitPos, Vector2 v)

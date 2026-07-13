@@ -64,11 +64,13 @@ public class OrbMagnet : MonoBehaviour
         }
     }
 
-    public void DepositOrb(OrbScript o)
+    /// <summary>Glide an orb into this magnet. <paramref name="from"/> is where the beam starts —
+    /// the player by default (the classic deposit), or a drone's position for hauled deliveries.</summary>
+    public void DepositOrb(OrbScript o, Vector3? from = null)
     {
         o.state =  OrbScript.OrbState.deposit;
         o.transform.parent = transform;
-        o.transform.position = CharacterScript.CS.transform.position + GS.RandCircle(0.1f,0.3f);
+        o.transform.position = (from ?? CharacterScript.CS.transform.position) + GS.RandCircle(0.1f,0.3f);
         float thet = GS.FixedAngle(Mathf.PI + Mathf.Atan2(o.transform.localPosition.y, o.transform.localPosition.x), false);
         o.theta = thet;
         // Seed the glide: longer trips get a touch more time. The two wiggle amplitudes are random

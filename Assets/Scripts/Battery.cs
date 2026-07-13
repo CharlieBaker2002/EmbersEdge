@@ -35,7 +35,8 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
 
     [SerializeField] public SpriteRenderer sr;
     [SerializeField] private bool visual = true;
-    [SerializeField] private SpriteRenderer coil;
+    // protected: PulseBattery self-heals a missing coil child (first-gen prefab shipped without one)
+    [SerializeField] protected SpriteRenderer coil;
     [SerializeField] private Sprite[] coil0Sprs;
     [SerializeField] private Sprite[] coil1Sprs;
     [SerializeField] private Sprite[] coil2Sprs;
@@ -50,6 +51,57 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
 
     [HideInInspector] public EnergyPad pad;          // pad we're slotted into, null if loose/held
     [HideInInspector] public int padSlot = -1;       // slot index within that pad
+
+    // ---- charging rules ----
+    // Batteries are NOT refilled by the dawn tick any more — charge comes from a BatteryStation
+    // grinding ore chips (or, for pulse batteries, their own daily self-charge). Each battery
+    // accepts at most ONE charge per day; the stamp is the SpawnManager.day the charge landed.
+    [HideInInspector] public int lastChargeDay = -1;
+    public bool ChargedToday => lastChargeDay == SpawnManager.day;
+    public void StampChargedToday() => lastChargeDay = SpawnManager.day;
+    /// <summary>Pulse batteries self-charge daily and never visit a station.</summary>
+    public virtual bool IsPulse => false;
+
+    // ---- overnight logistics bookkeeping ----
+    /// <summary>Hauler claim so two drones never fly for the same battery (mirrors OreChip.claimedBy).</summary>
+    [HideInInspector] public Drone claimedBy;
+    // Where the battery LIVES: captured when a drone lifts it for a station visit, so the
+    // return trip can put it back — same pad slot if it still exists, else the loose spot.
+    [HideInInspector] public EnergyPad homePad;
+    [HideInInspector] public int homeSlot = -1;
+    [HideInInspector] public Vector2 homePos;
+    [HideInInspector] public bool hasHome;
+    /// <summary>True while riding the player's follower ring (pulse batteries clicked in the dungeon).</summary>
+    [HideInInspector] public bool following;
+    /// <summary>Swap-window id (BatteryStation.SwapWindow) when drone logistics last slotted this
+    /// battery onto a working pad — a pad battery makes at most one station trip per window.</summary>
+    [HideInInspector] public int padSwapWindow;
+
+    public void RememberHome()
+    {
+        if (hasHome) return;   // first lift wins — a station slot must never become "home"
+        homePad = pad;
+        homeSlot = padSlot;
+        homePos = transform.position;
+        hasHome = true;
+    }
+
+    public void ForgetHome()
+    {
+        homePad = null;
+        homeSlot = -1;
+        hasHome = false;
+    }
+
+    /// <summary>Station swap: the charged battery leaving the station takes over the rack spot of
+    /// the flat one that just arrived (which stays behind as station stock).</summary>
+    public void TransferHomeFrom(Battery other)
+    {
+        homePad = other.homePad;
+        homeSlot = other.homeSlot;
+        homePos = other.homePos;
+        hasHome = other.hasHome;
+    }
 
     public static Battery held;                       // global: only one battery can be held at a time
     private Collider2D pickCollider;
@@ -87,17 +139,15 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
         Add(8f);
     }
 
-    private void Start()
+    protected virtual void Start()
     {
-        // Player-droppable batteries refill to max each new day. Generator-internal storage
-        // doesn't go through Battery, so this only touches the visible ones.
-        if (SpawnManager.instance != null)
-        {
-            SpawnManager.instance.OnNewDay += RefillToMax;
-        }
+        // Deliberately NO dawn refill here: ordinary batteries are only charged by a
+        // BatteryStation grinding chips (once per day). PulseBattery subscribes its own
+        // daily self-charge on top of this.
     }
 
-    void RefillToMax()
+    /// <summary>Full top-up. Only the pulse battery's daily self-charge uses this now.</summary>
+    protected void RefillToMax()
     {
         if (energy < maxEnergy) Add(maxEnergy - energy);
     }
@@ -135,6 +185,9 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
 
     IEnumerator QuickCharge()
     {
+        // Pulse batteries (and any variant without the flash strip) skip the flash outright.
+        if (quickChargeSprs == null || quickChargeSprs.Length == 0 || mats == null || mats.Length == 0)
+            yield break;
         visual = false;
         sr.material = mats[GS.Era1()];
         yield return StartCoroutine(GS.Animate(sr, quickChargeSprs, 1f));
@@ -152,7 +205,13 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
         drawnThisFrame = 0f;
 
         if (!visual) return;
+        UpdateVisual();
+    }
 
+    /// <summary>Charge-level presentation (percent sprite + spinning coil). PulseBattery replaces
+    /// this wholesale with its crate animation.</summary>
+    protected virtual void UpdateVisual()
+    {
         energyBuffer = Mathf.Lerp(energyBuffer, energy, Time.deltaTime * 3f);
         buffer = Mathf.Lerp(buffer, 0f, Time.deltaTime);
 
@@ -195,8 +254,9 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
 
     // -------- pickup / drop --------
 
-    public void OnClick()
+    public virtual void OnClick()
     {
+        if (following) return;   // follower batteries ride the ring; they're not cursor-holdable
         if (held == this) Drop();
         else if (held == null) Pickup();
         // if held != null && held != this, ignore — the held one will eat the click instead
@@ -207,7 +267,7 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
         held = this;
         if (pad != null)
         {
-            pad.UnslotBattery(this);
+            pad.UnslotBattery(this, playerAction: true);   // lifting by hand lowers the pad's pin
         }
         transform.SetParent(null, true);
         // FocusRouter.DispatchClick already calls Select(this) for ISelectables, but this
@@ -245,15 +305,11 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
         // Loose drop — just sits at cursor world pos. Already positioned by LateUpdate.
     }
 
-    private void OnDestroy()
+    protected virtual void OnDestroy()
     {
         if (held == this) held = null;
         if (pad != null) pad.UnslotBattery(this);
         FocusRouter.i?.Deselect(this);
-        if (SpawnManager.instance != null)
-        {
-            SpawnManager.instance.OnNewDay -= RefillToMax;
-        }
     }
 
     // -------- ISelectable --------
