@@ -31,6 +31,9 @@ public class RefreshManager : MonoBehaviour
     [Space(5)] 
     public bool DAILYORBBOUNTY = false;
     [Space(5)]
+    [Tooltip("Instant, free construction: menu costs charge nothing, orb tasks and ember blasts are skipped — placements, upgrades and building actions (unit builds, ammo, orders) complete immediately.")]
+    public bool CHEATBUILD = false;
+    [Space(5)]
     public bool IGNOREEFFICIENCY = false;
     [Space(5)]
     public float DIFFICULTY = 3;
@@ -224,6 +227,7 @@ public class RefreshManager : MonoBehaviour
             STANDARDTIME = 1f;
             INSTASPAWN = false;
             QuickTeleport = false;
+            CHEATBUILD = false;
         }
         else
         {

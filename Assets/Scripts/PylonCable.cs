@@ -42,7 +42,12 @@ public class PylonCable : IEnergyAccumulator
         if (pylon == null) return 0f;
         float budget = perCableRate * dt + instaBuffer - drawnThisFrame;
         if (budget <= 0f) return 0f;
-        return Mathf.Min(pylon.Energy, budget);
+        // Cap by the upstream per-frame budget (recursive sum of upstream MaxDrawThisFrame,
+        // which shares each generator's drawnThisFrame accounting) — NOT raw pylon.Energy.
+        // Against Energy, N cables off one generator each delivered their full cable rate,
+        // multiplying the generator's rated output by N. UpstreamMaxDrawThisFrame (not the
+        // pylon's MaxDrawThisFrame) so the pylon's no-insta adjacency clamp doesn't kill bursts.
+        return Mathf.Min(pylon.UpstreamMaxDrawThisFrame(dt), budget);
     }
 
     public bool Use(float cost)

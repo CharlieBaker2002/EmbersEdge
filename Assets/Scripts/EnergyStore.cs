@@ -22,6 +22,15 @@ public class EnergyStore
     private float instaBuffer;     // current burst credit available
     private float drawnThisFrame;  // accumulated draws in the current frame
 
+    // Fair-share throttling. Every drawing consumer's budget check lands here as one
+    // MaxDrawThisFrame call per frame (via BuildingPower.Use / DrawEnergy, through any depth of
+    // cables), so last frame's query count ≈ how many consumers are competing. Each caller is
+    // offered an equal slice of the frame pool instead of whatever earlier callers left —
+    // otherwise the first consumer in draw order takes everything and the rest starve. Slices
+    // nobody claims roll into the instabuffer at Tick, so a light drinker's leftovers still
+    // reach the hungry ones (throughput is unchanged, delivery just alternates fairly).
+    private int queriesLastFrame, queriesThisFrame;
+
     public EnergyStore(float capacity, float drawRate, float instaBufferMax)
     {
         Configure(capacity, drawRate, instaBufferMax);
@@ -44,8 +53,11 @@ public class EnergyStore
     /// <summary>Most this battery can deliver this frame: rate*dt plus whatever instabuffer is left, capped by stored energy.</summary>
     public float MaxDrawThisFrame(float dt)
     {
+        queriesThisFrame++;
         if (energy <= 0f) return 0f;
-        float budget = drawRate * dt + instaBuffer - drawnThisFrame;
+        float pool = drawRate * dt + instaBuffer;
+        float budget = pool - drawnThisFrame;
+        if (queriesLastFrame > 1) budget = Mathf.Min(budget, pool / queriesLastFrame);
         return Mathf.Min(energy, Mathf.Max(0f, budget));
     }
 
@@ -73,6 +85,8 @@ public class EnergyStore
     /// </summary>
     public void Tick(float dt)
     {
+        queriesLastFrame = queriesThisFrame;
+        queriesThisFrame = 0;
         instaBuffer = Mathf.Clamp(instaBuffer + drawRate * dt - drawnThisFrame, 0f, instaBufferMax);
         drawnThisFrame = 0f;
     }

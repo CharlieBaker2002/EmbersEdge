@@ -285,8 +285,8 @@ public class EnergyManager : MonoBehaviour
 
     /// <summary>
     /// Plan where n incoming dungeon embers should land: one connector per ember, assigned to the
-    /// buildings that want them in the same priority order the cable network fills (constructors →
-    /// ember generators → stores), one each round-robin. Whatever nothing has room for piles onto
+    /// buildings that want them in the same priority order the cable network fills (ember
+    /// generators → constructors → stores), one each round-robin. Whatever nothing has room for piles onto
     /// the default store anyway — dungeon ember is never lost. The result is only short when there
     /// are no stores at all.
     /// </summary>
@@ -316,8 +316,8 @@ public class EnergyManager : MonoBehaviour
             }
         }
 
-        if (constructors != null) Fill(constructors.Where(x => x != null).Select(x => x.connect));
         Fill(emberGens.Where(g => g != null).Select(g => g.connect));
+        if (constructors != null) Fill(constructors.Where(x => x != null).Select(x => x.connect));
         Fill(emberStores.Where(s => s != null).Select(s => s.connect));
 
         EmberConnector fallback = defaultEmberStore != null ? defaultEmberStore.connect
@@ -374,8 +374,8 @@ public class EnergyManager : MonoBehaviour
     static int EmberRoom(EmberConnector c) => c == null ? 0 : c.maxEmber - c.ember - c.emberTravel;
 
     /// <summary>
-    /// Route ONE freshly-collected expander ember to the connector that wants it — constructors,
-    /// then ember generators, then stores (the same priority <see cref="UpdateEmber"/>'s full
+    /// Route ONE freshly-collected expander ember to the connector that wants it — ember
+    /// generators, then constructors, then stores (the same priority <see cref="UpdateEmber"/>'s full
     /// replan fills in) — along the shortest cable route. Deliberately NOT a full UpdateEmber:
     /// a global replan per collected ember re-decides the whole network once a second during a
     /// pulse and shuttles already-settled ember around (the same per-arrival-rebalance trap
@@ -388,15 +388,15 @@ public class EnergyManager : MonoBehaviour
         UpdateEmberStores();   // constructors: neediest first; stores: smallest first
 
         EmberConnector dest = null;
-        foreach (Constructor c in constructors)
+        foreach (Generator g in emberGens)
         {
-            if (c != null && EmberRoom(c.connect) > 0) { dest = c.connect; break; }
+            if (g != null && EmberRoom(g.connect) > 0) { dest = g.connect; break; }
         }
         if (dest == null)
         {
-            foreach (Generator g in emberGens)
+            foreach (Constructor c in constructors)
             {
-                if (g != null && EmberRoom(g.connect) > 0) { dest = g.connect; break; }
+                if (c != null && EmberRoom(c.connect) > 0) { dest = c.connect; break; }
             }
         }
         if (dest == null)
@@ -450,24 +450,25 @@ public class EnergyManager : MonoBehaviour
             sum += c.ember + c.emberTravel;
             c.desiredEmber = 0;
         }
-        while (sum > 0 && constructors.Any(c=>c.connect.desiredEmber < c.connect.maxEmber)) //add one evenly to each constructor until they are all full.
-        {
-            foreach(Constructor c in constructors)
-            {
-                if (c.connect.desiredEmber >= c.connect.maxEmber) continue;
-                c.connect.desiredEmber++;
-                sum -= 1;
-                if (sum <= 0) break;
-            }
-        }
-        // Ember generators fill after constructors, before stores — they turn ember into energy
-        // (more useful than banking it). Adjust this ordering if stores should win.
+        // Ember generators fill FIRST (before constructors, then stores) — they turn ember into
+        // energy continuously, so starving them stalls the grid. Adjust this ordering if
+        // constructors should win again.
         while (sum > 0 && emberGens.Any(g => g != null && g.connect != null && g.connect.desiredEmber < g.connect.maxEmber))
         {
             foreach (Generator g in emberGens)
             {
                 if (g == null || g.connect == null || g.connect.desiredEmber >= g.connect.maxEmber) continue;
                 g.connect.desiredEmber++;
+                sum -= 1;
+                if (sum <= 0) break;
+            }
+        }
+        while (sum > 0 && constructors.Any(c=>c.connect.desiredEmber < c.connect.maxEmber)) //add one evenly to each constructor until they are all full.
+        {
+            foreach(Constructor c in constructors)
+            {
+                if (c.connect.desiredEmber >= c.connect.maxEmber) continue;
+                c.connect.desiredEmber++;
                 sum -= 1;
                 if (sum <= 0) break;
             }

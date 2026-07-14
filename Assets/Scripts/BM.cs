@@ -366,6 +366,7 @@ public class BM : MonoBehaviour //Building Manager
             map.SetActive(true);
             GS.QA(() =>
             {
+                ResourceManager.instance.DropResources();
                 if (ResourceManager.instance.CanAfford(recent.cost, false, false))
                 {
                     recent.OnClick();
@@ -397,6 +398,9 @@ public class BM : MonoBehaviour //Building Manager
         AddDaddyDel();
         GS.QA(() =>
         {
+            // Held orbs were frozen out of the bank while the placement was refundable — settle
+            // them now so the re-pick check sees everything the player actually has.
+            ResourceManager.instance.DropResources();
             if (ResourceManager.instance.CanAfford(recent.cost, false, false))
             {
                 recent.OnClick();
@@ -410,6 +414,9 @@ public class BM : MonoBehaviour //Building Manager
     {
         if (upfrontSpent)
         {
+            // cost is already zeroed here, so nothing is refundable — held orbs may settle
+            // into the bank before the per-stamp charge instead of waiting for the auto-bank tick.
+            ResourceManager.instance.DropResources();
             if (!ResourceManager.instance.CanAfford(recent.cost))
             {
                 Escape();   // out of resources — close the placement session (cost already zeroed, so nothing refunds)
@@ -469,6 +476,26 @@ public class BM : MonoBehaviour //Building Manager
         built.transform.parent = GS.FindParent(GS.Parent.buildings);
         buildings.Add(bb);
         var SD = built.GetComponentsInChildren<SpriteDecompressor>(true);
+        // CHEATBUILD: skip the orb-task phase — no magnets to fill, no orbs to fly. Mirror
+        // CommitDungeon: drop the task magnets and wake every behaviour so Start/BuildFirst run
+        // (LoadWithEEs then skips the ember phase too). Fresh stamps keep the 2-frame defer past
+        // their ghost-init, same as the normal enable path below.
+        if (RefreshManager.i != null && RefreshManager.i.CHEATBUILD)
+        {
+            foreach (OrbMagnet om in bros) Destroy(om);
+            GS.QA(() =>
+            {
+                if (built == null || bb == null) return;
+                if (bb.TryGetComponent<Collider2D>(out var ghostCol)) Destroy(ghostCol);
+                foreach (Behaviour beh in built.GetComponentsInChildren<Behaviour>(true))
+                {
+                    if (beh is OrbMagnet) continue;   // doomed (Destroy is deferred) — don't wake them
+                    beh.enabled = true;
+                }
+                if (bb.builtBlasts <= 0) bb.CompleteViaOrbs();   // orb-only buildings have no ember phase to finish them
+            }, freshInstance ? 2 : 0);
+            return;
+        }
         foreach (OrbMagnet om in bros)
         {
             if (om.typ == OrbMagnet.OrbType.Task)

@@ -34,6 +34,10 @@ public class BuildingTile : MonoBehaviour, IClickable
 
     public void OnClick()
     {
+        // Settle held orbs into the bank before judging affordability — otherwise a click in
+        // the window before the auto-bank tick rejects a purchase the player can cover.
+        // (No-ops while a refundable pick is outstanding, which keeps cancel-refunds exact.)
+        ResourceManager.instance.DropResources();
         if (ResourceManager.instance.CanAfford(cost))
         {
             GS.CopyArray(ref BM.i.cost, cost);

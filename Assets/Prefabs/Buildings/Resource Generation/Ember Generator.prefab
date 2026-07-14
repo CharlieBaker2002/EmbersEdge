@@ -173,7 +173,7 @@ MonoBehaviour:
   transientOrbs: 0
   n: 0
   orbType: 1
-  capacity: 50
+  capacity: 20
   siblingTs: []
   demand: 0
   init: 1

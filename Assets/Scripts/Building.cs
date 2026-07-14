@@ -622,6 +622,27 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     /// </summary>
     protected void LoadWithEEs(int n, bool hidden = false)
     {
+        // CHEATBUILD: no ember blasts — finish the build (or apply the pending upgrade) straight
+        // away. Deferred a tick because Upgrade() assigns upgradeAction only AFTER this returns,
+        // and never registered with EnergyManager (there is nothing for constructors to deliver).
+        if (!hidden && RefreshManager.i != null && RefreshManager.i.CHEATBUILD)
+        {
+            this.QA(() =>
+            {
+                if (!builtYet)
+                {
+                    builtYet = true;
+                    SwitchMonos(true);
+                }
+                else
+                {
+                    upgradeAction?.Invoke();
+                    upgradeAction = null;
+                    SwitchMonos(true);
+                }
+            }, 0f);
+            return;
+        }
         for(int i = 0; i < n; i++)
         {
             icons.Add(Instantiate(SpawnManager.instance.EEIcon,transform.position + 0.25f * size.x * (Vector3)PositionRegularly(i,n), Quaternion.identity, transform));

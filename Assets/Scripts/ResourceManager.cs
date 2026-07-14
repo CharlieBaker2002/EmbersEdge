@@ -181,6 +181,9 @@ public class ResourceManager : MonoBehaviour
     /// </summary>
     public bool CanAfford(int[] cost, bool invert = false, bool useResources = true)
     {
+        // CHEATBUILD: everything is affordable and nothing is spent. Refund calls (invert) must
+        // no-op too — under the cheat nothing was ever charged.
+        if (RefreshManager.i != null && RefreshManager.i.CHEATBUILD) return true;
         if (invert)
         {
             for(int i = 0; i < cost.Length; i++)
@@ -591,6 +594,13 @@ public class ResourceManager : MonoBehaviour
     public bool NewTask(GameObject g, int[] cost, Action act, bool onlyImmediate = true)
     {
         if (Mathf.Max(cost) == 0)
+        {
+            act.Invoke();
+            return true;
+        }
+        // CHEATBUILD: skip the orb task — the action fires now, for free. Null-action tasks
+        // (crops absorbing orbs) keep the real flow: the magnet IS their mechanic.
+        if (RefreshManager.i != null && RefreshManager.i.CHEATBUILD && act != null)
         {
             act.Invoke();
             return true;

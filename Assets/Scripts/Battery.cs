@@ -18,6 +18,9 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
 
     private float instaBuffer;       // current burst credit available
     private float drawnThisFrame;    // accumulated draws in the current frame
+    // Fair-share throttling — same scheme as EnergyStore: one MaxDrawThisFrame query per drawing
+    // consumer per frame, so each caller is offered pool/queriers instead of first-come-takes-all.
+    private int queriesLastFrame, queriesThisFrame;
 
     public event Action<float> OnUpdate;
     public event Action OnUse;
@@ -28,8 +31,11 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
 
     public float MaxDrawThisFrame(float dt)
     {
+        queriesThisFrame++;
         if (energy <= 0f) return 0f;
-        float budgetRemaining = drawRate * dt + instaBuffer - drawnThisFrame;
+        float pool = drawRate * dt + instaBuffer;
+        float budgetRemaining = pool - drawnThisFrame;
+        if (queriesLastFrame > 1) budgetRemaining = Mathf.Min(budgetRemaining, pool / queriesLastFrame);
         return Mathf.Min(energy, Mathf.Max(0f, budgetRemaining));
     }
 
@@ -201,6 +207,8 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
         // we *could* have given at rate (drawRate*dt) minus what was actually drawn this
         // frame, clamped to [0, max]. If draws exceeded rate*dt, buffer drops; if below
         // (idle), buffer climbs back toward max.
+        queriesLastFrame = queriesThisFrame;
+        queriesThisFrame = 0;
         instaBuffer = Mathf.Clamp(instaBuffer + drawRate * Time.deltaTime - drawnThisFrame, 0f, instaBufferMax);
         drawnThisFrame = 0f;
 

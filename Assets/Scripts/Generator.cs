@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
 
 public class Generator : Building, IEnergyAccumulator
@@ -20,13 +19,6 @@ public class Generator : Building, IEnergyAccumulator
    private float genQuantity = 0;
    [SerializeField] float actionTimer = -1f;
 
-   [SerializeField] Sprite increaseSprite;
-   [SerializeField] Sprite decreaseSprite;
-
-   public int limit;
-   public int current;
-
-   private Action act;
    [SerializeField] private GameObject FX;
 
    // Ember generators join the ember CABLE network as a sink (like an Ember Store): the network
@@ -34,6 +26,11 @@ public class Generator : Building, IEnergyAccumulator
    public EmberConnector connect;
    private int queue;
    private bool coroutined = false;
+
+   // Player on/off switch (Enable/Disable click slot on every generator). OFF stops burning fuel
+   // and ordering more; in-flight orbs still bank on arrival and the battery still serves what
+   // it already holds.
+   private bool running = true;
 
    // Internal battery: capacity + draw rate + instabuffer (burst pool), sized per type in Start.
    // The instabuffer is what lets a consumer pull a whole shot in one frame instead of a trickle.
@@ -59,15 +56,23 @@ public class Generator : Building, IEnergyAccumulator
    public event Action OnUse;
 
    // Energy paid for (orbs ordered/in flight) but not yet converted — counted against the floor
-   // so wave refills, spawn charges and raise-level orders never double-order the same energy.
-   // Each arriving unit moves its energy from here into genQuantity (then Generate() banks it).
+   // so the continuous top-up never double-orders the same energy. Each arriving unit moves its
+   // energy from here into genQuantity (then Generate() banks it).
    private float orderedEnergy = 0f;
-   // Floating readout (level + per-round cost → energy), shown while the building UI is open.
-   private TextMeshPro readout;
+   // Pulse/Solar fractional generation accumulator — banks (and animates) per whole energy.
+   private float accrual = 0f;
+   // White/Blue continuous top-up cadence.
+   private float maintainTimer = 0f;
+
+   // Overdraw tripwire: every draw on this generator lands in Use(), so sustained outflow
+   // above the rated draw means some consumer path is bypassing MaxDrawThisFrame budgeting
+   // (e.g. a cable overdraw regression). 1.5x headroom absorbs legitimate instabuffer bursts.
+   private float outflowUsed, outflowWindow;
 
    public bool Use(float cost)
    {
       if (!store.Use(cost)) return false;
+      outflowUsed += cost;
       OnUpdate?.Invoke(store.Energy);
       OnUse?.Invoke();
       return true;
@@ -120,10 +125,57 @@ public class Generator : Building, IEnergyAccumulator
       genQuantity = 0f;
    }
 
+   // Solar trickle (energy/second) — the old per-round seasonal lump (4/5/1/2) spread over ~10s.
+   private float SolarRate => GS.season switch
+   {
+      0 => 0.4f,
+      1 => 0.5f,
+      2 => 0.1f,
+      _ => 0.2f
+   };
+
    private void Update()
    {
       store.Tick(Time.deltaTime);   // reconcile the instabuffer every frame, even when idle
-      BurnEmber();
+
+      outflowWindow += Time.deltaTime;
+      if (outflowWindow >= 5f)
+      {
+         float outRate = outflowUsed / outflowWindow;
+         if (outRate > store.drawRate * 1.5f + 0.05f)
+            Debug.LogWarning($"{name}: sustained output {outRate:F2} e/s exceeds rated draw {store.drawRate:F1} e/s — a consumer path is bypassing draw budgeting");
+         outflowUsed = 0f; outflowWindow = 0f;
+      }
+
+      // Generation is CONTINUOUS (no per-round caps): output is bounded by the battery's draw
+      // rate and the fuel supply, not by a wave-complete allowance.
+      if (running)
+      {
+         switch (typ)
+         {
+            case Taip.Ember:
+               BurnEmber();
+               break;
+            case Taip.Pulse:
+               // Constant 1 energy/s, banked (and animated) in whole-energy steps, paused at cap.
+               if (Energy + genQuantity < store.capacity - 0.01f)
+               {
+                  accrual += Time.deltaTime;
+                  if (accrual >= 1f) { accrual -= 1f; queue++; SetTimer(0.1f, 1f); }
+               }
+               break;
+            case Taip.Solar:
+               accrual += SolarRate * Time.deltaTime;
+               if (accrual >= 1f) { accrual -= 1f; SetTimer(0.5f, 1f); }
+               break;
+            case Taip.White:
+            case Taip.Blue:
+               maintainTimer -= Time.deltaTime;
+               if (maintainTimer <= 0f) { maintainTimer = 0.5f; MaintainBurn(); }
+               break;
+         }
+      }
+
       if(actionTimer < 0f) return;
       actionTimer -= Time.deltaTime;
       if (actionTimer <= 0f)
@@ -147,58 +199,20 @@ public class Generator : Building, IEnergyAccumulator
          connect.cableConnectionDirections = new List<bool>();
       }
 
-      // Assign `act` BEFORE base.Start(): a pre-built generator's base.Start() calls BEnable,
-      // which subscribes `act` to its trigger event — assigning it afterwards left pre-placed
-      // generators subscribed to null (they never generated). UI slots stay below (need UIParent).
-      switch (typ)
-      {
-         case Taip.Pulse:
-           act = () =>
-           {
-              queue++;
-              SetTimer(1f, 1f);
-           };
-           break;
-         case Taip.Solar:
-            act = () =>
-            {
-               float amount = GS.season switch
-               {
-                  0 => 4f,
-                  1 => 5f,
-                  2 => 1f,
-                  _ => 2f
-               };
-               SetTimer(0.5f, amount);
-            };
-            break;
-         case Taip.White:
-         case Taip.Blue:
-            // `current` is the maintain LEVEL (White 1..3, Blue 1..4). It sets both the energy
-            // floor (White current*10, Blue current*20) and the resources burnt to reach it
-            // (White current×5, Blue current×1). Defaults: White 2/3, Blue 3/4.
-            limit   = typ == Taip.White ? 3 : 4;
-            current = typ == Taip.White ? 2 : 3;
-            act = MaintainBurn;
-            break;
-         case Taip.Ember:
-            // Refilled by the ember cable network (connector set up above); burns in BurnEmber().
-            break;
-      }
-
       base.Start();
 
       // Internal battery sized per generator type (code-authoritative — the prefabs don't
-      // serialise these). (capacity, rate, instabuffer): capacity ≈ 5s of full-rate draw;
-      // rate scales with output tier (≈ the pylon's 4 e/s per-cable cap); instabuffer ≈ rate
-      // (capped ~4) so a consumer can pull a full shot's cost in one frame.
+      // serialise these). Capacity is UNCAPPED (except Pulse): generators can bank all round
+      // long; the LIMIT is the draw rate (≈ per-cable pylon caps) and the fuel supply, which
+      // is the design — batteries hold bursts, generators sustain but need setup.
       (float cap, float rate, float insta) = typ switch
       {
-         Taip.Ember => name.StartsWith("Small") ? (15, 3, 1f) : (45f, 10f, 1f),
-         Taip.Solar => (20f, 1f, 0f),
-         Taip.Pulse => (20f, 20f, 20f),
-         Taip.White => (30f, 2f, 2f),
-         Taip.Blue  => (80f, 8f, 4f),
+         Taip.Ember => name.StartsWith("Small") ? (float.PositiveInfinity, 1f, 1f)
+                                                : (float.PositiveInfinity, 3f, 3f),
+         Taip.Solar => (float.PositiveInfinity, 1f, 1f),
+         Taip.Pulse => (20f, 1f, 1f),
+         Taip.White => (float.PositiveInfinity, 1f, 1f),
+         Taip.Blue  => (float.PositiveInfinity, 2f, 2f),
          _          => (10f, 2f, 2f),
       };
       if (overrideBattery)
@@ -212,55 +226,43 @@ public class Generator : Building, IEnergyAccumulator
       }
       store.Configure(cap, rate, insta);
 
-      if (typ is Taip.White or Taip.Blue)
-      {
-         AddSlot(new int[4], "Lower Level",  decreaseSprite, false, Reduce);
-         AddSlot(new int[4], "Raise Level",  increaseSprite, false, Increase);
-
-         // Floating readout above the generator while its UI is open: level, the most orbs a
-         // round can cost, and the energy floor that buys.
-         readout = Instantiate(UIManager.i.numText, transform.position + new Vector3(0f, 1f, 0f),
-            Quaternion.identity, transform);
-         readout.alignment = TextAlignmentOptions.Center;
-         readout.fontSize = Mathf.Max(2f, readout.fontSize * 0.55f);
-         readout.color = Color.white;
-         var rr = readout.GetComponent<Renderer>();
-         if (rr != null) { rr.sortingLayerName = "Power Ups"; rr.sortingOrder = 8; }
-         readout.gameObject.SetActive(false);
-         OnOpen  += () => { UpdateReadout(); readout.gameObject.SetActive(true); };
-         OnClose += () => readout.gameObject.SetActive(false);
-      }
+      AddSlot(new int[4], "Enable / Disable", UIManager.i.noEnergyIcon, false, () => running = !running);
    }
 
-   private const float emberEnergy = 15f;   // energy per ember burned (Small holds 1, Large holds 3 = cap)
+   /// <summary>Energy per ember burned — Large refines 40% more out of each ember than Small.</summary>
+   private float EmberEnergy => name.StartsWith("Small") ? 15f : 21f;
 
    /// <summary>
    /// Ember generators burn a held ember (from the cable network) into the battery when there's
    /// room. Small burns its one ember only when the battery is empty (requests its next when it
-   /// runs out); Large keeps the battery topped, burning whenever a full ember fits — refilling
-   /// its reserve of up to 3 as it goes. The post-burn UpdateEmber re-routes ember to refill.
+   /// runs out); Large keeps ~3 embers' worth banked, burning whenever a full ember fits below
+   /// that target — refilling its reserve of up to 3 as it goes. (The battery capacity itself is
+   /// uncapped, so the banked target is what stops a Large from draining the whole network.)
+   /// The post-burn UpdateEmber re-routes ember to refill.
    /// </summary>
    private void BurnEmber()
    {
       if (typ != Taip.Ember || connect == null || connect.ember <= 0) return;
-      bool room = name.StartsWith("Small") ? Energy <= 0.01f : Energy <= MaxEnergy - emberEnergy + 0.01f;
+      float target = 3f * EmberEnergy;
+      bool room = name.StartsWith("Small") ? Energy <= 0.01f : Energy <= target - EmberEnergy + 0.01f;
       if (!room) return;
       connect.ember--;
-      Add(emberEnergy);
+      Add(EmberEnergy);
       connect.onRefresh?.Invoke();
       EnergyManager.i?.UpdateEmber();   // re-route the network to refill the slot we just burned
    }
 
    /// <summary>
-   /// White/Blue top-up: while below the maintain floor, burn resource units to refill —
-   /// White spends 5 white per unit (→10 energy), Blue 1 blue per unit (→20 energy) — up to
-   /// `current` units (the level). Floor = level×unitEnergy, which equals capacity at max level.
-   /// The spend goes through orb TASKS (not a silent CanAfford deduction) so the orbs visibly
-   /// fly into the generator. Orders are placed even when orbs aren't in stock yet (onlyImmediate:
-   /// false — the counter goes negative, standard build-task behaviour): orbs granted later flow
-   /// into the open order instead of the generator getting a cold no for the round. Each UNIT is
-   /// its own task, so the generator converts in correct multiples (5 white / 1 blue → one unit of
-   /// energy) as they fill, rather than waiting for the whole order.
+   /// White/Blue continuous top-up: whenever a whole fuel unit fits under the banked floor, order
+   /// it — the floor is two units, so both refuel at HALF energy (no dead time waiting for empty).
+   /// White buys 5 white orbs at a time (→10 energy, floor 20), Blue buys 1 blue orb at a time
+   /// (→20 energy, floor 40: keeps two orbs' worth in). No per-round
+   /// cap — a generator kept fed burns all round long. The spend goes through orb TASKS (not a
+   /// silent CanAfford deduction) so the orbs visibly fly into the generator, and orders are
+   /// placed even when orbs aren't in stock yet (onlyImmediate: false): orbs granted later flow
+   /// into the open order instead of the generator getting a cold no. Exact accounting against
+   /// orderedEnergy/genQuantity makes this idempotent — the 0.5s cadence only ever orders the
+   /// outstanding deficit.
    /// </summary>
    private void MaintainBurn()
    {
@@ -268,13 +270,12 @@ public class Generator : Building, IEnergyAccumulator
       int  orbIndex    = white ? 0 : 2;
       int  unitOrbs    = white ? 5 : 1;
       float unitEnergy = white ? 10f : 20f;
-      float floor      = current * unitEnergy;
+      float floor      = white ? 20f : 40f;
 
-      // Units needed to get back to the floor, net of everything already ordered (orderedEnergy)
-      // or arrived-but-unbanked (genQuantity), capped by the level. Exact accounting makes this
-      // idempotent — call it any time; it only ever orders the outstanding deficit.
-      int needed = Mathf.CeilToInt((floor - Energy - orderedEnergy - genQuantity) / unitEnergy);
-      int units  = Mathf.Min(needed, current);
+      // Whole units that fit below the floor, net of everything already ordered (orderedEnergy)
+      // or arrived-but-unbanked (genQuantity). Floor (not ceil): only refuel when a FULL unit
+      // fits, so the bank never overshoots the floor.
+      int units = Mathf.FloorToInt((floor - Energy - orderedEnergy - genQuantity) / unitEnergy + 0.001f);
       if (units <= 0) return;
 
       for (int i = 0; i < units; i++)
@@ -290,41 +291,14 @@ public class Generator : Building, IEnergyAccumulator
       }
    }
 
-   /// <summary>Refresh the floating readout: level, worst-case orb cost per round, and the
-   /// energy floor that maintains. Rich-text colours the orb line in its element's colour.</summary>
-   private void UpdateReadout()
-   {
-      if (readout == null) return;
-      bool white   = typ == Taip.White;
-      int maxOrbs  = current * (white ? 5 : 1);
-      int maxEnergy = Mathf.RoundToInt(current * (white ? 10f : 20f));
-      Color orbCol = white ? UIManager.i.colSO.StandardWhite : UIManager.i.colSO.StandardBlue;
-      string hex   = ColorUtility.ToHtmlStringRGB(orbCol);
-      readout.text =
-         $"Level {current}/{limit}\n" +
-         $"<color=#{hex}>up to {maxOrbs} {(white ? "white" : "blue")} orbs / round</color>\n" +
-         $"keeps {maxEnergy} energy stored";
-   }
-
    protected override void BEnable()
    {
-      switch (typ)
+      if (typ == Taip.Ember)
       {
-         case Taip.Pulse:
-            EmbersEdge.EEExplodeEvent += act;
-            break;
-         case Taip.Ember:
-            // Join the ember cable network as a sink; cables (re)build so it gets a supply link.
-            if (EnergyManager.i != null && !EnergyManager.i.emberGens.Contains(this))
-               EnergyManager.i.emberGens.Add(this);
-            EnergyManager.i?.CreateCableConnections();
-            break;
-         default:
-            SpawnManager.instance.onWaveComplete += act;
-            // Charge on spawn too: a freshly built (or repaired) generator does its round action
-            // immediately instead of sitting empty until the next wave completes.
-            act?.Invoke();
-            break;
+         // Join the ember cable network as a sink; cables (re)build so it gets a supply link.
+         if (EnergyManager.i != null && !EnergyManager.i.emberGens.Contains(this))
+            EnergyManager.i.emberGens.Add(this);
+         EnergyManager.i?.CreateCableConnections();
       }
       EnergyManager.i?.RegisterSource(this, anchorCell, gridSize);
    }
@@ -333,27 +307,18 @@ public class Generator : Building, IEnergyAccumulator
    {
       switch (typ)
       {
-         case Taip.Pulse:
-            EmbersEdge.EEExplodeEvent -= act;
-            break;
          case Taip.Ember:
             EnergyManager.i?.emberGens.Remove(this);
             EnergyManager.i?.CreateCableConnections();
             break;
-         default:
-            SpawnManager.instance.onWaveComplete -= act;
+         case Taip.White:
+         case Taip.Blue:
             orderedEnergy = 0f;   // open orders die with the building (their magnets refund on destroy)
             break;
       };
       EnergyManager.i?.UnregisterSource(this, anchorCell, gridSize);
    }
 
-   // Level steps (min 1 so it always maintains at least one unit; max `limit` = 3/3 white, 4/4 blue).
-   // Raising orders the extra orbs IMMEDIATELY (MaintainBurn tops up to the new floor right away);
-   // lowering is an order for next round — no refund, the lower floor just applies from then on.
-   private void Reduce()   { current = Mathf.Max(1, current - 1);     UpdateReadout(); }
-   private void Increase() { current = Mathf.Min(limit, current + 1); UpdateReadout(); MaintainBurn(); }
-   
    private void SetTimer(float time, float quantity)
    {
       actionTimer = time;

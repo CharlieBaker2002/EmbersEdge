@@ -30,7 +30,11 @@ public class OreChip : MonoBehaviour
 
     /// <summary>Energy the grinder credits when this chip is ground down
     /// (small 0.2 / big 0.5 / large 1.25). Set by size, not by bag space.</summary>
-    public float JuiceValue => sizeClass == 0 ? 0.2f : sizeClass == 1 ? 0.5f : 1.25f;
+    public float JuiceValue => JuiceFor(sizeClass);
+
+    /// <summary>Juice by size class, for callers that only know the class (Refiner's intake
+    /// gate runs before any chip object is in hand).</summary>
+    public static float JuiceFor(int sizeClass) => sizeClass == 0 ? 0.2f : sizeClass == 1 ? 0.5f : 1.25f;
 
     /// <summary>Bag drones must not vacuum a chip mid-pop-in — debris the player never SEES
     /// reads as debris that never spawned. Chips are claimable only after this long.</summary>

@@ -5,13 +5,16 @@ using UnityEngine;
 /// The colony's chip refinery — the chip-eating counterpart of the Battery Station's grinder
 /// (IChipConsumer, so the bag-drone fleet gathers and delivers for it with no drone changes).
 /// Chips sucked into the mouth digest one at a time and come out as RESOURCES:
-///   • plain rock (element -1, small/medium only — large is slag) → EMBER, credited to this
-///     building's own EmberConnector and routed down the cable network to whoever wants it
+///   • plain rock (element -1, small/medium only — large is slag) → JUICE (OreChip.JuiceValue)
+///     banked toward EMBER at one ember per juicePerEmber, credited to this building's own
+///     EmberConnector and routed down the cable network to whoever wants it
 ///     (constructors → ember generators → stores), exactly like an expander collection;
 ///   • ORE chip (element 0..3, strictly medium since the mines cut it that way) → a burst of
 ///     that element's orbs (white 12 / green 6 / blue 2 / red 1 per chip — rarer runs richer).
-/// A full connector pauses PLAIN intake (AcceptsChip gates on room, so drones stop hauling rock
-/// too) — ore never blocks: orbs always have somewhere to fly.
+/// Throughput is day-capped: every swallowed chip spends its JuiceValue from a dailyJuice
+/// budget, and intake shuts (AcceptsChip, so drones stop hauling too) once the day's budget
+/// can't cover a chip. A full connector also pauses PLAIN intake — ore never blocks on ember
+/// room: orbs always have somewhere to fly.
 /// </summary>
 public class Refiner : Building, IChipConsumer
 {
@@ -24,9 +27,15 @@ public class Refiner : Building, IChipConsumer
              "this, net of whatever already sits in the suction ring.")]
     public float appetiteSpace = 8f;
 
-    /// <summary>Ember credited per PLAIN chip, by size class (small / medium).</summary>
-    public int emberSmall = 1;
-    public int emberMedium = 2;
+    [Tooltip("Total chip juice (OreChip.JuiceValue) the refiner can digest per day — plain and ore alike.")]
+    public float dailyJuice = 16f;
+    [Tooltip("Juice banked per ember: plain-rock juice accumulates and pays out one ember per this much.")]
+    public float juicePerEmber = 4f;
+
+    /// <summary>Juice spent from today's budget (resets each new day).</summary>
+    [HideInInspector] public float juiceUsedToday;
+    // plain-rock juice banked toward the next ember (carries across chips and days)
+    float juiceBank;
 
     /// <summary>Orbs per ORE chip, by element (white / green / blue / red) — rarer runs richer.</summary>
     public static readonly int[] OrbsPerChip = { 12, 6, 2, 1 };
@@ -53,11 +62,15 @@ public class Refiner : Building, IChipConsumer
     int digestSize, digestElement;
     float suctionScanT;
 
+    System.Action newDay;
+
     public override void Start()
     {
         base.Start();
         GS.OnNewEra += UpdateColours;
         UpdateColours(GS.era);
+        newDay = () => juiceUsedToday = 0f;
+        if (SpawnManager.instance != null) SpawnManager.instance.OnNewDay += newDay;
     }
 
     void UpdateColours(int era)
@@ -69,6 +82,7 @@ public class Refiner : Building, IChipConsumer
     {
         base.OnDestroy();
         GS.OnNewEra -= UpdateColours;
+        if (SpawnManager.instance != null && newDay != null) SpawnManager.instance.OnNewDay -= newDay;
     }
 
     protected override void BEnable()
@@ -94,11 +108,13 @@ public class Refiner : Building, IChipConsumer
     public int ChipPriority => 1;
     public int InboundChipSpace { get => inboundChipSpace; set => inboundChipSpace = value; }
 
-    /// <summary>The intake gate: ore ALWAYS fits (the mines cut it strictly medium); plain rock
-    /// must fit the small/medium bore AND have ember room to land in — a full connector stops
-    /// the fleet hauling rock that would only pile up.</summary>
+    /// <summary>The intake gate: every chip must fit today's remaining juice budget; beyond that,
+    /// ore always fits (the mines cut it strictly medium) while plain rock must fit the
+    /// small/medium bore AND have ember room to land in — a full connector stops the fleet
+    /// hauling rock that would only pile up.</summary>
     public bool AcceptsChip(int sizeClass, int element)
-        => element >= 0 || (sizeClass <= 1 && connect.ember < connect.maxEmber);
+        => OreChip.JuiceFor(sizeClass) <= dailyJuice - juiceUsedToday
+           && (element >= 0 || (sizeClass <= 1 && connect.ember < connect.maxEmber));
 
     /// <summary>Appetite net of the stock already settled in the suction ring (dumped hauls the
     /// mouth hasn't got to yet) — in-flight chips are netted off by logistics itself.</summary>
@@ -172,6 +188,7 @@ public class Refiner : Building, IChipConsumer
         if (best == null) return;
         digestSize = best.sizeClass;
         digestElement = best.element;
+        juiceUsedToday += best.JuiceValue;   // budget spent at swallow, so the gate stays honest
         best.AbsorbInto(Mouth());
         refineT = refineSeconds;
     }
@@ -187,12 +204,14 @@ public class Refiner : Building, IChipConsumer
         }
         else
         {
-            // plain rock → ember on our connector, each unit routed to live demand at once
-            // (constructors → ember generators → stores), riding the cables like expander ember
-            int n = digestSize >= 1 ? emberMedium : emberSmall;
-            for (int k = 0; k < n; k++)
+            // plain rock → juice banked toward ember; each full juicePerEmber pays out one unit
+            // on our connector, routed to live demand at once (constructors → ember generators →
+            // stores), riding the cables like expander ember
+            juiceBank += OreChip.JuiceFor(digestSize);
+            while (juiceBank >= juicePerEmber)
             {
-                if (connect.ember >= connect.maxEmber) break;   // network saturated — the rest is slag
+                if (connect.ember >= connect.maxEmber) break;   // network saturated — the bank waits
+                juiceBank -= juicePerEmber;
                 connect.ember++;
                 connect.onRefresh?.Invoke();
                 EnergyManager.i.RouteExtractedEmber(connect);
