@@ -55,6 +55,10 @@ public class ChargerTurret : Building
     private float MaxCharge => MaxDrawRate * chargeTime;   // a full charge's worth of energy
     private float charge;   // energy stored toward the next volley; held across attempts, spent on fire
 
+    /// <summary>A full volley's charge and the rate it wants to charge at — same number at
+    /// chargeTime 1s (3 base, 6 with Thick Spreader).</summary>
+    public override float PeakEnergyDemand => Mathf.Max(MaxCharge, MaxDrawRate);
+
     public override void Start()
     {
         base.Start();
@@ -197,7 +201,12 @@ public class ChargerTurret : Building
     float DrawStep(float maxRate, float remaining)
     {
         if (remaining <= 1e-5f) return 0f;
-        float step = Mathf.Min(maxRate * Time.deltaTime, Power.DrawRate * Time.deltaTime, Power.Energy, remaining);
+        // Cap by the fair-share offer — MaxDrawThisFrame, NOT DrawRate*dt (raw rate overshoots
+        // the per-consumer slice under contention and Power.Use rejects atomically) and NOT
+        // PeekMaxDraw (a starved consumer whose offer is 0 would never REGISTER as a demander,
+        // so the stores would keep offering first-in-update-order 100% forever). This call is
+        // the consumer's once-per-frame demand registration; Use's internal caps peek.
+        float step = Mathf.Min(maxRate * Time.deltaTime, Power.MaxDrawThisFrame(Time.deltaTime), Power.Energy, remaining);
         return (step > 0f && Power.Use(step)) ? step : 0f;
     }
 }

@@ -60,6 +60,7 @@ public class Drone : AllyAI, IOnDeath
     public int drillScanRadius = 8;
 
     Building repairTarget;
+    Vector2 repairSpot;      // per-drone hover point fanned around repairTarget so a crew spreads out
     Building demolishTarget;
     float repairTickTimer;
     [HideInInspector] public DroneDrillBit drillBit;
@@ -777,6 +778,21 @@ public class Drone : AllyAI, IOnDeath
         return best;
     }
 
+    /// <summary>Where THIS drone hovers while patching `b`: drones already on the same target
+    /// count as taken seats, and each seat sits one golden-angle step further around the ring
+    /// from this drone's own approach bearing — a crew fans out instead of stacking on one
+    /// trajectory, for any crew size, with no shared bookkeeping to clean up.</summary>
+    Vector2 RepairSpot(Building b)
+    {
+        int seat = 0;
+        for (int k = 0; k < allies.Count; k++)
+            if (allies[k] is Drone d && d != this && d.state == State.RepairSweep && d.repairTarget == b) seat++;
+        Vector2 c = b.transform.position;
+        Vector2 to = (Vector2)transform.position - c;
+        float ang = (to.sqrMagnitude > 1e-4f ? Mathf.Atan2(to.y, to.x) : 0f) + seat * 2.39996f;
+        return c + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * 0.7f;
+    }
+
     /// <summary>Between waves a pilot patches its own hull (same tariff as building repair),
     /// then goes home to recharge. Re-boards the moment a wave threatens.</summary>
     void TickHealVehicle()
@@ -818,8 +834,9 @@ public class Drone : AllyAI, IOnDeath
         {
             repairTarget = FindRepairTarget();
             if (repairTarget == null) { GoLoiter(); return; }   // all patched — back on patrol
+            repairSpot = RepairSpot(repairTarget);
         }
-        if (!MoveToward(repairTarget.transform.position, 0.7f)) return;
+        if (!MoveToward(repairSpot, 0.35f)) return;
 
         // Channel in coarse ticks so heal FX/numbers don't spam every physics frame.
         repairTickTimer -= Time.fixedDeltaTime;
@@ -1986,7 +2003,8 @@ public class Drone : AllyAI, IOnDeath
             {
                 var b = batteryHaul;
                 if (b == null || b.claimedBy != this || b.following || b == Battery.held
-                    || b.pad is BatteryStation || stationTarget == null || !stationTarget.builtYet)
+                    || b.pad is BatteryStation || b.pad is CapacitorNode
+                    || stationTarget == null || !stationTarget.builtYet)
                 {
                     // mid-batch a spoiled pickup doesn't end the RUN: drop that one claim and
                     // fly what's already aboard to the station
@@ -2302,7 +2320,7 @@ public class Drone : AllyAI, IOnDeath
                 if (spare == null || spare.claimedBy != this || spare.pad != null
                     || spare.following || spare == Battery.held
                     || outB == null || outB.claimedBy != this || outB.pad == null
-                    || outB.pad is BatteryStation || !outB.pad.builtYet)
+                    || outB.pad is BatteryStation || outB.pad is CapacitorNode || !outB.pad.builtYet)
                 {
                     ReleaseBatteryWork();
                     if (!TryDispatchWork()) GoLoiter();
@@ -2324,7 +2342,7 @@ public class Drone : AllyAI, IOnDeath
                 // margin re-check at the tighter delivery floor: a generator may have been
                 // refilling the slotted battery mid-flight — never land a downgrade
                 if (spare == null || outB == null || outB.claimedBy != this
-                    || pad == null || pad is BatteryStation || !pad.builtYet
+                    || pad == null || pad is BatteryStation || pad is CapacitorNode || !pad.builtYet
                     || spare.energy < outB.energy + BatteryStation.SwapMargin)
                 {
                     if (outB != null && outB.claimedBy == this) outB.claimedBy = null;

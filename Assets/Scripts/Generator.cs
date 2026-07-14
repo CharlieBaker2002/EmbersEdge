@@ -32,9 +32,10 @@ public class Generator : Building, IEnergyAccumulator
    // it already holds.
    private bool running = true;
 
-   // Internal battery: capacity + draw rate + instabuffer (burst pool), sized per type in Start.
-   // The instabuffer is what lets a consumer pull a whole shot in one frame instead of a trickle.
-   private readonly EnergyStore store = new EnergyStore(10f, 2f, 2f);
+   // Internal battery: capacity + draw rate, sized per type in Start. Generators carry NO
+   // instabuffer — they are pure sustained-rate sources; burst capacity comes from the grid
+   // (pylon surge pools + capacitor-node batteries).
+   private readonly EnergyStore store = new EnergyStore(10f, 2f, 0f);
 
    [Header("Internal Battery")]
    [Tooltip("When OFF, the fields below are filled from the per-type defaults at Start so you can see them. " +
@@ -51,6 +52,7 @@ public class Generator : Building, IEnergyAccumulator
    public float MaxEnergy => store.MaxEnergy;
    public float DrawRate  => store.DrawRate;
    public float MaxDrawThisFrame(float dt) => store.MaxDrawThisFrame(dt);
+   public float PeekMaxDraw(float dt) => store.PeekMaxDraw(dt);
 
    public event Action<float> OnUpdate;
    public event Action OnUse;
@@ -142,7 +144,11 @@ public class Generator : Building, IEnergyAccumulator
       if (outflowWindow >= 5f)
       {
          float outRate = outflowUsed / outflowWindow;
-         if (outRate > store.drawRate * 1.5f + 0.05f)
+         // Headroom widened for the surge rework: grid surge pools (pylon 1 e/s refill +
+         // capacitor batteries) legitimately pull banked energy above the rated draw in
+         // window averages, so the tripwire now only catches multiplicative bypass
+         // (N-cables-off-one-generator style bugs). Tune after playtest if too loose.
+         if (outRate > store.drawRate * 1.5f + 2.05f)
             Debug.LogWarning($"{name}: sustained output {outRate:F2} e/s exceeds rated draw {store.drawRate:F1} e/s — a consumer path is bypassing draw budgeting");
          outflowUsed = 0f; outflowWindow = 0f;
       }
@@ -205,15 +211,17 @@ public class Generator : Building, IEnergyAccumulator
       // serialise these). Capacity is UNCAPPED (except Pulse): generators can bank all round
       // long; the LIMIT is the draw rate (≈ per-cable pylon caps) and the fuel supply, which
       // is the design — batteries hold bursts, generators sustain but need setup.
+      // Insta is 0 across the board: generators sustain, the GRID bursts (pylon surge pools +
+      // capacitor-node batteries). A lone generator can only ever trickle at its rate.
       (float cap, float rate, float insta) = typ switch
       {
-         Taip.Ember => name.StartsWith("Small") ? (float.PositiveInfinity, 1f, 1f)
-                                                : (float.PositiveInfinity, 3f, 3f),
-         Taip.Solar => (float.PositiveInfinity, 1f, 1f),
-         Taip.Pulse => (20f, 1f, 1f),
-         Taip.White => (float.PositiveInfinity, 1f, 1f),
-         Taip.Blue  => (float.PositiveInfinity, 2f, 2f),
-         _          => (10f, 2f, 2f),
+         Taip.Ember => name.StartsWith("Small") ? (float.PositiveInfinity, 1f, 0f)
+                                                : (float.PositiveInfinity, 3f, 0f),
+         Taip.Solar => (float.PositiveInfinity, 1f, 0f),
+         Taip.Pulse => (20f, 1f, 0f),
+         Taip.White => (float.PositiveInfinity, 1f, 0f),
+         Taip.Blue  => (float.PositiveInfinity, 2f, 0f),
+         _          => (10f, 2f, 0f),
       };
       if (overrideBattery)
       {

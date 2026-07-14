@@ -27,8 +27,10 @@ public class PulseBattery : Battery
     protected override void Start()
     {
         base.Start();
-        maxEnergy *= 2f;   // double an ordinary battery's tank (the prefab is a straight copy)
-        RefillToMax();     // pops out of the rock fully charged
+        maxEnergy *= 2f;        // double an ordinary battery's tank (the prefab is a straight copy)
+        instaBufferMax *= 2f;   // double the surge pool too (regular 1 → pulse 2)
+        TopUpInsta();           // Awake filled the pool before the doubling
+        RefillToMax();          // pops out of the rock fully charged
         EnsureCoil();
         if (SpawnManager.instance != null) SpawnManager.instance.OnNewDay += SelfCharge;
         if (PortalScript.i != null)

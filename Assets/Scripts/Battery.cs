@@ -14,7 +14,7 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
     [Tooltip("Energy/sec this battery can supply to a consumer drawing through BuildingPower.DrawEnergy.")]
     public float drawRate = 1f;
     [Tooltip("Instant-burst pool on top of drawRate. Drained by single-frame bursts, refills at drawRate when not in use.")]
-    public float instaBufferMax = 2f;
+    public float instaBufferMax = 1f;
 
     private float instaBuffer;       // current burst credit available
     private float drawnThisFrame;    // accumulated draws in the current frame
@@ -37,6 +37,51 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
         float budgetRemaining = pool - drawnThisFrame;
         if (queriesLastFrame > 1) budgetRemaining = Mathf.Min(budgetRemaining, pool / queriesLastFrame);
         return Mathf.Min(energy, Mathf.Max(0f, budgetRemaining));
+    }
+
+    public float PeekMaxDraw(float dt)
+    {
+        if (energy <= 0f) return 0f;
+        float pool = drawRate * dt + instaBuffer;
+        float budgetRemaining = pool - drawnThisFrame;
+        if (queriesLastFrame > 1) budgetRemaining = Mathf.Min(budgetRemaining, pool / queriesLastFrame);
+        return Mathf.Min(energy, Mathf.Max(0f, budgetRemaining));
+    }
+
+    // ---- surge (capacitor-mode) accessors ----
+    public float InstaBuffer => instaBuffer;
+    public float InstaBufferMaxValue => instaBufferMax;
+    public float InstaDeficit => instaBufferMax - instaBuffer;
+    protected void TopUpInsta() => instaBuffer = instaBufferMax;
+
+    /// <summary>
+    /// Capacitor-mode surge spend: the pool holds REAL energy banked from the grid (see
+    /// <see cref="ChargeInsta"/>) — a burst drains it here instead of raiding generator banks.
+    /// The battery's own stored charge is untouched (it's inert in a node). Returns what was
+    /// actually taken.
+    /// </summary>
+    public float DebitInsta(float amount)
+    {
+        float take = Mathf.Min(instaBuffer, Mathf.Max(0f, amount));
+        if (take <= 0f) return 0f;
+        instaBuffer -= take;
+        buffer -= take;   // negative buffer spins the coil backwards — the discharge language
+        OnUpdate?.Invoke(energy);
+        return take;
+    }
+
+    /// <summary>
+    /// Capacitor-mode surge recharge: the pylon pushes real spare grid energy into the pool
+    /// (drawn from generators at their rate — surge is never minted for free). Returns what fit.
+    /// </summary>
+    public float ChargeInsta(float amount)
+    {
+        float take = Mathf.Min(instaBufferMax - instaBuffer, Mathf.Max(0f, amount));
+        if (take <= 0f) return 0f;
+        instaBuffer += take;
+        buffer += take;   // positive buffer spins the coil forward — the charging language
+        OnUpdate?.Invoke(energy);
+        return take;
     }
 
     [SerializeField] public SpriteRenderer sr;
@@ -206,10 +251,14 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
         // physically functioning during QuickCharge). End-of-frame reconcile: refill by what
         // we *could* have given at rate (drawRate*dt) minus what was actually drawn this
         // frame, clamped to [0, max]. If draws exceeded rate*dt, buffer drops; if below
-        // (idle), buffer climbs back toward max.
+        // (idle), buffer climbs back toward max. CAPACITOR-MODE batteries never self-refill:
+        // their pool is charged exclusively by the pylon pushing real spare grid energy in
+        // (ChargeInsta) — a free refill here would mint +drawRate e/s of throughput from thin
+        // air, letting a 1 e/s generator feed a multi-e/s grid forever.
         queriesLastFrame = queriesThisFrame;
         queriesThisFrame = 0;
-        instaBuffer = Mathf.Clamp(instaBuffer + drawRate * Time.deltaTime - drawnThisFrame, 0f, instaBufferMax);
+        float refill = pad is CapacitorNode ? 0f : drawRate * Time.deltaTime;
+        instaBuffer = Mathf.Clamp(instaBuffer + refill - drawnThisFrame, 0f, instaBufferMax);
         drawnThisFrame = 0f;
 
         if (!visual) return;
@@ -217,7 +266,9 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
     }
 
     /// <summary>Charge-level presentation (percent sprite + spinning coil). PulseBattery replaces
-    /// this wholesale with its crate animation.</summary>
+    /// this wholesale with its crate animation. Slotted in a CapacitorNode the SAME rig displays
+    /// the INSTABUFFER fraction instead of charge — stored energy is irrelevant there, the surge
+    /// pool is the thing the player watches drain and recover.</summary>
     protected virtual void UpdateVisual()
     {
         // A battery without its visual rig (renderer/coil/sprite strips unassigned) has nothing
@@ -225,13 +276,19 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
         if (sr == null || coil == null || mats == null || mats.Length == 0 ||
             energysprs == null || energysprs.Length == 0) return;
 
-        energyBuffer = Mathf.Lerp(energyBuffer, energy, Time.deltaTime * 3f);
+        bool capMode = pad is CapacitorNode;
+        float shown = capMode ? instaBuffer : energy;
+        float shownMax = capMode ? instaBufferMax : maxEnergy;
+
+        energyBuffer = Mathf.Lerp(energyBuffer, shown, Time.deltaTime * 3f);
         buffer = Mathf.Lerp(buffer, 0f, Time.deltaTime);
+        // (capMode coil motion comes from ChargeInsta/DebitInsta driving `buffer` directly —
+        // real charging spins it forward, bursts spin it back.)
 
         if (buffer > 0.1f)
         {
             sr.material = mats[0];
-            sr.sprite = GS.PercentParameter(energysprs, energy / maxEnergy);
+            sr.sprite = GS.PercentParameter(energysprs, shown / shownMax);
             t += buffer * Time.deltaTime;
             if (t > 1f) t -= 1f;
             coil.sprite = GS.PercentParameter(coilSprs[GS.era], t);
@@ -239,7 +296,9 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
         else if (buffer < -0.1f)
         {
             sr.material = mats[GS.Era1()];
-            sr.sprite = GS.PercentParameter(energysprs, energyBuffer / maxEnergy);
+            // Capacitor mode shows the RAW insta fraction — surge debits jump, no smoothing
+            // (charge display keeps its original eased energyBuffer look).
+            sr.sprite = GS.PercentParameter(energysprs, (capMode ? shown : energyBuffer) / shownMax);
             t += buffer * Time.deltaTime;
             if (t < 0f) t += 1f;
             coil.sprite = GS.PercentParameter(coilSprs[GS.era], t);

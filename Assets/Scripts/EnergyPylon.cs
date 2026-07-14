@@ -4,9 +4,11 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Pure-relay energy pylon. No storage. Forwards Use to its upstream sources (adjacent
-/// pads/generators + cable-connected pylons or generators); reports Energy/MaxEnergy by
-/// summing the same set.
+/// Pure-relay energy pylon. No storage — but it DOES own a surge pool (instabuffer of 1,
+/// grown by attached CapacitorNodes) that lets bursts through it exceed the upstream rate
+/// for a frame; the energy itself still drains from upstream stores. Forwards Use to its
+/// upstream sources (adjacent pads/generators + cable-connected pylons or generators);
+/// reports Energy/MaxEnergy by summing the same set.
 ///
 /// Each outgoing cable is rate-capped at <see cref="perCableCap"/> e/sec so one pylon
 /// can't act as a megabus — parallel pylons are the way to scale supply. A tier-1
@@ -41,6 +43,22 @@ public class EnergyPylon : Building, IEnergyAccumulator
     [Header("Pylon — rate cap")]
     [Tooltip("Maximum energy/sec a single cable can transmit. Total throughput = perCableCap × downstream-cable count.")]
     [SerializeField] private float perCableCap = 4f;
+
+    [Header("Pylon — surge pool")]
+    [Tooltip("The pylon's own instabuffer: burst credit shared across all its cables and adjacency draws. Capacitor nodes add theirs on top.")]
+    [SerializeField] private float surgeMaxOwn = 1f;
+    [Tooltip("Energy/sec the own pool recovers at when it wasn't debited this frame.")]
+    [SerializeField] private float surgeRefillRate = 1f;
+
+    // The surge pool holds REAL energy: it starts empty and is filled by ChargePools drawing
+    // whatever spare supply consumers left unclaimed each frame (so charging can never push
+    // total grid outflow past the generators' rated e/s). Bursts spend the pool (see Use).
+    private float surge = 0f;
+    // Surge fair-share: like EnergyStore's query counting, registering budget checks (one per
+    // drawing consumer per frame, via BudgetThisFrame's non-peek path) are counted so each
+    // demander is OFFERED surge/N — otherwise first-in-update-order captures the whole pool
+    // every frame and later consumers starve.
+    private int surgeQueriesThisFrame, surgeQueriesLastFrame;
 
     [Header("Pylon — cable interaction")]
     [Tooltip("Click-radius (world units) around a connected cable for selecting it to delete.")]
@@ -102,8 +120,13 @@ public class EnergyPylon : Building, IEnergyAccumulator
     // guard prevents re-entry on the same pylon mid-iteration.
     private readonly List<IEnergyAccumulator> scratchUpstreams = new();
     private readonly HashSet<IEnergyAccumulator> scratchSeen = new();
+    // Capacitor nodes are PARTITIONED out of the upstream walk: they hold no energy, so they
+    // must never join the Energy sums or the Use split — they only contribute surge credit.
+    private readonly List<CapacitorNode> scratchCapacitors = new();
 
     private Connectable connectable;
+
+    public override bool ShowsSurgeBar => true;
 
     bool IsDownstream(IEnergyAccumulator src)
     {
@@ -118,17 +141,24 @@ public class EnergyPylon : Building, IEnergyAccumulator
     /// <summary>
     /// Build the dedup'd upstream view: adjacency sources (skipping other pylons unless
     /// they're cable-supply, and skipping our own downstreams), then explicit cable
-    /// upstreams. Result lives in scratchUpstreams.
+    /// upstreams. Result lives in scratchUpstreams; CapacitorNodes (adjacent OR tethered)
+    /// are split into scratchCapacitors — surge credit only, never energy.
     /// </summary>
     void GatherUpstreams()
     {
         scratchUpstreams.Clear();
+        scratchCapacitors.Clear();
         scratchSeen.Clear();
         var adj = Power.Sources;
         for (int i = 0; i < adj.Count; i++)
         {
             var src = adj[i];
             if (src == null) continue;
+            if (src is CapacitorNode cn)
+            {
+                if (scratchSeen.Add(cn)) scratchCapacitors.Add(cn);
+                continue;
+            }
             // Adjacent pylons aren't auto-supply — a cable has to say so. Generators/pads
             // are the auto-supply path the user spec'd ("adjacency works for supply").
             if (src is EnergyPylon && !cableUpstreams.Contains(src)) continue;
@@ -140,8 +170,52 @@ public class EnergyPylon : Building, IEnergyAccumulator
         {
             var src = cableUpstreams[i];
             if (src == null) continue;
+            if (src is CapacitorNode tethered)
+            {
+                if (scratchSeen.Add(tethered)) scratchCapacitors.Add(tethered);
+                continue;
+            }
             if (!scratchSeen.Add(src)) continue;
             scratchUpstreams.Add(src);
+        }
+    }
+
+    /// <summary>Σ capacitor credit over the CURRENT scratch partition — call after GatherUpstreams.</summary>
+    float CapacitorCreditFromScratch()
+    {
+        float s = 0f;
+        for (int i = 0; i < scratchCapacitors.Count; i++) s += scratchCapacitors[i].SurgeCredit;
+        return s;
+    }
+
+    /// <summary>Per-demander slice of the combined surge pool (own + capacitors) — assumes the
+    /// scratch partition is current. Divided by last frame's demander count so N consumers
+    /// share the pool instead of the first-in-update-order taking all of it.</summary>
+    float SurgeShareFromScratch()
+    {
+        return (surge + CapacitorCreditFromScratch()) / Mathf.Max(1, surgeQueriesLastFrame);
+    }
+
+    /// <summary>
+    /// Burst credit this pylon offers ONE demander on top of the upstream rate budget: its
+    /// fair share (surge pool ÷ demanders, capacitor nodes included). While a recursive walk
+    /// is in flight (resolving) this returns the own-pool share only, without re-gathering —
+    /// the scratch lists are mid-iteration on that path, and every caller min()s this against
+    /// the guarded upstream budget anyway.
+    /// </summary>
+    public float SurgeAvailable
+    {
+        get
+        {
+            if (Dead) return 0f;
+            if (resolving) return surge / Mathf.Max(1, surgeQueriesLastFrame);
+            resolving = true;
+            try
+            {
+                GatherUpstreams();
+                return SurgeShareFromScratch();
+            }
+            finally { resolving = false; }
         }
     }
 
@@ -154,7 +228,9 @@ public class EnergyPylon : Building, IEnergyAccumulator
             try
             {
                 GatherUpstreams();
-                float sum = 0f;
+                // Surge pools hold real banked energy — they count, so consumers can still
+                // spend a charged pool after the generator bank runs dry.
+                float sum = surge + CapacitorCreditFromScratch();
                 for (int i = 0; i < scratchUpstreams.Count; i++) sum += scratchUpstreams[i].Energy;
                 return sum;
             }
@@ -197,35 +273,115 @@ public class EnergyPylon : Building, IEnergyAccumulator
         }
     }
 
-    /// <summary>Adjacency-direct draws see no insta — only cable consumers do (via PylonCable).</summary>
+    /// <summary>Adjacency draws see the surge share too (the pylon now owns a pool), still capped by the per-cable rate.</summary>
     public float MaxDrawThisFrame(float dt)
     {
         if (resolving || Dead) return 0f;
         resolving = true;
-        try { return Mathf.Min(UpstreamBudgetThisFrame(dt), perCableCap * dt); }
+        try
+        {
+            float budget = BudgetThisFrame(dt, peek: false);
+            return Mathf.Min(budget, perCableCap * dt + SurgeShareFromScratch());
+        }
+        finally { resolving = false; }
+    }
+
+    /// <summary>Side-effect-free MaxDrawThisFrame (no fair-share query registration) — gauge bars only.</summary>
+    public float PeekMaxDraw(float dt)
+    {
+        if (resolving || Dead) return 0f;
+        resolving = true;
+        try
+        {
+            float budget = BudgetThisFrame(dt, peek: true);
+            return Mathf.Min(budget, perCableCap * dt + SurgeShareFromScratch());
+        }
         finally { resolving = false; }
     }
 
     /// <summary>
     /// Combined per-frame budget of everything upstream (shares each generator's drawnThisFrame
-    /// accounting), WITHOUT this pylon's own no-insta adjacency clamp — PylonCable calls this and
-    /// applies its own rate+insta budget on top, so bursts still work through cables while N
-    /// cables off one generator genuinely share that generator's rated output.
+    /// accounting) plus this pylon's surge credit — PylonCable calls this and applies its own
+    /// rate cap on top, so bursts flow through cables while N cables off one generator genuinely
+    /// share that generator's rated output.
     /// </summary>
     public float UpstreamMaxDrawThisFrame(float dt)
     {
         if (resolving || Dead) return 0f;
         resolving = true;
-        try { return UpstreamBudgetThisFrame(dt); }
+        try { return BudgetThisFrame(dt, peek: false); }
         finally { resolving = false; }
     }
 
-    private float UpstreamBudgetThisFrame(float dt)
+    /// <summary>Peek variant of <see cref="UpstreamMaxDrawThisFrame"/> for PylonCable/bar reads.</summary>
+    public float UpstreamPeekThisFrame(float dt)
     {
+        if (resolving || Dead) return 0f;
+        resolving = true;
+        try { return BudgetThisFrame(dt, peek: true); }
+        finally { resolving = false; }
+    }
+
+    /// <summary>
+    /// Per-frame budget for ONE demander = Σ upstream frame budgets + its surge SHARE, CLAMPED
+    /// by total stored energy (upstream banks + the surge pools, which hold real energy).
+    /// The clamp is energy conservation: without it the water-fill would allocate energy that
+    /// doesn't exist and Use would partial-drain-and-fail. An orphan pylon (no upstreams)
+    /// still serves whatever its pools hold — and nothing more. Non-peek calls REGISTER as a
+    /// demander (the surge fair-share count) — one per drawing consumer per frame, cascading
+    /// through pylon chains.
+    /// </summary>
+    private float BudgetThisFrame(float dt, bool peek)
+    {
+        if (!peek) surgeQueriesThisFrame++;
         GatherUpstreams();
-        float sum = 0f;
-        for (int i = 0; i < scratchUpstreams.Count; i++) sum += scratchUpstreams[i].MaxDrawThisFrame(dt);
-        return sum;
+        float budget = 0f, energyAvail = 0f;
+        for (int i = 0; i < scratchUpstreams.Count; i++)
+        {
+            var s = scratchUpstreams[i];
+            budget += peek ? s.PeekMaxDraw(dt) : s.MaxDrawThisFrame(dt);
+            energyAvail += s.Energy;
+        }
+        return Mathf.Min(budget + SurgeShareFromScratch(),
+                         energyAvail + surge + CapacitorCreditFromScratch());
+    }
+
+    /// <summary>Spend surge (REAL banked energy) for the burst portion of a draw: own pool
+    /// first, then capacitors (uses the scratch partition — caller must have gathered).
+    /// Returns what was actually taken.</summary>
+    private float DebitSurge(float amount)
+    {
+        if (amount <= 0f) return 0f;
+        float taken = Mathf.Min(surge, amount);
+        surge -= taken;
+        for (int i = 0; i < scratchCapacitors.Count && amount - taken > 1e-6f; i++)
+        {
+            taken += scratchCapacitors[i].DebitSurge(amount - taken);
+        }
+        return taken;
+    }
+
+    /// <summary>Equal-split drain of the upstream stores (assumes gathered + resolving held).
+    /// Returns the amount actually drained.</summary>
+    private float DrainUpstreams(float cost)
+    {
+        float remaining = cost;
+        int safety = 8;
+        while (remaining > 1e-5f && safety-- > 0)
+        {
+            int n = 0;
+            for (int i = 0; i < scratchUpstreams.Count; i++) if (scratchUpstreams[i].Energy > 0f) n++;
+            if (n == 0) break;
+            float share = remaining / n;
+            for (int i = 0; i < scratchUpstreams.Count; i++)
+            {
+                var s = scratchUpstreams[i];
+                if (s == null || s.Energy <= 0f) continue;
+                float draw = Mathf.Min(s.Energy, share);
+                if (s.Use(draw)) remaining -= draw;
+            }
+        }
+        return cost - remaining;
     }
 
     public bool Use(float cost)
@@ -236,24 +392,18 @@ public class EnergyPylon : Building, IEnergyAccumulator
         try
         {
             GatherUpstreams();
-            int safety = 8;
-            while (cost > 1e-5f && safety-- > 0)
-            {
-                int n = 0;
-                for (int i = 0; i < scratchUpstreams.Count; i++) if (scratchUpstreams[i].Energy > 0f) n++;
-                if (n == 0) break;
-                float share = cost / n;
-                for (int i = 0; i < scratchUpstreams.Count; i++)
-                {
-                    var s = scratchUpstreams[i];
-                    if (s == null || s.Energy <= 0f) continue;
-                    float draw = Mathf.Min(s.Energy, share);
-                    if (s.Use(draw)) cost -= draw;
-                }
-            }
+            // The portion of this draw the upstream rate budgets can't cover is a BURST — it is
+            // SERVED from the surge pools (real energy banked earlier from spare supply), and
+            // only the remainder is forwarded to the upstream stores. Banks therefore never
+            // drain faster than their rated e/s: bursts spend what the grid already saved up.
+            // Peek for the cover check — bookkeeping, not a fair-share claim.
+            float dt = Time.deltaTime, rateCover = 0f;
+            for (int i = 0; i < scratchUpstreams.Count; i++) rateCover += scratchUpstreams[i].PeekMaxDraw(dt);
+            float fromPools = cost > rateCover ? DebitSurge(cost - rateCover) : 0f;
+            float drained = DrainUpstreams(cost - fromPools);
             OnUse?.Invoke();
             OnUpdate?.Invoke(Energy);
-            return cost <= 1e-5f;
+            return fromPools + drained >= cost - 1e-5f;
         }
         finally { resolving = false; }
     }
@@ -321,11 +471,20 @@ public class EnergyPylon : Building, IEnergyAccumulator
     void Update()
     {
         float dt = Time.deltaTime;
-        // Tick every downstream cable's instabuffer once per frame.
+        // Surge pools charge FROM THE GRID: real spare energy — whatever consumers left of the
+        // upstream frame budgets — is drained out of the banks and stored in the pools. Total
+        // grid outflow (consumers + charging) therefore never exceeds the generators' rated
+        // e/s; a fresh or orphaned pylon sits at 0, telling the player to hook up a generator,
+        // and a combat-starved grid leaves the pools visibly empty.
+        ChargePools(dt);
+        // Roll the surge fair-share demander count (mirrors EnergyStore's query counters).
+        surgeQueriesLastFrame = surgeQueriesThisFrame;
+        surgeQueriesThisFrame = 0;
+        // Reset every downstream cable's per-frame draw accounting.
         for (int i = 0; i < downstreams.Count; i++)
         {
-            downstreams[i].cable?.TickInstaBuffer(dt);
-            downstreams[i].reverse?.TickInstaBuffer(dt);
+            downstreams[i].cable?.TickFrame();
+            downstreams[i].reverse?.TickFrame();
         }
         // Cull downstream entries whose target was destroyed (Unity's null sentinel).
         for (int i = downstreams.Count - 1; i >= 0; i--)
@@ -370,10 +529,11 @@ public class EnergyPylon : Building, IEnergyAccumulator
     bool ValidateTarget(Building target)
     {
         if (target == null || target == this) return false;
-        // Pads/hubs aren't cable endpoints. Generators (IEnergyAccumulator, non-pylon, non-pad)
-        // ARE allowed — they're treated as an upstream source we pull from (see OnConnected).
-        // Consumers (towers, factories) and other pylons are downstream targets.
-        if (target is EnergyPad) return false;
+        // Pads/hubs aren't cable endpoints — EXCEPT CapacitorNodes, which tether like a
+        // generator source (surge credit supply). Generators (IEnergyAccumulator, non-pylon,
+        // non-pad) are also upstream sources we pull from (see OnConnected). Consumers
+        // (towers, factories) and other pylons are downstream targets.
+        if (target is EnergyPad && target is not CapacitorNode) return false;
         // Already connected? Don't allow double cabling (either direction). Since pylon-pylon
         // cables now conduct both ways, a cable the TARGET initiated to us also counts.
         for (int i = 0; i < downstreams.Count; i++)
@@ -412,13 +572,13 @@ public class EnergyPylon : Building, IEnergyAccumulator
         }
 
         Vector2Int cell = ChooseClaimCell(target);
-        var cable = new PylonCable(this, target, perCableCap, 4f);
+        var cable = new PylonCable(this, target, perCableCap);
         EnergyManager.i?.RegisterSourceAt(cable, cell);
         var conn = new Connection { target = target, claimedCell = cell, lr = lr, cable = cable };
         downstreams.Add(conn);
 
         // For pylon-to-pylon, each side sees a cable (not the pylon) in its upstreams — the
-        // cable's per-frame cap & insta mediate every hop. The link is BIDIRECTIONAL so drag
+        // cable's per-frame rate cap mediates every hop. The link is BIDIRECTIONAL so drag
         // direction doesn't matter: the target also becomes an upstream of ours via `reverse`.
         // The resolving guards keep the two directions from double-counting (a budget/energy
         // query that loops back through the pylon it started from reads 0).
@@ -426,7 +586,7 @@ public class EnergyPylon : Building, IEnergyAccumulator
         {
             downstreamPylon.AddCableUpstream(cable);
             downstreamPylon.incomingCables.Add(cable);   // occupies the target's connection cap too
-            conn.reverse = new PylonCable(downstreamPylon, this, perCableCap, 4f);
+            conn.reverse = new PylonCable(downstreamPylon, this, perCableCap);
             AddCableUpstream(conn.reverse);
         }
 
@@ -572,6 +732,68 @@ public class EnergyPylon : Building, IEnergyAccumulator
             if (sourceCables[i].lr != null) Destroy(sourceCables[i].lr.gameObject);
         }
         sourceCables.Clear();
+    }
+
+    /// <summary>
+    /// Fill the surge pools from SPARE grid supply: peek what the upstream budgets still offer
+    /// this frame (consumers' draws already netted out — charging feeds on scraps and never
+    /// outranks a consumer), drain that energy for real, and bank it. Own pool first (capped
+    /// at surgeRefillRate), then attached capacitors (capped at each node's SurgeChargeRate).
+    /// Peek-only, so charging never registers in the fair-share demand counts.
+    /// </summary>
+    void ChargePools(float dt)
+    {
+        if (Dead || resolving) return;
+        resolving = true;
+        try
+        {
+            GatherUpstreams();
+            float wantOwn = Mathf.Min(surgeMaxOwn - surge, surgeRefillRate * dt);
+            float wantCaps = 0f;
+            for (int i = 0; i < scratchCapacitors.Count; i++)
+            {
+                var cn = scratchCapacitors[i];
+                wantCaps += Mathf.Min(cn.SurgeDeficit, cn.SurgeChargeRate * dt);
+            }
+            float want = Mathf.Max(0f, wantOwn) + wantCaps;
+            if (want <= 1e-6f) return;
+
+            float spare = 0f;
+            for (int i = 0; i < scratchUpstreams.Count; i++) spare += scratchUpstreams[i].PeekMaxDraw(dt);
+            float charge = Mathf.Min(want, spare);
+            if (charge <= 1e-6f) return;
+
+            float banked = DrainUpstreams(charge);
+            float toOwn = Mathf.Min(banked, Mathf.Max(0f, wantOwn));
+            surge = Mathf.Min(surgeMaxOwn, surge + toOwn);
+            float rest = banked - toOwn;
+            for (int i = 0; i < scratchCapacitors.Count && rest > 1e-6f; i++)
+            {
+                rest -= scratchCapacitors[i].ChargeSurge(rest);
+            }
+            // Float dust that fit nowhere tops the own pool rather than evaporating.
+            if (rest > 1e-6f) surge = Mathf.Min(surgeMaxOwn, surge + rest);
+        }
+        finally { resolving = false; }
+    }
+
+    /// <summary>Surge-bar readout: current vs max aggregate pool (own + attached capacitors).</summary>
+    public void GetSurgeState(out float now, out float max)
+    {
+        if (Dead || resolving) { now = 0f; max = 0f; return; }
+        resolving = true;
+        try
+        {
+            GatherUpstreams();
+            now = surge;
+            max = surgeMaxOwn;
+            for (int i = 0; i < scratchCapacitors.Count; i++)
+            {
+                now += scratchCapacitors[i].SurgeCredit;
+                max += scratchCapacitors[i].SurgeCreditMax;
+            }
+        }
+        finally { resolving = false; }
     }
 
     // ---- upgrades ----

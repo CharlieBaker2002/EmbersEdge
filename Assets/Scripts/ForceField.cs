@@ -38,6 +38,10 @@ public class ForceField : Building
     [SerializeField] private Vector2 endB = new Vector2(1.2f, 1.4f);
 
     private EnergyWall wall;
+
+    /// <summary>Pure trickle consumer — its whole demand is the sustained charge rate
+    /// (0.25/s, rendered as a single stripe).</summary>
+    public override float PeakEnergyDemand => chargeRate;
     private Coroutine loop;
     private float rebuildCharge;
 
@@ -163,7 +167,9 @@ public class ForceField : Building
     private float DrawStep(float maxRate, float remaining)
     {
         if (remaining <= 1e-5f) return 0f;
-        float step = Mathf.Min(maxRate * Time.deltaTime, Power.DrawRate * Time.deltaTime, Power.Energy, remaining);
+        // Fair-share cap + demand registration — see ChargerTurret.DrawStep for why this must
+        // be MaxDrawThisFrame (not DrawRate*dt, not PeekMaxDraw).
+        float step = Mathf.Min(maxRate * Time.deltaTime, Power.MaxDrawThisFrame(Time.deltaTime), Power.Energy, remaining);
         return (step > 0f && Power.Use(step)) ? step : 0f;
     }
 

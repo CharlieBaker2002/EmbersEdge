@@ -86,6 +86,19 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     /// their tracking rotation on this so a fully-drained tower goes dormant (stops moving/looking).</summary>
     public bool HasEnergy => Power.Energy > 1e-3f;
 
+    /// <summary>Peak energy this building ever wants at once: max(largest single burst cost,
+    /// sustained energy/s), from current upgrade state. > 0 attaches a ThrottleBar (1 stripe =
+    /// 1 energy) that appears whenever the grid can't cover this number.</summary>
+    public virtual float PeakEnergyDemand => 0f;
+
+    /// <summary>Grid nodes with a surge (instabuffer) pool show a SurgeBar. True on pylons and
+    /// pads/hubs; CapacitorNode and BatteryStation opt back out.</summary>
+    public virtual bool ShowsSurgeBar => false;
+
+    // The ThrottleBar supersedes the flashing "insufficient energy" icon (same information,
+    // more detail). Flip to false to bring the icon back — the state bookkeeping still runs.
+    protected const bool throttleIconReplacedByBar = true;
+
     public enum EnergyStatus { Powered, Throttled, Unpowered }
     [Header("Energy status overlay (power-consuming buildings)")]
     [Tooltip("World-space placement of the energy-status icon above this building.")]
@@ -184,6 +197,8 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         }
 
         BuildingHealthBar.Attach(this);
+        if (PeakEnergyDemand > 0f) ThrottleBar.Attach(this);
+        if (ShowsSurgeBar) SurgeBar.Attach(this);
 
         startCalled = true;
     }
@@ -816,8 +831,11 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         }
 
         // Leaving "insufficient" for "all good" mid-combat: hold it for a minimum on-screen time,
-        // then flash it out, so it's readable. Skip when combat has ended (turrets off / end of day).
-        if (prev == EnergyStatus.Throttled && status == EnergyStatus.Powered && Finder.turretsOn)
+        // then flash it out, so it's readable. Skip when combat has ended (turrets off / end of day)
+        // — and skip entirely when the bar replaced the icon (nothing to wind down; the coroutine
+        // would flash the SR with whatever stale sprite it last held).
+        if (!throttleIconReplacedByBar &&
+            prev == EnergyStatus.Throttled && status == EnergyStatus.Powered && Finder.turretsOn)
         {
             if (energyLingerCo == null) energyLingerCo = StartCoroutine(WindDownInsufficient());
             return;   // the wind-down coroutine holds + flashes the icon, then hides it
@@ -889,7 +907,9 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             icon = status switch
             {
                 EnergyStatus.Unpowered => UIManager.i.noEnergyIcon,
-                EnergyStatus.Throttled => UIManager.i.insufficientEnergyIcon,
+                // Throttled state is shown by the ThrottleBar now; the icon only returns if the
+                // replacement const is flipped off.
+                EnergyStatus.Throttled => throttleIconReplacedByBar ? null : UIManager.i.insufficientEnergyIcon,
                 _ => null
             };
         }

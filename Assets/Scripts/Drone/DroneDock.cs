@@ -17,6 +17,10 @@ public class DroneDock : Building
     public int residentCount = 4;
     [Tooltip("Daily energy per resident: recharge a living drone, or rebuild a dead one.")]
     public float energyPerDronePerDay = 1f;
+
+    /// <summary>The dawn spike: every resident's daily energy demanded at once (paced over
+    /// frames by DrawEnergy, but this is what "fully powered" means for a dock).</summary>
+    public override float PeakEnergyDemand => residentCount * energyPerDronePerDay;
     [Tooltip("Hover spots around the dock, one per resident (wraps if fewer).")]
     public Vector3[] slotOffsets =
     {

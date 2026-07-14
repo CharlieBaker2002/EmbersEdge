@@ -46,6 +46,9 @@ public class EnergyPad : Building, IEnergyAccumulator
 
     public bool hub = false;
 
+    /// <summary>Pads/hubs show the aggregate instabuffer of their slotted batteries.</summary>
+    public override bool ShowsSurgeBar => true;
+
     public virtual float Energy
     {
         get
@@ -91,6 +94,40 @@ public class EnergyPad : Building, IEnergyAccumulator
             if (b != null) s += b.MaxDrawThisFrame(dt);
         }
         return s;
+    }
+
+    /// <summary>Side-effect-free MaxDrawThisFrame (no fair-share query registration) — gauge bars only.</summary>
+    public virtual float PeekMaxDraw(float dt)
+    {
+        float s = 0f;
+        for (int i = 0; i < slots.Length; i++)
+        {
+            var b = slots[i];
+            if (b != null) s += b.PeekMaxDraw(dt);
+        }
+        return s;
+    }
+
+    /// <summary>Current aggregate instabuffer across slotted batteries — the surge bar's fill.</summary>
+    public float SurgeNow
+    {
+        get
+        {
+            float s = 0f;
+            for (int i = 0; i < slots.Length; i++) if (slots[i] != null) s += slots[i].InstaBuffer;
+            return s;
+        }
+    }
+
+    /// <summary>Max aggregate instabuffer across slotted batteries — the surge bar's stripe count.</summary>
+    public float SurgeMax
+    {
+        get
+        {
+            float s = 0f;
+            for (int i = 0; i < slots.Length; i++) if (slots[i] != null) s += slots[i].InstaBufferMaxValue;
+            return s;
+        }
     }
 
     /// <summary>Subclasses fire OnUpdate via this so the event field stays private to the declaring class.</summary>

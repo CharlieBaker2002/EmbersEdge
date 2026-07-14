@@ -55,7 +55,9 @@ public static class BatteryDistribution
         var list = Building.buildings;
         for (int k = 0; k < list.Count; k++)
         {
-            if (list[k] is not EnergyPad p || p is BatteryStation) continue;
+            // Capacitor nodes are player-stocked surge housings — never a distribution
+            // destination, never robbed for surplus (same standing as stations).
+            if (list[k] is not EnergyPad p || p is BatteryStation || p is CapacitorNode) continue;
             if (!p.builtYet || !p.enabled || !p.gameObject.activeInHierarchy) continue;
             if (!PathZone.AtBase(p.transform.position)) continue;
             int c = CountConsumers(p, out bool dock);
@@ -229,7 +231,7 @@ public static class BatteryDistribution
         {
             var b = Battery.all[k];
             if (b == null || b.transform.InDungeon() || b.following || b == Battery.held) continue;
-            if (b.IsPulse || b.pad == null || b.pad is BatteryStation) continue;
+            if (b.IsPulse || b.pad == null || b.pad is BatteryStation || b.pad is CapacitorNode) continue;
             if (!b.pad.builtYet || !b.pad.enabled || !b.pad.gameObject.activeInHierarchy) continue;
             if (b.claimedBy != null && b.claimedBy != forDrone) continue;
             if (b.padSwapWindow == window) continue;          // already served this window

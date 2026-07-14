@@ -67,8 +67,28 @@ public class PelterTurret : Building
     private bool fastUpgrade = false;       // "Fast Refill" upgrade
     private bool munitionsUpgrade = false;  // "Bigger Bullet" upgrade
 
-    private int ammo = MaxAmmo;
+    private int ammo = 0;
     private Coroutine animLoop;
+
+    /// <summary>Worst reload leg at current upgrades: burst = one leg's energy (3x on the final
+    /// leg with Bigger Bullet), rate = that cost over the leg's animation time (mirrors the
+    /// ReportEnergyDraw(cost / legAnimTime) the reload issues). Fast Refill shortens the leg,
+    /// raising the demanded rate.</summary>
+    public override float PeakEnergyDemand
+    {
+        get
+        {
+            float frameTime = fastUpgrade ? fastReloadFrameTime : reloadFrameTime;
+            float demand = 0f;
+            for (int i = 0; i < ReloadLegs.Length; i++)
+            {
+                float cost = energyPerBullet * (i == MaxAmmo - 1 && munitionsUpgrade ? 3f : 1f);
+                float legAnimTime = (ReloadLegs[i].to - ReloadLegs[i].from + 1) * frameTime;
+                demand = Mathf.Max(demand, cost, cost / legAnimTime);
+            }
+            return demand;
+        }
+    }
 
     public override void Start()
     {
@@ -151,7 +171,10 @@ public class PelterTurret : Building
             yield break;
         }
 
-        ammo = MaxAmmo;
+        // Starts EMPTY — no free magazine. A fresh (or repaired) Pelter sits in its Empty pose
+        // reporting no-energy until the grid actually feeds its first reload, so an unpowered
+        // turret reads as lacking energy the same way an orphan pylon's 0/1 surge bar does.
+        ammo = 0;
         sr.sprite = frames[IdleSprite[ammo]];
 
         while (true)
@@ -245,11 +268,14 @@ public class PelterTurret : Building
         ClearEnergyStatus();   // full again — clear any overlay
     }
 
-    /// <summary>Draws up to <paramref name="remaining"/> this frame, rate-limited by DrawRate. Returns what arrived.</summary>
+    /// <summary>Draws up to <paramref name="remaining"/> this frame, capped by the grid's
+    /// fair-share offer. MaxDrawThisFrame doubles as this turret's once-per-frame demand
+    /// registration — see ChargerTurret.DrawStep for why it must not be DrawRate*dt or
+    /// PeekMaxDraw. Returns what arrived.</summary>
     float DrawStep(float remaining)
     {
         if (remaining <= 1e-5f) return 0f;
-        float step = Mathf.Min(remaining, Power.DrawRate * Time.deltaTime, Power.Energy);
+        float step = Mathf.Min(remaining, Power.MaxDrawThisFrame(Time.deltaTime), Power.Energy);
         return (step > 0f && Power.Use(step)) ? step : 0f;
     }
 

@@ -111,36 +111,45 @@ public class FocusRouter : MonoBehaviour
         // Back arrow works mid-placement — clicking it cancels planting before TryPlace fires.
         if (planting) return;
 
-        // World — 2D physics raycast. Coincident 2D hits have no stable order, so a cable's
-        // EdgeCollider2D (CableLink) — which starts at its pylon and shares the pylon's layer —
-        // would randomly win the press over the pylon itself, leaving press-and-drag to start a
-        // new cable only ~half the time. Demote CableLink to a fallback: a cable is only picked
-        // when nothing else is under the cursor (i.e. clicking it mid-span, away from buildings).
-        // Building bodies (the generic ~1-cell Physic carrying an IClickableCarrier) are demoted the
-        // same way: a unit hovering over a building's footprint — e.g. a docked drone over its
-        // DroneDock — must win the press, or the building randomly swallows the drone's drag-to-assign.
+        // A held battery follows the cursor, so its collider is always under the press — let it
+        // eat the click deterministically (drop / pad-snap) instead of racing whatever it's over.
+        if (Battery.held != null)
+        {
+            DispatchClick(Battery.held);
+            return;
+        }
+
+        // World — 2D physics raycast. Coincident 2D hits have no stable order, so instead of
+        // first-hit-wins the candidates are ranked (see ClickTier): units first (a docked drone
+        // over its DroneDock must win the press or the building swallows the drag-to-assign),
+        // then buildings (a pylon beats the slotted batteries ringing it — pads forward clicks
+        // to their batteries anyway, see EnergyPad.OnClick), then loose batteries, then cables
+        // (an EdgeCollider2D cable starts AT its pylon and must not steal the pylon's press),
+        // and walls dead last (they underlie everything).
         var hits = WorldHits();
-        if (hits.Length > 0)
+        IClickable best = null;
+        int bestTier = int.MaxValue;
+        foreach (var h in hits)
         {
-            IClickable buildingFallback = null;
-            IClickable cableFallback = null;
-            foreach (var h in hits)
-            {
-                IClickable clickable = ClickableOf(h.collider);
-                if (clickable == null) continue;
-                if (clickable is CableLink) { cableFallback ??= clickable; continue; }
-                if (clickable is IClickableCarrier) { buildingFallback ??= clickable; continue; }
-                DispatchClick(clickable);
-                return;
-            }
-            if (buildingFallback != null) { DispatchClick(buildingFallback); return; }
-            if (cableFallback != null) { DispatchClick(cableFallback); return; }
-            IM.i.CloseCursor();
+            IClickable clickable = ClickableOf(h.collider);
+            if (clickable == null) continue;
+            int tier = ClickTier(clickable);
+            if (tier < bestTier) { bestTier = tier; best = clickable; }
         }
-        else
-        {
-            IM.i.CloseCursor();
-        }
+        if (best != null) DispatchClick(best);
+        else IM.i.CloseCursor();
+    }
+
+    /// <summary>Press priority for coincident world hits — lower wins. Units 0, non-wall
+    /// buildings 1, loose batteries 2, cables 3, walls 4.</summary>
+    static int ClickTier(IClickable clickable)
+    {
+        Building b = clickable as Building ?? (clickable as IClickableCarrier)?.clickable as Building;
+        if (b != null) return b.isWall ? 4 : 1;
+        if (clickable is IClickableCarrier) return 1;   // carrier of a non-Building — treat as a body
+        if (clickable is Battery) return 2;
+        if (clickable is CableLink) return 3;
+        return 0;
     }
 
     void DispatchClick(IClickable clickable)

@@ -16,9 +16,17 @@ public interface IEnergyAccumulator
     /// <summary>
     /// Maximum amount this source can deliver in a single frame of length <paramref name="dt"/>
     /// — DrawRate*dt for plain sources, plus any unused instabuffer for sources that have one
-    /// (batteries, pylon cables). Already accounts for any draws done earlier this frame.
+    /// (batteries, pylon surge pools). Already accounts for any draws done earlier this frame.
     /// </summary>
     float MaxDrawThisFrame(float dt);
+
+    /// <summary>
+    /// Same number as <see cref="MaxDrawThisFrame"/> but WITHOUT registering as a drawing
+    /// consumer in the source's fair-share accounting. UI/diagnostic reads (gauge bars, the
+    /// pylon surge-debit baseline) MUST use this — polling MaxDrawThisFrame every frame would
+    /// halve the slice offered to real consumers.
+    /// </summary>
+    float PeekMaxDraw(float dt);
 
     /// <summary>Try to draw cost. Returns false (and changes nothing) if not enough.</summary>
     bool Use(float cost);

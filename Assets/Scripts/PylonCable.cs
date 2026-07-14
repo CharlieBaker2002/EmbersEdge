@@ -4,13 +4,14 @@ using UnityEngine;
 /// <summary>
 /// Per-connection wrapper around an EnergyPylon. One PylonCable is created per outgoing
 /// cable (pylon → tower or pylon → pylon); it's what the downstream's BuildingPower sees
-/// as the source, not the pylon directly. Each cable carries its own instabuffer (4 by
-/// default) so two cables off the same pylon burst independently — and the same applies
-/// to pylon-to-pylon hops, since the downstream pylon's cableUpstreams holds the cable
-/// (not the upstream pylon) so the cable's per-frame cap mediates the flow.
+/// as the source, not the pylon directly. The cable itself carries only a RATE cap —
+/// burst capacity comes from the pylon's shared surge pool (its own instabuffer plus any
+/// attached CapacitorNodes), so N cables off one pylon share one pool instead of each
+/// minting their own. The same applies to pylon-to-pylon hops, since the downstream
+/// pylon's cableUpstreams holds the cable (not the upstream pylon).
 ///
-/// Energy/Use/Add/events all forward to the wrapped pylon. The instabuffer state lives
-/// here and is ticked once per frame by <see cref="EnergyPylon.Update"/>.
+/// Energy/Use/Add/events all forward to the wrapped pylon. Per-frame draw accounting
+/// lives here and is reset once per frame by <see cref="EnergyPylon.Update"/>.
 /// </summary>
 public class PylonCable : IEnergyAccumulator
 {
@@ -18,18 +19,14 @@ public class PylonCable : IEnergyAccumulator
     public Building target;
 
     public float perCableRate = 4f;
-    public float instaBufferMax = 4f;
 
-    private float instaBuffer;
     private float drawnThisFrame;
 
-    public PylonCable(EnergyPylon pylon, Building target, float perCableRate = 4f, float instaBufferMax = 4f)
+    public PylonCable(EnergyPylon pylon, Building target, float perCableRate = 4f)
     {
         this.pylon = pylon;
         this.target = target;
         this.perCableRate = perCableRate;
-        this.instaBufferMax = instaBufferMax;
-        instaBuffer = instaBufferMax;
     }
 
     public float Energy    => pylon != null ? pylon.Energy : 0f;
@@ -40,14 +37,24 @@ public class PylonCable : IEnergyAccumulator
     public float MaxDrawThisFrame(float dt)
     {
         if (pylon == null) return 0f;
-        float budget = perCableRate * dt + instaBuffer - drawnThisFrame;
+        // The upstream call FIRST, unconditionally: it registers this consumer in the surge/
+        // rate fair-share counts. Early-outing on a saturated cable before registering would
+        // undercount demanders and re-create first-in-update-order starvation one hop up.
+        // The cable's own clamp: rate*dt plus the pylon's surge SHARE, net of what this cable
+        // already carried this frame — NOT raw pylon.Energy, so N cables off one generator
+        // can't multiply its rated output.
+        float upstream = pylon.UpstreamMaxDrawThisFrame(dt);
+        float budget = perCableRate * dt + pylon.SurgeAvailable - drawnThisFrame;
+        return Mathf.Min(upstream, Mathf.Max(0f, budget));
+    }
+
+    /// <summary>Side-effect-free MaxDrawThisFrame (no fair-share query registration) — gauge bars only.</summary>
+    public float PeekMaxDraw(float dt)
+    {
+        if (pylon == null) return 0f;
+        float budget = perCableRate * dt + pylon.SurgeAvailable - drawnThisFrame;
         if (budget <= 0f) return 0f;
-        // Cap by the upstream per-frame budget (recursive sum of upstream MaxDrawThisFrame,
-        // which shares each generator's drawnThisFrame accounting) — NOT raw pylon.Energy.
-        // Against Energy, N cables off one generator each delivered their full cable rate,
-        // multiplying the generator's rated output by N. UpstreamMaxDrawThisFrame (not the
-        // pylon's MaxDrawThisFrame) so the pylon's no-insta adjacency clamp doesn't kill bursts.
-        return Mathf.Min(pylon.UpstreamMaxDrawThisFrame(dt), budget);
+        return Mathf.Min(pylon.UpstreamPeekThisFrame(dt), budget);
     }
 
     public bool Use(float cost)
@@ -73,10 +80,9 @@ public class PylonCable : IEnergyAccumulator
         remove { if (pylon != null) pylon.OnUse -= value; }
     }
 
-    /// <summary>Per-frame reconcile: same shape as Battery's tick.</summary>
-    public void TickInstaBuffer(float dt)
+    /// <summary>Per-frame reset of the draw accounting (called once per frame by the owning pylon).</summary>
+    public void TickFrame()
     {
-        instaBuffer = Mathf.Clamp(instaBuffer + perCableRate * dt - drawnThisFrame, 0f, instaBufferMax);
         drawnThisFrame = 0f;
     }
 }

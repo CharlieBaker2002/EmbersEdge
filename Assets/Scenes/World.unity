@@ -5772,7 +5772,7 @@ MonoBehaviour:
   LOSSPROTECTION: 1
   DAMAGEPROTECTION: 0
   DAILYORBBOUNTY: 0
-  CHEATBUILD: 1
+  CHEATBUILD: 0
   IGNOREEFFICIENCY: 0
   DIFFICULTY: 3
   ARENAMODE: 0
@@ -6175,6 +6175,7 @@ MonoBehaviour:
   - {fileID: 2562246030231687990, guid: 75838d3abf8a64d6384c2905279a4992, type: 3}
   - {fileID: 323440563046157391, guid: d25a859398dc84488929e9206995f574, type: 3}
   - {fileID: 667382443573879202, guid: 2a7d0637cb1884b90bc7788f09f34847, type: 3}
+  - {fileID: 323440563046157391, guid: ee9cda1c7d2004435a190238d12825e9, type: 3}
   baseBuildingSciences: []
   barons:
   - {fileID: 1402483098}
@@ -55441,6 +55442,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   buildings:
   - {fileID: 323440563046157391, guid: b5ddb25a104a54785b79e82ef5cb2157, type: 3}
+  - {fileID: 323440563046157391, guid: ee9cda1c7d2004435a190238d12825e9, type: 3}
   - {fileID: 323440563046157391, guid: 4ebad86a49c3f4f4ab997551f0a990e3, type: 3}
   - {fileID: 323440563046157391, guid: ab64099e038884b9f92acf5ed93a96be, type: 3}
   - {fileID: 0}

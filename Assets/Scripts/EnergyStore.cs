@@ -61,6 +61,16 @@ public class EnergyStore
         return Mathf.Min(energy, Mathf.Max(0f, budget));
     }
 
+    /// <summary>MaxDrawThisFrame without the fair-share query registration (UI/diagnostic reads).</summary>
+    public float PeekMaxDraw(float dt)
+    {
+        if (energy <= 0f) return 0f;
+        float pool = drawRate * dt + instaBuffer;
+        float budget = pool - drawnThisFrame;
+        if (queriesLastFrame > 1) budget = Mathf.Min(budget, pool / queriesLastFrame);
+        return Mathf.Min(energy, Mathf.Max(0f, budget));
+    }
+
     /// <summary>Draw cost. Returns false (changes nothing) if there isn't enough stored energy.</summary>
     public bool Use(float cost)
     {

@@ -89,6 +89,9 @@ public class BatteryStation : EnergyPad, IChipConsumer
     /// <summary>Stations spawn a full rack — this is where the colony's batteries come from.</summary>
     protected override int InitialBatteryCount => 4;
 
+    /// <summary>Station batteries are stock being charged, not a grid surge pool — no bar.</summary>
+    public override bool ShowsSurgeBar => false;
+
     public override void Start()
     {
         base.Start();
@@ -158,9 +161,10 @@ public class BatteryStation : EnergyPad, IChipConsumer
     }
 
     /// <summary>May THIS station pump into this battery right now? Pulse batteries self-charge;
-    /// a battery already charged today waits for tomorrow.</summary>
+    /// a battery already charged today waits for tomorrow; a battery in a Capacitor Node serves
+    /// pure surge credit — its charge is irrelevant, so it never rides to a station.</summary>
     static bool Chargeable(Battery b)
-        => !b.IsPulse && !b.ChargedToday && b.energy < b.maxEnergy - 1e-3f;
+        => !b.IsPulse && !b.ChargedToday && b.pad is not CapacitorNode && b.energy < b.maxEnergy - 1e-3f;
 
     void TickSuction()
     {

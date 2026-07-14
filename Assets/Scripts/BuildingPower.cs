@@ -162,6 +162,15 @@ public class BuildingPower : IEnergyAccumulator
         return s;
     }
 
+    /// <summary>Side-effect-free MaxDrawThisFrame (no fair-share query registration) — gauge bars only.</summary>
+    public float PeekMaxDraw(float dt)
+    {
+        RefreshIfDirty();
+        float s = 0f;
+        for (int i = 0; i < sources.Count; i++) if (sources[i] != null) s += sources[i].PeekMaxDraw(dt);
+        return s;
+    }
+
     /// <summary>
     /// Coroutine that drains <paramref name="amount"/> over time. Each frame we figure out
     /// how much each source can deliver this tick — capped by its DrawRate*dt and its
@@ -275,6 +284,10 @@ public class BuildingPower : IEnergyAccumulator
         // every source and rate*dt across them isn't enough, the draw fails outright — a
         // big burst can't quietly bypass the instabuffer ceiling. Distribution is the same
         // max-min fair water-fill DrawEnergy uses, just synchronous.
+        // PEEK, deliberately: the fair-share demand registration belongs to the CALLER's
+        // budget check (DrawStep's MaxDrawThisFrame — which registers even when the offer is
+        // 0, keeping a starved consumer counted). Registering again here would double-count
+        // every drawer and halve the offered slices.
         float dt = Time.deltaTime;
         int N = sources.Count;
         if (N == 0) return false;
@@ -287,7 +300,7 @@ public class BuildingPower : IEnergyAccumulator
         {
             var s = sources[i];
             if (s == null) { capped[i] = true; continue; }
-            float c = s.MaxDrawThisFrame(dt);
+            float c = s.PeekMaxDraw(dt);
             if (c <= 1e-6f) { capped[i] = true; continue; }
             cap[i] = c;
             totalCap += c;

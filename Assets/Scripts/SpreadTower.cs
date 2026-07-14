@@ -39,6 +39,9 @@ public class SpreadTower : Building
     private Coroutine loop;
     private float charge;   // energy stored toward chargeCost; held across attempts, only spent on fire
 
+    /// <summary>One shot's charge, and the rate that charges it in chargeTime (2 and 2/s).</summary>
+    public override float PeakEnergyDemand => Mathf.Max(chargeCost, chargeCost / chargeTime);
+
     private Sprite[] BarFrames => level >= 2 ? barFramesUpgraded : barFrames;
 
     void SetMode(float x)
@@ -159,7 +162,9 @@ public class SpreadTower : Building
     float DrawStep(float maxRate, float remaining)
     {
         if (remaining <= 1e-5f) return 0f;
-        float step = Mathf.Min(maxRate * Time.deltaTime, Power.DrawRate * Time.deltaTime, Power.Energy, remaining);
+        // Fair-share cap + demand registration — see ChargerTurret.DrawStep for why this must
+        // be MaxDrawThisFrame (not DrawRate*dt, not PeekMaxDraw).
+        float step = Mathf.Min(maxRate * Time.deltaTime, Power.MaxDrawThisFrame(Time.deltaTime), Power.Energy, remaining);
         return (step > 0f && Power.Use(step)) ? step : 0f;
     }
 

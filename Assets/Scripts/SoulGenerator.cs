@@ -61,6 +61,7 @@ public class SoulGenerator : Building, IOnDeath, IEnergyAccumulator
    public float MaxEnergy => store.MaxEnergy;
    public float DrawRate  => store.DrawRate;
    public float MaxDrawThisFrame(float dt) => store.MaxDrawThisFrame(dt);
+   public float PeekMaxDraw(float dt) => store.PeekMaxDraw(dt);
    public bool Full => store.Energy >= store.MaxEnergy - 0.001f;
 
    public event Action<float> OnUpdate;
