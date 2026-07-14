@@ -29,9 +29,13 @@ public interface IChipConsumer
     /// <summary>Approach/ownership ring around the drop point (see class doc).</summary>
     float ChipIntakeRadius { get; }
 
-    /// <summary>Job-board rank when several consumers want chips: higher is served first
-    /// (ammunition before the grinder, say). Ties go to the nearest.</summary>
-    int ChipPriority { get; }
+    /// <summary>How much this consumer VALUES an accepted chip (0 = fallback food it will eat
+    /// but barely wants; higher = a real input — ore to the refiner, ammo to a turret). The
+    /// fleet RESERVES each chip for the highest-appeal customer still hungry for it, so a
+    /// grinder never burns ore a refiner is waiting on; customers of equal appeal split the
+    /// supply evenly (see ChipConsumers). Only consulted for chips that pass
+    /// <see cref="AcceptsChip"/>.</summary>
+    int ChipAppeal(int sizeClass, int element);
 
     /// <summary>Bag-space units of chip still wanted, gross of in-flight (see class doc).</summary>
     float ChipDemandSpace { get; }
@@ -45,10 +49,16 @@ public interface IChipConsumer
 }
 
 /// <summary>
-/// Fleet-side chip logistics: the consumer registry plus the shared pickup rule. The rule the
-/// whole fleet follows — LARGEST accepted size class first (more value per bag space and per
-/// daily haul quota), nearest chip within a class — lives in <see cref="FindChipFor"/> so every
-/// consumer inherits it.
+/// Fleet-side chip logistics: the consumer registry, the hive-mind FAIR-SHARE ledger, and the
+/// shared pickup rule. Allocation works in two layers:
+///  - WHO eats next: the fleet feeds whichever hungry customer has been served the least chip
+///    lately (bag-space units on a decaying ledger every drone reads and credits — one
+///    allocator, however many drones), nearest breaking near-ties.
+///  - WHICH chip: contested chip is reserved for its keenest customer
+///    (<see cref="IChipConsumer.ChipAppeal"/>), and within what a customer may take the rule
+///    stays LARGEST accepted size class first (more value per bag space and per daily haul
+///    quota), nearest chip within a class — all in <see cref="FindChipFor"/> so every consumer
+///    inherits it.
 /// </summary>
 public static class ChipConsumers
 {
@@ -60,10 +70,31 @@ public static class ChipConsumers
     {
         all.Clear();
         scratch.Clear();
+        served.Clear();
     }
 
     public static void Register(IChipConsumer c) { if (!all.Contains(c)) all.Add(c); }
-    public static void Unregister(IChipConsumer c) => all.Remove(c);
+    public static void Unregister(IChipConsumer c) { all.Remove(c); served.Remove(c); }
+
+    // ---------------------------------------------------------------- fair-share ledger
+    // Every chip a drone swallows for a customer is credited here in bag-space units, decaying
+    // with a half-life so "even" means even inflow LATELY, not all-time totals (a station that
+    // gorged on exclusive large chip an hour ago isn't starved forever). The ledger is fleet
+    // state, not drone state — that's the hive mind.
+
+    const float ServedHalfLife = 90f;
+    static readonly Dictionary<IChipConsumer, (float space, float stamp)> served
+        = new Dictionary<IChipConsumer, (float, float)>();
+
+    /// <summary>Bag-space of chip the fleet has hauled to this customer lately (decayed).</summary>
+    public static float ServedSpace(IChipConsumer c)
+        => served.TryGetValue(c, out var s)
+            ? s.space * Mathf.Pow(0.5f, (Time.time - s.stamp) / ServedHalfLife)
+            : 0f;
+
+    /// <summary>Called at the swallow (the moment supply is committed to this customer).</summary>
+    public static void CreditServed(IChipConsumer c, float space)
+        => served[c] = (ServedSpace(c) + space, Time.time);
 
     /// <summary>Alive (Unity fake-null aware — consumers are components) and taking chips.</summary>
     public static bool Active(IChipConsumer c)
@@ -101,12 +132,39 @@ public static class ChipConsumers
         return false;
     }
 
+    /// <summary>May this customer be GIVEN a chip of this class right now? It must accept it and
+    /// no keener hungry customer may have dibs (<see cref="TopAppealFor"/>). BOTH ends of a haul
+    /// run this gate — the pickup search and the bag-dump — so what a drone fetches and what it
+    /// spills always agree: ore rides past a grinder's stop while a refiner is waiting on it.</summary>
+    public static bool MayGive(IChipConsumer c, int sizeClass, int element)
+        => c.AcceptsChip(sizeClass, element)
+           && c.ChipAppeal(sizeClass, element) >= TopAppealFor(sizeClass, element);
+
+    /// <summary>The keenest appetite any HUNGRY customer has for this chip — a consumer may
+    /// only take a chip it wants at least this much (contested chip goes to whoever values it
+    /// most; the grinder sees ore only once every hungry refiner is out of the bidding).</summary>
+    public static int TopAppealFor(int sizeClass, int element)
+    {
+        int top = 0;
+        for (int k = 0; k < all.Count; k++)
+        {
+            var c = all[k];
+            if (!Active(c) || NetDemandSpace(c) <= 0f) continue;
+            if (!c.AcceptsChip(sizeClass, element)) continue;
+            int a = c.ChipAppeal(sizeClass, element);
+            if (a > top) top = a;
+        }
+        return top;
+    }
+
     /// <summary>The fleet pickup rule for one consumer: among settled, unclaimed, base-side
-    /// chips the consumer accepts and the bag can hold, take the LARGEST size class going,
-    /// nearest first within a class. Claims nothing — the drone claims.</summary>
+    /// chips the consumer accepts, the bag can hold and no keener customer has dibs on, take
+    /// what this customer values MOST (appeal), the LARGEST size class within that, nearest
+    /// first within a class. Claims nothing — the drone claims.</summary>
     public static OreChip FindChipFor(IChipConsumer c, Drone forDrone, int spaceLeft)
     {
         OreChip best = null;
+        int bestAppeal = int.MinValue;
         int bestSize = -1;
         float bestSqr = float.MaxValue;
         Vector2 pos = forDrone.transform.position;
@@ -118,19 +176,21 @@ public static class ChipConsumers
             if (chip.Age < OreChip.SettleSeconds) continue;
             if (Time.time < chip.unreachableUntil) continue;   // a drone recently failed to reach it
             if (chip.SpaceCost > spaceLeft) continue;
-            if (!c.AcceptsChip(chip.sizeClass, chip.element)) continue;
-            if (chip.sizeClass < bestSize) continue;
+            if (!MayGive(c, chip.sizeClass, chip.element)) continue;   // can't eat it, or a keener customer has dibs
+            int appeal = c.ChipAppeal(chip.sizeClass, chip.element);
+            if (appeal < bestAppeal) continue;
+            if (appeal == bestAppeal && chip.sizeClass < bestSize) continue;
             float d = ((Vector2)chip.transform.position - pos).sqrMagnitude;
-            if (chip.sizeClass == bestSize && d >= bestSqr) continue;
+            if (appeal == bestAppeal && chip.sizeClass == bestSize && d >= bestSqr) continue;
             if (AtAnIntake(chip)) continue;
-            best = chip; bestSize = chip.sizeClass; bestSqr = d;
+            best = chip; bestAppeal = appeal; bestSize = chip.sizeClass; bestSqr = d;
         }
         return best;
     }
 
-    /// <summary>Job-board entry: the consumer most worth serving — highest
-    /// <see cref="IChipConsumer.ChipPriority"/>, nearest to the drone within a rank — that has
-    /// net demand AND a fetchable chip. Claims nothing — the drone claims.</summary>
+    /// <summary>Job-board entry: the hungry customer the FLEET owes the most chip — least
+    /// served lately on the fair-share ledger, nearest to the drone within a near-tie — that
+    /// has a fetchable chip. Claims nothing — the drone claims.</summary>
     public static OreChip FindChipJob(Drone forDrone, int spaceLeft, out IChipConsumer consumer)
     {
         consumer = null;
@@ -147,7 +207,7 @@ public static class ChipConsumers
         // selection-sort in place (consumers number a handful — no allocation, no comparer)
         for (int i = 0; i < scratch.Count - 1; i++)
             for (int j = i + 1; j < scratch.Count; j++)
-                if (Outranks(scratch[j], scratch[i], pos))
+                if (ServeFirst(scratch[j], scratch[i], pos))
                     (scratch[i], scratch[j]) = (scratch[j], scratch[i]);
         for (int k = 0; k < scratch.Count; k++)
         {
@@ -159,9 +219,14 @@ public static class ChipConsumers
         return null;
     }
 
-    static bool Outranks(IChipConsumer a, IChipConsumer b, Vector2 pos)
+    /// <summary>Fair share first: the customer served the least chip lately eats next. Near-ties
+    /// (within a small chip of each other) go to the nearest, so equal-hunger customers don't
+    /// flip-flop drones across the map. Shared by the job board AND the bag-dump detour, so the
+    /// whole fleet ranks customers one way.</summary>
+    public static bool ServeFirst(IChipConsumer a, IChipConsumer b, Vector2 pos)
     {
-        if (a.ChipPriority != b.ChipPriority) return a.ChipPriority > b.ChipPriority;
+        float sa = ServedSpace(a), sb = ServedSpace(b);
+        if (Mathf.Abs(sa - sb) > 0.5f) return sa < sb;
         return (a.ChipDropPoint - pos).sqrMagnitude < (b.ChipDropPoint - pos).sqrMagnitude;
     }
 }

@@ -28,9 +28,9 @@ public class Refiner : Building, IChipConsumer
     public float appetiteSpace = 8f;
 
     [Tooltip("Total chip juice (OreChip.JuiceValue) the refiner can digest per day — plain and ore alike.")]
-    public float dailyJuice = 16f;
+    public float dailyJuice = 48f;
     [Tooltip("Juice banked per ember: plain-rock juice accumulates and pays out one ember per this much.")]
-    public float juicePerEmber = 4f;
+    public float juicePerEmber = 12f;
 
     /// <summary>Juice spent from today's budget (resets each new day).</summary>
     [HideInInspector] public float juiceUsedToday;
@@ -104,8 +104,9 @@ public class Refiner : Building, IChipConsumer
     public bool ChipIntakeActive => builtYet && enabled;
     public Vector2 ChipDropPoint => transform.position;
     public float ChipIntakeRadius => suctionRadius;
-    /// <summary>Refining outranks the battery grinder — resources beat juice for the same chip.</summary>
-    public int ChipPriority => 1;
+    /// <summary>Ore is the refiner's real prize (orbs — appeal 2, so the fleet reserves it for
+    /// hungry refiners); plain rock is ordinary ember feed it shares evenly with the grinder.</summary>
+    public int ChipAppeal(int sizeClass, int element) => element >= 0 ? 2 : 1;
     public int InboundChipSpace { get => inboundChipSpace; set => inboundChipSpace = value; }
 
     /// <summary>The intake gate: every chip must fit today's remaining juice budget; beyond that,

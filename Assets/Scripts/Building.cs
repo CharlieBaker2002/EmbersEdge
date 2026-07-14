@@ -347,7 +347,8 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         }
         else if (mode)
         {
-            physic = Instantiate(Resources.Load<GameObject>(box?"Physic":"PhysicCircle"), transform.position, Quaternion.Euler(0f,0f,Random.Range(0f,360f)), transform).GetComponent<LifeScript>();
+            // random spin is flavour for the circle body only — a box collider must stay axis-aligned
+            physic = Instantiate(Resources.Load<GameObject>(box?"Physic":"PhysicCircle"), transform.position, box ? transform.rotation : Quaternion.Euler(0f,0f,Random.Range(0f,360f)), transform).GetComponent<LifeScript>();
             if (hasAuthoredCollider)
             {
                 // restore the prefab-tuned collider dims over the generic one-cell body

@@ -5772,6 +5772,7 @@ MonoBehaviour:
   LOSSPROTECTION: 1
   DAMAGEPROTECTION: 0
   DAILYORBBOUNTY: 0
+  CHEATBUILD: 1
   IGNOREEFFICIENCY: 0
   DIFFICULTY: 3
   ARENAMODE: 0
@@ -31176,7 +31177,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 879c3d0ae92cc4c7f9773b0d875c136a, type: 2}
   - {fileID: 11400000, guid: 879c3d0ae92cc4c7f9773b0d875c136a, type: 2}
   - {fileID: 11400000, guid: 879c3d0ae92cc4c7f9773b0d875c136a, type: 2}
-  - {fileID: 11400000, guid: ed61f6ebd03f24a0580cbb4b6cd6a69a, type: 2}
+  - {fileID: 11400000, guid: e363134c67bc849789f7837786b6dbe1, type: 2}
   - {fileID: 11400000, guid: c27b9124e98a4f108310539510f4952a, type: 2}
   - {fileID: 11400000, guid: f5efd766fd11b4c67a17e530b4c2c06d, type: 2}
   - {fileID: 11400000, guid: 2814788f9283494fb8bf84a7316f92f8, type: 2}

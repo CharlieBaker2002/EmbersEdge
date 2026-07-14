@@ -421,15 +421,19 @@ public class DroneManager : MonoBehaviour
     public static void SpawnChips(Vector3 pos, CellType tier, int oreElement)
     {
         if (i == null) return;
-        // Plain rock sizes with wall hardness and scatters a random handful; ORE is a currency —
+        // Plain rock sizes with wall hardness — each scattered piece rolls within the tier's band
+        // (regular: small; hard: small/medium; very hard: medium/large); ORE is a currency —
         // strictly ONE medium chip per broken ore wall, so a pocket's ore count is exact and no
         // consumer ever has to size-gate coloured chip.
-        int size = oreElement >= 0 ? 1 : tier == CellType.VeryHard ? 2 : tier == CellType.Hard ? 1 : 0;
         int n = oreElement >= 0 ? 1 : Random.Range(i.chipsMinPerBreak, i.chipsMaxPerBreak + 1);
         var mf = MineField.i;
-        float pad = 0.06f + 0.035f * size;   // sprite half-extent (matches OreChip.WallPad)
         for (int k = 0; k < n; k++)
         {
+            int size = oreElement >= 0 ? 1
+                : tier == CellType.VeryHard ? Random.Range(1, 3)
+                : tier == CellType.Hard ? Random.Range(0, 2)
+                : 0;
+            float pad = 0.06f + 0.035f * size;   // sprite half-extent (matches OreChip.WallPad)
             // stay inside the cavity: a scatter offset whose padded footprint touches rock
             // snaps back to the freshly-broken cell's centre (open by definition)
             Vector3 p = pos + GS.RandCircle(0.05f, 0.4f);

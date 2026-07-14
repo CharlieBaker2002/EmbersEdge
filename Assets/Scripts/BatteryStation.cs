@@ -123,7 +123,9 @@ public class BatteryStation : EnergyPad, IChipConsumer
     public bool ChipIntakeActive => builtYet && enabled;
     public Vector2 ChipDropPoint => transform.position;
     public float ChipIntakeRadius => suctionRadius;
-    public int ChipPriority => 0;   // the grinder is baseline work — ammo/refining may outrank it
+    /// <summary>Plain rock is grinder food proper; ore grinds into the same juice, so it's mere
+    /// fallback (appeal 0) — the fleet only feeds it here once every hungry refiner is served.</summary>
+    public int ChipAppeal(int sizeClass, int element) => element >= 0 ? 0 : 1;
     /// <summary>Juice still wanted, in bag-space units — what the fleet plans hauls against.</summary>
     public float ChipDemandSpace => JuiceDemand / Mathf.Max(0.01f, juicePerChipSpace);
     public int InboundChipSpace { get => inboundChipSpace; set => inboundChipSpace = value; }
