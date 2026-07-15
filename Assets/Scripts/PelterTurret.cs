@@ -67,7 +67,9 @@ public class PelterTurret : Building
     private bool fastUpgrade = false;       // "Fast Refill" upgrade
     private bool munitionsUpgrade = false;  // "Bigger Bullet" upgrade
 
-    private int ammo = 0;
+    // Built with a full magazine — the first volley is free; only reloads draw energy.
+    // Survives BDisable/BEnable (death -> drone-repair revival) since the loop never resets it.
+    private int ammo = MaxAmmo;
     private Coroutine animLoop;
 
     /// <summary>Worst reload leg at current upgrades: burst = one leg's energy (3x on the final
@@ -171,10 +173,8 @@ public class PelterTurret : Building
             yield break;
         }
 
-        // Starts EMPTY — no free magazine. A fresh (or repaired) Pelter sits in its Empty pose
-        // reporting no-energy until the grid actually feeds its first reload, so an unpowered
-        // turret reads as lacking energy the same way an orphan pylon's 0/1 surge bar does.
-        ammo = 0;
+        // Resume from whatever the magazine holds (full on a fresh build, as-it-died on a
+        // revival) — the pose tracks the ammo, and energy is only demanded once a reload starts.
         sr.sprite = frames[IdleSprite[ammo]];
 
         while (true)

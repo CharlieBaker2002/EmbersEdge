@@ -95,8 +95,10 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     /// pads/hubs; CapacitorNode and BatteryStation opt back out.</summary>
     public virtual bool ShowsSurgeBar => false;
 
-    // The ThrottleBar supersedes the flashing "insufficient energy" icon (same information,
-    // more detail). Flip to false to bring the icon back — the state bookkeeping still runs.
+    // Icon policy (user call 2026-07-15): NO overlay icons at all — the red/yellow bars carry
+    // both the empty and the throttled state. Flip to false to bring the yellow "insufficient"
+    // icon back; the status bookkeeping runs either way (and Unpowered maps to no icon
+    // unconditionally in ApplyEnergyIcon).
     protected const bool throttleIconReplacedByBar = true;
 
     public enum EnergyStatus { Powered, Throttled, Unpowered }
@@ -383,25 +385,31 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             physic.onDeaths.Add(this);
             physic.GetComponent<IClickableCarrier>().clickable = this;
             physic.gameObject.SetActive(true);
+            if (clickBody != null) { Destroy(clickBody); clickBody = null; }   // physic is the cursor target now
             RegisterPathFootprint();   // collider is live again — block (or chew-price) the cells
         }
         else
         {
             UIParent.gameObject.SetActive(false);
             UnregisterPathFootprint(); // ghost building blocks nothing — enemies walk the footprint
+            // Unbuilt/ghost buildings have no physic, so without this they are invisible to every
+            // cursor raycast — the Delete-to-cancel and R hotkeys (BM.BuildingUnderCursor) need a
+            // collider to find. OnClick stays inert: SwitchMonos(false) just disabled this script.
+            EnsureClickBody();
         }
     }
 
     /// <summary>
-    /// Cursor target for noBody buildings. A static (no rigidbody) TRIGGER collider on the UI
-    /// layer: FocusRouter's world raycast masks UI in, so pressing the pad opens its slot UI,
+    /// Cursor target for buildings with no live physic (noBody buildings always; every building
+    /// while unbuilt/ghost). A static (no rigidbody) TRIGGER collider on the UI layer:
+    /// FocusRouter's world raycast masks UI in, so pressing the pad opens its slot UI,
     /// while every combat query stays blind to it — enemy target scans reject triggers and
     /// rigidbody-less colliders, no combat layer mask includes UI, and there is no LifeScript
     /// so nothing has hp to hit.
     /// </summary>
     void EnsureClickBody()
     {
-        if (!noBody || clickBody != null) return;
+        if (clickBody != null) return;
         clickBody = new GameObject("ClickBody") { layer = LayerMask.NameToLayer("UI") };
         clickBody.transform.SetParent(transform, false);
         var col = clickBody.AddComponent<BoxCollider2D>();
@@ -931,9 +939,9 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         {
             icon = status switch
             {
-                EnergyStatus.Unpowered => UIManager.i.noEnergyIcon,
-                // Throttled state is shown by the ThrottleBar now; the icon only returns if the
-                // replacement const is flipped off.
+                // No icon for no-energy — the red bar carries that state. The Unpowered
+                // bookkeeping (sticky flag + WatchForPower) still runs underneath.
+                EnergyStatus.Unpowered => null,
                 EnergyStatus.Throttled => throttleIconReplacedByBar ? null : UIManager.i.insufficientEnergyIcon,
                 _ => null
             };

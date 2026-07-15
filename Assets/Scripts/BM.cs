@@ -135,8 +135,10 @@ public class BM : MonoBehaviour //Building Manager
     static Building BuildingUnderCursor()
     {
         Vector2 p = IM.controller ? (Vector2)IM.i.CWorldPoint() : IM.i.MousePosition();
+        // UI is masked in for the physic-less cursor targets (Building.EnsureClickBody):
+        // noBody pads and unbuilt/ghost buildings live there, not on Ally Buildings.
         var hits = Physics2D.RaycastAll(new Vector3(p.x, p.y, -100f), Vector3.forward, 1000f,
-            LayerMask.GetMask("Ally Buildings"));
+            LayerMask.GetMask("Ally Buildings", "UI"));
         foreach (var h in hits)
         {
             var rb = h.collider.attachedRigidbody;
