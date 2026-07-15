@@ -119,9 +119,14 @@ public class BM : MonoBehaviour //Building Manager
         Building b = BuildingUnderCursor();
         if (b == null) return;
         if (rotate) b.TryRotate90();
-        // Delete toggles the drone-demolition mark: once to condemn, again to reprieve.
-        // Built base-side buildings only — construction flows and dungeon pads keep their own rules.
-        if (demolish && b.builtYet && PathZone.AtBase(b.transform.position)) DemolitionMarks.Toggle(b);
+        // Delete on a BUILT building toggles the drone-demolition mark (once to condemn, again to
+        // reprieve); on an UNBUILT one it cancels the construction outright, saving every ember
+        // the constructors haven't shot at it yet. Base-side only — dungeon pads keep their own rules.
+        if (demolish && PathZone.AtBase(b.transform.position))
+        {
+            if (b.builtYet) DemolitionMarks.Toggle(b);
+            else b.CancelConstruction();
+        }
     }
 
     /// <summary>The placed building under the cursor — FocusRouter's raycast recipe: the live

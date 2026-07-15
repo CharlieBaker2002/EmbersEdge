@@ -108,13 +108,17 @@ public class EnergyPad : Building, IEnergyAccumulator
         return s;
     }
 
-    /// <summary>Current aggregate instabuffer across slotted batteries — the surge bar's fill.</summary>
+    /// <summary>Current USABLE aggregate instabuffer across slotted batteries — the surge bar's
+    /// fill. A battery's insta is only spendable while it holds charge (MaxDrawThisFrame zeroes
+    /// out at empty), so each pool is capped by its battery's stored energy: a pad of drained
+    /// batteries honestly reads empty instead of flaunting credit nothing can back.</summary>
     public float SurgeNow
     {
         get
         {
             float s = 0f;
-            for (int i = 0; i < slots.Length; i++) if (slots[i] != null) s += slots[i].InstaBuffer;
+            for (int i = 0; i < slots.Length; i++)
+                if (slots[i] != null) s += Mathf.Min(slots[i].InstaBuffer, slots[i].energy);
             return s;
         }
     }

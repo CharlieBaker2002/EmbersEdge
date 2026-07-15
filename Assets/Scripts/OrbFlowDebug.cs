@@ -55,7 +55,6 @@ public class OrbFlowDebug : MonoBehaviour
             if (m.typ == OrbMagnet.OrbType.Task) tasks++;
         }
         if (tasks == 0) sb.AppendLine("    (no TASK magnets registered — placed buildings aren't registering)");
-
         // Each pylon: is its coroutine-facing list seeing the tasks, does it physically hold orbs
         sb.AppendLine($"  pylons={rm.pylons.Count}:");
         foreach (var p in rm.pylons)

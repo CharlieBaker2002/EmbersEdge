@@ -197,7 +197,9 @@ public static class BatteryDistribution
 
     /// <summary>Meaningful gain gate for a wave-end pad upgrade: a spare must beat the slotted
     /// battery by this much before a drone trades them (churn guard — the station swap's
-    /// tighter BatteryStation.SwapMargin is for trips that also charge).</summary>
+    /// tighter BatteryStation.SwapMargin is for trips that also charge). Like every swap
+    /// guard it scales down via BatteryStation.MarginOver as the slotted battery dies:
+    /// against a dead pad even dregs are a real upgrade.</summary>
     public const float UpgradeMargin = 1.5f;
 
     /// <summary>Wave-end pad UPGRADE, the stationless swap: the drained battery on a working
@@ -213,7 +215,7 @@ public static class BatteryDistribution
     {
         spare = null;
         int window = BatteryStation.SwapWindow;
-        // the fullest free spare — no spare, no trade (dregs below 1 upgrade nothing)
+        // the fullest free spare — no spare, no trade (below the dreg floor it upgrades nothing)
         Battery best = null;
         for (int k = 0; k < Battery.all.Count; k++)
         {
@@ -224,8 +226,9 @@ public static class BatteryDistribution
             if (!PathZone.AtBase(b.transform.position)) continue;
             if (best == null || b.energy > best.energy) best = b;
         }
-        if (best == null || best.energy <= 1f) return null;
-        // the neediest working-pad battery it meaningfully beats
+        if (best == null || best.energy <= BatteryStation.DregMargin) return null;
+        // the neediest working-pad battery it meaningfully beats — full margin against a live
+        // battery, the dreg floor against a dead one (2.4 onto a 0-energy pad is a real gain)
         Battery outB = null;
         for (int k = 0; k < Battery.all.Count; k++)
         {
@@ -235,7 +238,7 @@ public static class BatteryDistribution
             if (!b.pad.builtYet || !b.pad.enabled || !b.pad.gameObject.activeInHierarchy) continue;
             if (b.claimedBy != null && b.claimedBy != forDrone) continue;
             if (b.padSwapWindow == window) continue;          // already served this window
-            if (best.energy < b.energy + UpgradeMargin) continue;
+            if (best.energy < b.energy + BatteryStation.MarginOver(b, UpgradeMargin)) continue;
             if (outB == null || b.energy < outB.energy) outB = b;
         }
         if (outB == null) return null;
@@ -255,6 +258,9 @@ public static class BatteryDistribution
         {
             Building b = list[k];
             if (b == null || ReferenceEquals(b, p) || !b.gameObject.activeInHierarchy) continue;
+            // A pylon CABLED onto the pad draws from it exactly like an adjacent building —
+            // stock it the same way (counted once even if the pylon is also touching).
+            if (b is EnergyPylon pyl && pyl.DrawsFromViaCable(p)) { n++; continue; }
             var pw = b.PowerOrNull;
             if (pw == null) continue;
             var srcs = pw.Sources;

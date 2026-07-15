@@ -109,6 +109,7 @@ public class ResourceManager : MonoBehaviour
         // starting resources ride in via the held pack — that must not eat day 1's carry quota
         ResetHeldQuota();
         SpawnManager.instance.OnNewDay += ResetHeldQuota;
+        ResourceBarsUI.Attach(this);
     }
 
     private void Update()

@@ -94,6 +94,11 @@ public class EnergyPylon : Building, IEnergyAccumulator
     /// <summary>Cable links occupying this pylon: outgoing + generator source cables + incoming pylon links.</summary>
     private int ConnectionCount => downstreams.Count + sourceCables.Count + incomingCables.Count;
 
+    /// <summary>Does this pylon pull from <paramref name="src"/> through an explicit cable?
+    /// Battery distribution uses this so a pad CABLED to a pylon counts as consumed-from
+    /// exactly like a pad the pylon is standing next to.</summary>
+    public bool DrawsFromViaCable(IEnergyAccumulator src) => src != null && cableUpstreams.Contains(src);
+
     // Death leaves the cable graph INTACT but inert: a dead pylon (SwitchMonos(false) disables
     // this Behaviour) reports zero energy/budget and refuses draws, so nothing flows through it —
     // and revival (drone repair -> SwitchMonos(true)) restores the network without rebuilding.
@@ -111,6 +116,20 @@ public class EnergyPylon : Building, IEnergyAccumulator
         public LineRenderer lr;
     }
     private readonly List<SourceCable> sourceCables = new();
+
+    /// <summary>Cable heat visuals for upstream SOURCE cables, keyed by the source they supply
+    /// from — DrainUpstreams/DebitSurge/ChargePools look up where the energy physically came
+    /// from and report the flow. Downstream cables report via PylonCable.flowTint instead.</summary>
+    private readonly Dictionary<IEnergyAccumulator, CableFlowTint> sourceFlowTints = new();
+
+    // NOTE: pool top-ups (ChargePools) report like any other flow — energy genuinely moves
+    // through the cable to fill the buffers, and hiding it made capacitor grids look idle
+    // while working. True idle stays grey anyway: full pools charge nothing.
+    void ReportSourceFlow(IEnergyAccumulator src, float amount)
+    {
+        if (amount <= 0f || src == null) return;
+        if (sourceFlowTints.TryGetValue(src, out var tint) && tint != null) tint.Report(amount);
+    }
 
     // Cycle guard: while a recursive Energy/Use/DrawRate read is in flight on this pylon,
     // further entries return the zero/skip value so an A→B→A chain can't infinite-loop.
@@ -356,7 +375,9 @@ public class EnergyPylon : Building, IEnergyAccumulator
         surge -= taken;
         for (int i = 0; i < scratchCapacitors.Count && amount - taken > 1e-6f; i++)
         {
-            taken += scratchCapacitors[i].DebitSurge(amount - taken);
+            float fromCap = scratchCapacitors[i].DebitSurge(amount - taken);
+            ReportSourceFlow(scratchCapacitors[i], fromCap);
+            taken += fromCap;
         }
         return taken;
     }
@@ -378,7 +399,11 @@ public class EnergyPylon : Building, IEnergyAccumulator
                 var s = scratchUpstreams[i];
                 if (s == null || s.Energy <= 0f) continue;
                 float draw = Mathf.Min(s.Energy, share);
-                if (s.Use(draw)) remaining -= draw;
+                if (s.Use(draw))
+                {
+                    remaining -= draw;
+                    ReportSourceFlow(s, draw);
+                }
             }
         }
         return cost - remaining;
@@ -520,6 +545,7 @@ public class EnergyPylon : Building, IEnergyAccumulator
             if (sc.target == null || (sc.source is UnityEngine.Object o && o == null))
             {
                 RemoveCableUpstream(sc.source);
+                if (sc.source != null) sourceFlowTints.Remove(sc.source);
                 if (sc.lr != null) Destroy(sc.lr.gameObject);
                 sourceCables.RemoveAt(i);
             }
@@ -529,11 +555,10 @@ public class EnergyPylon : Building, IEnergyAccumulator
     bool ValidateTarget(Building target)
     {
         if (target == null || target == this) return false;
-        // Pads/hubs aren't cable endpoints — EXCEPT CapacitorNodes, which tether like a
-        // generator source (surge credit supply). Generators (IEnergyAccumulator, non-pylon,
-        // non-pad) are also upstream sources we pull from (see OnConnected). Consumers
-        // (towers, factories) and other pylons are downstream targets.
-        if (target is EnergyPad && target is not CapacitorNode) return false;
+        // Pads/hubs ARE cable endpoints: a cabled pad/hub becomes an upstream source and
+        // functions exactly like an adjacent one (OnConnected's source branch — same path
+        // generators and CapacitorNode tethers take). Consumers (towers, factories) and
+        // other pylons are downstream targets.
         // Already connected? Don't allow double cabling (either direction). Since pylon-pylon
         // cables now conduct both ways, a cable the TARGET initiated to us also counts.
         for (int i = 0; i < downstreams.Count; i++)
@@ -567,6 +592,11 @@ public class EnergyPylon : Building, IEnergyAccumulator
                 var link = go.GetComponent<CableLink>();
                 if (link == null) link = go.AddComponent<CableLink>();
                 link.Init(() => DeleteSourceCable(sc), icon, transform.position, target.transform.position, cableClickRadius);
+                // Heat visual. Either endpoint dead (main script disabled, like buildings'
+                // ghost state) or destroyed → the cable's glow details dim out.
+                var tint = go.AddComponent<CableFlowTint>();
+                tint.Init(lr, () => this == null || Dead || sc.target == null || !sc.target.enabled);
+                sourceFlowTints[src] = tint;
             }
             return;
         }
@@ -599,6 +629,13 @@ public class EnergyPylon : Building, IEnergyAccumulator
             var link = go.GetComponent<CableLink>();
             if (link == null) link = go.AddComponent<CableLink>();
             link.Init(() => DeleteConnection(conn), icon, transform.position, target.transform.position, cableClickRadius);
+            // Heat visual: one tint per cable; a bidirectional pylon-pylon link feeds it from
+            // both directions so flow either way warms the same line. Either endpoint dead
+            // (main script disabled, like buildings' ghost state) or destroyed → dim.
+            var tint = go.AddComponent<CableFlowTint>();
+            tint.Init(lr, () => this == null || Dead || conn.target == null || !conn.target.enabled);
+            cable.flowTint = tint;
+            if (conn.reverse != null) conn.reverse.flowTint = tint;
         }
     }
 
@@ -714,6 +751,7 @@ public class EnergyPylon : Building, IEnergyAccumulator
     {
         if (sc == null || !sourceCables.Remove(sc)) return;
         RemoveCableUpstream(sc.source);
+        if (sc.source != null) sourceFlowTints.Remove(sc.source);
         if (sc.lr != null)
         {
             if (sc.lr.TryGetComponent<EdgeCollider2D>(out var ec)) ec.enabled = false;
@@ -732,6 +770,7 @@ public class EnergyPylon : Building, IEnergyAccumulator
             if (sourceCables[i].lr != null) Destroy(sourceCables[i].lr.gameObject);
         }
         sourceCables.Clear();
+        sourceFlowTints.Clear();
     }
 
     /// <summary>
@@ -769,7 +808,9 @@ public class EnergyPylon : Building, IEnergyAccumulator
             float rest = banked - toOwn;
             for (int i = 0; i < scratchCapacitors.Count && rest > 1e-6f; i++)
             {
-                rest -= scratchCapacitors[i].ChargeSurge(rest);
+                float put = scratchCapacitors[i].ChargeSurge(rest);
+                ReportSourceFlow(scratchCapacitors[i], put);
+                rest -= put;
             }
             // Float dust that fit nowhere tops the own pool rather than evaporating.
             if (rest > 1e-6f) surge = Mathf.Min(surgeMaxOwn, surge + rest);

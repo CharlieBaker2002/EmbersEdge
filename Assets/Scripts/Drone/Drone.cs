@@ -496,6 +496,13 @@ public class Drone : AllyAI, IOnDeath
                     break;
 
                 case State.Fleeing:
+                    // Bags EVACUATE, they don't escort: dungeon-side a threatened bag holds
+                    // the pad's standoff ring and kites — never chases the player around.
+                    if (equipment == DroneEquipment.Bag && transform.InDungeon())
+                    {
+                        TickBagFlee();
+                        break;
+                    }
                     bool atRally = MoveToward(RallySpot(), 0.55f);
                     if (atRally && equipment == DroneEquipment.Drill && threatened)
                     {
@@ -654,6 +661,65 @@ public class Drone : AllyAI, IOnDeath
     {
         Telepad pad = assignedPad != null ? (assignedPad.IsDungeonSide ? assignedPad : assignedPad.Linked) : null;
         return pad != null && pad.IsOperational ? pad.RallyPoint : RallySpot();
+    }
+
+    /// <summary>Threatened bag drone in the dungeon: run to the PAD rally point — never the
+    /// player; bags evacuate while drills fight — then kite inside the standoff ring: back away
+    /// from the nearest enemy, sliding around the ring edge rather than ever leaving it.</summary>
+    void TickBagFlee()
+    {
+        if (!threatened)
+        {
+            state = State.DeployedTravel;
+            return;
+        }
+        Vector2 rally = PadRally();
+        Vector2 pos = transform.position;
+        float ring = DroneManager.BagRallyStandoff;
+        Vector2 fromRally = pos - rally;
+        if (fromRally.sqrMagnitude > ring * ring)
+        {
+            MoveToward(rally, ring * 0.5f);   // outside the ring: get to the rally point first
+            return;
+        }
+        if (!MinePathManager.TryNearestEnemy(pos, out Transform foe, out _) || foe == null)
+        {
+            HoldAt(rally, ring * 0.5f);
+            return;
+        }
+        Vector2 away = pos - (Vector2)foe.position;
+        away = away.sqrMagnitude > 1e-4f ? away.normalized
+            : fromRally.sqrMagnitude > 1e-4f ? fromRally.normalized : (Vector2)(-transform.up);
+        Vector2 want = pos + away * 1.5f;
+        if ((want - rally).sqrMagnitude > ring * ring)
+        {
+            // pinned against the ring edge: slide around it, whichever way opens distance
+            Vector2 radial = fromRally.sqrMagnitude > 1e-4f ? fromRally.normalized : away;
+            Vector2 tangent = new Vector2(-radial.y, radial.x);
+            if (Vector2.Dot(tangent, away) < 0f) tangent = -tangent;
+            want = rally + (radial + tangent).normalized * (ring * 0.9f);
+        }
+        // The kite point is geometric — it can land inside dungeon rock, and MoveToward's A*
+        // can't path INTO a wall (its fallback then shoves the drone straight at it). LOS alone
+        // can't reject it either: the solid-tail rule reads "ray ends in the wall's own mass" as
+        // visible, so in-wall points must be culled with IsWallAt too. Swing the escape heading
+        // in widening steps to either side until the (ring-clamped) point is actually flyable;
+        // a fully cornered drone paths to the rally point instead.
+        if (MinePath.IsWallAt(want) || !MinePath.LineOfSightWide(pos, want, 0.2f))
+        {
+            Vector2 wantDir = away;
+            want = rally;
+            for (int i = 1; i <= 6; i++)
+            {
+                float ang = ((i + 1) / 2) * 40f * (i % 2 == 1 ? 1f : -1f);   // +40,-40,+80,-80,+120,-120
+                Vector2 cand = pos + wantDir.Rotated(ang) * 1.5f;
+                cand = rally + Vector2.ClampMagnitude(cand - rally, ring * 0.9f);
+                if (MinePath.IsWallAt(cand) || !MinePath.LineOfSightWide(pos, cand, 0.2f)) continue;
+                want = cand;
+                break;
+            }
+        }
+        MoveToward(want, 0.25f);
     }
 
     /// <summary>Enough energy left to buy at least one regular-tier wall.</summary>
@@ -2340,10 +2406,11 @@ public class Drone : AllyAI, IOnDeath
                 var outB = upgradeTarget;
                 var pad = outB != null ? outB.pad : null;
                 // margin re-check at the tighter delivery floor: a generator may have been
-                // refilling the slotted battery mid-flight — never land a downgrade
+                // refilling the slotted battery mid-flight — never land a downgrade (the floor
+                // scales like the planning gate, so a dreg trade onto a dead pad still lands)
                 if (spare == null || outB == null || outB.claimedBy != this
                     || pad == null || pad is BatteryStation || pad is CapacitorNode || !pad.builtYet
-                    || spare.energy < outB.energy + BatteryStation.SwapMargin)
+                    || spare.energy < outB.energy + BatteryStation.MarginOver(outB))
                 {
                     if (outB != null && outB.claimedBy == this) outB.claimedBy = null;
                     upgradeTarget = null;

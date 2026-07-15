@@ -26,7 +26,15 @@ public class OreChip : MonoBehaviour
     [HideInInspector] public Rigidbody2D rb;
 
     /// <summary>Bag space this chip occupies (small 1 / big 2 / large 4).</summary>
-    public int SpaceCost => sizeClass == 2 ? 4 : sizeClass + 1;
+    public int SpaceCost => SpaceFor(sizeClass);
+
+    /// <summary>Bag space by size class, for callers with no chip in hand.</summary>
+    public static int SpaceFor(int sizeClass) => sizeClass == 2 ? 4 : sizeClass + 1;
+
+    /// <summary>Juice yielded per unit of bag space for a size class (small 0.1 / big 0.25 /
+    /// large 0.3125) — the honest exchange rate for demand heuristics that plan hauls in
+    /// space units against a juice want.</summary>
+    public static float JuicePerSpace(int sizeClass) => JuiceFor(sizeClass) / SpaceFor(sizeClass);
 
     /// <summary>Energy the grinder credits when this chip is ground down
     /// (small 0.2 / big 0.5 / large 1.25). Set by size, not by bag space.</summary>

@@ -3140,7 +3140,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Pylons & Generators
+  m_text: Energy Infrastructure
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: fd214b5b143674af9a1e10282f074f56, type: 2}
   m_sharedMaterial: {fileID: -16246915363667908, guid: fd214b5b143674af9a1e10282f074f56, type: 2}
@@ -6176,6 +6176,7 @@ MonoBehaviour:
   - {fileID: 323440563046157391, guid: d25a859398dc84488929e9206995f574, type: 3}
   - {fileID: 667382443573879202, guid: 2a7d0637cb1884b90bc7788f09f34847, type: 3}
   - {fileID: 323440563046157391, guid: ee9cda1c7d2004435a190238d12825e9, type: 3}
+  - {fileID: 1229547535605268372, guid: 2673e6766008d45a687aabf1099685cd, type: 3}
   baseBuildingSciences: []
   barons:
   - {fileID: 1402483098}
@@ -6271,10 +6272,10 @@ MonoBehaviour:
   backButton: {fileID: 1866645347}
   daddies:
   - {fileID: 992945648}
+  - {fileID: 1990433202}
   - {fileID: 1362306590}
   - {fileID: 654929498}
   - {fileID: 1649397431}
-  - {fileID: 1990433202}
   daddyTs:
   - {fileID: 1067135193}
   - {fileID: 108497750}
@@ -20058,7 +20059,7 @@ GameObject:
   - component: {fileID: 654929499}
   - component: {fileID: 654929498}
   m_Layer: 5
-  m_Name: Ember Infrastructure
+  m_Name: Ember
   m_TagString: UI
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -30273,7 +30274,7 @@ GameObject:
   - component: {fileID: 992945649}
   - component: {fileID: 992945648}
   m_Layer: 5
-  m_Name: Defence
+  m_Name: Military
   m_TagString: UI
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -30318,6 +30319,9 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 9010514658136673332, guid: e994a2c1bb08a451d9ed7a5cf4a0a6dc, type: 3}
   - {fileID: 5300000000012001, guid: 6a7b8c9d0e1f42539647585a6b7c8d14, type: 3}
+  - {fileID: 0}
+  - {fileID: 4300919736548973067, guid: 56d28556c420d448bb94af695f3b216c, type: 3}
+  - {fileID: 4300919736548973067, guid: e2b77368adf1b4663a1eed1b2b5cb0b4, type: 3}
 --- !u!114 &992945649
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -36589,7 +36593,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: -15, y: 0}
+  m_AnchoredPosition: {x: -15, y: 300}
   m_SizeDelta: {x: 300, y: 600}
   m_Pivot: {x: 1, y: 0.5}
 --- !u!1 &1311015483
@@ -37919,7 +37923,7 @@ GameObject:
   - component: {fileID: 1362306591}
   - component: {fileID: 1362306590}
   m_Layer: 5
-  m_Name: Drones & Batteries
+  m_Name: Utility
   m_TagString: UI
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -37958,18 +37962,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   buildings:
-  - {fileID: 323440563046157391, guid: bc024c4044cb24255aabb3d97bc4b96d, type: 3}
-  - {fileID: 323440563046157391, guid: e2161ff026b2b48899f7cd40ac500ff1, type: 3}
-  - {fileID: 0}
   - {fileID: 4154213052136245432, guid: 5166357e25bea4dd9a302f909f18501f, type: 3}
-  - {fileID: 323440563046157391, guid: d25a859398dc84488929e9206995f574, type: 3}
-  - {fileID: 8397005363367721448, guid: 47ef15a7918344200956c7fec9f6ac7c, type: 3}
-  - {fileID: 0}
   - {fileID: 2562246030231687990, guid: 75838d3abf8a64d6384c2905279a4992, type: 3}
   - {fileID: 3236425706926957504, guid: bb4a28dabca2d4e2cbb2c002cc77c2d2, type: 3}
+  - {fileID: 8397005363367721448, guid: 47ef15a7918344200956c7fec9f6ac7c, type: 3}
   - {fileID: 0}
-  - {fileID: 4300919736548973067, guid: 56d28556c420d448bb94af695f3b216c, type: 3}
-  - {fileID: 4300919736548973067, guid: e2b77368adf1b4663a1eed1b2b5cb0b4, type: 3}
+  - {fileID: 323440563046157391, guid: d25a859398dc84488929e9206995f574, type: 3}
+  - {fileID: 1229547535605268372, guid: 2673e6766008d45a687aabf1099685cd, type: 3}
 --- !u!114 &1362306591
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -40686,7 +40685,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Drones & Batteries
+  m_text: Utility Infrastructure
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: fd214b5b143674af9a1e10282f074f56, type: 2}
   m_sharedMaterial: {fileID: -16246915363667908, guid: fd214b5b143674af9a1e10282f074f56, type: 2}
@@ -47718,7 +47717,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Defence
+  m_text: Military Infrastructure
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: fd214b5b143674af9a1e10282f074f56, type: 2}
   m_sharedMaterial: {fileID: -16246915363667908, guid: fd214b5b143674af9a1e10282f074f56, type: 2}
@@ -49324,7 +49323,7 @@ GameObject:
   - component: {fileID: 1649397432}
   - component: {fileID: 1649397431}
   m_Layer: 5
-  m_Name: Orb Infrastructure
+  m_Name: Orbs
   m_TagString: UI
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -55402,7 +55401,7 @@ GameObject:
   - component: {fileID: 1990433203}
   - component: {fileID: 1990433202}
   m_Layer: 5
-  m_Name: Pylons & Generators
+  m_Name: Energy
   m_TagString: UI
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -55415,7 +55414,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1990433200}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -55441,8 +55440,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   buildings:
-  - {fileID: 323440563046157391, guid: b5ddb25a104a54785b79e82ef5cb2157, type: 3}
+  - {fileID: 323440563046157391, guid: bc024c4044cb24255aabb3d97bc4b96d, type: 3}
+  - {fileID: 323440563046157391, guid: e2161ff026b2b48899f7cd40ac500ff1, type: 3}
   - {fileID: 323440563046157391, guid: ee9cda1c7d2004435a190238d12825e9, type: 3}
+  - {fileID: 0}
+  - {fileID: 323440563046157391, guid: b5ddb25a104a54785b79e82ef5cb2157, type: 3}
   - {fileID: 323440563046157391, guid: 4ebad86a49c3f4f4ab997551f0a990e3, type: 3}
   - {fileID: 323440563046157391, guid: ab64099e038884b9f92acf5ed93a96be, type: 3}
   - {fileID: 0}
@@ -55450,11 +55452,9 @@ MonoBehaviour:
   - {fileID: 8949586911344664711, guid: 72c08a139899e4ade8cff549617bc608, type: 3}
   - {fileID: 0}
   - {fileID: 4464479778263070814, guid: ffe893d2c949d4b83a265550d4f6d0d4, type: 3}
+  - {fileID: 2000541545583142029, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
   - {fileID: 5580220471824109513, guid: 7623ba60574d1474cab851c5d472766f, type: 3}
   - {fileID: 2000541545583142029, guid: 22813059b8262459ea73bf3d73148974, type: 3}
-  - {fileID: 0}
-  - {fileID: 2000541545583142029, guid: 807d33c070f6b4826a5152f0859d2a54, type: 3}
-  - {fileID: 2000541545583142029, guid: 57b5ed99e5daf4d9c83744849227d3c3, type: 3}
 --- !u!114 &1990433203
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -56553,10 +56553,10 @@ RectTransform:
   - {fileID: 88528163}
   - {fileID: 1866645348}
   - {fileID: 992945647}
-  - {fileID: 654929497}
   - {fileID: 1990433201}
-  - {fileID: 1649397430}
   - {fileID: 1362306589}
+  - {fileID: 654929497}
+  - {fileID: 1649397430}
   - {fileID: 1067135193}
   - {fileID: 108497750}
   - {fileID: 858198877}

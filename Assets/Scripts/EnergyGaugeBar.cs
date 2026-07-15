@@ -15,12 +15,12 @@ public abstract class EnergyGaugeBar : MonoBehaviour
 {
     // geometry (world units) — deliberately chunkier than the hairline health bar so the
     // bar's extent (and an EMPTY bar) reads at a glance
-    const float Width = 0.09f;       // bar thickness
-    const float TickH = 0.022f;      // divider tick height
+    const float Width = 0.06f;       // bar thickness
+    const float TickH = 0.02f;       // divider tick height
     const float XPad = 0.16f;        // gap right of the building's right edge
     const float UnitH = 0.3f;        // bar length per 1 energy of span, before the height cap
     const float MinH = 0.18f;        // readability floor for tiny spans (e.g. the 0.25/s Force Field)
-    const float FrameW = 0.022f;     // light outline around the slot — makes an empty bar visible
+    const float FrameW = 0.012f;     // hairline slot edge — makes an empty bar visible
 
     const float MaxAlpha = 0.75f;    // overlay translucency — never fully opaque
 
@@ -28,7 +28,7 @@ public abstract class EnergyGaugeBar : MonoBehaviour
     static readonly Color healthyCol = new(0.6f, 1f, 0.8f);
     static readonly Color hurtCol = new(0.682f, 0.02f, 0.184f);        // #ae052f
     static readonly Color backCol = new(0.047f, 0.047f, 0.086f, 0.9f); // #0c0c16
-    static readonly Color frameCol = new(0.72f, 0.78f, 0.82f, 0.55f);  // pale outline — the "empty slot" edge
+    static readonly Color frameCol = new(0.13f, 0.14f, 0.22f, 0.85f);  // dark slot edge, a shade above the back
 
     // 1×1 white quads (centre / bottom-edge pivot) shared by every gauge
     static Sprite quadMid, quadBottom;

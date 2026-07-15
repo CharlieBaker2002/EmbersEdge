@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 4228794242279667164}
   - component: {fileID: 5906971196468631169}
   m_Layer: 0
-  m_Name: BatteryStation
+  m_Name: Chip Charger
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

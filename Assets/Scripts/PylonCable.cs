@@ -17,6 +17,9 @@ public class PylonCable : IEnergyAccumulator
 {
     public EnergyPylon pylon;
     public Building target;
+    /// <summary>Visual heat on the cable LineRenderer — fed the energy each Use carries. For a
+    /// bidirectional pylon-pylon link both directions share the one tint.</summary>
+    public CableFlowTint flowTint;
 
     public float perCableRate = 4f;
 
@@ -63,6 +66,7 @@ public class PylonCable : IEnergyAccumulator
         if (pylon == null) return false;
         if (!pylon.Use(cost)) return false;
         drawnThisFrame += cost;
+        if (flowTint != null) flowTint.Report(cost);
         return true;
     }
 

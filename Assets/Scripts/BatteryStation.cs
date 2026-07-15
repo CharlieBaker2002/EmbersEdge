@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// The colony's charging bay — an EnergyPad that STOCKS itself with 4 batteries when built
-/// (pads and hubs are empty housings now) and is the only thing that charges ordinary
-/// batteries: ore chips fed into it are ground down into juice, and juice is pumped into
-/// slotted batteries at most ONCE per battery per day.
+/// The colony's charging bay (the "Chip Charger") — an EnergyPad that is the only thing that
+/// charges ordinary batteries: ore chips fed into it are ground down into juice, and juice is
+/// pumped into slotted batteries at most ONCE per battery per day. It arrives EMPTY like every
+/// other housing — batteries are MADE at the Chip Factory now, not conjured by the charger.
 ///
 /// Chips are ground by suction: any loose, unclaimed chip inside <see cref="suctionRadius"/>
 /// that the grinder can TAKE eases into the grinder mouth and shrinks away (OreChip.AbsorbInto),
@@ -24,9 +24,6 @@ using UnityEngine;
 public class BatteryStation : EnergyPad, IChipConsumer
 {
     [Header("Battery Station")]
-    [Tooltip("Approximate energy expected per unit of inbound bag space — used only for the drone " +
-             "demand heuristics. Actual credit on grinding comes from OreChip.JuiceValue (per size).")]
-    public float juicePerChipSpace = 0.25f;
     [Tooltip("Energy/sec pumped into each charging battery while juice remains.")]
     public float chargeRate = 1.5f;
     [Tooltip("Loose chips inside this radius are dragged into the grinder whenever juice is wanted.")]
@@ -86,9 +83,6 @@ public class BatteryStation : EnergyPad, IChipConsumer
         swapWindowDay = int.MinValue;
     }
 
-    /// <summary>Stations spawn a full rack — this is where the colony's batteries come from.</summary>
-    protected override int InitialBatteryCount => 4;
-
     /// <summary>Station batteries are stock being charged, not a grid surge pool — no bar.</summary>
     public override bool ShowsSurgeBar => false;
 
@@ -129,8 +123,11 @@ public class BatteryStation : EnergyPad, IChipConsumer
     /// <summary>Plain rock is grinder food proper; ore grinds into the same juice, so it's mere
     /// fallback (appeal 0) — the fleet only feeds it here once every hungry refiner is served.</summary>
     public int ChipAppeal(int sizeClass, int element) => element >= 0 ? 0 : 1;
-    /// <summary>Juice still wanted, in bag-space units — what the fleet plans hauls against.</summary>
-    public float ChipDemandSpace => JuiceDemand / Mathf.Max(0.01f, juicePerChipSpace);
+    /// <summary>Juice still wanted, in bag-space units — what the fleet plans hauls against.
+    /// The exchange rate is the REAL yield of the largest class the bore takes (the class the
+    /// fleet feeds first): a flat average here made small-bore hauls land at 40% of plan, so
+    /// the fleet kept discovering leftover demand and flying top-up route after top-up route.</summary>
+    public float ChipDemandSpace => JuiceDemand / OreChip.JuicePerSpace(chipTier);
     public int InboundChipSpace { get => inboundChipSpace; set => inboundChipSpace = value; }
     /// <summary>The bore gate: element never matters to the grinder, size must fit the tier.</summary>
     public bool AcceptsChip(int sizeClass, int element) => sizeClass <= chipTier;
@@ -239,6 +236,18 @@ public class BatteryStation : EnergyPad, IChipConsumer
     /// <summary>A swap must hand back MEANINGFULLY more energy than it takes in, or it's churn.</summary>
     public const float SwapMargin = 0.5f;
 
+    /// <summary>Endgame floor for every swap churn guard: when the battery being replaced is
+    /// nearly dead, ANY spare beating it by this much is worth the trip — 2.4 energy on a pad
+    /// beats 0 energy every time, so the fleet never gives up while dregs remain.</summary>
+    public const float DregMargin = 0.25f;
+
+    /// <summary>The gain a substitute must show over <paramref name="outgoing"/>: the full
+    /// <paramref name="fullMargin"/> while the outgoing battery holds real energy, easing down
+    /// to <see cref="DregMargin"/> as it approaches dead (a dead pad is an offline building —
+    /// even a token top-up is a real gain there).</summary>
+    public static float MarginOver(Battery outgoing, float fullMargin = SwapMargin)
+        => outgoing == null ? DregMargin : Mathf.Clamp(outgoing.energy, DregMargin, fullMargin);
+
     /// <summary>Is there anything to charge WITH, fleet-wide: banked juice, chips in flight, or
     /// any base-side chip on the ground (claimed or not — the charging economy is alive) that
     /// SOME station's bore can actually take.</summary>
@@ -290,8 +299,8 @@ public class BatteryStation : EnergyPad, IChipConsumer
 
     /// <summary>Stock batteries a delivering drone could swap back out for <paramref name="incoming"/>.
     /// With the chip run coming (<paramref name="fullOnly"/>) only a FULL battery rides out;
-    /// otherwise the substitute must beat the incoming by the margin and hold real energy
-    /// (&gt; 1) — never a token trade.</summary>
+    /// otherwise the substitute must beat the incoming by the scaled margin (MarginOver — the
+    /// full SwapMargin against a live battery, the dreg floor against a dead one).</summary>
     int SwappableFor(Battery incoming, Drone forDrone, bool fullOnly)
     {
         int n = 0;
@@ -302,7 +311,7 @@ public class BatteryStation : EnergyPad, IChipConsumer
             if (b.hasHome) continue;   // a parked guest is owed back to ITS pad — never a substitute
             if (b.claimedBy != null && b.claimedBy != forDrone) continue;
             if (fullOnly) { if (Full(b)) n++; continue; }
-            if (b.energy > 1f && b.energy >= incoming.energy + SwapMargin) n++;
+            if (b.energy >= incoming.energy + MarginOver(incoming)) n++;
         }
         return n;
     }
@@ -369,12 +378,13 @@ public class BatteryStation : EnergyPad, IChipConsumer
     /// <summary>The stock battery a delivering drone takes back out: the fullest qualifying one.
     /// While the chip run is coming (free bag + chip about) only a FULL battery rides out —
     /// partial stock keeps charging. Otherwise the substitute must beat the arrival by the
-    /// margin AND hold more than 1 energy, and a part-charged battery whose charging isn't over
-    /// (not stamped, grinder not starved) NEVER rides out — taking it early wastes its day.</summary>
+    /// scaled margin (MarginOver — dregs qualify against a dead arrival), and a part-charged
+    /// battery whose charging isn't over (not stamped, grinder not starved) NEVER rides out —
+    /// taking it early wastes its day.</summary>
     public Battery PickSwapOut(Drone forDrone, Battery incoming)
     {
         bool fullOnly = FreeBagAvailable() && ChargingPossible();
-        float floor = incoming != null ? incoming.energy + SwapMargin : 0f;
+        float floor = incoming != null ? incoming.energy + MarginOver(incoming) : DregMargin;
         bool starved = Starved;
         Battery best = null;
         for (int i = 0; i < slots.Length; i++)
@@ -390,7 +400,7 @@ public class BatteryStation : EnergyPad, IChipConsumer
             }
             else
             {
-                if (b.energy <= 1f || b.energy < floor) continue;
+                if (b.energy < floor) continue;
                 if (!Full(b) && !b.ChargedToday && !starved) continue;   // still charging — leave it
             }
             if (best == null || b.energy > best.energy) best = b;

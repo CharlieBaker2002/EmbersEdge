@@ -484,9 +484,14 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             OnClose.Invoke();
         }
         SwitchMonos(false);
+        // Destroyed look: grey + transparent. SwitchMonos just painted the secondary sprites
+        // with the era ghost tint — that's the unbuilt-construction look, not wreckage.
+        if (spriterenderers != null)
+            foreach (SpriteRenderer s in spriterenderers)
+                if (s != null && s != sr) s.color = DestroyedTint;
         // Repairs are DRONE work now — no orbs, no ember. The ghost persists until repair drones
         // pump maxHealth worth of hp back in (RepairTick), which may span multiple drone-days.
-        sr.LeanSRColor(new Color(1f, 0.5f, 0.5f, 0.5f), 0.2f).setEaseOutCubic();
+        sr.LeanSRColor(DestroyedTint, 0.2f).setEaseOutCubic();
         droneRepairGhost = true;
         repairHp = 0f;
     }
@@ -529,7 +534,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             float used = Mathf.Min(hp, maxHealth - repairHp);
             repairHp += used;
             if (sr != null)
-                sr.color = Color.Lerp(new Color(1f, 0.5f, 0.5f, 0.5f), Color.white, repairHp / maxHealth);
+                sr.color = Color.Lerp(DestroyedTint, Color.white, repairHp / maxHealth);
             if (repairHp >= maxHealth - 0.001f)
             {
                 droneRepairGhost = false;
@@ -555,6 +560,8 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     public bool MarkedForDemolition => markedForDemolition;
 
     static readonly Color DemolitionTint = new Color(1f, 0.45f, 0.4f, 0.8f);
+    /// <summary>Destroyed-ghost look: grey and see-through (cables mirror it via CableFlowTint).</summary>
+    static readonly Color DestroyedTint = new Color(0.5f, 0.5f, 0.5f, 0.5f);
 
     /// <summary>Toggle owned by DemolitionMarks (Delete over the building — input in BM.Update).
     /// Unmarking cancels the teardown: banked work is forgotten and the sprites repaint.</summary>
@@ -570,12 +577,14 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             {
                 if (s == null) continue;
                 s.color = on ? DemolitionTint
-                    : builtYet && !droneRepairGhost ? Color.white : GS.ColFromEra();
+                    : builtYet && !droneRepairGhost ? Color.white
+                    : droneRepairGhost ? DestroyedTint
+                    : GS.ColFromEra();
             }
         }
         // a destroyed ghost keeps its repair-progress fade (matches RepairTick's repaint)
         if (!on && droneRepairGhost && sr != null)
-            sr.color = Color.Lerp(new Color(1f, 0.5f, 0.5f, 0.5f), Color.white, repairHp / Mathf.Max(0.01f, maxHealth));
+            sr.color = Color.Lerp(DestroyedTint, Color.white, repairHp / Mathf.Max(0.01f, maxHealth));
     }
 
     /// <summary>Apply <paramref name="hp"/> of drone deconstruction. Work banks against maxHealth;
@@ -595,6 +604,19 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             Destroy(hasExtraParent && transform.parent != null ? transform.parent.gameObject : gameObject);
         }
         return used;
+    }
+
+    /// <summary>Delete over an unbuilt tower: cancel the construction outright. Embers are only
+    /// debited from the network when a constructor fires (Construct's connect.ember--), so every
+    /// blast not yet dispatched is saved simply by stopping future sends; shot/in-flight embers
+    /// stay spent (RemoveIcon no-ops against the dead building when they land).</summary>
+    public void CancelConstruction()
+    {
+        if (builtYet) return;
+        EnergyManager.i.RemoveBuilding(this);   // drop out of every constructor's task queue now
+        Refund();
+        if (UIParent != null && UIParent.activeInHierarchy) OnClose?.Invoke();   // pop the escape handler
+        Destroy(hasExtraParent && transform.parent != null ? transform.parent.gameObject : gameObject);
     }
 
     void BuildFirst()
@@ -685,6 +707,9 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     
     public void RemoveIcon()
     {
+        // In-flight ember lands after CancelConstruction destroyed us: swallow it so the
+        // constructor's follow-up onComplete (constructing = false) still runs.
+        if (this == null || icons.Count == 0) return;
         if (icons[0].gameObject.activeInHierarchy)
         {
             icons[0].StartCoroutine(icons[0].SetDone());
