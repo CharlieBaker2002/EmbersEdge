@@ -423,6 +423,9 @@ public class Drone : AllyAI, IOnDeath
             {
                 case State.Docked:
                     if (threatened && !HasCargo) { state = State.Evading; break; }
+                    // a loaded bag never sleeps on its haul (flat included — dumping is free):
+                    // deliver first, the dump run routes back here by itself
+                    if (equipment == DroneEquipment.Bag && HasCargo && Peaceful() && !threatened) { state = State.DumpLoot; break; }
                     // holding a pad reservation (e.g. back from an evade): return to the pad
                     if (assignedPad != null && Charged) { state = State.TravelToPad; break; }
                     if (TryDispatchWork()) break;
@@ -1287,7 +1290,9 @@ public class Drone : AllyAI, IOnDeath
         chipTarget = null;
         if (orbTarget != null && orbTarget.gameObject.activeInHierarchy && orbTarget.state == OrbScript.OrbState.wild
             && orbTarget.claimedBy == this
-            && orbTarget.transform.InDungeon() == transform.InDungeon()) return true;
+            && orbTarget.transform.InDungeon() == transform.InDungeon()
+            // a wall raised under a claimed base orb mid-flight strands the run — drop the claim
+            && (orbTarget.transform.InDungeon() || !OrbOnWall(orbTarget.transform.position))) return true;
         if (orbTarget != null && orbTarget.claimedBy == this) orbTarget.claimedBy = null;
         orbTarget = null;
         if (equipmentTarget != null && equipmentTarget.transform.InDungeon()
@@ -1458,6 +1463,16 @@ public class Drone : AllyAI, IOnDeath
         return false;
     }
 
+    /// <summary>Base-side orb resting on a standing wall's (or a solid building footprint's)
+    /// cell: the 0.45 pickup reach can't span from the nearest open ground to the cell centre,
+    /// so a drone sent there just presses against the wall until the stuck watchdog trips.
+    /// Dead walls read as open ground (TryGetLiveWall), so their loot frees up again.</summary>
+    static bool OrbOnWall(Vector2 p)
+    {
+        Vector2Int cell = BaseBlockMap.Cell(p);
+        return BaseBlockMap.HasSolid(cell) || BaseBlockMap.TryGetLiveWall(cell, out _, out _);
+    }
+
     /// <summary>Wild base-side orb worth hauling: outside the scrap-pile exclusion ring (freshly
     /// dumped orbs must never be re-collected in a loop) and near enough to bother. With
     /// <paramref name="needRoom"/>, only orbs whose element the pylon/store network can still
@@ -1482,6 +1497,7 @@ public class Drone : AllyAI, IOnDeath
             }
             Vector2 op = o.transform.position;
             if ((op - DroneManager.ScrapPoint).sqrMagnitude < 2.5f * 2.5f) continue;
+            if (OrbOnWall(op)) continue;   // parked on a wall/building cell — unreachable, skip
             float d = (op - pos).sqrMagnitude;
             if (d < bestSqr) { bestSqr = d; best = o; }
         }
@@ -2837,12 +2853,15 @@ public class Drone : AllyAI, IOnDeath
     void TickLoiter()
     {
         if (threatened) { state = State.Evading; return; }
-        // the only trips home: shelter from a wave, or a flat battery needing the charger
-        if (!Peaceful() || !Charged) { state = State.ReturningToDock; return; }
-        // never patrol on a loaded bag — leftovers a delivery withheld (ore spoken-for by a
-        // keener customer, a half-wanted haul) ride the dump run to whoever may take them,
-        // the rest to the scrap pile
+        // wave shelter is the one trip home that outranks a loaded bag
+        if (!Peaceful()) { state = State.ReturningToDock; return; }
+        // never patrol (or head for the charger) on a loaded bag — leftovers a delivery
+        // withheld (ore spoken-for by a keener customer, a half-wanted haul) ride the dump
+        // run to whoever may take them, the rest to the scrap pile. Dumping costs no charge,
+        // so a flat drone still delivers before it goes to sleep on the dock.
         if (equipment == DroneEquipment.Bag && HasCargo) { state = State.DumpLoot; return; }
+        // flat battery and nothing aboard: to the charger
+        if (!Charged) { state = State.ReturningToDock; return; }
         if (TryDispatchWork()) return;
 
         // passing hi: another idler close by → both stop for a quick o/ (5–10s)

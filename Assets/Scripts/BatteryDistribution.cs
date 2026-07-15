@@ -66,7 +66,12 @@ public static class BatteryDistribution
             consumers.Add(c);
             feedsDock.Add(dock);
         }
-        if (pads.Count == 0) { lastEmptyAt = Time.time; return null; }
+        if (pads.Count == 0)
+        {
+            Battery nb = FindNodeStocking(forDrone, out dest);
+            if (nb != null) return nb;
+            lastEmptyAt = Time.time; return null;
+        }
 
         // ---- what each pad effectively holds already ----
         for (int i = 0; i < pads.Count; i++)
@@ -169,7 +174,13 @@ public static class BatteryDistribution
             if (tier < bestTier || (tier == bestTier && def > bestDef))
             { bestTier = tier; bestDef = def; destI = i; }
         }
-        if (destI < 0) { lastEmptyAt = Time.time; return null; }
+        if (destI < 0)
+        {
+            // every pad is served — the leftover errand: stock a freshly built capacitor node
+            Battery nb = FindNodeStocking(forDrone, out dest);
+            if (nb != null) return nb;
+            lastEmptyAt = Time.time; return null;
+        }
         dest = pads[destI];
 
         // ---- the battery: fullest spare, else unpinned surplus off an overstocked pad ----
@@ -192,6 +203,47 @@ public static class BatteryDistribution
             }
         }
         if (pick == null) { lastEmptyAt = Time.time; dest = null; return null; }
+        return pick;
+    }
+
+    /// <summary>One-time auto-stocking for capacitor nodes: an empty node (no slotted battery,
+    /// none inbound) gets a battery delivered without the player asking. Picks the EMPTIEST
+    /// genuine spare — a slotted battery's charge is inert in a node (only its instabuffer
+    /// feeds surge credit), so full spares stay available for real pads. Runs BELOW ordinary
+    /// distribution (only when no pad move exists) and only from true spares (loose, or spent
+    /// station stock) — pads are never robbed for a node. Once slotted, drones leave it alone
+    /// forever: nodes are excluded from every charge/swap/rob scan (here, FindUpgradeSwap,
+    /// BatteryStation.NeedsCharge).</summary>
+    static Battery FindNodeStocking(Drone forDrone, out EnergyPad dest)
+    {
+        dest = null;
+        CapacitorNode node = null;
+        var list = Building.buildings;
+        for (int k = 0; k < list.Count; k++)
+        {
+            if (list[k] is not CapacitorNode n) continue;
+            if (!n.builtYet || !n.enabled || !n.gameObject.activeInHierarchy) continue;
+            if (!PathZone.AtBase(n.transform.position)) continue;
+            if (n.SlottedCount + n.inboundBatteries >= n.SlotCapacity) continue;
+            node = n;
+            break;
+        }
+        if (node == null) return null;
+
+        bool chargingPossible = BatteryStation.ChargingPossible();
+        Battery pick = null;
+        for (int k = 0; k < Battery.all.Count; k++)
+        {
+            var b = Battery.all[k];
+            if (b == null || b.transform.InDungeon() || b.following || b == Battery.held) continue;
+            if (b.IsPulse || b.hasHome) continue;   // pulse placement is the player's call; homed stock is owned
+            if (b.claimedBy != null && b.claimedBy != forDrone) continue;
+            if (b.pad != null && !(b.pad is BatteryStation
+                && (b.energy >= b.maxEnergy - 1e-3f || b.ChargedToday || !chargingPossible))) continue;
+            if (pick == null || b.energy < pick.energy) pick = b;   // emptiest — charge is inert in a node
+        }
+        if (pick == null) return null;
+        dest = node;
         return pick;
     }
 
