@@ -35,6 +35,8 @@ public class DroneManager : MonoBehaviour
     [Header("Loot")]
     [Tooltip("Where returning bag drones dump their haul at base.")]
     public Vector2 scrapPoint = new Vector2(0f, -6f);
+    [Tooltip("Seconds after a wave clears before battery logistics may dispatch — repairs, chip runs and orb sweeps get first claim on the fleet.")]
+    public float batteryWorkDelayAfterWave = 4f;
 
     [Header("Idle life")]
     [Tooltip("How far an off-duty drone patrols from its dock.")]
@@ -129,12 +131,22 @@ public class DroneManager : MonoBehaviour
         i = null;
         jobCacheTime = float.NaN;
         baseZoneHotAt = float.NegativeInfinity;
+        batteryHoldUntil = float.NegativeInfinity;
     }
+
+    // ---- post-wave battery grace ----
+    static float batteryHoldUntil = float.NegativeInfinity;
+
+    /// <summary>Battery logistics (station hauls, returns, swaps, distribution) hold off for a
+    /// beat after each wave clears, so the fleet's first seconds go to repairs and loot instead
+    /// of shuffling batteries. Chip runs are NOT gated — feeding the grinders is loot work.</summary>
+    public static bool BatteryWorkAllowed => Time.time >= batteryHoldUntil;
 
     // ---- shared job-board caches: every idle drone polls the same questions every fixed tick,
     // so answer them once per tick (and once per 0.3s for the rally probe) for the whole fleet ----
     static float jobCacheTime = float.NaN;
-    static bool cachedRepairAtBase, cachedRepairAway, cachedBaseMining;
+    static bool cachedBaseMining;
+    static int cachedRepairNeedBase, cachedRepairNeedAway;
     static float baseZoneHotAt = float.NegativeInfinity;
     static bool baseZoneHotVal;
 
@@ -143,16 +155,15 @@ public class DroneManager : MonoBehaviour
         if (Time.fixedTime == jobCacheTime) return;
         jobCacheTime = Time.fixedTime;
         cachedBaseMining = BaseMiningAllowed();
-        cachedRepairAtBase = false;
-        cachedRepairAway = false;
+        cachedRepairNeedBase = 0;
+        cachedRepairNeedAway = 0;
         var list = Building.buildings;
         for (int k = 0; k < list.Count; k++)
         {
             Building b = list[k];
             if (b == null || !b.gameObject.activeInHierarchy || !b.NeedsDroneRepair) continue;
-            if (PathZone.AtBase(b.transform.position)) cachedRepairAtBase = true;
-            else cachedRepairAway = true;
-            if (cachedRepairAtBase && cachedRepairAway) break;
+            if (PathZone.AtBase(b.transform.position)) cachedRepairNeedBase++;
+            else cachedRepairNeedAway++;
         }
     }
 
@@ -163,12 +174,24 @@ public class DroneManager : MonoBehaviour
         return cachedBaseMining;
     }
 
-    /// <summary>Is there ANY building needing drone repair on this side? Existence only —
-    /// RepairSweep still runs its own nearest-target scan once dispatched.</summary>
+    /// <summary>Is there repair work LEFT OVER for another drone on this side? One drone per
+    /// needy building: the old bare existence check pulled the ENTIRE housekeeper fleet onto a
+    /// single scratched wall, so battery logistics never saw a free drone after a wave. Extras
+    /// now fall through to the rest of the job board; RepairSweep still runs its own
+    /// nearest-target scan once dispatched.</summary>
     public static bool RepairWorkAvailable(bool atBase)
     {
         EnsureJobCaches();
-        return atBase ? cachedRepairAtBase : cachedRepairAway;
+        int need = atBase ? cachedRepairNeedBase : cachedRepairNeedAway;
+        if (need <= 0) return false;
+        for (int k = 0; k < AllyAI.allies.Count; k++)
+        {
+            if (AllyAI.allies[k] is not Drone d || d == null) continue;
+            if (d.state != Drone.State.RepairSweep) continue;
+            if (PathZone.AtBase(d.transform.position) != atBase) continue;
+            if (--need <= 0) return false;
+        }
+        return true;
     }
 
     /// <summary>Anything pressing the base rally point (0,0) right now? One shared probe with a
@@ -243,9 +266,11 @@ public class DroneManager : MonoBehaviour
         }
     }
 
-    /// <summary>Wave cleared: vehicles power down, pilots pop out to heal their hulls and recharge.</summary>
+    /// <summary>Wave cleared: vehicles power down, pilots pop out to heal their hulls and
+    /// recharge — and the battery-logistics grace window starts (see BatteryWorkAllowed).</summary>
     void OnWaveComplete()
     {
+        batteryHoldUntil = Time.time + Mathf.Max(0f, batteryWorkDelayAfterWave);
         for (int k = PilotedVehicle.all.Count - 1; k >= 0; k--)
         {
             var v = PilotedVehicle.all[k];
@@ -350,12 +375,13 @@ public class DroneManager : MonoBehaviour
 
     static void ReserveDrones(Telepad basePad, DroneEquipment kind, int want)
     {
-        // drones already holding this reservation keep it; surplus (requests shrank) stand down
+        // drones already holding this reservation keep it; surplus (requests shrank) and FLAT
+        // holders stand down — a flat drone docks to recharge, a charged one takes its slot
         for (int k = 0; k < AllyAI.allies.Count; k++)
         {
             if (AllyAI.allies[k] is not Drone d || d == null) continue;
             if (d.assignedPad != basePad || d.transform.InDungeon() || d.equipment != kind) continue;
-            if (want > 0) want--;
+            if (want > 0 && d.Charged) want--;
             else d.ReleasePadReservation();
         }
         Vector2 padPos = basePad.transform.position;

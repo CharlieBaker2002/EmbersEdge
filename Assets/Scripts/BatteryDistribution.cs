@@ -261,8 +261,9 @@ public static class BatteryDistribution
     /// doesn't own. Works with no station built; when one stands the charge run usually gets to
     /// a drained pad battery first (and charges it) — this catches what stations can't serve
     /// (no qualifying stock, or the once-a-day charge already spent). One trade per pad battery
-    /// per swap window, the same day-tick/homecoming cadence as station trips. Claims nothing —
-    /// the drone claims BOTH batteries.</summary>
+    /// per swap window, the same day-tick/homecoming cadence as station trips — waived once the
+    /// slotted battery is nearly dead (&lt; 1), so a pad going dark mid-day is re-served the
+    /// moment a qualifying spare exists. Claims nothing — the drone claims BOTH batteries.</summary>
     public static Battery FindUpgradeSwap(Drone forDrone, out Battery spare)
     {
         spare = null;
@@ -289,7 +290,9 @@ public static class BatteryDistribution
             if (b.IsPulse || b.pad == null || b.pad is BatteryStation || b.pad is CapacitorNode) continue;
             if (!b.pad.builtYet || !b.pad.enabled || !b.pad.gameObject.activeInHierarchy) continue;
             if (b.claimedBy != null && b.claimedBy != forDrone) continue;
-            if (b.padSwapWindow == window) continue;          // already served this window
+            // one trade per window while the battery still works — but a pad running on dregs
+            // is an offline building: it may be re-served ANY time a qualifying spare exists
+            if (b.padSwapWindow == window && b.energy >= 1f) continue;
             if (best.energy < b.energy + BatteryStation.MarginOver(b, UpgradeMargin)) continue;
             if (outB == null || b.energy < outB.energy) outB = b;
         }

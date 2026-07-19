@@ -167,9 +167,36 @@ public class ChipFactory : Building, IChipConsumer
     /// <summary>Any chip is factory food (it all grinds to juice), but ore is fallback only —
     /// hungry refiners (appeal 2) keep dibs on it, same standing as the charger's grinder.</summary>
     public int ChipAppeal(int sizeClass, int element) => element >= 0 ? 0 : 1;
-    /// <summary>Juice still owed on the order queue, in bag-space units for the fleet's planning.</summary>
-    public float ChipDemandSpace => JuiceDemand / Mathf.Max(0.01f, juicePerChipSpace);
+    /// <summary>Juice still owed on the order queue, in bag-space units for the fleet's
+    /// planning — net of the stock already settled in the suction ring (dumped hauls the
+    /// mouth hasn't ground yet), which is as good as eaten.</summary>
+    public float ChipDemandSpace
+        => Mathf.Max(0f, JuiceDemand - RingStockJuice()) / Mathf.Max(0.01f, juicePerChipSpace);
     public int InboundChipSpace { get => inboundChipSpace; set => inboundChipSpace = value; }
+
+    float ringScanT = float.NegativeInfinity;
+    float ringJuiceCached;
+
+    /// <summary>Juice sitting in the suction ring as settled, unclaimed chips — the factory
+    /// will eat these without fleet help. Cached on the suction-scan cadence; mirrors
+    /// Refiner.RingStockSpace / BatteryStation.RingStockJuice.</summary>
+    float RingStockJuice()
+    {
+        if (Time.time - ringScanT < 0.25f) return ringJuiceCached;
+        ringScanT = Time.time;
+        float stock = 0f;
+        Vector2 pos = eatSpot != null ? (Vector2)eatSpot.position : (Vector2)transform.position;
+        for (int k = 0; k < OreChip.all.Count; k++)
+        {
+            var chip = OreChip.all[k];
+            if (chip == null || chip.Absorbing || chip.transform.InDungeon()) continue;
+            if (chip.claimedBy != null) continue;              // being carried off, not stock
+            if (((Vector2)chip.transform.position - pos).sqrMagnitude > suctionRadius * suctionRadius) continue;
+            stock += chip.JuiceValue;
+        }
+        ringJuiceCached = stock;
+        return stock;
+    }
     /// <summary>No bore tiers here — the factory eats any chip while an order still wants juice.</summary>
     public bool AcceptsChip(int sizeClass, int element) => JuiceDemand > 0f;
 
@@ -206,6 +233,9 @@ public class ChipFactory : Building, IChipConsumer
             if (chip == null || chip.Absorbing || chip.transform.InDungeon()) continue;
             if (chip.claimedBy != null) continue;                  // a drone is flying for it
             if (chip.Age < 0.35f) continue;                        // let fresh drops pop in first
+            // suction honours the same dibs the fleet does: a chip a keener hungry customer
+            // is waiting on (ore for a refiner) is not factory food, even inside the ring
+            if (!ChipConsumers.MayGive(this, chip.sizeClass, chip.element)) continue;
             if (((Vector2)chip.transform.position - pos).sqrMagnitude > suctionRadius * suctionRadius) continue;
             juice += chip.JuiceValue;
             chip.AbsorbInto(eatSpot != null ? eatSpot : transform);

@@ -222,7 +222,8 @@ public class Status : MonoBehaviour
         enabled = taip != typ.flat;
 
         transform.localScale = Vector3.zero;
-        LeanTween.scale(gameObject, Vector3.one, 0.4f).setEaseOutBack();
+        try { LeanTween.scale(gameObject, Vector3.one, 0.4f).setEaseOutBack(); }
+        catch (Exception) { transform.localScale = Vector3.one; } //tween-slot exhaustion must not skip ApplyStatus
         unit.ApplyStatus(this);
 
         // For certain “increaseThenDecrease” statuses, we do initial clamp:
@@ -326,11 +327,21 @@ public class Status : MonoBehaviour
         if (this == null) return;
         dissapearing = true;
         enabled = false;
-        LeanTween.scale(gameObject, Vector3.zero, 0.4f).setEaseInBack().setOnComplete(() =>
+        try
         {
-            if(unit != null) unit.stati.Remove(this);
-            StatusManager.i.statusPool.Release(this);
-        });
+            LeanTween.scale(gameObject, Vector3.zero, 0.4f).setEaseInBack().setOnComplete(Release);
+        }
+        catch (Exception) //LeanTween out of tween slots NREs; callers run StatusComplete AFTER Dissapear,
+        {                 //so a throw here would e.g. leave a stun's canAct=false forever. Clean up now instead.
+            LeanTween.cancel(gameObject);
+            Release();
+        }
+    }
+
+    void Release()
+    {
+        if (unit != null) unit.stati.Remove(this);
+        StatusManager.i.statusPool.Release(this);
     }
 
     public void UpdateSlider()

@@ -126,11 +126,42 @@ public class BatteryStation : EnergyPad, IChipConsumer
     /// <summary>Juice still wanted, in bag-space units — what the fleet plans hauls against.
     /// The exchange rate is the REAL yield of the largest class the bore takes (the class the
     /// fleet feeds first): a flat average here made small-bore hauls land at 40% of plan, so
-    /// the fleet kept discovering leftover demand and flying top-up route after top-up route.</summary>
-    public float ChipDemandSpace => JuiceDemand / OreChip.JuicePerSpace(chipTier);
+    /// the fleet kept discovering leftover demand and flying top-up route after top-up route.
+    /// Net of the stock already settled in the suction ring (dumped hauls the grinder hasn't
+    /// got to yet) for the same reason — that stock is as good as eaten.</summary>
+    public float ChipDemandSpace
+        => Mathf.Max(0f, JuiceDemand - RingStockJuice()) / OreChip.JuicePerSpace(chipTier);
     public int InboundChipSpace { get => inboundChipSpace; set => inboundChipSpace = value; }
-    /// <summary>The bore gate: element never matters to the grinder, size must fit the tier.</summary>
-    public bool AcceptsChip(int sizeClass, int element) => sizeClass <= chipTier;
+    /// <summary>The bore gate: element never matters to the grinder, size must fit the tier —
+    /// and only while juice is actually wanted (the factory's rule too), so an idle station's
+    /// ring stock stays fair game for hungrier customers instead of hoarded behind the intake
+    /// forever (AtAnIntake protection lapses with the appetite).</summary>
+    public bool AcceptsChip(int sizeClass, int element) => sizeClass <= chipTier && JuiceDemand > 0f;
+
+    float ringScanT = float.NegativeInfinity;
+    float ringJuiceCached;
+
+    /// <summary>Juice sitting in the suction ring as settled, unclaimed chips the bore takes —
+    /// the grinder will eat these without fleet help. Cached on the suction-scan cadence;
+    /// mirrors Refiner.RingStockSpace.</summary>
+    float RingStockJuice()
+    {
+        if (Time.time - ringScanT < 0.25f) return ringJuiceCached;
+        ringScanT = Time.time;
+        float stock = 0f;
+        Vector2 pos = eatSpot != null ? (Vector2)eatSpot.position : (Vector2)transform.position;
+        for (int k = 0; k < OreChip.all.Count; k++)
+        {
+            var chip = OreChip.all[k];
+            if (chip == null || chip.Absorbing || chip.transform.InDungeon()) continue;
+            if (chip.claimedBy != null) continue;              // being carried off, not stock
+            if (chip.sizeClass > chipTier) continue;
+            if (((Vector2)chip.transform.position - pos).sqrMagnitude > suctionRadius * suctionRadius) continue;
+            stock += chip.JuiceValue;
+        }
+        ringJuiceCached = stock;
+        return stock;
+    }
 
     // ------------------------------------------------------------------ grind + charge
 
@@ -175,7 +206,10 @@ public class BatteryStation : EnergyPad, IChipConsumer
             if (chip == null || chip.Absorbing || chip.transform.InDungeon()) continue;
             if (chip.claimedBy != null) continue;                  // a drone is flying for it
             if (chip.Age < 0.35f) continue;                        // let fresh drops pop in first
-            if (!AcceptsChip(chip.sizeClass, chip.element)) continue;   // too big for the bore
+            // the bore must fit AND no keener hungry customer may have dibs — suction honours
+            // the same reservation the fleet does (ore waits for a hungry refiner, it doesn't
+            // get ground into juice just because it landed in the ring)
+            if (!ChipConsumers.MayGive(this, chip.sizeClass, chip.element)) continue;
             if (((Vector2)chip.transform.position - pos).sqrMagnitude > suctionRadius * suctionRadius) continue;
             juice = Mathf.Min(maxJuice, juice + chip.JuiceValue);
             chip.AbsorbInto(eatSpot);                            // the ease-in + shrink grind
@@ -224,7 +258,7 @@ public class BatteryStation : EnergyPad, IChipConsumer
                 if (chip == null || chip.Absorbing || chip.transform.InDungeon()) continue;
                 if (chip.claimedBy != null) continue;
                 if (chip.Age < OreChip.SettleSeconds) continue;
-                if (!AcceptsChip(chip.sizeClass, chip.element)) continue;
+                if (chip.sizeClass > chipTier) continue;   // bore test only — starved is demand-blind
                 return false;   // an unclaimed base-side chip THIS grinder can eat exists
             }
             return true;
@@ -367,7 +401,7 @@ public class BatteryStation : EnergyPad, IChipConsumer
             var chip = OreChip.all[k];
             if (chip == null || chip.Absorbing || chip.transform.InDungeon()) continue;
             if (chip.claimedBy != null) continue;
-            if (!AcceptsChip(chip.sizeClass, chip.element)) continue;
+            if (chip.sizeClass > chipTier) continue;   // bore test only — demand comes WITH the battery
             if (((Vector2)chip.transform.position - pos).sqrMagnitude > suctionRadius * suctionRadius) continue;
             selfFeedCached = true;
             break;

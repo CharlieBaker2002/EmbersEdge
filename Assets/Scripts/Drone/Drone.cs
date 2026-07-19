@@ -100,7 +100,8 @@ public class Drone : AllyAI, IOnDeath
     EnergyPad padTarget;          // distribution destination (BatteryDistribution.FindPlacement)
     IChipConsumer chipConsumer;   // chip-run customer (station grinders today; walls/ammo/refiner tomorrow)
     OreChip consumerChipTarget;   // chip currently being fetched for it
-    int chipsForConsumerSpace;    // chip space in the bag earmarked for it
+    int chipsForConsumerSpace;    // earmarked chip space (credited to InboundChipSpace at the CLAIM)
+    int pendingChipSpace;         // the claimed-but-unswallowed chip's share of that earmark
     Battery carriedBattery;       // physically riding under the drone (deactivated)
     // BAG BATCH: extra flat batteries stowed in the sack on a station run (bag drones haul
     // several per trip; the hand slot above stays the one the swap dance works with)
@@ -320,6 +321,7 @@ public class Drone : AllyAI, IOnDeath
         hasDrillTarget = false;
         SetEquipment(DroneEquipment.None, dropReplaced: false);
         Emote(DroneEmote.Grumble, 2f);
+        if (!Charged && !transform.InDungeon()) assignedPad = null;   // flat: dock, not the pad
         state = transform.InDungeon() ? State.DeployedTravel
             : assignedPad != null ? State.TravelToPad : State.ReturningToDock;
     }
@@ -516,8 +518,13 @@ public class Drone : AllyAI, IOnDeath
                         break;
                     }
                     if (!threatened)
+                    {
+                        // flat base-side drones dock, tethered or not — the reservation tick
+                        // replaces them at the pad with a charged drone
+                        if (!Charged && !transform.InDungeon()) assignedPad = null;
                         state = transform.InDungeon() ? State.DeployedTravel
                             : assignedPad != null ? State.TravelToPad : State.ReturningToDock;
+                    }
                     break;
 
                 case State.RallyFight:
@@ -526,6 +533,17 @@ public class Drone : AllyAI, IOnDeath
 
                 case State.WaitingAtStation:
                     if (threatened && !HasCargo) { state = State.Evading; break; }
+                    // out of energy: give up the queue spot and recharge — every flat drone
+                    // ends up at its dock, a kit errand never holds one hostage
+                    if (!Charged)
+                    {
+                        if (waitingStation != null) { waitingStation.LeaveQueue(this); waitingStation = null; }
+                        if (waitingWorkshop != null) { waitingWorkshop.LeaveQueue(this); waitingWorkshop = null; }
+                        returningKit = false;
+                        pendingWorkshop = null;
+                        state = State.ReturningToDock;
+                        break;
+                    }
                     if (waitingStation != null) HoldAt(waitingStation.WaitPoint, 0.8f);
                     else if (waitingWorkshop != null)
                     {
@@ -562,7 +580,9 @@ public class Drone : AllyAI, IOnDeath
                         state = State.ReturningToDock;
                         break;
                     }
-                    if (!Charged) { HoldAt(DockPoint(), 0.5f); break; }   // flat pilot can't crew
+                    // flat pilot can't crew: dock PROPERLY (state and all) so the trickle
+                    // charge can top it up — WaveStarting summons it back to the hull
+                    if (!Charged) { state = State.ReturningToDock; break; }
                     if (MoveToward(pilotOf.transform.position, 0.45f)) pilotOf.Board(this);
                     break;
 
@@ -581,7 +601,10 @@ public class Drone : AllyAI, IOnDeath
                         break;
                     }
                     if (!threatened)
+                    {
+                        if (!Charged && !transform.InDungeon()) assignedPad = null;   // flat: dock, not the pad
                         state = assignedPad != null ? State.TravelToPad : State.ReturningToDock;
+                    }
                     break;
 
                 case State.ReturningToDock:
@@ -1965,10 +1988,13 @@ public class Drone : AllyAI, IOnDeath
     /// fuller free spare onto a drained working pad, distribute spares. Fires from the job
     /// board each new day (batteries drained yesterday aren't ChargedToday, so they qualify
     /// the moment the day turns). Only the station legs need a station — chips, the upgrade
-    /// swap and distribution serve the colony from day one, before any station is built.</summary>
+    /// swap and distribution serve the colony from day one, before any station is built.
+    /// The first seconds after a wave clears belong to repairs and loot: every BATTERY leg
+    /// waits out DroneManager.BatteryWorkAllowed; the chip run is loot work and never waits.</summary>
     bool TryTakeBatteryWork()
     {
-        if (BatteryStation.all.Count > 0)
+        bool batteriesAllowed = DroneManager.BatteryWorkAllowed;
+        if (batteriesAllowed && BatteryStation.all.Count > 0)
         {
             Battery b = BatteryStation.FindBatteryForCharge(this, out BatteryStation st);
             if (b != null)
@@ -1995,10 +2021,17 @@ public class Drone : AllyAI, IOnDeath
             chip.claimedBy = this;
             consumerChipTarget = chip;
             chipConsumer = eater;
+            // inbound is reserved at the CLAIM (not the swallow), so parallel drones never
+            // all plan against the same demand; a spoiled claim hands its reservation back
+            pendingChipSpace = chip.SpaceCost;
+            chipsForConsumerSpace += chip.SpaceCost;
+            eater.InboundChipSpace += chip.SpaceCost;
             batteryTask = BatteryTask.GatherChips;
             state = State.BatteryWork;
             return true;
         }
+
+        if (!batteriesAllowed) return false;
 
         if (BatteryStation.all.Count > 0)
         {
@@ -2212,6 +2245,13 @@ public class Drone : AllyAI, IOnDeath
                 {
                     if (chip != null && chip.claimedBy == this) chip.claimedBy = null;
                     consumerChipTarget = null;
+                    if (pendingChipSpace > 0)
+                    {
+                        // the spoiled claim's inbound reservation dies with it
+                        chipsForConsumerSpace = Mathf.Max(0, chipsForConsumerSpace - pendingChipSpace);
+                        c.InboundChipSpace = Mathf.Max(0, c.InboundChipSpace - pendingChipSpace);
+                        pendingChipSpace = 0;
+                    }
                     // keep gathering while the customer still wants more than the fleet has
                     // inbound — and this drone still has quota to spend on it
                     bool wantMore = EffectiveSpaceLeft > 0 && HasDailyHaulQuota
@@ -2223,6 +2263,9 @@ public class Drone : AllyAI, IOnDeath
                         {
                             next.claimedBy = this;
                             consumerChipTarget = next;
+                            pendingChipSpace = next.SpaceCost;
+                            chipsForConsumerSpace += next.SpaceCost;
+                            c.InboundChipSpace += next.SpaceCost;
                             return;
                         }
                     }
@@ -2234,11 +2277,10 @@ public class Drone : AllyAI, IOnDeath
                 Vector2 cpos = chip.transform.position;
                 if (!MoveToward(cpos, 0.32f)) return;
                 FaceDir(cpos - (Vector2)transform.position);
-                // swallowed on the normal bag tariff, earmarked for the customer (the fair-share
-                // ledger ticks at the HANDOVER, in DumpChipsFor — never for hauls that fall through)
+                // swallowed on the normal bag tariff; its inbound share was reserved at the CLAIM
+                // (the fair-share ledger still ticks at the HANDOVER, in DumpChipsFor)
                 AddCargo(new CargoEntry { kind = 0, space = chip.SpaceCost, sizeClass = chip.sizeClass, element = chip.element });
-                chipsForConsumerSpace += chip.SpaceCost;
-                c.InboundChipSpace += chip.SpaceCost;
+                pendingChipSpace = 0;   // pending → carried; the earmark totals don't change
                 chip.AbsorbInto(transform);
                 consumerChipTarget = null;
                 return;
@@ -2255,9 +2297,15 @@ public class Drone : AllyAI, IOnDeath
                     return;
                 }
                 if (!MoveToward(c.ChipDropPoint, Mathf.Max(0.4f, c.ChipIntakeRadius * 0.7f))) return;
-                DumpChipsFor(c);
+                // hand over only what's still wanted: the customer's net unserved demand plus
+                // this drone's own earmark (already counted inbound) — dive leftovers, and
+                // demand met by others mid-flight, stay aboard for the dump run's fair-share
+                // routing instead of burying the drop point
+                int wantSpace = Mathf.CeilToInt(ChipConsumers.NetDemandSpace(c)) + chipsForConsumerSpace;
+                DumpChipsFor(c, wantSpace);
                 batteryTask = BatteryTask.None;
                 chipConsumer = null;
+                if (CargoChipSpace() > 0) { state = State.DumpLoot; return; }   // withheld chips ride on
                 if (!TryDispatchWork()) GoLoiter();
                 return;
             }
@@ -2639,6 +2687,7 @@ public class Drone : AllyAI, IOnDeath
             chipConsumer.InboundChipSpace = Mathf.Max(0, chipConsumer.InboundChipSpace - chipsForConsumerSpace);
         chipConsumer = null;
         chipsForConsumerSpace = 0;
+        pendingChipSpace = 0;
         if (stationTarget != null
             && (batteryTask == BatteryTask.PickupForStation || batteryTask == BatteryTask.DeliverToStation))
             stationTarget.inboundBatteries = Mathf.Max(0, stationTarget.inboundBatteries - 1);
@@ -2688,6 +2737,7 @@ public class Drone : AllyAI, IOnDeath
             chipConsumer.InboundChipSpace = Mathf.Max(0, chipConsumer.InboundChipSpace - chipsForConsumerSpace);
         chipConsumer = null;
         chipsForConsumerSpace = 0;
+        pendingChipSpace = 0;
         if (stationTarget != null
             && (batteryTask == BatteryTask.PickupForStation || batteryTask == BatteryTask.DeliverToStation
                 || batteryTask == BatteryTask.BailToStation))

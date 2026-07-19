@@ -116,16 +116,19 @@ public static class ChipConsumers
         return false;
     }
 
-    /// <summary>Chip already sitting in the ring of a consumer that will eat it — that
-    /// consumer's own intake has it, the fleet keeps its hands off. A chip a ring-owner
-    /// can't eat (a large chip beside a tier-0 station) stays fair game.</summary>
+    /// <summary>Chip already sitting in the ring of a consumer that may EAT it — that
+    /// consumer's own intake has it, the fleet keeps its hands off. MAY, not can: the ring
+    /// owner passes the same dibs gate as everyone else (<see cref="MayGive"/>), so a chip a
+    /// ring-owner can't eat (a large chip beside a tier-0 station), a chip a keener hungry
+    /// customer is waiting on (ore beside a grinder while a refiner hungers), or any chip
+    /// beside an intake whose appetite is spent, stays fair game for the fleet.</summary>
     public static bool AtAnIntake(OreChip chip)
     {
         Vector2 p = chip.transform.position;
         for (int k = 0; k < all.Count; k++)
         {
             var c = all[k];
-            if (!Active(c) || !c.AcceptsChip(chip.sizeClass, chip.element)) continue;
+            if (!Active(c) || !MayGive(c, chip.sizeClass, chip.element)) continue;
             float r = c.ChipIntakeRadius;
             if ((c.ChipDropPoint - p).sqrMagnitude <= r * r) return true;
         }

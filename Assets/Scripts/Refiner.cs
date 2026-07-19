@@ -180,7 +180,8 @@ public class Refiner : Building, IChipConsumer
             if (chip == null || chip.Absorbing || chip.transform.InDungeon()) continue;
             if (chip.claimedBy != null) continue;                  // a drone is flying for it
             if (chip.Age < 0.35f) continue;                        // let fresh drops pop in first
-            if (!AcceptsChip(chip.sizeClass, chip.element)) continue;
+            // same dibs gate as every intake (a formality here — nothing outbids the refiner)
+            if (!ChipConsumers.MayGive(this, chip.sizeClass, chip.element)) continue;
             float d = ((Vector2)chip.transform.position - pos).sqrMagnitude;
             if (d > suctionRadius * suctionRadius || d >= bestSqr) continue;
             best = chip;
