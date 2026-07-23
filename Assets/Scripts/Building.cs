@@ -63,7 +63,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     // can complete synchronously (ReceiveOrb finishes with zero yields) within the SAME call stack
     // as Instantiate/Commit, before Unity has invoked Start() on it — CompleteViaOrbs must not
     // touch Start-initialized state until that's happened.
-    private bool startCalled;
+    protected bool startCalled;
 
     Action upgradeAction;
     
@@ -509,14 +509,14 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     // Ghost rebuild progress (hp equivalent). Persistent across days on purpose: SwitchMonos(true)
     // resets the live physic to full, so progress is banked HERE and only cashed in at completion.
     bool droneRepairGhost;
-    float repairHp;
+    protected float repairHp;
 
     public bool IsGhostAwaitingRepair => droneRepairGhost;
 
     /// <summary>True while a repair drone has something to do here: a destroyed ghost still being
     /// rebuilt, or a live building below max hp. Excludes unbuilt constructions and anything with
     /// ember icons in flight (initial build / upgrade — those flows own the physic).</summary>
-    public bool NeedsDroneRepair
+    public virtual bool NeedsDroneRepair
     {
         get
         {
@@ -645,7 +645,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
 
     /// <summary>Completion path for builtBlasts == 0 buildings: the orb task filling IS the build —
     /// no ember blasts involved. Invoked from the orb magnets' completion action.</summary>
-    public void CompleteViaOrbs()
+    public virtual void CompleteViaOrbs()
     {
         if (builtYet) return;
         if (!startCalled)

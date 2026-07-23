@@ -317,11 +317,11 @@ public class Pocket : MonoBehaviour
 
         if (po.enemy != null && po.enemy.prefab != null)
         {
-            MineFX.EnemySpawnFlash(pos);        // pocket enemies materialise in a flash of ember
-            // …with a faint line from this room's own ember core when it has one (core/boss arenas),
-            // otherwise toward the nearest undiscovered core spot (the core-hunting breadcrumb)
-            if (EE != null) MineFX.HintLine(pos, EE.transform.position);
-            else MineFX.CoreHintLine(pos);
+            // chain-strike from this room's own ember core when it has one (core/boss arenas),
+            // otherwise a dimmed bolt from the nearest undiscovered core spot (the core-hunting
+            // breadcrumb — still a hint, now electric)
+            if (EE != null) SpawnBoltFX.Chain(this, EE.transform.position, pos);
+            else SpawnBoltFX.ChainToNearestCore(this, pos);
             GameObject g = (EE != null)
                 ? EE.SpawnEnemy(po.enemy.prefab, pos)
                 : Instantiate(po.enemy.prefab, pos, Quaternion.identity, GS.FindParent(GS.Parent.enemies));

@@ -115,6 +115,7 @@ public class PelterTurret : Building
             anchorSR.material = ColourManager.AllyMat(2);
         }, 6, false, null, null, () => fastUpgrade);
         MapManager.OnUpdateMap += () => lookRot = GS.VTQ(GetNearestEE(transform) - (Vector2)transform.position);
+        TargetPriority.Attach(this, f);
     }
 
     protected override void BEnable()

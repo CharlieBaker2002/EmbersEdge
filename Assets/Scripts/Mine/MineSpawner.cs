@@ -200,8 +200,7 @@ public class MineSpawner : MonoBehaviour, IOnDeath
         if (so == null || so.prefab == null || MineField.i == null) return;
         Vector2? at = MineField.i.RandomExcavatedWallHugNear(transform.position, template.activationRange);
         if (at == null) return;
-        MineFX.EnemySpawnFlash(at.Value);
-        MineFX.HintLine(at.Value, transform.position);
+        SpawnBoltFX.Chain(this, transform.position, at.Value);
         var g = Instantiate(so.prefab, at.Value, Quaternion.identity, GS.FindParent(GS.Parent.enemies));
         foreach (ILA ila in g.GetComponentsInChildren<ILA>()) ila.UpdateCoef(1f);
     }

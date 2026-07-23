@@ -125,9 +125,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 9010514658136673332}
   m_Enabled: 0
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 009d683987b2d4fa2be49a5099d60b06, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Building
+  m_Script: {fileID: 11500000, guid: 239827b77d73429eb56b794c0adca7e9, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::ChipWall
   buildingBehaviours: []
   sr: {fileID: 912933022490997485}
   groundEdit: {fileID: 0}

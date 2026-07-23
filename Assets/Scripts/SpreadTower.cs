@@ -85,6 +85,7 @@ public class SpreadTower : Building
         AddSlot(new int[] { 0, 0, 0, 0 }, "Change Mode", tileSprites[0], false, SwapMode);
         AddUpgradeSlot(new int[] { 55, 0, 3, 0 }, "Spread Tower Upgrade", tileSprites[1], true, LevelUp, 7, true, StartMorph);
         transform.parent.GetComponent<SpriteRenderer>().color = Color.white;
+        TargetPriority.Attach(this, find);
     }
 
     private void StartMorph() => GS.QuickMorphWithOrbs(gameObject, morphSprite, transform.parent);

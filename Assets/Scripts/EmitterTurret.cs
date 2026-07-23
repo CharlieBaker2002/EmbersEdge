@@ -32,6 +32,7 @@ public class EmitterTurret : Building
         base.Start();
         find.OnFound += StartAttack;
         resources = maxResources;
+        TargetPriority.Attach(this, find);
     }
 
     private void StartAttack(Transform t)

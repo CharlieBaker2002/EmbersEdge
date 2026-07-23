@@ -258,6 +258,31 @@ public static class GS
         return bestTarget;
     }
 
+    /// <summary>
+    /// Priority-aware turret targeting: same unit search as FindNearestEnemy, but the winner is
+    /// chosen by the tower's TargetPriority (strategy + preference) instead of raw distance.
+    /// Falls back to the nearest building when no unit is in range and allowOther is set.
+    /// </summary>
+    public static Transform FindEnemyPrioritized(string tagP, Vector2 pos, float searchDistance,
+        TargetPriority prio, bool allowOther = true)
+    {
+        EnsureMasks();
+        int unitsMask = tagP == "Enemies" ? layerCharacter | layerAllyUnits : layerEnemyUnits;
+        int buildingsMask = tagP == "Enemies" ? layerAllyBuildings :
+            tagP == "Allies" ? layerEnemyBuildings : 1 << LayerMask.NameToLayer(EnemyTag(tagP, true, true));
+
+        int n = OverlapGrow(pos, searchDistance, unitsMask, ref nearestUnitsBuf);
+        Transform bestTarget = prio.PickBest(nearestUnitsBuf, n, pos);
+        if (bestTarget == null && allowOther)
+        {
+            float closestDistanceSqr = Mathf.Infinity;
+            n = OverlapGrow(pos, searchDistance, buildingsMask, ref nearestBuildingsBuf);
+            NearestNonTrigger(nearestBuildingsBuf, n, pos, ref bestTarget, ref closestDistanceSqr);
+        }
+
+        return bestTarget;
+    }
+
     public enum searchType
     {
         allAndProjSearch,

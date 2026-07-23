@@ -24,8 +24,9 @@ public class TurretScript : Building
     private Sprite[] upgradeSprites;
 
     [SerializeField] private GameObject upgradeGizmo;
-    
+
     private bool aimAssist = false;
+    private TargetPriority targeting;
 
     private void Awake()
     {
@@ -40,6 +41,7 @@ public class TurretScript : Building
         AddSlot(new int[] { 45, 10, 0, 0 }, "Medium Turret", upgradeSprites[0], true, LevelUp,true,MorphUpgrade );
         AddSlot(new int[] { 100, 0, 5, 0 }, "Mega Turret", upgradeSprites[1], true, LevelUp, true,MorphUpgrade , null, CanShow);
         AddSlot(new int[] {0,0,0,1}, "Aim Assist", upgradeSprites[2], true, delegate { aimAssist = true; upgradeGizmo.SetActive(true); }, true);
+        targeting = TargetPriority.Attach(this);
     }
 
     private void MorphUpgrade()
@@ -62,13 +64,13 @@ public class TurretScript : Building
             {
                 return;
             }
-            T = GS.FindNearestEnemy(tag, transform.position, dRadius,false);
+            T = targeting.Find(tag, transform.position, dRadius);
             waitT = T == null ? resetT/5 : resetT;
             return;
         }
         if (waitT <= 0f)
         {
-            T = GS.FindNearestEnemy(tag, transform.position, dRadius,false);
+            T = targeting.Find(tag, transform.position, dRadius);
             waitT = T == null ? resetT/5 : resetT;
             return;
         }

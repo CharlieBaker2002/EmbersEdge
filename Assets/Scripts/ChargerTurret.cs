@@ -65,6 +65,7 @@ public class ChargerTurret : Building
         find.OnFound += GetTarget;
         transform.parent.GetComponent<SpriteRenderer>().color = Color.white;
         AddUpgradeSlot(new int[] { 100, 0, 5, 0 }, "Thick Spreader", tileSprite, true, LevelUp, 11, true, CallMorph);
+        TargetPriority.Attach(this, find);
     }
 
     private void GetTarget(Transform x) => T = x;

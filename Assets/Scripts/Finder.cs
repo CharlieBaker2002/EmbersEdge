@@ -25,6 +25,8 @@ public class Finder : MonoBehaviour
     public static bool turretsOn = false;
     
     public int maxSearch = 10;
+    [Header("Per-building priority (planted by TargetPriority.Attach)")]
+    public TargetPriority priority;
     private Collider2D[] cols;
     [SerializeField] bool allowBuildings = false;
     [SerializeField] bool preferBuildings = false;
@@ -132,7 +134,9 @@ public class Finder : MonoBehaviour
         }
         timer += refresh;
         
-        T = PROXIMAL ? GS.FindNearestEnemy(tag, transform.position, radius, preferBuildings, allowBuildings) : GS.FindEnemy(transform,radius,GS.BoolsToSearch(true,allowBuildings,false),cols, T);
+        T = priority != null && priority.Overriding
+            ? GS.FindEnemyPrioritized(tag, transform.position, radius, priority, allowBuildings)
+            : PROXIMAL ? GS.FindNearestEnemy(tag, transform.position, radius, preferBuildings, allowBuildings) : GS.FindEnemy(transform,radius,GS.BoolsToSearch(true,allowBuildings,false),cols, T);
         had = T != null;
         if(ALWAYSCALL || T != null) //CALL ON FOUND
         {
@@ -142,7 +146,9 @@ public class Finder : MonoBehaviour
 
     public Transform FindFresh()
     {
-         T = PROXIMAL ? GS.FindNearestEnemy(tag, transform.position, radius, preferBuildings, allowBuildings) : GS.FindEnemy(transform,radius,GS.BoolsToSearch(true,allowBuildings,false),cols);
+         T = priority != null && priority.Overriding
+             ? GS.FindEnemyPrioritized(tag, transform.position, radius, priority, allowBuildings)
+             : PROXIMAL ? GS.FindNearestEnemy(tag, transform.position, radius, preferBuildings, allowBuildings) : GS.FindEnemy(transform,radius,GS.BoolsToSearch(true,allowBuildings,false),cols);
         had = T != null;
         return T;
     }

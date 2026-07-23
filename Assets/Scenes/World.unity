@@ -6708,6 +6708,7 @@ MonoBehaviour:
   drillCombatDps: 0.7
   bagRallyStandoff: 4
   scrapPoint: {x: 0, y: -6}
+  batteryWorkDelayAfterWave: 4
   idleWanderRadius: 5
   idleSpeedScale: 0.45
   idleCooldown: 14
@@ -39904,7 +39905,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b2e4a6c8d0f13579a1c3e5b7d9f0a2c6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MapBoundaryParticles
-  rate: 100
+  rate: 300
   lifetime: {x: 1.5, y: 3}
   size: {x: 0.06, y: 0.16}
   bandJitter: 0.4
