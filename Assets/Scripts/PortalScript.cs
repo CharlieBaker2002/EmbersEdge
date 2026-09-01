@@ -258,10 +258,6 @@ public class PortalScript : MonoBehaviour
 
     public void Portal(bool noDistort = false)
     {
-        if (noDistort)
-        {
-            StartCoroutine(OrbManager.LerpDistortion(2f));
-        }
         waitMaxSlide = true;
         if (!inDungeon)
         {
@@ -629,10 +625,6 @@ public class PortalScript : MonoBehaviour
             if (MineDungeonManager.i != null) MineDungeonManager.i.OnEnterDungeon();
             if (MineDungeonManager.i == null) DM.i.activeRoom.OnEnter();
             // (mining pockets self-activate when the player tunnels into them)
-            foreach (OrbScript t in ResourceManager.instance.heldOrbs)
-            {
-                t.transform.localScale = Vector3.one;
-            }
         }
         else
         {
@@ -654,8 +646,6 @@ public class PortalScript : MonoBehaviour
                 Invoke(nameof(NoPortal),3f);
             }
         }
-        StartCoroutine(OrbManager.LerpDistortion(1f,2.5f));
-
         StartCoroutine(TurnOffSoonI());
         onTeleport?.Invoke(inDungeon);
         MechaSuit.m.RemoveTemporary();
@@ -684,7 +674,6 @@ public class PortalScript : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        ResourceManager.instance.IterateMagnets();
         if (collision.name == "Character")
         {
             BlueprintManager.LootSafe();

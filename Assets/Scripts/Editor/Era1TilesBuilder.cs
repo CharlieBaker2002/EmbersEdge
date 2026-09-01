@@ -8,7 +8,7 @@ using UnityEngine;
 /// collider/rigidbody is needed) and assigns the set to MineAuthoring.statusTilePrefabs, so they paint from
 /// the Mine Forge TILES brush and spawn on pocket discovery.
 ///
-/// Heal + Orb are NOT built here — they're one-shot pickups, so they live as OBJECTS (heal_box / orb_box)
+/// Heal is NOT built here — it's a one-shot pickup, so it lives as an OBJECT (heal_box)
 /// built by Tools > Fill Mine Object Palette into the Extras folder and painted with the Object brush.
 ///
 /// All art is baked in code (WaveExtra / FloorTile) — no PNGs. Idempotent: re-running overwrites the prefabs
@@ -33,7 +33,7 @@ public static class Era1TilesBuilder
 
         // The 5 STATUS tiles are painted in the Mine Forge "Tiles" brush and spawned by the generator at their
         // cells -> MineAuthoring.statusTilePrefabs (index = PocketTileType.Stun..Launch). Heal + Orb are one-shot
-        // pickups -> built as Objects (heal_box / orb_box) by Tools > Fill Mine Object Palette, not here.
+        // pickups -> built as Objects (heal_box) by Tools > Fill Mine Object Palette, not here.
         var statusTiles = new[] { stun, slow, speed, root, launch };
 
         var mine = AssetDatabase.LoadAssetAtPath<MineAuthoringSO>(MinePath);
@@ -48,7 +48,7 @@ public static class Era1TilesBuilder
         EditorUtility.DisplayDialog("Build Era-1 Mine Tiles",
             "Built 5 status floor tiles into\n" + PrefabDir +
             (mine != null
-                ? "\n\nStun/Slow/Speed/Root/Launch → MineAuthoring.statusTilePrefabs (paint them in the Mine Forge TILES brush — they spawn on pocket discovery). For the heal_box / orb_box pickups run Tools > Fill Mine Object Palette (Object brush; set their PlacedObject.chance, e.g. 0.2)."
+                ? "\n\nStun/Slow/Speed/Root/Launch → MineAuthoring.statusTilePrefabs (paint them in the Mine Forge TILES brush — they spawn on pocket discovery). For the heal_box pickup run Tools > Fill Mine Object Palette (Object brush; set their PlacedObject.chance, e.g. 0.2)."
                 : "\n\nWARNING: MineAuthoring asset not found at " + MinePath + " — assign statusTilePrefabs manually."),
             "OK");
     }

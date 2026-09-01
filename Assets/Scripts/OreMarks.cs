@@ -81,7 +81,7 @@ public static class OreMarks
     static void Tint(Ore o, bool on)
     {
         if (o == null) return;
-        int t = o.orbType;
+        int t = o.element;
         Tilemap map = t >= 0 && t < TilemapResource.m.Length ? TilemapResource.m[t] : null;
         if (map == null) return;
         Vector3Int cell = map.WorldToCell(o.transform.position);

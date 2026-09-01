@@ -24,9 +24,9 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     public Vector2 size = Vector2.one;
     [Tooltip("Pathfinding: a chewable WALL (HP-priced obstacle, never a target) instead of a normal building (impassable AND a first-class target).")]
     public bool isWall = false;
-    [Tooltip("Placement: hold the place button and SWEEP to stamp many copies (walls). Each stamp charges the tile's orb cost. Pair with builtBlasts = 0 for orb-only construction (no ember needed).")]
+    [Tooltip("Placement: hold the place button and SWEEP to stamp many copies (walls).")]
     public bool multiDrag = false;
-    [Tooltip("Offered by the build menu while in the DUNGEON (placed on excavated mine cells). Requires builtBlasts = 0 — dungeon builds complete on purchase, no ember/pylons exist there.")]
+    [Tooltip("Offered by the build menu while in the DUNGEON (placed on excavated mine cells).")]
     public bool dungeonBuildable = false;
     [Tooltip("May the player spin this building with R AFTER placement (footprint permitting)? The placement ghost always rotates regardless.")]
     public bool rotatable = true;
@@ -59,9 +59,8 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     [Header("For init buildings set true")]
     public bool builtYet = false;
 
-    // Start() populates spriterenderers/UIParent/etc. A freshly-instantiated building's orb magnet
-    // can complete synchronously (ReceiveOrb finishes with zero yields) within the SAME call stack
-    // as Instantiate/Commit, before Unity has invoked Start() on it — CompleteViaOrbs must not
+    // Start() populates spriterenderers/UIParent/etc. Completion can be requested within the SAME
+    // call stack as Instantiate/Commit, before Unity has invoked Start() — CompleteBuild must not
     // touch Start-initialized state until that's happened.
     protected bool startCalled;
 
@@ -636,22 +635,20 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         }
         else
         {
-            // 0-blast building: no ember icons — construction completes when its orb task fills
-            // (BM wires CompleteViaOrbs into the orb magnets' action). Keep the registration
+            // 0-blast building: completes via BM's CompleteBuild call. Keep the registration
             // LoadWithEEs would have done.
             EnergyManager.i.AddBuilding(this);
         }
     }
 
-    /// <summary>Completion path for builtBlasts == 0 buildings: the orb task filling IS the build —
-    /// no ember blasts involved. Invoked from the orb magnets' completion action.</summary>
-    public virtual void CompleteViaOrbs()
+    /// <summary>Instant completion — building is free and takes no time (no ember phase).</summary>
+    public virtual void CompleteBuild()
     {
         if (builtYet) return;
         if (!startCalled)
         {
-            // Start() hasn't run yet (fresh instance, synchronous orb-complete race) — retry next frame.
-            this.QA(CompleteViaOrbs, 0f);
+            // Start() hasn't run yet (fresh instance) — retry next frame.
+            this.QA(CompleteBuild, 0f);
             return;
         }
         builtYet = true;
@@ -668,10 +665,10 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     /// </summary>
     protected void LoadWithEEs(int n, bool hidden = false)
     {
-        // CHEATBUILD: no ember blasts — finish the build (or apply the pending upgrade) straight
+        // Building never costs ember: finish the build (or apply the pending upgrade) straight
         // away. Deferred a tick because Upgrade() assigns upgradeAction only AFTER this returns,
         // and never registered with EnergyManager (there is nothing for constructors to deliver).
-        if (!hidden && RefreshManager.i != null && RefreshManager.i.CHEATBUILD)
+        if (!hidden)
         {
             this.QA(() =>
             {

@@ -100,7 +100,7 @@ public class ChargerTurret : Building
 
     public void CallMorph()
     {
-        GS.QuickMorphWithOrbs(gameObject, morphSprite, transform.parent);
+        GS.QuickMorph(gameObject, morphSprite, transform.parent);
     }
 
     // ---- State machine: idle -> charge (windup) -> attack (draw + spray) -> cooldown ---------

@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 4256667435858726095}
   - component: {fileID: 396053266464167756}
   - component: {fileID: 4228794242279667164}
-  - component: {fileID: 5906971196468631169}
   m_Layer: 0
   m_Name: Chip Charger
   m_TagString: Untagged
@@ -145,7 +144,6 @@ MonoBehaviour:
   inboundBatteries: 0
   pinnedMin: 0
   hub: 0
-  juicePerChipSpace: 0.5
   chargeRate: 1.5
   suctionRadius: 1.5
   maxJuice: 16
@@ -153,28 +151,6 @@ MonoBehaviour:
   juice: 0
   inboundChipSpace: 0
   chipTier: 0
---- !u!114 &5906971196468631169
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 323440563046157391}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 213b29fb0ad684122a297fef29858033, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  typ: 0
-  orbs: []
-  transientOrbs: 0
-  n: 0
-  orbType: 1
-  capacity: 10
-  siblingTs: []
-  demand: 0
-  init: 1
-  initialMag: 0
 --- !u!1 &461641030203511385
 GameObject:
   m_ObjectHideFlags: 0

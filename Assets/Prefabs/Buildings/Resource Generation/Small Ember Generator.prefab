@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 7891781230376851328}
   - component: {fileID: 1688845524213222780}
   - component: {fileID: 3140180098171544268}
-  - component: {fileID: 1919429571480737283}
   m_Layer: 7
   m_Name: Small Ember Generator
   m_TagString: Allies
@@ -142,38 +141,12 @@ MonoBehaviour:
   - {fileID: 681195295, guid: 13513fabea23b48a483b4f5dc28d0736, type: 3}
   typ: 0
   actionTimer: -1
-  increaseSprite: {fileID: 0}
-  decreaseSprite: {fileID: 0}
-  limit: 1
-  current: 1
   FX: {fileID: 3189509133760383441, guid: 3ebfa320f58fc4e8a9c4219ecef7f00b, type: 3}
   connect: {fileID: 0}
   overrideBattery: 0
   batteryCapacity: 0
   batteryDrawRate: 0
   batteryInstabuffer: 0
---- !u!114 &1919429571480737283
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8949586911344664711}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 213b29fb0ad684122a297fef29858033, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  typ: 0
-  orbs: []
-  transientOrbs: 0
-  n: 0
-  orbType: 1
-  capacity: 15
-  siblingTs: []
-  demand: 0
-  init: 1
-  initialMag: 0
 --- !u!1001 &8649925464865359807
 PrefabInstance:
   m_ObjectHideFlags: 0

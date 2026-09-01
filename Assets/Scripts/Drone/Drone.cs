@@ -69,22 +69,17 @@ public class Drone : AllyAI, IOnDeath
     // ---- cargo (bag drones) ----
     struct CargoEntry
     {
-        public int kind;        // 0 chip, 1 orb, 2 payload item (battery / drone equipment)
+        public int kind;        // 0 chip, 2 payload item (battery / drone equipment)
         public int space;
         public int sizeClass;   // chips only
-        public int element;     // chips (-1 plain) / orbs (0..3)
+        public int element;     // chips (-1 plain, else ore 0..3)
         public GameObject payload;
     }
     readonly System.Collections.Generic.List<CargoEntry> cargo = new System.Collections.Generic.List<CargoEntry>();
     int cargoSpaceUsed;
     OreChip chipTarget;
-    OrbScript orbTarget;
     Battery batteryTarget;
     DroneEquipmentItem equipmentTarget;
-    // harvest run (base-side bag drones): lift a ready harvester's parked orbs, fly them to a
-    // pylon (store as fallback) — the walk-up chore, automated
-    SoulHarvester harvesterTarget;
-    float harvestTakeT;   // pacing so the hoover reads as orbs, not a blink
     // unreachable-loot watchdog (Collect): net displacement sampled while chasing — pinned
     // against rock chasing something the A* can't route to means give the target up
     Component stuckWatch;
@@ -200,7 +195,6 @@ public class Drone : AllyAI, IOnDeath
     // ---- self-assigned jobs (colony model) ----
     Ore oreTarget;                 // marked tile this drone is deconstructing
     float oreTickT;
-    float orbScanT;
     DroneEquipmentItem fetchItem;  // ground kit this drone claimed
 
     public bool Charged => energy > 1e-3f;
@@ -291,7 +285,7 @@ public class Drone : AllyAI, IOnDeath
         BreakChat();
         LeaveCards();
         ReleaseFetch();
-        ReleaseCollectTarget();   // orb/chip/harvester claims must not outlive the job
+        ReleaseCollectTarget();   // chip claims must not outlive the job
         if (waitingStation != null) { waitingStation.LeaveQueue(this); waitingStation = null; }
         if (waitingWorkshop != null) { waitingWorkshop.LeaveQueue(this); waitingWorkshop = null; }
         ReleaseBatteryWork();
@@ -1228,7 +1222,7 @@ public class Drone : AllyAI, IOnDeath
 
     // ---- the daily haul quota ----
     // Every bag gets ONE bag's worth of loot pickup per day, wherever it's swallowed: a dungeon
-    // hauler spends it on the dive, a base bag spends it sweeping orbs and running chip to the
+    // hauler spends it on the dive, a base bag spends it running chip to the
     // grinders. After that the drone calls it a day — one bag never does ALL the base work, and
     // a returned dungeon hauler doesn't start vacuuming old chip off the floor. Dungeon pickups
     // only COUNT toward the quota (the dive loop stays energy-gated, so a second dive still
@@ -1265,13 +1259,10 @@ public class Drone : AllyAI, IOnDeath
         }
 
         Vector2 tpos = chipTarget != null ? (Vector2)chipTarget.transform.position
-            : orbTarget != null ? (Vector2)orbTarget.transform.position
             : equipmentTarget != null ? (Vector2)equipmentTarget.transform.position
-            : harvesterTarget != null ? (Vector2)harvesterTarget.transform.position
             : (Vector2)batteryTarget.transform.position;
         // chips are collected by TOUCH: close to actual contact, present the front, swallow.
-        // Harvesters are buildings — hover at the footprint's edge and lift from there.
-        float reach = chipTarget != null ? 0.32f : harvesterTarget != null ? 0.9f : 0.45f;
+        float reach = chipTarget != null ? 0.32f : 0.45f;
         if (MoveToward(tpos, reach))
         {
             FaceDir(tpos - (Vector2)transform.position);
@@ -1283,9 +1274,7 @@ public class Drone : AllyAI, IOnDeath
         // fallback pressing the drone against rock forever (the wedged-on-a-corner look). Chasing
         // while going nowhere → cool the chip off fleet-wide and pick something else.
         Component tgt = chipTarget != null ? (Component)chipTarget
-            : orbTarget != null ? orbTarget
-            : equipmentTarget != null ? (Component)equipmentTarget
-            : harvesterTarget != null ? (Component)harvesterTarget : batteryTarget;
+            : equipmentTarget != null ? (Component)equipmentTarget : batteryTarget;
         if (tgt != stuckWatch)
         {
             stuckWatch = tgt;
@@ -1297,7 +1286,6 @@ public class Drone : AllyAI, IOnDeath
             if (((Vector2)transform.position - stuckWatchPos).sqrMagnitude < 0.06f * 0.06f)
             {
                 if (chipTarget != null) chipTarget.unreachableUntil = Time.time + 8f;
-                if (harvesterTarget != null) harvesterTarget.droneRetryAt = Time.time + 8f;
                 ReleaseCollectTarget();
                 stuckWatch = null;
                 return;
@@ -1311,13 +1299,6 @@ public class Drone : AllyAI, IOnDeath
     {
         if (chipTarget != null && chipTarget.claimedBy == this && chipTarget.SpaceCost <= EffectiveSpaceLeft) return true;
         chipTarget = null;
-        if (orbTarget != null && orbTarget.gameObject.activeInHierarchy && orbTarget.state == OrbScript.OrbState.wild
-            && orbTarget.claimedBy == this
-            && orbTarget.transform.InDungeon() == transform.InDungeon()
-            // a wall raised under a claimed base orb mid-flight strands the run — drop the claim
-            && (orbTarget.transform.InDungeon() || !OrbOnWall(orbTarget.transform.position))) return true;
-        if (orbTarget != null && orbTarget.claimedBy == this) orbTarget.claimedBy = null;
-        orbTarget = null;
         if (equipmentTarget != null && equipmentTarget.transform.InDungeon()
             && (equipmentTarget.claimedBy == null || equipmentTarget.claimedBy == this)) return true;
         if (equipmentTarget != null && equipmentTarget.claimedBy == this) equipmentTarget.claimedBy = null;
@@ -1327,12 +1308,6 @@ public class Drone : AllyAI, IOnDeath
             && (batteryTarget.claimedBy == null || batteryTarget.claimedBy == this)) return true;
         if (batteryTarget != null && batteryTarget.claimedBy == this) batteryTarget.claimedBy = null;
         batteryTarget = null;
-        if (harvesterTarget != null && harvesterTarget.gameObject.activeInHierarchy
-            && harvesterTarget.claimedBy == this && harvesterTarget.HasDroneCollectable
-            && !transform.InDungeon()
-            && (sack != null ? sack.orbSpace : 1) <= EffectiveSpaceLeft) return true;
-        if (harvesterTarget != null && harvesterTarget.claimedBy == this) harvesterTarget.claimedBy = null;
-        harvesterTarget = null;
         return false;
     }
 
@@ -1340,14 +1315,10 @@ public class Drone : AllyAI, IOnDeath
     {
         if (chipTarget != null && chipTarget.claimedBy == this) chipTarget.claimedBy = null;
         chipTarget = null;
-        if (orbTarget != null && orbTarget.claimedBy == this) orbTarget.claimedBy = null;
-        orbTarget = null;
         if (batteryTarget != null && batteryTarget.claimedBy == this) batteryTarget.claimedBy = null;
         batteryTarget = null;
         if (equipmentTarget != null && equipmentTarget.claimedBy == this) equipmentTarget.claimedBy = null;
         equipmentTarget = null;
-        if (harvesterTarget != null && harvesterTarget.claimedBy == this) harvesterTarget.claimedBy = null;
-        harvesterTarget = null;
     }
 
     bool FindCollectTarget()
@@ -1355,22 +1326,10 @@ public class Drone : AllyAI, IOnDeath
         Vector2 pos = transform.position;
         int spaceLeft = EffectiveSpaceLeft;
 
-        // Base-side sweeps take ORBS ONLY — the ore that base-mining drills shake loose, plus
-        // any harvester holding today's takings. Chips and dropped kit at base are dump-pile
-        // products; hauling those would just loop them. Paying rounds first: wild orbs the
-        // network can bank (they decay), then harvester takings — full-element strays last
-        // (the scrap-pile spill keeps them safe).
+        // Base-side: nothing to sweep any more (the orb economy is gone; chips at base are
+        // dump-pile products and hauling them would just loop them).
         if (!transform.InDungeon())
         {
-            if (!HasDailyHaulQuota) return false;   // quota ran out mid-sweep: bank what's aboard
-            var baseOrb = NearestBaseOrb(pos, spaceLeft, needRoom: true);
-            if (baseOrb == null)
-            {
-                var hv = NearestReadyHarvester(pos, spaceLeft);
-                if (hv != null) { hv.claimedBy = this; harvesterTarget = hv; harvestTakeT = 0f; return true; }
-                baseOrb = NearestBaseOrb(pos, spaceLeft, needRoom: false);
-            }
-            if (baseOrb != null) { baseOrb.claimedBy = this; orbTarget = baseOrb; return true; }
             return false;
         }
 
@@ -1418,30 +1377,6 @@ public class Drone : AllyAI, IOnDeath
             bestRank = rank; bestSqr = d; bestChip = chip;
         }
 
-        // 2) loose wild orbs — worth a LITTLE lean over chip (orbs are banked currency), never
-        // a trek: the orb wins only while it sits within ~1.35× the best chip's distance
-        const float OrbBiasSqr = 1.8f;   // 1.35² on squared distances
-        int orbSpace = sack != null ? sack.orbSpace : 1;
-        if (orbSpace <= spaceLeft && OrbManager.allOrbs != null)
-        {
-            float orbSqr = float.MaxValue;
-            OrbScript bestOrb = null;
-            for (int k = 0; k < OrbManager.allOrbs.Count; k++)
-            {
-                var o = OrbManager.allOrbs[k];
-                if (o == null || !o.gameObject.activeInHierarchy) continue;
-                if (o.state != OrbScript.OrbState.wild || !o.transform.InDungeon()) continue;
-                if (o.claimedBy != null && o.claimedBy != this) continue;
-                float d = ((Vector2)o.transform.position - pos).sqrMagnitude;
-                if (d < orbSqr) { orbSqr = d; bestOrb = o; }
-            }
-            if (bestOrb != null && (bestChip == null || orbSqr <= bestSqr * OrbBiasSqr))
-            {
-                bestOrb.claimedBy = this;
-                orbTarget = bestOrb;
-                return true;
-            }
-        }
         if (bestChip != null)
         {
             bestChip.claimedBy = this;
@@ -1486,96 +1421,6 @@ public class Drone : AllyAI, IOnDeath
         return false;
     }
 
-    /// <summary>Base-side orb resting on a standing wall's (or a solid building footprint's)
-    /// cell: the 0.45 pickup reach can't span from the nearest open ground to the cell centre,
-    /// so a drone sent there just presses against the wall until the stuck watchdog trips.
-    /// Dead walls read as open ground (TryGetLiveWall), so their loot frees up again.</summary>
-    static bool OrbOnWall(Vector2 p)
-    {
-        Vector2Int cell = BaseBlockMap.Cell(p);
-        return BaseBlockMap.HasSolid(cell) || BaseBlockMap.TryGetLiveWall(cell, out _, out _);
-    }
-
-    /// <summary>Wild base-side orb worth hauling: outside the scrap-pile exclusion ring (freshly
-    /// dumped orbs must never be re-collected in a loop) and near enough to bother. With
-    /// <paramref name="needRoom"/>, only orbs whose element the pylon/store network can still
-    /// bank (counting what's already bagged) — the priority sweep's gate.</summary>
-    OrbScript NearestBaseOrb(Vector2 pos, int spaceLeft, bool needRoom)
-    {
-        int orbSpace = sack != null ? sack.orbSpace : 1;
-        if (orbSpace > spaceLeft || OrbManager.allOrbs == null) return null;
-        var rm = ResourceManager.instance;
-        float bestSqr = 30f * 30f;
-        OrbScript best = null;
-        for (int k = 0; k < OrbManager.allOrbs.Count; k++)
-        {
-            var o = OrbManager.allOrbs[k];
-            if (o == null || !o.gameObject.activeInHierarchy) continue;
-            if (o.state != OrbScript.OrbState.wild || o.transform.InDungeon()) continue;
-            if (o.claimedBy != null && o.claimedBy != this) continue;
-            if (needRoom)
-            {
-                int e = o.orbType;
-                if (e < 0 || e > 3 || rm == null || rm.orbs[e] + CargoOrbCount(e) >= rm.orbCaps[e]) continue;
-            }
-            Vector2 op = o.transform.position;
-            if ((op - DroneManager.ScrapPoint).sqrMagnitude < 2.5f * 2.5f) continue;
-            if (OrbOnWall(op)) continue;   // parked on a wall/building cell — unreachable, skip
-            float d = (op - pos).sqrMagnitude;
-            if (d < bestSqr) { bestSqr = d; best = o; }
-        }
-        return best;
-    }
-
-    /// <summary>Nearest harvester holding today's takings whose element still has room in the
-    /// pylon/store network (orbCaps counts both) — no room means the orbs STAY on the harvester
-    /// until space frees up. A claim only binds while the claimant is still on the job, so a
-    /// drone yanked away (pad reservation, kit summons) never blacklists a harvester.</summary>
-    SoulHarvester NearestReadyHarvester(Vector2 pos, int spaceLeft)
-    {
-        if ((sack != null ? sack.orbSpace : 1) > spaceLeft) return null;
-        var rm = ResourceManager.instance;
-        SoulHarvester best = null;
-        float bestSqr = float.MaxValue;
-        for (int race = 0; race < 4; race++)
-        {
-            if (rm != null && rm.orbs[race] >= rm.orbCaps[race]) continue;
-            var list = SoulHarvester.shs[race];
-            for (int k = 0; k < list.Count; k++)
-            {
-                var sh = list[k];
-                if (sh == null || !sh.gameObject.activeInHierarchy || !sh.HasDroneCollectable) continue;
-                if (Time.time < sh.droneRetryAt) continue;   // a drone recently failed to reach it
-                var claim = sh.claimedBy;
-                if (claim != null && claim != this && claim.harvesterTarget == sh) continue;
-                float d = ((Vector2)sh.transform.position - pos).sqrMagnitude;
-                if (d < bestSqr) { bestSqr = d; best = sh; }
-            }
-        }
-        return best;
-    }
-
-    /// <summary>Docked-bag dispatch check, throttled — a parked drone shouldn't walk the whole
-    /// orb registry (or the harvester roster) every physics tick. One scan caches BOTH answers
-    /// (bankable work / any work at all) so the priority slot and the fallback slot in
-    /// TryDispatchWork can't starve each other through the throttle.</summary>
-    bool collectRoomCached, collectAnyCached;
-    bool BaseCollectAvailable(bool needRoom)
-    {
-        if (!HasDailyHaulQuota) return false;   // today's bagful is spent — the sweep is tomorrow's
-        if ((orbScanT -= Time.fixedDeltaTime) <= 0f)
-        {
-            orbScanT = 0.5f;
-            Vector2 pos = transform.position;
-            int space = EffectiveSpaceLeft;
-            // harvester takings are room-gated by nature, so they count as bankable work
-            collectRoomCached = NearestBaseOrb(pos, space, needRoom: true) != null
-                || NearestReadyHarvester(pos, space) != null;
-            collectAnyCached = collectRoomCached || NearestBaseOrb(pos, space, needRoom: false) != null;
-        }
-        return needRoom ? collectRoomCached : collectAnyCached;
-    }
-
     void PickupTarget()
     {
         if (chipTarget != null)
@@ -1583,16 +1428,6 @@ public class Drone : AllyAI, IOnDeath
             AddCargo(new CargoEntry { kind = 0, space = chipTarget.SpaceCost, sizeClass = chipTarget.sizeClass, element = chipTarget.element });
             chipTarget.AbsorbInto(transform);   // visible swallow: ease-out shrink into the front
             chipTarget = null;
-        }
-        else if (orbTarget != null)
-        {
-            if (orbTarget.claimedBy == this) orbTarget.claimedBy = null;
-            if (orbTarget.state == OrbScript.OrbState.wild)
-            {
-                AddCargo(new CargoEntry { kind = 1, space = sack != null ? sack.orbSpace : 1, element = orbTarget.orbType });
-                orbTarget.ReturnToPool();
-            }
-            orbTarget = null;
         }
         else if (equipmentTarget != null)
         {
@@ -1612,49 +1447,13 @@ public class Drone : AllyAI, IOnDeath
             go.SetActive(false);
             batteryTarget = null;
         }
-        else if (harvesterTarget != null)
-        {
-            if ((harvestTakeT -= Time.fixedDeltaTime) > 0f) return;
-            harvestTakeT = 0.12f;
-            // take only what the pylon/store network can still absorb (counting what's already
-            // bagged) — anything beyond that STAYS parked on the harvester, safe, for later
-            var rm = ResourceManager.instance;
-            int race = Mathf.Clamp(harvesterTarget.race, 0, 3);
-            if (rm != null && rm.orbs[race] + CargoOrbCount(race) >= rm.orbCaps[race])
-            {
-                if (harvesterTarget.claimedBy == this) harvesterTarget.claimedBy = null;
-                harvesterTarget = null;
-                return;
-            }
-            OrbScript o = harvesterTarget.TakeOrbForDrone();
-            if (o != null)
-            {
-                AddCargo(new CargoEntry { kind = 1, space = sack != null ? sack.orbSpace : 1,
-                    element = Mathf.Clamp(o.orbType, 0, 3) });
-                o.ReturnToPool();
-            }
-            if (o == null || !harvesterTarget.HasDroneCollectable)
-            {
-                if (harvesterTarget != null && harvesterTarget.claimedBy == this) harvesterTarget.claimedBy = null;
-                harvesterTarget = null;
-            }
-        }
-    }
-
-    /// <summary>Orbs riding in the bag — of one element, or any with -1.</summary>
-    int CargoOrbCount(int element)
-    {
-        int n = 0;
-        for (int k = 0; k < cargo.Count; k++)
-            if (cargo[k].kind == 1 && (element < 0 || cargo[k].element == element)) n++;
-        return n;
     }
 
     void AddCargo(CargoEntry e)
     {
         cargo.Add(e);
         cargoSpaceUsed += e.space;
-        if (e.kind != 2)   // chips and orbs spend the daily haul quota; carried items don't
+        if (e.kind != 2)   // chips spend the daily haul quota; carried items don't
         {
             if (hauledDay != SpawnManager.day) { hauledDay = SpawnManager.day; hauledSpaceToday = 0; }
             hauledSpaceToday += e.space;
@@ -1695,122 +1494,23 @@ public class Drone : AllyAI, IOnDeath
             }
         }
 
-        // Orbs land where they're WANTED too: fly the haul to the nearest matching pylon
-        // (stores when every pylon is full) and beam it in with the classic deposit glide.
-        // Elements with no room anywhere ride on to the scrap pile with everything else.
-        if (CargoOrbCount(-1) > 0)
-        {
-            OrbMagnet drop = NearestOrbDropoff();
-            if (drop != null)
-            {
-                if (!MoveToward(drop.transform.position, 1.1f)) return;
-                int before = cargoSpaceUsed;
-                BankOrbCargo(drop);
-                if (!HasCargo)
-                {
-                    if (!TryDispatchWork()) GoLoiter();
-                    return;
-                }
-                // progress → next tick: another element's pylon, or the pile with the rest;
-                // no progress (network filled mid-flight) → fall through to the pile now
-                if (cargoSpaceUsed != before) return;
-            }
-        }
-
         if (!MoveToward(DroneManager.ScrapPoint, 0.6f)) return;
-        DumpCargoAt(DroneManager.ScrapPoint, bankOrbs: true);   // orbs beam into the pylons/stores
+        DumpCargoAt(DroneManager.ScrapPoint);
         // No solo hop back down — the next deployment rides the player's dive (or a freshly
         // built pad's TryDeployNow). More work if there is any, else patrol; a spent charge
         // routes home by itself (the loiter tick sends flat drones to the charger).
         if (!TryDispatchWork()) GoLoiter();
     }
 
-    /// <summary>Where this bag's orbs should land: the nearest pylon serving any bagged element
-    /// that still has pool room — pylons outrank stores, stores catch the overflow when every
-    /// matching pylon's ring is full. Null → nothing bankable (the scrap spill handles it).</summary>
-    OrbMagnet NearestOrbDropoff()
+    /// <summary>Spill everything: chips re-scatter as scrap, carried items (batteries/equipment)
+    /// drop as real objects. Also the death-drop path.</summary>
+    void DumpCargoAt(Vector2 p)
     {
-        var rm = ResourceManager.instance;
-        if (rm == null) return null;
-        int want = 0;
-        for (int k = 0; k < cargo.Count; k++)
-        {
-            if (cargo[k].kind != 1) continue;
-            int e = cargo[k].element;
-            if (e >= 0 && e <= 3 && rm.orbs[e] < rm.orbCaps[e]) want |= 1 << e;
-        }
-        if (want == 0) return null;
-        Vector2 pos = transform.position;
-        OrbMagnet best = null;
-        float bd = float.MaxValue;
-        var pylons = rm.pylons;
-        for (int k = 0; k < pylons.Count; k++)
-        {
-            var p = pylons[k];
-            if (p == null || !p.gameObject.activeInHierarchy || p.mag == null) continue;
-            if (p.orbType < 0 || p.orbType > 3 || (want & (1 << p.orbType)) == 0) continue;
-            if (p.mag.n >= p.mag.capacity) continue;
-            float d = ((Vector2)p.mag.transform.position - pos).sqrMagnitude;
-            if (d < bd) { bd = d; best = p.mag; }
-        }
-        if (best != null) return best;
-        var mags = rm.magnets;
-        for (int k = 0; k < mags.Count; k++)
-        {
-            var m = mags[k];
-            if (m == null || m.typ != OrbMagnet.OrbType.Store || !m.gameObject.activeInHierarchy) continue;
-            if (m.orbType < 0 || m.orbType > 3 || (want & (1 << m.orbType)) == 0) continue;
-            if (m.n >= m.capacity) continue;
-            float d = ((Vector2)m.transform.position - pos).sqrMagnitude;
-            if (d < bd) { bd = d; best = m; }
-        }
-        return best;
-    }
-
-    /// <summary>Beam every bankable orb in the bag into the network from where the drone floats.
-    /// Orbs matching <paramref name="at"/>'s element land in THAT magnet (the flight's whole
-    /// point); other elements ride the normal next-pylon routing. Unbankable orbs (their pool
-    /// filled mid-flight) stay aboard for the scrap-pile spill.</summary>
-    void BankOrbCargo(OrbMagnet at)
-    {
-        var rm = ResourceManager.instance;
-        if (rm == null) return;
-        for (int k = cargo.Count - 1; k >= 0; k--)
-        {
-            if (cargo[k].kind != 1) continue;
-            int e = cargo[k].element;
-            if (e < 0 || e > 3) continue;
-            bool banked = at != null && at.orbType == e
-                ? rm.TryBankOrbInto(at, e, transform.position)
-                : rm.TryBankOrbFrom(e, transform.position);
-            if (!banked) continue;
-            cargoSpaceUsed = Mathf.Max(0, cargoSpaceUsed - cargo[k].space);
-            cargo.RemoveAt(k);
-        }
-        SetCargoUnits(cargoSpaceUsed);
-        if (sack != null) sack.SetFill(cargoSpaceUsed / (float)SackMaxSpace);
-    }
-
-    /// <summary>Spill everything: chips re-scatter as scrap, orbs burst out wild, carried items
-    /// (batteries/equipment) drop as real objects. Also the death-drop path. With
-    /// <paramref name="bankOrbs"/> (the scrap-point delivery), orbs are deposited into the pylon
-    /// network instead — only what the pool has no room for spills wild with the chips.</summary>
-    void DumpCargoAt(Vector2 p, bool bankOrbs = false)
-    {
-        var orbCounts = new int[4];
         foreach (var e in cargo)
         {
             if (e.kind == 0)
             {
                 DroneManager.SpawnScrap((Vector3)p + GS.RandCircle(0.1f, 0.9f), e.sizeClass, e.element);
-            }
-            else if (e.kind == 1)
-            {
-                if (e.element < 0 || e.element > 3) continue;
-                if (bankOrbs && ResourceManager.instance != null
-                    && ResourceManager.instance.TryBankOrbFrom(e.element, transform.position))
-                    continue;   // beamed straight into a pylon — nothing to spill
-                orbCounts[e.element]++;
             }
             else if (e.payload != null)
             {
@@ -1820,10 +1520,6 @@ public class Drone : AllyAI, IOnDeath
                 e.payload.SetActive(true);
             }
         }
-        if (orbCounts[0] + orbCounts[1] + orbCounts[2] + orbCounts[3] > 0)
-            // scrap-point spills are "nowhere else to put it" piles — they live until the next
-            // return from the dungeon (cohort 2); other spills stamp day/wave lazily
-            GS.CallSpawnOrbs(p, orbCounts, null, bankOrbs ? 2 : -1);
         cargo.Clear();
         cargoSpaceUsed = 0;
         SetCargoUnits(0);
@@ -1957,27 +1653,11 @@ public class Drone : AllyAI, IOnDeath
         // grabbing equipment outranks ANY battery action — kit first, then crewing
         if (equipment == DroneEquipment.None && TryTakeKitJob()) return true;
         if (equipment == DroneEquipment.None && TryTakePilotSeat()) return true;
-        // the bag's FIRST duty at base: loose orbs and harvester takings into the pylons/stores
-        // while the network has room to bank them. Not free work — every orb swallowed pays the
-        // bag tariff (charge) and the daily haul quota like any haul.
-        if (equipment == DroneEquipment.Bag && Peaceful() && !transform.InDungeon()
-            && BaseCollectAvailable(needRoom: true))
-        {
-            state = State.Collecting;
-            return true;
-        }
         // battery logistics after the wave: REGULAR drones and bags both run the station swaps
         // (bags are usually reserved for telepad dives, so the housekeeping fleet must qualify).
         if ((equipment == DroneEquipment.None || equipment == DroneEquipment.Bag)
             && Peaceful() && !transform.InDungeon() && TryTakeBatteryWork())
             return true;
-        // fallback sweep: wild orbs whose pools are FULL still get rescued off the ground last
-        // (they decay in the open; the scrap-pile spill keeps them) — after the paying work
-        if (equipment == DroneEquipment.Bag && Peaceful() && BaseCollectAvailable(needRoom: false))
-        {
-            state = State.Collecting;
-            return true;
-        }
         return false;
     }
 
@@ -2621,7 +2301,7 @@ public class Drone : AllyAI, IOnDeath
     /// <summary>Spill up to <paramref name="maxSpace"/> of the bagged chips the customer may be
     /// GIVEN beside its intake — a station's suction pulls each one in with the ease-in shrink.
     /// The customer's favourite chip goes first (appeal, then size), so a tight demand window is
-    /// spent on ore before rock. Non-chip cargo (orbs, payloads) stays aboard, as do chips it
+    /// spent on ore before rock. Non-chip cargo (payloads) stays aboard, as do chips it
     /// can't eat, chips a keener hungry customer has dibs on, and any chip beyond what it wants.
     /// The handover is also where the fleet's fair-share ledger ticks.</summary>
     void DumpChipsFor(IChipConsumer c, int maxSpace = int.MaxValue)
@@ -3189,8 +2869,8 @@ public class Drone : AllyAI, IOnDeath
     // ------------------------------------------------------------------ base ore mining
 
     /// <summary>Deconstruct player-marked ore tiles (OreMarks): each tile is eaten whole in
-    /// ~3s of contact (DroneManager.BaseOreEatSeconds) for HALF its orb value — no debris
-    /// chips, the yield is wild orbs at the tile, which bag drones sweep up. Self-assigned;
+    /// ~3s of contact (DroneManager.BaseOreEatSeconds) for HALF its value — the yield lands
+    /// as medium ORE CHIPS at the tile, which feed the refiner like any haul. Self-assigned;
     /// re-checks the fleet reservation every tick so filling a telepad slot mid-grind makes
     /// the miners down tools and save their charge.</summary>
     void TickMineBaseOre()
@@ -3236,7 +2916,7 @@ public class Drone : AllyAI, IOnDeath
         FaceDir(p - (Vector2)transform.position);
         if (drillBit != null) drillBit.SetActiveDrilling(true);
 
-        // grind in coarse ticks so FX/orb spawns don't spam every physics frame
+        // grind in coarse ticks so FX/chip spawns don't spam every physics frame
         oreTickT -= Time.fixedDeltaTime;
         if (oreTickT > 0f) return;
         const float tick = 0.25f;
@@ -3244,10 +2924,9 @@ public class Drone : AllyAI, IOnDeath
         int give = oreTarget.ChipDrone(tick, DroneManager.BaseOreEatSeconds);
         if (give > 0)
         {
-            energy = Mathf.Max(0f, energy - give * DroneManager.BaseOreCostPerOrb);
-            int[] counts = new int[4];
-            counts[Mathf.Clamp(oreTarget.orbType, 0, 3)] = give;
-            GS.CallSpawnOrbs(p, counts);
+            energy = Mathf.Max(0f, energy - give * DroneManager.BaseOreCostPerUnit);
+            for (int k = 0; k < give; k++)
+                DroneManager.SpawnScrap((Vector3)p + GS.RandCircle(0.1f, 0.5f), 1, Mathf.Clamp(oreTarget.element, 0, 3));
         }
     }
 

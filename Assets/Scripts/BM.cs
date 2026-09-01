@@ -39,22 +39,6 @@ public class BM : MonoBehaviour //Building Manager
     bool dragArmed;      // a deliberate click starts the sweep (guards against the menu click's held button)
     bool upfrontSpent;   // the menu click pre-charged ONE copy; later stamps charge per placement
 
-    /// <summary>A refundable up-front build charge is outstanding: a building was picked from
-    /// the menu (bank already debited) but nothing has been placed yet — Escape would refund
-    /// it in full. While this is true, held orbs must NOT bank into the pylons
-    /// (ResourceManager.DropResources gates on it): banking against the debited pool and then
-    /// cancelling would refund on top of the freshly-banked orbs and push the pylons past
-    /// their caps. The allocation itself stays — only the physical orb movement waits for the
-    /// placement click. Zero once a copy is committed (cost is consumed, nothing refunds).</summary>
-    public static bool PlacementRefundPending
-    {
-        get
-        {
-            if (i == null || !i.planting || i.redBuilding == null) return false;
-            return i.cost[0] != 0 || i.cost[1] != 0 || i.cost[2] != 0 || i.cost[3] != 0;
-        }
-    }
-
     // ---- dungeon placement (Building.dungeonBuildable, e.g. the Telepad) ----
     // The base grid doesn't exist down there: snap to mine cells, validate on excavated floor,
     // and keep occupancy in this set (mirrors GridManager.SetArea). Static + reload-off ⇒ reset.
@@ -208,16 +192,6 @@ public class BM : MonoBehaviour //Building Manager
             var a = Instantiate(UIPrefab, UIspots[pos + 4].position, Quaternion.identity, UI.transform);
             BuildingTile tile = a.GetComponent<BuildingTile>();
             tile.img.sprite = build.icon == null ? build.sr.sprite : build.icon;
-            int[] costB = new int[4] { 0, 0, 0, 0 };
-            foreach (OrbMagnet om in g.GetComponents<OrbMagnet>())
-            {
-                if (om.typ == OrbMagnet.OrbType.Task)
-                {
-                    costB[om.orbType] += om.capacity;
-                    om.init = true;
-                }
-            }
-            tile.cost = costB;
             tile.txt.text = g.name;
             tile.UpdateCost();
             tile.ChangeBackground();
@@ -336,7 +310,6 @@ public class BM : MonoBehaviour //Building Manager
         if (!dungeonMode) GridManager.i.DeactivateGrid();
         if (redBuilding != null)
         {
-            ResourceManager.instance.CanAfford(cost, true);
             Destroy(redBuilding);
             redBuilding = null;
         }
@@ -371,14 +344,7 @@ public class BM : MonoBehaviour //Building Manager
             IM.i.pi.Player.Interact.performed -= clickAction;
             EscapeRouter.i?.Remove(escape);
             map.SetActive(true);
-            GS.QA(() =>
-            {
-                ResourceManager.instance.DropResources();
-                if (ResourceManager.instance.CanAfford(recent.cost, false, false))
-                {
-                    recent.OnClick();
-                }
-            }, 2);
+            GS.QA(() => recent.OnClick(), 2);
             return;
         }
 
@@ -403,48 +369,22 @@ public class BM : MonoBehaviour //Building Manager
         // Successful place: pop placement-cancel; daddy UI back-out (closeUIDel) stays on stack.
         EscapeRouter.i?.Remove(escape);
         AddDaddyDel();
-        GS.QA(() =>
-        {
-            // Held orbs were frozen out of the bank while the placement was refundable — settle
-            // them now so the re-pick check sees everything the player actually has.
-            ResourceManager.instance.DropResources();
-            if (ResourceManager.instance.CanAfford(recent.cost, false, false))
-            {
-                recent.OnClick();
-            }
-        }, 2);
+        GS.QA(() => recent.OnClick(), 2);
     }
 
-    /// <summary>One multi-drag stamp at the current (verified clear) anchor: charge, clone, commit.
-    /// The first stamp consumes the menu click's up-front charge; later ones pay per placement.</summary>
+    /// <summary>One multi-drag stamp at the current (verified clear) anchor: clone and commit
+    /// (building is free — no charge).</summary>
     void StampMultiCopy()
     {
-        if (upfrontSpent)
-        {
-            // cost is already zeroed here, so nothing is refundable — held orbs may settle
-            // into the bank before the per-stamp charge instead of waiting for the auto-bank tick.
-            ResourceManager.instance.DropResources();
-            if (!ResourceManager.instance.CanAfford(recent.cost))
-            {
-                Escape();   // out of resources — close the placement session (cost already zeroed, so nothing refunds)
-                return;
-            }
-        }
-        else
-        {
-            upfrontSpent = true;
-            GS.CopyArray(ref cost, new int[4]);   // up-front charge is now consumed — Escape must not refund it
-        }
-
         var built = Instantiate(redbuildingPrefab, redBuilding.transform.position, redBuilding.transform.rotation);
         var bb = built.GetComponentInChildren<Building>(true);
         Commit(built, bb, true);
         lastStampCell = anchorCell;
     }
 
-    /// <summary>Turn a placed instance into a live under-construction building at the current
-    /// anchor: grid occupancy, era tint, orb-task magnets (whose completion also FINISHES 0-blast
-    /// buildings — orb-only construction, no ember), decompressors, registry.</summary>
+    /// <summary>Turn a placed instance into a live building at the current anchor: grid
+    /// occupancy, era tint, decompressors, registry. Building is free and INSTANT — no
+    /// resource tasks, no ember phase; every behaviour wakes and the build completes now.</summary>
     void Commit(GameObject built, Building bb, bool freshInstance)
     {
         if (dungeonMode)
@@ -478,91 +418,21 @@ public class BM : MonoBehaviour //Building Manager
             fsd.enabled = true;
         }
 
-        var bros = built.GetComponents<OrbMagnet>().Where(x => x.typ == OrbMagnet.OrbType.Task).ToArray();
-
         built.transform.parent = GS.FindParent(GS.Parent.buildings);
         buildings.Add(bb);
-        var SD = built.GetComponentsInChildren<SpriteDecompressor>(true);
-        // CHEATBUILD: skip the orb-task phase — no magnets to fill, no orbs to fly. Mirror
-        // CommitDungeon: drop the task magnets and wake every behaviour so Start/BuildFirst run
-        // (LoadWithEEs then skips the ember phase too). Fresh stamps keep the 2-frame defer past
-        // their ghost-init, same as the normal enable path below.
-        if (RefreshManager.i != null && RefreshManager.i.CHEATBUILD)
+        // Free + instant: wake every behaviour so Start/BuildFirst run, then complete the build.
+        // Fresh stamps keep the 2-frame defer past their ghost-init (SwitchMonos(false, init)
+        // lands NEXT frame and would flip anything it owns back off).
+        GS.QA(() =>
         {
-            foreach (OrbMagnet om in bros) Destroy(om);
-            GS.QA(() =>
+            if (built == null || bb == null) return;
+            if (bb.TryGetComponent<Collider2D>(out var ghostCol)) Destroy(ghostCol);
+            foreach (Behaviour beh in built.GetComponentsInChildren<Behaviour>(true))
             {
-                if (built == null || bb == null) return;
-                if (bb.TryGetComponent<Collider2D>(out var ghostCol)) Destroy(ghostCol);
-                foreach (Behaviour beh in built.GetComponentsInChildren<Behaviour>(true))
-                {
-                    if (beh is OrbMagnet) continue;   // doomed (Destroy is deferred) — don't wake them
-                    beh.enabled = true;
-                }
-                if (bb.builtBlasts <= 0) bb.CompleteViaOrbs();   // orb-only buildings have no ember phase to finish them
-            }, freshInstance ? 2 : 0);
-            return;
-        }
-        foreach (OrbMagnet om in bros)
-        {
-            if (om.typ == OrbMagnet.OrbType.Task)
-            {
-                foreach (var o in bros)
-                {
-                    if (o != om)
-                    {
-                        om.siblingTs.Add(o);
-                    }
-                }
-                om.action = delegate
-                {
-                    if (bb == null) return;
-                    if (bb.TryGetComponent<Collider2D>(out var col))
-                    {
-                        Destroy(col);
-                    }
-                    if (bb.builtBlasts <= 0)
-                    {
-                        bb.CompleteViaOrbs();   // orb-only construction: the task filling IS the build
-                    }
-                    // physic is created+activated by SwitchMonos(true) (the EE-icon build path),
-                    // which is QA-deferred and races this orb-task callback. If the orbs land
-                    // first, physic is still null here — skip; SwitchMonos will create AND
-                    // activate it a moment later (this SetActive is redundant with that). Without
-                    // the guard this NREs intermittently on build.
-                    if (bb.physic != null) bb.physic.gameObject.SetActive(true);
-                };
-                foreach (var spriteDecompressor in SD)
-                {
-                    spriteDecompressor.oms.Add(om);
-                }
+                beh.enabled = true;
             }
-        }
-
-        // A freshly-instantiated stamp hasn't run Building.Start yet — its ghost-init
-        // (SwitchMonos(false, init)) lands NEXT frame and would flip anything it owns back off.
-        // Defer the enables past it; the ghost-turned-building path enables immediately as before.
-        if (freshInstance)
-        {
-            GS.QA(() =>
-            {
-                if (built == null) return;
-                foreach (OrbMagnet om in bros) { if (om != null) om.enabled = true; }
-                foreach (var sd in SD) { if (sd != null) sd.enabled = true; }
-            }, 2);
-        }
-        else
-        {
-            foreach (OrbMagnet om in bros)
-            {
-                om.enabled = true;
-            }
-
-            foreach (var sd in SD)
-            {
-                sd.enabled = true;
-            }
-        }
+            bb.CompleteBuild();
+        }, freshInstance ? 2 : 0);
     }
 
 
@@ -588,9 +458,8 @@ public class BM : MonoBehaviour //Building Manager
         return MineField.i.IsExcavated(dungeonAnchor) && !DungeonOccupancy.Contains(dungeonAnchor);
     }
 
-    /// <summary>Dungeon commit: mine-cell occupancy instead of the base grid, and construction
-    /// completes IMMEDIATELY — the cost was charged from the bank on the menu click, and no orb
-    /// pylons exist in the dungeon to fly the task orbs in.</summary>
+    /// <summary>Dungeon commit: mine-cell occupancy instead of the base grid; construction
+    /// completes IMMEDIATELY (building is free and instant).</summary>
     void CommitDungeon(GameObject built, Building bb)
     {
         DungeonOccupancy.Add(dungeonAnchor);
@@ -600,20 +469,13 @@ public class BM : MonoBehaviour //Building Manager
         }
         built.transform.parent = GS.FindParent(GS.Parent.buildings);
         buildings.Add(bb);
-        foreach (OrbMagnet om in built.GetComponents<OrbMagnet>())
-        {
-            if (om.typ == OrbMagnet.OrbType.Task) Destroy(om);
-        }
-        // Building prefabs ship with the main script DISABLED — in the base flow the filled orb
-        // task enables every child Behaviour before invoking CompleteViaOrbs (OrbMagnet.ReceiveOrb).
-        // We just destroyed those magnets, so replicate that enable here or Start never runs and
-        // CompleteViaOrbs retry-loops forever on startCalled == false.
+        // Building prefabs ship with the main script DISABLED — wake every child Behaviour or
+        // Start never runs and CompleteBuild retry-loops forever on startCalled == false.
         foreach (Behaviour beh in built.GetComponentsInChildren<Behaviour>(true))
         {
-            if (beh is OrbMagnet) continue;   // doomed (Destroy is deferred) — don't wake them
             beh.enabled = true;
         }
-        bb.CompleteViaOrbs();   // QA-retries internally until the instance's Start has run
+        bb.CompleteBuild();   // QA-retries internally until the instance's Start has run
     }
 
     private void Position(Transform t)
@@ -671,16 +533,6 @@ public class BM : MonoBehaviour //Building Manager
                 BuildingTile tile = a.GetComponent<BuildingTile>();
                 Building build = t.buildings[i].GetComponentInChildren<Building>(true);
                 tile.img.sprite = build.icon == null ? build.sr.sprite : build.icon;
-                int[] costB = new int[4] { 0, 0, 0, 0 };
-                foreach (OrbMagnet om in t.buildings[i].GetComponents<OrbMagnet>())
-                {
-                    if (om.typ == OrbMagnet.OrbType.Task)
-                    {
-                        costB[om.orbType] += om.capacity;
-                        om.init = true;
-                    }
-                }
-                tile.cost = costB;
                 tile.txt.text = t.buildings[i].name;
                 tile.UpdateCost();
                 tile.ChangeBackground();

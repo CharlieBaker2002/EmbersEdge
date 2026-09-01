@@ -10,11 +10,11 @@ using UnityEngine;
 ///     EmberConnector and routed down the cable network to whoever wants it
 ///     (constructors → ember generators → stores), exactly like an expander collection;
 ///   • ORE chip (element 0..3, strictly medium since the mines cut it that way) → a burst of
-///     that element's orbs (white 12 / green 6 / blue 2 / red 1 per chip — rarer runs richer).
+///     ember (the orb economy is gone — every chip refines toward ember).
 /// Throughput is day-capped: every swallowed chip spends its JuiceValue from a dailyJuice
 /// budget, and intake shuts (AcceptsChip, so drones stop hauling too) once the day's budget
 /// can't cover a chip. A full connector also pauses PLAIN intake — ore never blocks on ember
-/// room: orbs always have somewhere to fly.
+/// room.
 /// </summary>
 public class Refiner : Building, IChipConsumer
 {
@@ -37,8 +37,6 @@ public class Refiner : Building, IChipConsumer
     // plain-rock juice banked toward the next ember (carries across chips and days)
     float juiceBank;
 
-    /// <summary>Orbs per ORE chip, by element (white / green / blue / red) — rarer runs richer.</summary>
-    public static readonly int[] OrbsPerChip = { 12, 6, 2, 1 };
 
     [Tooltip("Where chips ease in and shrink away. Falls back to the building centre.")]
     [SerializeField] private Transform eatSpot;
@@ -104,7 +102,7 @@ public class Refiner : Building, IChipConsumer
     public bool ChipIntakeActive => builtYet && enabled;
     public Vector2 ChipDropPoint => transform.position;
     public float ChipIntakeRadius => suctionRadius;
-    /// <summary>Ore is the refiner's real prize (orbs — appeal 2, so the fleet reserves it for
+    /// <summary>Ore is the refiner's real prize (appeal 2, so the fleet reserves it for
     /// hungry refiners); plain rock is ordinary ember feed it shares evenly with the grinder.</summary>
     public int ChipAppeal(int sizeClass, int element) => element >= 0 ? 2 : 1;
     public int InboundChipSpace { get => inboundChipSpace; set => inboundChipSpace = value; }
@@ -197,16 +195,8 @@ public class Refiner : Building, IChipConsumer
 
     void FinishRefine()
     {
-        if (digestElement >= 0)
         {
-            // ore → a burst of its element's orbs, popping out wild at the mouth
-            int[] counts = new int[4];
-            counts[digestElement] = OrbsPerChip[Mathf.Clamp(digestElement, 0, 3)];
-            GS.CallSpawnOrbs(Mouth().position, counts);
-        }
-        else
-        {
-            // plain rock → juice banked toward ember; each full juicePerEmber pays out one unit
+            // every chip (rock or ore) → juice banked toward ember; each full juicePerEmber pays out one unit
             // on our connector, routed to live demand at once (constructors → ember generators →
             // stores), riding the cables like expander ember
             juiceBank += OreChip.JuiceFor(digestSize);

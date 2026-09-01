@@ -4860,7 +4860,6 @@ GameObject:
   m_Component:
   - component: {fileID: 9216445988969538377}
   - component: {fileID: 7997196564911849672}
-  - component: {fileID: 7983459860531395479}
   m_Layer: 0
   m_Name: ExtractorMesh_0
   m_TagString: Untagged
@@ -5205,20 +5204,6 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!114 &7983459860531395479
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3103747276347764462}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 20a672b454ca349d48a09732303ac85f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  oms:
-  - {fileID: 1353708107226767663}
 --- !u!1 &3150078363112371970
 GameObject:
   m_ObjectHideFlags: 0
@@ -5320,7 +5305,6 @@ GameObject:
   m_Component:
   - component: {fileID: 2333740645850149394}
   - component: {fileID: 3616851657089736479}
-  - component: {fileID: 1353708107226767663}
   - component: {fileID: 8541971672429629284}
   - component: {fileID: 5258406632457018738}
   - component: {fileID: 5560227342897587615}
@@ -5410,28 +5394,6 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!114 &1353708107226767663
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5015000612375107076}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 213b29fb0ad684122a297fef29858033, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  typ: 0
-  orbs: []
-  transientOrbs: 0
-  n: 0
-  orbType: 2
-  capacity: 2
-  siblingTs: []
-  demand: 0
-  init: 1
-  initialMag: 0
 --- !u!114 &8541971672429629284
 MonoBehaviour:
   m_ObjectHideFlags: 0

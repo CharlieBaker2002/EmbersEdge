@@ -88,7 +88,7 @@ public class E2_5 : Unit, IOnCollide, IRoomUnit, IOnDeath
         col.enabled = true;
         yield return new WaitForSeconds(1f);
         AS.ignoreWalls = false;
-        Instantiate((GameObject)Resources.Load("Zit"), transform.position, GS.RandRot(), GS.FindParent(GS.Parent.enemies)).GetComponent<LifeScript>().orbs = new float[] {0,0,0,0};
+        Instantiate((GameObject)Resources.Load("Zit"), transform.position, GS.RandRot(), GS.FindParent(GS.Parent.enemies));
         attached = false;
     }
 

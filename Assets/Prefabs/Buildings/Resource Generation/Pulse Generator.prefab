@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 541622690357497107}
   - component: {fileID: 2018161822163578109}
   - component: {fileID: 3145056401604892688}
-  - component: {fileID: 4842455334063485095}
   m_Layer: 7
   m_Name: Pulse Generator
   m_TagString: Allies
@@ -170,38 +169,12 @@ MonoBehaviour:
   - {fileID: -1033889591, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
   typ: 2
   actionTimer: -1
-  increaseSprite: {fileID: 0}
-  decreaseSprite: {fileID: 0}
-  limit: 0
-  current: 0
   FX: {fileID: 3189509133760383441, guid: 3ebfa320f58fc4e8a9c4219ecef7f00b, type: 3}
   connect: {fileID: 0}
   overrideBattery: 0
   batteryCapacity: 0
   batteryDrawRate: 0
   batteryInstabuffer: 0
---- !u!114 &4842455334063485095
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2000541545583142029}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 213b29fb0ad684122a297fef29858033, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  typ: 0
-  orbs: []
-  transientOrbs: 0
-  n: 0
-  orbType: 3
-  capacity: 1
-  siblingTs: []
-  demand: 0
-  init: 1
-  initialMag: 0
 --- !u!1001 &8929228007466600301
 PrefabInstance:
   m_ObjectHideFlags: 0

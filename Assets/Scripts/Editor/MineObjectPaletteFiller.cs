@@ -5,7 +5,7 @@ using UnityEngine;
 
 /// <summary>
 /// Registers the built "wave extras" (CinderGeode / VerdantWellspring / EmberSnare, the SentryExtra set,
-/// and the heal_box / orb_box pickups) into ALL per-era slots (d1/d2/d3) of
+/// and the heal_box pickup) into ALL per-era slots (d1/d2/d3) of
 /// <see cref="MineAuthoringSO.ObjectsPalette"/> so they show up as the "Other Objects" brush row in
 /// Tools &gt; Mine Forge and can be painted into mine pockets.
 ///
@@ -14,8 +14,8 @@ using UnityEngine;
 /// Forge's GameObject palette. This one-click command scans the prefab folder and fills the Mine palette, so
 /// "other objects palette is empty" is fixed without re-pointing the builders.
 ///
-/// It also (re)builds the heal_box and orb_box pickup OBJECTS here, in the Extras folder — they're one-shot
-/// walk-over pickups, so they belong in the Object palette, NOT the status-Tiles brush (heal/orb were never
+/// It also (re)builds the heal_box pickup OBJECT here, in the Extras folder — they're one-shot
+/// walk-over pickups, so they belong in the Object palette, NOT the status-Tiles brush (heal was never
 /// persistent flooring). Building them here keeps them out of Build Era-1 Mine Tiles (which now only owns the
 /// 5 persistent status tiles) and guarantees they're present before the palette scan runs.
 ///
@@ -41,16 +41,15 @@ public static class MineObjectPaletteFiller
         }
 
         // (Re)build the one-shot pickup OBJECTS into the Extras folder so they're always present + in sync with
-        // their scripts. Named heal_box / orb_box and placed alongside the other extras (NOT the Tiles subfolder)
+        // their scripts. Named heal_box and placed alongside the other extras (NOT the Tiles subfolder)
         // because they're Objects, not status tiles. The folder scan below then picks them up like any extra.
         EnsureFolder("Assets/Prefabs", "Extras");
         var heal = BuildBox<HealTile>("heal_box", t => { t.radius = 0.80f; t.effectDuration = 0f; t.magnitude = 0.12f; t.rearm = 0f; });
-        var orb  = BuildBox<OrbTile> ("orb_box",  t => { t.radius = 0.85f; t.effectDuration = 0f; t.magnitude = 3f;    t.rearm = 0f; });
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
         // Gather every extra prefab (anything carrying a WaveExtra or SentryExtra — FloorTile derives from
-        // WaveExtra, the sentries from SentryExtra). heal_box / orb_box are included via this same scan.
+        // WaveExtra, the sentries from SentryExtra). heal_box is included via this same scan.
         var found = new List<GameObject>();
         foreach (string guid in AssetDatabase.FindAssets("t:Prefab", ScanFolders))
         {
@@ -62,7 +61,6 @@ public static class MineObjectPaletteFiller
         }
         // Belt-and-braces: make sure the freshly-built boxes are in the set even if the scan hasn't refreshed yet.
         if (heal != null && !found.Contains(heal)) found.Add(heal);
-        if (orb  != null && !found.Contains(orb))  found.Add(orb);
 
         // Populate ALL per-era object lists (d1 / d2 / d3). For each era, union its existing list with the
         // discovered extras (so any manual per-era additions are kept), dedupe, and sort by name. There's no
@@ -90,7 +88,7 @@ public static class MineObjectPaletteFiller
             $"({perEra} per era after de-dupe):\n\n• " +
             string.Join("\n• ", found.OrderBy(g => g.name).Select(g => g.name)) +
             "\n\nOpen Tools > Mine Forge — each era tab's 'Other Objects' brush row now lists them " +
-            "(heal_box / orb_box included as Objects).",
+            "(heal_box included as an Object).",
             "OK");
     }
 

@@ -67,7 +67,6 @@ public class E2_1 : Unit, IOnCollide
 
     public void TurnOffResources()
     {
-        ls.orbs = new float[] { 0, 0, 0, 0 };
     }
 
     public void DestroyMe()

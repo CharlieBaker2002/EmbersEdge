@@ -294,13 +294,6 @@ public class TilemapCorruption : MonoBehaviour
         int r = Random.Range(0, 4);
         if( r == 0)
         {
-            int[] orbs = GS.era switch
-            {
-                0 => new int[] { 25, 5, 2, 1 },
-                1 => new int[] { 40, 15, 3, 1 },
-                _ => new int[] { 55, 20, 20, 5 },
-            };
-            GS.CallSpawnOrbs(p, orbs);
         }
         else if( r == 1)
         {

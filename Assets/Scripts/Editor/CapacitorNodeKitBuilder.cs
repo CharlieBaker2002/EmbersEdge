@@ -141,9 +141,6 @@ public static class CapacitorNodeKitBuilder
         }
         else Debug.Log($"[CapacitorKit] No art at {ArtPath} yet — keeping hub art (delete the prefab and rerun once it lands).");
 
-        // Cost: the copied OrbMagnet Task magnet carries the hub's price (10 white). Tune on
-        // the prefab's OrbMagnet if the node should cost differently.
-
         if (!SwapScript(pad, "Assets/Scripts/CapacitorNode.cs"))
         {
             Debug.LogError("[CapacitorKit] Script swap failed on the node copy.");

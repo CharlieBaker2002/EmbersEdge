@@ -88,7 +88,7 @@ public class SpreadTower : Building
         TargetPriority.Attach(this, find);
     }
 
-    private void StartMorph() => GS.QuickMorphWithOrbs(gameObject, morphSprite, transform.parent);
+    private void StartMorph() => GS.QuickMorph(gameObject, morphSprite, transform.parent);
 
     public override void OnDeath()
     {

@@ -34,25 +34,14 @@ public class BuildingTile : MonoBehaviour, IClickable
 
     public void OnClick()
     {
-        // Settle held orbs into the bank before judging affordability — otherwise a click in
-        // the window before the auto-bank tick rejects a purchase the player can cover.
-        // (No-ops while a refundable pick is outstanding, which keeps cancel-refunds exact.)
-        ResourceManager.instance.DropResources();
-        if (ResourceManager.instance.CanAfford(cost))
+        // Building is free — every pick succeeds.
+        StartCoroutine(Colour(Color.green));
+        if (BM.i.planting)
         {
-            GS.CopyArray(ref BM.i.cost, cost);
-            StartCoroutine(Colour(Color.green));
-            if (BM.i.planting)
-            {
-                BM.i.Escape();
-            }
-            BM.i.BuildingFollowMouse(buildingPrefab,this);
-            BM.i.RemoveDaddyDel();
+            BM.i.Escape();
         }
-        else
-        {
-            StartCoroutine(Colour(Color.red));
-        }
+        BM.i.BuildingFollowMouse(buildingPrefab,this);
+        BM.i.RemoveDaddyDel();
     }
 
     public IEnumerator Colour(Color col)
@@ -102,6 +91,7 @@ public class BuildingTile : MonoBehaviour, IClickable
                 cols.Add(ColorFromIndex(i));
             }
         }
+        if (cols.Count == 0) return;   // free building: keep the neutral tile colour
         float[] col = new float[3] { 0,0,0};
         foreach(Color c in cols)
         {

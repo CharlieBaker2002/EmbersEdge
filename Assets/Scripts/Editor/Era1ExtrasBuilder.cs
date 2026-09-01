@@ -110,11 +110,6 @@ public static class Era1ExtrasBuilder
         { t.wallMounted = false; t.interiorDepth = 6f; t.maxLifetime = 30f; });
         sos.Add(MakeSO("Bomb Crystal", geode, 8, 2));
 
-        // (8) Orb Plant — player-friendly: shoot to harvest green orbs + energy, heals on wilt.
-        var well = BuildBriefed<VerdantWellspring>("Orb Plant", srcSR, 1f, 0.5f, t =>
-        { t.wallMounted = false; t.interiorDepth = 6f; t.maxLifetime = 28f; });
-        sos.Add(MakeSO("Orb Plant", well, 6, 2));
-
         // ============================ Recovered briefed set (Agent A/B handoff) ============================
 
         // (9-11) Backlash Pod ×3 — neutral reactive burst; the FIRST thing to damage it pops a homing-dart
@@ -136,21 +131,6 @@ public static class Era1ExtrasBuilder
         var cache = BuildBriefed<PelterCache>("Pelter Cache", srcSR, 1.1f, 0.6f, t =>
         { t.wallMounted = false; t.interiorDepth = 5f; t.maxLifetime = 26f; t.roundProjectile = dart; t.bigRoundProjectile = bigDart; });
         sos.Add(MakeSO("Pelter Cache", cache, 9, 2));
-
-        // (13-16) Orb Fount ×4 — ally-only orb harvester with character; shoot to spit colour orbs that flee
-        // the player, each variant leaving a different wake (white scatter / green slow / blue stun / red mine).
-        var fW = BuildBriefed<OrbFount>("Orb Fount (White)", srcSR, 1f, 0.55f, t =>
-        { t.wallMounted = false; t.interiorDepth = 6f; t.maxLifetime = 13f; t.variant = OrbFount.FountColor.White; });
-        sos.Add(MakeSO("Orb Fount (White)", fW, 6, 1));
-        var fG = BuildBriefed<OrbFount>("Orb Fount (Green)", srcSR, 1f, 0.55f, t =>
-        { t.wallMounted = false; t.interiorDepth = 6f; t.maxLifetime = 13f; t.variant = OrbFount.FountColor.Green; });
-        sos.Add(MakeSO("Orb Fount (Green)", fG, 7, 2));
-        var fB = BuildBriefed<OrbFount>("Orb Fount (Blue)", srcSR, 1f, 0.55f, t =>
-        { t.wallMounted = false; t.interiorDepth = 6f; t.maxLifetime = 13f; t.variant = OrbFount.FountColor.Blue; });
-        sos.Add(MakeSO("Orb Fount (Blue)", fB, 8, 2));
-        var fR = BuildBriefed<OrbFount>("Orb Fount (Red)", srcSR, 1f, 0.55f, t =>
-        { t.wallMounted = false; t.interiorDepth = 6f; t.maxLifetime = 13f; t.variant = OrbFount.FountColor.Red; });
-        sos.Add(MakeSO("Orb Fount (Red)", fR, 9, 3));
 
         // (17) Resonance Totem — ally-only: charge it with fire, then it discharges a slow + knockback nova.
         var totem = BuildBriefed<ResonanceTotem>("Resonance Totem", srcSR, 1.1f, 0.55f, t =>

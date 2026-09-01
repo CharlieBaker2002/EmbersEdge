@@ -2,11 +2,11 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// The chip-built Wall. Orbs only BUY the stub (the standard multi-drag orb task); the wall
-/// becomes real masonry once plain-rock chips are bricked into it — a bag-drone haul like any
-/// other chip customer (IChipConsumer — the fleet needs no changes). ALL later structure work
-/// is chip work too: live damage and destroyed-ghost rebuilds pull chips at the same juice→hp
-/// rate, and medic drones skip walls outright (NeedsDroneRepair is permanently false here).
+/// The chip-repaired Wall. Placement is free and instant (like every building now), but ALL
+/// structure work after that is chip work: live damage and destroyed-ghost rebuilds pull
+/// plain-rock chips at the juice→hp rate — a bag-drone haul like any other chip customer
+/// (IChipConsumer — the fleet needs no changes). Medic drones skip walls outright
+/// (NeedsDroneRepair is permanently false here).
 ///
 /// Standard juice metrics throughout (OreChip.JuiceFor: small 0.1 / medium 0.5 / large 1.25):
 /// raising the wall costs <see cref="buildJuice"/>; repairs price hp at buildJuice/maxHealth,
@@ -28,35 +28,13 @@ public class ChipWall : Building, IChipConsumer
     [Tooltip("Loose rock chips inside this radius are drawn into the wall whenever it wants juice. Drone spills scatter up to ~0.45 from the drop point — keep it above that.")]
     public float suctionRadius = 0.75f;
 
-    /// <summary>Rock banked toward the current want: build progress before completion, then a
-    /// small carry-over buffer (an oversized chip's excess) that pre-pays repairs.</summary>
+    /// <summary>Rock banked toward the current want: a small carry-over buffer (an oversized
+    /// chip's excess) that pre-pays repairs.</summary>
     float juice;
     int inboundChipSpace;
-    bool awaitingBuildChips;   // orbs paid, masonry owed — the stub phase
     Coroutine intakeCo;
 
     float JuicePerHp => buildJuice / Mathf.Max(0.01f, maxHealth);
-
-    // ------------------------------------------------------------------ build (orbs buy, chips build)
-
-    /// <summary>The orb task filling BUYS the wall but no longer completes it — that starts the
-    /// chip phase instead. Cheat and dungeon commits keep the instant path (no chip logistics
-    /// there); completion proper happens in ApplyJuice via base.CompleteViaOrbs().</summary>
-    public override void CompleteViaOrbs()
-    {
-        if (RefreshManager.i != null && RefreshManager.i.CHEATBUILD) { base.CompleteViaOrbs(); return; }
-        if (builtYet || awaitingBuildChips) return;
-        if (!startCalled)
-        {
-            // same race as the base path: a synchronous orb-complete can land before Start()
-            this.QA(CompleteViaOrbs, 0f);
-            return;
-        }
-        if (transform.InDungeon()) { base.CompleteViaOrbs(); return; }
-        awaitingBuildChips = true;
-        ChipConsumers.Register(this);
-        EnsureIntake();
-    }
 
     protected override void BEnable()
     {
@@ -91,17 +69,16 @@ public class ChipWall : Building, IChipConsumer
     public float ChipDemandSpace
         => Mathf.Max(0f, JuiceWant - RingStockJuice()) / OreChip.JuicePerSpace(1);
 
-    /// <summary>Juice still owed on the wall's current job, net of the bank: the build while a
-    /// stub, the rebuild while a destroyed ghost, the hp deficit while standing. A condemned
-    /// wall wants nothing — wreckers work there, not masons.</summary>
+    /// <summary>Juice still owed on the wall's current job, net of the bank: the rebuild while
+    /// a destroyed ghost, the hp deficit while standing. A condemned wall wants nothing —
+    /// wreckers work there, not masons.</summary>
     float JuiceWant
     {
         get
         {
             if (MarkedForDemolition) return 0f;
             float want;
-            if (awaitingBuildChips) want = buildJuice;
-            else if (IsGhostAwaitingRepair) want = (maxHealth - repairHp) * JuicePerHp;
+            if (IsGhostAwaitingRepair) want = (maxHealth - repairHp) * JuicePerHp;
             else if (builtYet && physic != null && !physic.hasDied) want = (physic.maxHp - physic.hp) * JuicePerHp;
             else return 0f;
             return Mathf.Max(0f, want - juice);
@@ -170,25 +147,12 @@ public class ChipWall : Building, IChipConsumer
         }
     }
 
-    /// <summary>Spend the bank on the current job: finish the build, or push banked juice
-    /// through the standard RepairTick (ghost rebuilds bank there, live walls heal). Leftover
-    /// juice stays banked for the next scratch.</summary>
+    /// <summary>Spend the bank on the current job: push banked juice through the standard
+    /// RepairTick (ghost rebuilds bank there, live walls heal). Leftover juice stays banked
+    /// for the next scratch.</summary>
     void ApplyJuice()
     {
         if (juice <= 0f || MarkedForDemolition) return;
-        if (awaitingBuildChips)
-        {
-            // read the masonry landing: the era ghost tint brightens toward built-white
-            if (sr != null)
-                sr.color = Color.Lerp(GS.ColFromEra(), Color.white, juice / Mathf.Max(0.01f, buildJuice));
-            if (juice >= buildJuice - 1e-4f)
-            {
-                juice = Mathf.Max(0f, juice - buildJuice);
-                awaitingBuildChips = false;
-                base.CompleteViaOrbs();
-            }
-            return;
-        }
         float applied = RepairTick(juice / JuicePerHp);
         if (applied > 0f) juice = Mathf.Max(0f, juice - applied * JuicePerHp);
     }

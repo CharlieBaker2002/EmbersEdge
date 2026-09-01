@@ -288,14 +288,7 @@ public class Generator : Building, IEnergyAccumulator
 
       for (int i = 0; i < units; i++)
       {
-         int[] unitCost = new int[4];
-         unitCost[orbIndex] = unitOrbs;
-         orderedEnergy += unitEnergy;
-         ResourceManager.instance.NewTask(gameObject, unitCost, () =>
-         {
-            orderedEnergy = Mathf.Max(0f, orderedEnergy - unitEnergy);
-            SetTimer(0.1f, unitEnergy);
-         }, false);
+         SetTimer(0.1f, unitEnergy);
       }
    }
 

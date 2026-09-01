@@ -13,7 +13,7 @@ using UnityEngine;
 /// Headless: Unity -batchmode -quit -projectPath . -executeMethod RefinerKitBuilder.BuildAll
 ///
 /// The prefab is built from scratch (no donor): Refiner.png art, ghost-disabled main script,
-/// a Task OrbMagnet for the green build cost, an EmberConnector (Generator — pure source, cabled
+/// an EmberConnector (Generator — pure source, cabled
 /// to the nearest store), an authored physic box matching the 3×2 sprite, and an eat spot.
 /// </summary>
 public static class RefinerKitBuilder
@@ -78,12 +78,6 @@ public static class RefinerKitBuilder
             var connect = root.AddComponent<EmberConnector>();
             connect.taip = EmberConnector.typ.Generator;
             connect.maxEmber = 8;
-
-            var magnet = root.AddComponent<OrbMagnet>();
-            magnet.enabled = false;              // BM.Commit enables task magnets on placement
-            magnet.typ = OrbMagnet.OrbType.Task;
-            magnet.orbType = 1;                  // GREEN
-            magnet.capacity = GreenCost;
 
             var refiner = root.AddComponent<Refiner>();
             refiner.enabled = false;             // ghost-disabled: the intended unbuilt state

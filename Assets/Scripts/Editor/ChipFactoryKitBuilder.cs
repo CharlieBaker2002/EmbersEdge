@@ -15,7 +15,7 @@ using UnityEngine;
 ///
 /// Built from scratch (Refiner-kit style): the ChipShop.png strip (3 frames = era bases, frame 0
 /// on the renderer; _Emission secondary already on the texture), ghost-disabled main script, a
-/// Task OrbMagnet green build cost, an authored physic box on the 1×1 footprint (the 1×1.5 art
+/// an authored physic box on the 1×1 footprint (the 1×1.5 art
 /// rides on a Body child, bottom-aligned), eat/out spots, Battery prefab + the three boost lists
 /// (L1 Bouncy Bomb / L2 Shuriken Burst / L3 Nuke).
 /// </summary>
@@ -91,12 +91,6 @@ public static class ChipFactoryKitBuilder
             physic.transform.localPosition = Vector3.zero;
             var box = physic.GetComponent<BoxCollider2D>();
             if (box != null) { box.size = new Vector2(0.9f, 0.9f); box.offset = Vector2.zero; }
-
-            var magnet = root.AddComponent<OrbMagnet>();
-            magnet.enabled = false;              // BM.Commit enables task magnets on placement
-            magnet.typ = OrbMagnet.OrbType.Task;
-            magnet.orbType = 1;                  // GREEN
-            magnet.capacity = GreenCost;
 
             var factory = root.AddComponent<ChipFactory>();
             factory.enabled = false;             // ghost-disabled: the intended unbuilt state

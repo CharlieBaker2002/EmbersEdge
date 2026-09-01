@@ -6,6 +6,5 @@ public class ResourceClicker : MonoBehaviour, IClickable
 {
     public void OnClick()
     {
-        SpawnManager.instance.CallSpawnOrbs(transform.position, new int[] {50,25,10,4});
     }
 }

@@ -35,10 +35,6 @@ public class ConverterNew : Building
       }
   }
 
-  public void SpawnOrbs()
-  {
-      GS.CallSpawnOrbs(transform.position, new []{0,50,0,0});
-  }
 
   public void Disable()
   {

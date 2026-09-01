@@ -11,6 +11,13 @@
 /[Ll]ogs/
 /[Uu]ser[Ss]ettings/
 
+# Nested Unity projects (e.g. Prototypes/): their caches must never be committed either
+**/[Ll]ibrary/
+**/[Tt]emp/
+**/[Oo]bj/
+**/[Ll]ogs/
+**/[Uu]ser[Ss]ettings/
+
 # MemoryCaptures can get excessive in size.
 # They also could contain extremely sensitive data
 /[Mm]emoryCaptures/

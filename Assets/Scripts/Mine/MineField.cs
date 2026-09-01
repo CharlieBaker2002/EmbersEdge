@@ -1304,15 +1304,8 @@ public class MineField : MonoBehaviour
     {
         int idx = Idx(cell);
 
-        int orb = data[idx].ore;   // -1 = no ore; else orb index
+        int orb = data[idx].ore;   // -1 = no ore; else element index (chips carry the value now)
         CellType brokenTier = data[idx].type;   // captured before the reset below
-        if (orb >= 0)
-        {
-            // Per-element yield: rarer elements (higher index) drop fewer per ore.
-            var drop = new int[4];
-            drop[orb] = OreYield[orb];
-            GS.CallSpawnOrbs(grid.GetCellCenterWorld(cell), drop);
-        }
         data[idx].type = CellType.Empty;
         data[idx].durability = 0;
         data[idx].explored = true;

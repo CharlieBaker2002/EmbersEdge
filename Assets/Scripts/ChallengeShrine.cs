@@ -60,10 +60,8 @@ public class ChallengeShrine : MonoBehaviour
                 }
                 yield return null;
             }
-            GS.GatherResources(DM.i.activeRoom.transform);
         } //repeat for the number of times you've challenged the shrine.
         yield return new WaitForSeconds(1f);
-        GS.GatherResources(DM.i.activeRoom.transform);
         running = false;
         PortalScript.i.canPortal = true;
         if (times >= maxTimes)

@@ -4861,8 +4861,6 @@ GameObject:
   - component: {fileID: 6759450819970921467}
   - component: {fileID: 4528505006769698256}
   - component: {fileID: 5312121608967075303}
-  - component: {fileID: 659881615243145618}
-  - component: {fileID: 6973573216076437640}
   - component: {fileID: 947755394679135071}
   m_Layer: 7
   m_Name: Small Ember Store
@@ -5014,42 +5012,6 @@ MonoBehaviour:
   psr: {fileID: 0}
   isTiny: 0
   connect: {fileID: 947755394679135071}
---- !u!114 &659881615243145618
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7926129472078753466}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 213b29fb0ad684122a297fef29858033, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  typ: 0
-  orbs: []
-  transientOrbs: 0
-  n: 0
-  orbType: 1
-  capacity: 8
-  siblingTs: []
-  demand: 0
-  init: 0
-  initialMag: 0
---- !u!114 &6973573216076437640
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7926129472078753466}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 20a672b454ca349d48a09732303ac85f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  oms:
-  - {fileID: 659881615243145618}
 --- !u!114 &947755394679135071
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 4256667435858726095}
   - component: {fileID: 396053266464167756}
   - component: {fileID: 4228794242279667164}
-  - component: {fileID: 5906971196468631169}
   m_Layer: 0
   m_Name: EnergyHub
   m_TagString: Untagged
@@ -115,9 +114,13 @@ MonoBehaviour:
   hasExtraParent: 0
   icon: {fileID: 0}
   size: {x: 0.5, y: 0.5}
+  isWall: 0
+  multiDrag: 0
+  dungeonBuildable: 0
+  rotatable: 1
+  noBody: 0
   physic: {fileID: 0}
   builtBlasts: 1
-  rebuildCost: 00000000000000000000000000000000
   icons: []
   prevN: 0
   numIconsTrue: 0
@@ -125,33 +128,15 @@ MonoBehaviour:
   builtYet: 0
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0, z: 0}
+  energyIconScale: 1
+  demolisher: {fileID: 0}
   batteryPrefab: {fileID: 6756930137817037866, guid: a0931eeec8e434f718cf1aac8a9f5725, type: 3}
   slotTransforms:
   - {fileID: 1780123806940025293}
-  initialBatteryCount: 1
+  inboundBatteries: 0
+  pinnedMin: 0
   hub: 1
---- !u!114 &5906971196468631169
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 323440563046157391}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 213b29fb0ad684122a297fef29858033, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  typ: 0
-  orbs: []
-  transientOrbs: 0
-  n: 0
-  orbType: 0
-  capacity: 10
-  siblingTs: []
-  demand: 0
-  init: 1
-  initialMag: 0
 --- !u!1 &6440757191080431217
 GameObject:
   m_ObjectHideFlags: 0

@@ -34,11 +34,7 @@ public class Deflector : MonoBehaviour
                     if(points <= 0)
                     {
                         col.enabled = false;
-                        var mag = gameObject.AddComponent<OrbMagnet>();
-                        mag.typ = OrbMagnet.OrbType.Task;
-                        mag.orbType = race;
-                        mag.capacity = (int)( 8 / Mathf.Pow(2, race));
-                        mag.action = delegate { anim.enabled = true; };
+                        anim.enabled = true;
                         sr.sprite = deactiveSprite;
                         sr.color = new Color(1, 1, 1, 0.6f);
                     }

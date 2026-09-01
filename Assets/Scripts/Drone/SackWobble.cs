@@ -36,7 +36,6 @@ public class SackWobble : MonoBehaviour
 {
     [Header("Cargo (the bag defines hauling)")]
     public int maxSpace = 8;
-    public int orbSpace = 1;
     public int chipSmallSpace = 1;
     public int chipBigSpace = 2;
     public int chipLargeSpace = 3;

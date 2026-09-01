@@ -329,7 +329,6 @@ public class Pocket : MonoBehaviour
             unspawnedPoints = Mathf.Max(0f, unspawnedPoints - price);
             alives.Add(g);
             alivePts.Add(price);
-            foreach (LifeScript l in g.GetComponentsInChildren<LifeScript>()) l.orbSpawnPlace = transform;
             foreach (ILA ila in g.GetComponentsInChildren<ILA>()) ila.UpdateCoef(darkness);
             // its soul visibly syphons into the tether disc on death (the bar itself is driven by
             // RemainingPoints, so odd multi-death enemies can't desync it)
@@ -366,10 +365,6 @@ public class Pocket : MonoBehaviour
     {
         if (Cleared) return;
         Cleared = true;
-        // Sweep up whatever the pocket dropped: collect every wild orb within the cavity's own extent
-        // (centre → furthest OPEN floor cell — not the authored grid, which may be mostly wall).
-        Vector2 c = WorldCenter();
-        GS.CollectOrbs(c, FurthestCavityDist(c));
         if (tether != null) tether.NotifyCleared();   // fuelled by every soul — send the ember home
         if (T.hasCore && !T.isBoss && EE != null)
         {

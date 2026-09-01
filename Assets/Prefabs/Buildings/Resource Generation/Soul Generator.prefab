@@ -10,7 +10,6 @@ GameObject:
   m_Component:
   - component: {fileID: 541622690357497107}
   - component: {fileID: 2018161822163578109}
-  - component: {fileID: 4842455334063485095}
   - component: {fileID: 8994492480166914338}
   m_Layer: 7
   m_Name: Soul Generator
@@ -96,28 +95,6 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!114 &4842455334063485095
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2000541545583142029}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 213b29fb0ad684122a297fef29858033, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  typ: 0
-  orbs: []
-  transientOrbs: 0
-  n: 0
-  orbType: 2
-  capacity: 1
-  siblingTs: []
-  demand: 0
-  init: 1
-  initialMag: 0
 --- !u!114 &8994492480166914338
 MonoBehaviour:
   m_ObjectHideFlags: 0

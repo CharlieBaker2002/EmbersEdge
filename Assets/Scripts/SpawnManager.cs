@@ -10,11 +10,10 @@ public class SpawnManager : MonoBehaviour
 {
     public static SpawnManager instance;
     [Space(10)]
-    public Transform orbParent;
+    [UnityEngine.Serialization.FormerlySerializedAs("orbParent")]
+    public Transform poolParent;
     public List<MarauderSO> marauders;
     public int incrementer;
-    public GameObject[] orbs;
-    public ObjectPool<GameObject>[] orbPools = new ObjectPool<GameObject>[4];
 
     // ---- projectile pools (per prefab, opt-in per spawn site — mirrors orbPools) ----
     // A pooled shot is reset to its captured post-Awake baseline on every Get, so per-shot
@@ -29,7 +28,7 @@ public class SpawnManager : MonoBehaviour
         {
             pool = new ObjectPool<GameObject>(() =>
             {
-                var fresh = Instantiate(prefab, transform.position, Quaternion.identity, orbParent);
+                var fresh = Instantiate(prefab, transform.position, Quaternion.identity, poolParent);
                 var marker = fresh.AddComponent<PooledProjectile>();
                 marker.CaptureBaseline();
                 return fresh;
@@ -64,7 +63,7 @@ public class SpawnManager : MonoBehaviour
         if (sm == null || g == null || !sm.poolOfProjectile.TryGetValue(g, out var pool)) return false;
         if (!g.activeSelf) return true;   // already parked this frame (e.g. OnDie + timer both fired)
         g.SetActive(false);
-        g.transform.SetParent(sm.orbParent, false);
+        g.transform.SetParent(sm.poolParent, false);
         pool.Release(g);
         return true;
     }
@@ -153,87 +152,8 @@ public class SpawnManager : MonoBehaviour
         daySinceNewEra = 0;
         OnNewDay += delegate {day++; daySinceNewEra++; UIManager.i.UpdateDayText(day);};
         Random.InitState((int)System.DateTime.Now.Ticks);
-        orbPools[0] = new ObjectPool<GameObject>(() =>
-        {
-            OrbScript.tot++;
-            return Instantiate(orbs[0], transform.position, transform.rotation, orbParent);
-        }, orb =>
-        {
-            orb.SetActive(true);
-            OrbScript.tot++;
-        }, orb =>
-        {
-            orb.SetActive(false);
-            transform.parent = orbParent;
-            OrbScript.tot--;
-        }, orb =>
-        {
-            if (!Application.isPlaying || !orb) return;
-            Destroy(orb);
-            OrbScript.tot--;
-        });
-
-        orbPools[1] = new ObjectPool<GameObject>(() =>
-        {
-            OrbScript.tot++;
-            return Instantiate(orbs[1], transform.position, transform.rotation, orbParent);
-        }, orb =>
-        {
-            orb.SetActive(true);
-            OrbScript.tot++;
-        }, orb =>
-        {
-            orb.SetActive(false);
-            transform.parent = orbParent;
-            OrbScript.tot--;
-        }, orb =>
-        {
-            if (!Application.isPlaying || !orb) return;
-            Destroy(orb);
-            OrbScript.tot--;
-        });
-
-        orbPools[2] = new ObjectPool<GameObject>(() =>
-        {
-            OrbScript.tot++;
-            return Instantiate(orbs[2], transform.position, transform.rotation, orbParent);
-        }, orb =>
-        {
-            orb.SetActive(true);
-            OrbScript.tot++;
-        }, orb =>
-        {
-            orb.SetActive(false);
-            transform.parent = orbParent;
-            OrbScript.tot--;
-        }, orb =>
-        {
-            if (!Application.isPlaying || !orb) return;
-            Destroy(orb);
-            OrbScript.tot--;
-        });
-
-        orbPools[3] = new ObjectPool<GameObject>(() =>
-        {
-            OrbScript.tot++;
-            return Instantiate(orbs[3], transform.position, transform.rotation, orbParent);
-        }, orb =>
-        {
-            orb.SetActive(true);
-            OrbScript.tot++;
-        }, orb =>
-        {
-            orb.SetActive(false);
-            transform.parent = orbParent;
-            OrbScript.tot--;
-        }, orb =>
-        {
-            if (!Application.isPlaying || !orb) return;
-            Destroy(orb);
-            OrbScript.tot--;
-        });
     }
-    
+
     /// <summary>
     /// Forecast the next wave while peaceful at base BEFORE any dungeon run, so the player can scout
     /// where/what it will be. Builds (display-only) the plan for the cores they currently have. The
@@ -836,10 +756,6 @@ public class SpawnManager : MonoBehaviour
             helpedWithWave = false;
             Finder.TurnOffTurrets();
             OnNewDay.Invoke();
-            if(RefreshManager.i.DAILYORBBOUNTY)
-            {
-                CallSpawnOrbs(Vector2.zero,ResourceManager.instance.initResources);
-            }
             UpdateEraSlider();
             if (RefreshManager.i.SPAWNTESTMODE)
             {
@@ -864,93 +780,6 @@ public class SpawnManager : MonoBehaviour
     
     
 
-    public void CallSpawnOrbs(Vector2 pos, int[] orbs, Transform p = null, int wildKind = -1)
-    {
-        for (int i = 0; i < orbs.Length; i++)
-        {
-            if (orbs[i] > 0)
-            {
-                StartCoroutine(SpawnOrbs(pos, i.ToString(), orbs[i], p, false, wildKind));
-            }
-        }
-    }
-
-    public void CallSpawnOrbs(Vector2 pos, float[] orbs, Transform p = null, bool fillHarvest = false)
-    {
-        for (int i = 0; i < orbs.Length; i++)
-        {
-            if (orbs[i] > 0)
-            {
-                int given = Mathf.FloorToInt(orbs[i]) + Mathf.FloorToInt(ResourceManager.debt[i]);
-                float left = orbs[i] + ResourceManager.debt[i] - given;
-                ResourceManager.debt[i] = left;
-                StartCoroutine(SpawnOrbs(pos, i.ToString(), given, p, fillHarvest));
-            }
-        }
-    }
-
-    public IEnumerator SpawnOrbs(Vector2 pos, string orbType, int orbNum, Transform p, bool fillHarvest, int wildKind = -1)
-    {
-        int index = -1;
-        switch (orbType)
-        {
-            case "general":
-                index = 0;
-                break;
-            case "druid":
-                index = 1;
-                break;
-            case "engineer":
-                index = 2;
-                break;
-            case "cult":
-                index = 3;
-                break;
-            case "0":
-                index = 0;
-                break;
-            case "1":
-                index = 1;
-                break;
-            case "2":
-                index = 2;
-                break;
-            case "3":
-                index = 3;
-                break;
-        }
-        for (int i = 0; i < orbNum; i++)
-        {
-            if (fillHarvest)
-            {
-                p = SoulHarvester.GetSpaceAll(index);
-                if (p != null)
-                {
-                    var orb = orbPools[index].Get();
-                    orb.transform.position = pos;
-                    orb.transform.parent = p;
-                    orb.GetComponent<OrbScript>().Harvest();
-                    yield return null;
-                }
-                else
-                {
-                    break;
-                }
-            }
-            else
-            {
-                var orb = orbPools[index].Get();
-                orb.transform.position = pos;
-                orb.transform.parent = p == null ? orbParent : p;
-                // spawner knows the lifetime cohort (bag-drone spill) — stamp it eagerly
-                if (wildKind >= 0) orb.GetComponent<OrbScript>().StampWildCohort(wildKind);
-                yield return null;
-            }
-        }
-    }
-
-  
- 
     public Transform FindParent(GS.Parent p)
     {
         return p switch

@@ -5,7 +5,7 @@ using UnityEngine;
 /// NEUTRAL interactive entity (blue element). A volatile crystal geode that belongs to no faction: ANY
 /// projectile that passes through it — ally OR enemy — chips its durability, and enemy bodies grinding
 /// through destabilise it too. When it breaks it shatters in a blue energy burst that damages + knocks back
-/// every nearby unit on BOTH sides (it doesn't care whose side you're on) and scatters collectible orbs.
+/// every nearby unit on BOTH sides (it doesn't care whose side you're on).
 /// Tactical & neutral: shoot it when the pack clusters for a big blast + loot, but mind the splash.
 ///
 /// Self-managed durability via a TRIGGER collider (the prefab sits on the Walls layer, which overlaps both
@@ -20,7 +20,6 @@ public class CinderGeode : WaveExtra
     public float blastDamage = 16f;
     public float knockback = 95f;
     public float ramChip = 1.2f;        // durability lost per enemy body grind (throttled)
-    public int[] loot = { 7, 0, 4, 0 }; // orbs scattered on shatter (general / druid / engineer / cult)
 
     static readonly Collider2D[] hitBuf = new Collider2D[128];
     static int enemyUnitsLayer = -1;
@@ -125,7 +124,6 @@ public class CinderGeode : WaveExtra
             }
         }
 
-        GS.CallSpawnOrbs(p, loot);                 // loot reward, free for the player to scoop
         StartCoroutine(ShatterFX(p));
     }
 

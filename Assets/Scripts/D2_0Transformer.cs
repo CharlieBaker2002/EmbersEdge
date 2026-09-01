@@ -20,7 +20,7 @@ public class D2_0Transformer : MonoBehaviour
         }
         for (int i = 0; i < 4; i++)
         {
-            Instantiate(room.enemySOs[0].prefab, room.sp[i].position, Quaternion.identity, GS.FindParent(GS.Parent.enemies)).GetComponent<LifeScript>().orbs = new float[] { 0, 1, 0, 0 };
+            Instantiate(room.enemySOs[0].prefab, room.sp[i].position, Quaternion.identity, GS.FindParent(GS.Parent.enemies));
         }
         for (float i = 2f; i > 0f; i -= Time.deltaTime)
         {

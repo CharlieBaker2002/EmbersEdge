@@ -35,7 +35,7 @@ public class DroneManager : MonoBehaviour
     [Header("Loot")]
     [Tooltip("Where returning bag drones dump their haul at base.")]
     public Vector2 scrapPoint = new Vector2(0f, -6f);
-    [Tooltip("Seconds after a wave clears before battery logistics may dispatch — repairs, chip runs and orb sweeps get first claim on the fleet.")]
+    [Tooltip("Seconds after a wave clears before battery logistics may dispatch — repairs and chip runs get first claim on the fleet.")]
     public float batteryWorkDelayAfterWave = 4f;
 
     [Header("Idle life")]
@@ -47,10 +47,11 @@ public class DroneManager : MonoBehaviour
     public float idleCooldown = 6f;
 
     [Header("Base ore mining")]
-    [Tooltip("Seconds of drill contact to eat one marked ore tile whole (yield is HALF its orb value — drones are half as ore-efficient as buildings).")]
+    [Tooltip("Seconds of drill contact to eat one marked ore tile whole (yield is HALF its value — drones are half as ore-efficient as buildings).")]
     public float baseOreEatSeconds = 3f;
-    [Tooltip("Energy per orb actually released when base-mining.")]
-    public float baseOreCostPerOrb = 0.05f;
+    [Tooltip("Energy per ore-chip unit actually released when base-mining.")]
+    [UnityEngine.Serialization.FormerlySerializedAs("baseOreCostPerOrb")]
+    public float baseOreCostPerUnit = 0.05f;
     [Tooltip("Seconds of click-hold on a base ore tile to toggle its deconstruction mark.")]
     public float oreMarkHoldSeconds = 1f;
 
@@ -85,7 +86,7 @@ public class DroneManager : MonoBehaviour
     public static float IdleSpeedScale => i != null ? i.idleSpeedScale : 0.55f;
     public static float IdleCooldown => i != null ? i.idleCooldown : 6f;
     public static float BaseOreEatSeconds => i != null ? i.baseOreEatSeconds : 3f;
-    public static float BaseOreCostPerOrb => i != null ? i.baseOreCostPerOrb : 0.05f;
+    public static float BaseOreCostPerUnit => i != null ? i.baseOreCostPerUnit : 0.05f;
 
     /// <summary>Standing drill-drone demand across every base pad's request slots.</summary>
     public static int TelepadDrillDemand()

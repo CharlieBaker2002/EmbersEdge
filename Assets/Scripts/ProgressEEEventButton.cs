@@ -8,7 +8,6 @@ public class ProgressEEEventButton : MonoBehaviour, IClickable
     public void OnClick()
     {
         Debug.Log("yo");
-        GS.CallSpawnOrbs(Vector2.zero, new float[] { 100, 30, 10, 3 }, null, false);
 
         // +10 ember to the base, clamped to what the store network can actually hold —
         // Bank/DepositDungeonEmber fills capacity-first but overfills the default store with

@@ -3,53 +3,53 @@ using UnityEngine;
 
 public class Ore : MonoBehaviour
 {
-    private float orbs;
-    public int orbType;
+    private float units;
+    public int element;
     private float chipCoef;
-    private float initialOrbs;  // captured at Setup so drone mining can pace by fraction-of-node
-    private float droneYield;   // fractional orbs a mining drone has earned but not yet released
+    private float initialUnits;  // captured at Setup so drone mining can pace by fraction-of-node
+    private float droneYield;   // fractional units a mining drone has earned but not yet released
     /// <summary>Soft claim so a squad of miners spreads over marked tiles instead of clustering.</summary>
     [HideInInspector] public Drone miner;
 
-    public bool Depleted => orbs <= 0f;
+    public bool Depleted => units <= 0f;
 
-    public void Setup(int typ, float _orbs, float coef)
+    public void Setup(int typ, float _units, float coef)
     {
-        orbs = _orbs;
-        initialOrbs = _orbs;
-        orbType = typ;
+        units = _units;
+        initialUnits = _units;
+        element = typ;
         chipCoef = coef;
     }
 
     public int Chip()
     {
-        int prev = Mathf.FloorToInt(orbs);
-        orbs -= chipCoef;
-        if (orbs <= 0f)
+        int prev = Mathf.FloorToInt(units);
+        units -= chipCoef;
+        if (units <= 0f)
         {
             StartCoroutine(Des());
             //Destroy(gameObject,1f);
         }
-        if (prev - Mathf.FloorToInt(orbs) > 0)
+        if (prev - Mathf.FloorToInt(units) > 0)
         {
             Instantiate(MineField.ChipFxPrefab(), transform.position, Quaternion.Euler(0f, 0f, Random.Range(0f, 360f)), transform);
         }
-        return prev - Mathf.FloorToInt(orbs);
+        return prev - Mathf.FloorToInt(units);
     }
 
     /// <summary>Drone mining: eats the WHOLE node over <paramref name="secondsToEat"/> seconds of
-    /// contact (fast, deliberate deconstruction) but credits only HALF the orb value — a drone
-    /// chews twice the ore a building would for the same yield. Returns whole orbs released this
-    /// tick (with the same ChipFX beat the buildings get). Pays out in orbs only — no debris chips.</summary>
+    /// contact (fast, deliberate deconstruction) but credits only HALF the value — a drone
+    /// chews twice the ore a building would for the same yield. Returns whole units released
+    /// this tick (with the same ChipFX beat the buildings get).</summary>
     public int ChipDrone(float dt, float secondsToEat)
     {
-        if (orbs <= 0f) return 0;
-        float units = Mathf.Min(initialOrbs * dt / Mathf.Max(0.1f, secondsToEat), orbs);
-        orbs -= units;
-        droneYield += units * 0.5f;
+        if (units <= 0f) return 0;
+        float bite = Mathf.Min(initialUnits * dt / Mathf.Max(0.1f, secondsToEat), units);
+        units -= bite;
+        droneYield += bite * 0.5f;
         int give = Mathf.FloorToInt(droneYield);
         droneYield -= give;
-        if (orbs <= 0f) StartCoroutine(Des());
+        if (units <= 0f) StartCoroutine(Des());
         if (give > 0)
             Instantiate(MineField.ChipFxPrefab(), transform.position, Quaternion.Euler(0f, 0f, Random.Range(0f, 360f)), transform);
         return give;
@@ -58,7 +58,7 @@ public class Ore : MonoBehaviour
     private IEnumerator Des()
     {
         yield return null;
-        TilemapResource.m[orbType].SetTile(TilemapResource.m[orbType].WorldToCell(transform.position), null);
+        TilemapResource.m[element].SetTile(TilemapResource.m[element].WorldToCell(transform.position), null);
     }
 
 }

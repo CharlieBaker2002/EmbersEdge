@@ -13,7 +13,6 @@ public class LifeScript : MonoBehaviour
 
     public float maxHp = 1f;
     public float hp = 1f;
-    public float[] orbs = new float[4];
     public GameObject blood;
     [SerializeField] GameObject shieldBlood;
 
@@ -65,7 +64,6 @@ public class LifeScript : MonoBehaviour
     [HideInInspector] public bool hasDied = false;
     public bool invulnerable = false;
     public bool animateBeforeDie = false;
-    public Transform orbSpawnPlace = null;
     public System.Action<float> onDamageDelegate;
     public List<SpriteRenderer> dmgsrs = new List<SpriteRenderer>();
     public int[] thicknesses = {1};
@@ -313,10 +311,6 @@ public class LifeScript : MonoBehaviour
         if (hasBlood)
         {
             SpawnBlood(blood);
-        }
-        if (makeOrbs && orbs != null)
-        {
-            GS.CallSpawnOrbs(transform.position, orbs, orbSpawnPlace, !transform.InDungeon());
         }
         if (isCharacter)
         {

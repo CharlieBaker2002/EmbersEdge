@@ -149,7 +149,6 @@ public static class DroneKitBuilder
         var ls = root.AddComponent<LifeScript>();
         ls.maxHp = 5f;
         ls.hp = 5f;
-        ls.orbs = new float[4];
         ls.dmgsrs = new List<SpriteRenderer> { sr };
         ls.thicknesses = new[] { 1 };
 
@@ -209,8 +208,6 @@ public static class DroneKitBuilder
         dock.maxHealth = 8f;
         dock.builtBlasts = 2;
         dock.dronePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(DronePath);
-        AddTaskMagnet(root, 0, 10);
-        AddTaskMagnet(root, 1, 6);
         Save(root, DockPath);
     }
 
@@ -222,9 +219,8 @@ public static class DroneKitBuilder
         pad.sr = sr;
         pad.icon = sr.sprite;
         pad.maxHealth = 6f;
-        pad.builtBlasts = 0;          // orb-only build — REQUIRED for dungeon placement
+        pad.builtBlasts = 0;          // REQUIRED for dungeon placement
         pad.dungeonBuildable = true;
-        AddTaskMagnet(root, 0, 6);
         Save(root, TelepadPath);
     }
 
@@ -239,8 +235,6 @@ public static class DroneKitBuilder
         ws.builtBlasts = 2;
         ws.produces = produces;
         ws.itemCost = produces == DroneEquipment.Drill ? new[] { 5, 3, 0, 0 } : new[] { 5, 0, 3, 0 };
-        AddTaskMagnet(root, 0, 8);
-        AddTaskMagnet(root, produces == DroneEquipment.Drill ? 1 : 2, 4);
         Save(root, path);
     }
 
@@ -251,7 +245,7 @@ public static class DroneKitBuilder
         var root = new GameObject("OreChip");
         var sr = root.AddComponent<SpriteRenderer>();
         if (chips.Length > 0) sr.sprite = chips[0];
-        CopySorting(OrbTemplateSR(), sr, 0);
+        CopySorting(null, sr, 0);
         var chip = root.AddComponent<OreChip>();
         chip.sr = sr;
         Save(root, ChipPath);
@@ -303,16 +297,6 @@ public static class DroneKitBuilder
         return root;
     }
 
-    static void AddTaskMagnet(GameObject root, int orbType, int capacity)
-    {
-        var om = root.AddComponent<OrbMagnet>();
-        om.typ = OrbMagnet.OrbType.Task;
-        om.orbType = orbType;
-        om.capacity = capacity;
-        om.init = true;
-        om.enabled = false;   // BM.Commit enables construction magnets
-    }
-
     static Sprite FirstSprite(string res)
     {
         var strip = DroneManager.LoadStripNumeric(res);
@@ -343,20 +327,6 @@ public static class DroneKitBuilder
         if (pconn == null) return null;
         var so = new SerializedObject(pconn);
         return so.FindProperty("cablePrefab").objectReferenceValue as LineRenderer;
-    }
-
-    static SpriteRenderer OrbTemplateSR()
-    {
-        foreach (var guid in AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/Prefabs", "Assets/Resources" }))
-        {
-            var g = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(guid));
-            if (g != null && g.GetComponent<OrbScript>() != null)
-            {
-                var sr = g.GetComponentInChildren<SpriteRenderer>(true);
-                if (sr != null) return sr;
-            }
-        }
-        return null;
     }
 
     static Transform FindDeep(Transform root, string name)

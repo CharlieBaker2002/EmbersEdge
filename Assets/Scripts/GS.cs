@@ -157,17 +157,6 @@ public static class GS
             : SpawnManager.day - daysforeraComplete[0] - daysforeraComplete[1];
     }
 
-    public static void CallSpawnOrbs(Vector2 pos, int[] orbs, Transform p = null, int wildKind = -1)
-    {
-        spawn.CallSpawnOrbs(pos, orbs, p, wildKind);
-    }
-
-    public static void CallSpawnOrbs(Vector2 pos, float[] orbs, Transform p = null, bool harvest = false)
-    {
-        spawn.CallSpawnOrbs(pos, orbs, p, harvest);
-    }
-
-
     public static Transform FindPrimary()
     {
         if (isRaidPhase)
@@ -647,53 +636,6 @@ public static class GS
         }
     }
 
-
-    public static void GatherResources(Transform t)
-    {
-        foreach (Transform c in t)
-        {
-            if (c.TryGetComponent<OrbScript>(out var OS))
-            {
-                if (OS.state == OrbScript.OrbState.wild)
-                {
-                    OS.state = OrbScript.OrbState.collect;
-                }
-            }
-        }
-    }
-
-    /// <summary>Pull every wild orb within <paramref name="radius"/> of <paramref name="center"/> toward
-    /// the player (collect state). Used e.g. when a pocket clears, to sweep up whatever it dropped.</summary>
-    public static void CollectOrbs(Vector2 center, float radius)
-    {
-        var orbs = OrbManager.allOrbs;
-        if (orbs == null) return;
-        float r2 = radius * radius;
-        for (int i = 0; i < orbs.Count; i++)
-        {
-            OrbScript o = orbs[i];
-            if (o == null || o.state != OrbScript.OrbState.wild) continue;
-            if (((Vector2)o.transform.position - center).sqrMagnitude <= r2)
-            {
-                o.state = OrbScript.OrbState.collect;
-                o.transform.parent = SpawnManager.instance.orbParent;
-            }
-        }
-    }
-
-    public static void DestroyResources(Transform t)
-    {
-        foreach (Transform c in t)
-        {
-            if (c.TryGetComponent<OrbScript>(out var OS))
-            {
-                if (OS.state ==OrbScript.OrbState.wild)
-                {
-                    OS.ReturnToPool();
-                }
-            }
-        }
-    }
 
     public static Vector3 RandCircle(float min, float max)
     {
@@ -1654,27 +1596,10 @@ public static class GS
         return false;
     }
 
-    /// <summary>
-    /// OrbMagnet tasks must already be added
-    /// </summary>
-    public static void QuickMorphWithOrbs(GameObject g, Sprite endGoal, Transform magnetParent = null)
+    /// <summary>Upgrades are instant now: swap straight to the end sprite.</summary>
+    public static void QuickMorph(GameObject g, Sprite endGoal, Transform magnetParent = null)
     {
-        RefreshManager.i.StartCoroutine(QuickMorphWithOrbsI(g, endGoal, magnetParent));
-    }
-
-    static IEnumerator QuickMorphWithOrbsI(GameObject g, Sprite endGoal, Transform magnetParent = null)
-    {
-        yield return new WaitForSeconds(0.125f);
-        if (magnetParent == null) magnetParent = g.transform;
-        var morpher = g.AddComponent<SpriteMorpher>();
-        morpher.endSprite = endGoal;
-        foreach (OrbMagnet om in magnetParent.GetComponents<OrbMagnet>())
-        {
-            if (om.typ == OrbMagnet.OrbType.Task)
-            {
-                morpher.oms.Add(om);
-            }
-        }
+        if (g != null && g.TryGetComponent<SpriteRenderer>(out var sr)) sr.sprite = endGoal;
     }
 
     public static Status Stat(Unit u, string typ, float value1, float value2 = 0f)

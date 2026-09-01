@@ -12,58 +12,6 @@ public class Bonus : MonoBehaviour
         yield return new WaitForSeconds(1f);
         switch (name)
         {
-            //Resource
-            case "Small White Orb Stash":
-                GS.CallSpawnOrbs(transform.position, new int[] { 15*GS.Era1(), 0, 0, 0 }, DM.i.activeRoom.transform);
-                RefreshManager.i.QA(() => GS.GatherResources(DM.i.activeRoom.transform),1.5f);
-                break;
-            case "Small Green Orb Stash":
-                GS.CallSpawnOrbs(transform.position, new int[] { 0, 5 * GS.Era1(), 0, 0 }, DM.i.activeRoom.transform);
-                RefreshManager.i.QA(() => GS.GatherResources(DM.i.activeRoom.transform),1.5f);
-                break;
-            case "Small Blue Orb Stash":
-                GS.CallSpawnOrbs(transform.position, new int[] { 0, 0, 1 * GS.Era1(), 0 }, DM.i.activeRoom.transform);
-                RefreshManager.i.QA(() => GS.GatherResources(DM.i.activeRoom.transform),1.5f);
-                break;
-
-            case "White-Green Orb Stash":
-                GS.CallSpawnOrbs(transform.position, new int[] { 15 * GS.Era1(), 10, 0, 0 }, DM.i.activeRoom.transform);
-                RefreshManager.i.QA(() => GS.GatherResources(DM.i.activeRoom.transform),1.5f);
-                break;
-            case "White-Blue Orb Stash":
-                GS.CallSpawnOrbs(transform.position, new int[] { 15 * GS.Era1(), 0, 2, 0 }, DM.i.activeRoom.transform);
-                RefreshManager.i.QA(() => GS.GatherResources(DM.i.activeRoom.transform),1.5f);
-                break;
-            case "Red Orb Stash":
-                GS.CallSpawnOrbs(transform.position, new int[] { 0, 0, 0, 1 * GS.Era1() }, DM.i.activeRoom.transform);
-                RefreshManager.i.QA(() => GS.GatherResources(DM.i.activeRoom.transform),1.5f);
-                break;
-
-            case "Large White Orb Stash":
-                GS.CallSpawnOrbs(transform.position, new int[] { 100 * GS.Era1(), 0, 0, 0 }, DM.i.activeRoom.transform);
-                RefreshManager.i.QA(() => GS.GatherResources(DM.i.activeRoom.transform),1.5f);
-                break;
-            case "Large Mixed Orb Stash":
-                GS.CallSpawnOrbs(transform.position, new int[] { 0, 10 * GS.Era1(), 2, 1 }, DM.i.activeRoom.transform);
-                RefreshManager.i.QA(() => GS.GatherResources(DM.i.activeRoom.transform),1.5f);
-                break;
-
-            case "Huge White Orb Stash":
-                GS.CallSpawnOrbs(transform.position, new int[] { 225 * 1 + GS.Era1(), 0, 0, 0 }, DM.i.activeRoom.transform);
-                RefreshManager.i.QA(() => GS.GatherResources(DM.i.activeRoom.transform),1.5f);
-                break;
-            case "Huge Green Orb Stash":
-                GS.CallSpawnOrbs(transform.position, new int[] { 0, 75 * GS.Era1(), 0, 0 }, DM.i.activeRoom.transform);
-                RefreshManager.i.QA(() => GS.GatherResources(DM.i.activeRoom.transform),1.5f);
-                break;
-            case "Huge Blue Orb Stash":
-                GS.CallSpawnOrbs(transform.position, new int[] { 0, 0, 15 * GS.Era1(), 0 }, DM.i.activeRoom.transform);
-                RefreshManager.i.QA(() => GS.GatherResources(DM.i.activeRoom.transform),1.5f);
-                break;
-            case "Huge Red Orb Stash":
-                GS.CallSpawnOrbs(transform.position, new int[] { 0, 0, 0, 5 * GS.Era1() }, DM.i.activeRoom.transform);
-                RefreshManager.i.QA(() => GS.GatherResources(DM.i.activeRoom.transform),1.5f);
-                break;
 
             //Temp Stats
             case "Engine Restock":
@@ -172,35 +120,12 @@ public class Bonus : MonoBehaviour
 
             //Utility
 
-            case "White Orb Recall":
-                ResourceManager.instance.DropResources(0);
-                break;
-            case "Green Orb Recall":
-                ResourceManager.instance.DropResources(1);
-                break;
-            case "Blue Orb Recall":
-                ResourceManager.instance.DropResources(2);
-                break;
-            case "Red Orb Recall":
-                ResourceManager.instance.DropResources(3);
-                break;
-
             case "Blueprint Recall":
                 foreach(Blueprint bp in BlueprintManager.held)
                 {
                     BlueprintManager.stashed.Add(bp);
                 }
                 BlueprintManager.held.Clear();
-                break;
-            case "All Orbs Recall":
-                ResourceManager.instance.DropResources();
-                break;
-
-            case "Full Recall And Orb Duplicate":
-                int[] orbHeldCurrent = new int[4];
-                GS.CopyArray(ref orbHeldCurrent, ResourceManager.instance.held);
-                ResourceManager.instance.DropResources();
-                GS.CallSpawnOrbs(transform.position, orbHeldCurrent);
                 break;
             default:
                 throw new System.Exception("Incorrectly named bonus");

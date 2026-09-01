@@ -28,11 +28,6 @@ public class RefreshManager : MonoBehaviour
     [Space(5)]
     public bool LOSSPROTECTION = false;
     public bool DAMAGEPROTECTION = false;
-    [Space(5)] 
-    public bool DAILYORBBOUNTY = false;
-    [Space(5)]
-    [Tooltip("Instant, free construction: menu costs charge nothing, orb tasks and ember blasts are skipped — placements, upgrades and building actions (unit builds, ammo, orders) complete immediately.")]
-    public bool CHEATBUILD = false;
     [Space(5)]
     public bool IGNOREEFFICIENCY = false;
     [Space(5)]
@@ -60,7 +55,6 @@ public class RefreshManager : MonoBehaviour
         GS.spawn = sp;
         GS.portal = portal;
         i = this;
-        SoulHarvester.shs = new List<SoulHarvester>[4] {new List<SoulHarvester>(), new List<SoulHarvester>(), new List<SoulHarvester>(), new List<SoulHarvester>()};
         //rui.Awake();
         Building.buildings = new List<Building>();
         SpawnManager.day = 0;
@@ -76,8 +70,6 @@ public class RefreshManager : MonoBehaviour
         GS.bounds = GS.Manager.GetComponent<Collider2D>();
         EmbersEdge.currentCores = 1;
         EmbersEdge.warmUpTime = 10;
-        OrbScript.tot = 0;
-        OrbManager.allOrbs = new List<OrbScript>();
         Jet.jets = new List<Jet>();
         DashPump.pumps = new List<DashPump>();
         Omnimove.omnimoves = new List<Omnimove>();
@@ -223,11 +215,9 @@ public class RefreshManager : MonoBehaviour
             REVEALALLROOMS = false;
             LOSSPROTECTION = false;
             DAMAGEPROTECTION = false;
-            DAILYORBBOUNTY = false;
             STANDARDTIME = 1f;
             INSTASPAWN = false;
             QuickTeleport = false;
-            CHEATBUILD = false;
         }
         else
         {

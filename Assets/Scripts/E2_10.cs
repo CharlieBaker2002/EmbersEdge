@@ -6,6 +6,7 @@ public class E2_10 : Unit
 
     [SerializeField] ActionScript spawn;
     [SerializeField] Finder f;
+    [SerializeField] int spawnCharges = 8;   // was the green-orb bounty pool
 
     float t = 10;
     private static readonly int Charge1 = Animator.StringToHash("Charge");
@@ -23,7 +24,7 @@ public class E2_10 : Unit
     protected override void Update()
     {
         base.Update();
-        if (ls.orbs[1] < 1) return;
+        if (spawnCharges < 1) return;
         t -= Time.deltaTime;
         if (t <= 0f)
         {
@@ -58,10 +59,10 @@ public class E2_10 : Unit
     public IEnumerator Spawn()
     {
         float tim = Time.time;
-        while (ls.orbs[1] > 1)
+        while (spawnCharges > 1)
         {
             Instantiate(spawn, transform.position, GS.RandRot(), transform.parent).AddPush(1f,false,GS.RandCircleV2(0.5f,1f));
-            ls.orbs[1] -= 1;
+            spawnCharges -= 1;
             yield return WFAS(Random.Range(0.35f, 1f));
             if (Time.time - tim > 3.25f * actRate)
             {

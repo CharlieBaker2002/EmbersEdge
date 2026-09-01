@@ -243,11 +243,6 @@ public class Room : MonoBehaviour, IRoom
                     }
                 }
             }
-            for(int i = 0; i < 5; i++)
-            {
-                GS.GatherResources(transform);
-                yield return new WaitForSeconds(0.3f);
-            }
         }
         OnDefeat();
     }
@@ -277,7 +272,6 @@ public class Room : MonoBehaviour, IRoom
         }
         foreach (LifeScript l in alives[^1].GetComponentsInChildren<LifeScript>())
         {
-            l.orbSpawnPlace = transform;
         }
         foreach (ILA ila in alives[^1].GetComponentsInChildren<ILA>())
         {
@@ -398,7 +392,6 @@ public class Room : MonoBehaviour, IRoom
             Destroy(g);
         }
         alives = new List<GameObject>();
-        GS.DestroyResources(transform);
     }
 
     protected void SpawnChest()

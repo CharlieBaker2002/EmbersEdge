@@ -38,7 +38,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!50 &6181637790694807970
 Rigidbody2D:
-  serializedVersion: 4
+  serializedVersion: 5
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -49,8 +49,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 1
   m_UseAutoMass: 0
   m_Mass: 1
-  m_LinearDrag: 0
-  m_AngularDrag: 0.05
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
   m_GravityScale: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -81,6 +81,8 @@ MonoBehaviour:
   sharpness: 0
   hitRate: 1
   hardness: 0
+  ramBaseSpeed: 1.5
+  ramSelfRecoil: 0.5
   dragCoef: 0.98
   PS: {fileID: 0}
   onCollides: []
@@ -94,6 +96,7 @@ MonoBehaviour:
   velCap: 1
   rooted: 1
   wall: 0
+  building: 0
   ignoreWalls: 0
   convertProjectiles: 0
   absorbProjectiles: 0
@@ -110,6 +113,7 @@ BoxCollider2D:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5823183788126903065}
   m_Enabled: 1
+  serializedVersion: 3
   m_Density: 1
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -133,7 +137,8 @@ BoxCollider2D:
     m_Bits: 4294967295
   m_IsTrigger: 0
   m_UsedByEffector: 0
-  m_UsedByComposite: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
@@ -144,7 +149,6 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  serializedVersion: 2
   m_Size: {x: 2, y: 0.5}
   m_EdgeRadius: 0
 --- !u!114 &1701211154501572099
@@ -164,11 +168,6 @@ MonoBehaviour:
   shields: []
   maxHp: 10
   hp: 10
-  orbs:
-  - 0
-  - 0
-  - 0
-  - 0
   blood: {fileID: 0}
   shieldBlood: {fileID: 0}
   bloodHold: {fileID: 0}
@@ -176,7 +175,6 @@ MonoBehaviour:
   hasDied: 0
   invulnerable: 0
   animateBeforeDie: 0
-  orbSpawnPlace: {fileID: 0}
   dmgsrs: []
   thicknesses: 01000000
   overrideCol: {r: 0, g: 0, b: 0, a: 0}
@@ -204,9 +202,7 @@ GameObject:
   - component: {fileID: 2090836136295558631}
   - component: {fileID: 6363163257109188788}
   - component: {fileID: 8058225690047792346}
-  - component: {fileID: 3757739481273417766}
   - component: {fileID: 7169224450512790134}
-  - component: {fileID: 3343755918671898335}
   m_Layer: 7
   m_Name: LargeBattery
   m_TagString: Allies
@@ -232,6 +228,7 @@ Transform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &6363163257109188788
 SpriteRenderer:
+  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -247,6 +244,11 @@ SpriteRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -268,9 +270,11 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: -1090980157
   m_SortingLayer: 2
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_Sprite: {fileID: -1231390265, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -280,7 +284,6 @@ SpriteRenderer:
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
-  m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!114 &8058225690047792346
 MonoBehaviour:
@@ -296,72 +299,27 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   energy: 0
   maxEnergy: 90
-  gridID: 0
---- !u!114 &3757739481273417766
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5930459321446844039}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6c7abf5b11b3943aa9570ae9287c2d5f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  buildingBehaviours:
-  - {fileID: 7169224450512790134}
-  - {fileID: 8058225690047792346}
-  sr: {fileID: 6363163257109188788}
-  groundEdit: {fileID: 0}
-  tiles: []
-  UIParent: {fileID: 0}
-  canOpen: 1
-  hasExtraParent: 0
-  icon: {fileID: 0}
-  size: {x: 2, y: 0.5}
-  physic: {fileID: 1701211154501572099}
-  builtBlasts: 2
-  rebuildCost: 00000000000000000000000000000000
-  icons: []
-  prevN: 0
-  numIconsTrue: 0
-  maxHealth: 10
-  builtYet: 0
-  sprs:
-  - {fileID: -1573980405, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: 1631956290, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: -1251641719, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: 1497148081, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: 1040761764, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: -393970750, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: -897562978, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: 1798277258, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: 364534386, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: -2141490704, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: -1820333704, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: 865556307, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: 125168133, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: -1630004000, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: -917970078, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: 155073807, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: 139622502, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: -569637114, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: -1594592072, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: 1587228398, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: 575902479, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: -524623211, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: -1507119017, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: -883860192, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: -70204294, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: -1422404220, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: 145287502, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: 2050911574, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: 1750511283, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  - {fileID: -1231390265, guid: cc9287f43d1e044919dc1f485cf3c08a, type: 3}
-  maxLight: 1
-  l: {fileID: 7169224450512790134}
-  b: {fileID: 8058225690047792346}
+  drawRate: 1
+  instaBufferMax: 1
+  sr: {fileID: 0}
+  visual: 1
+  coil: {fileID: 0}
+  coil0Sprs: []
+  coil1Sprs: []
+  coil2Sprs: []
+  quickChargeSprs: []
+  energysprs: []
+  mats: []
+  pad: {fileID: 0}
+  padSlot: -1
+  lastChargeDay: -1
+  claimedBy: {fileID: 0}
+  homePad: {fileID: 0}
+  homeSlot: -1
+  homePos: {x: 0, y: 0}
+  hasHome: 0
+  following: 0
+  padSwapWindow: 0
 --- !u!114 &7169224450512790134
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -374,14 +332,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 073797afb82c5a1438f328866b10b3f0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_ComponentVersion: 1
+  m_ComponentVersion: 2
   m_LightType: 1
   m_BlendStyleIndex: 0
   m_FalloffIntensity: 0.8
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 0
   m_LightVolumeIntensity: 1
-  m_LightVolumeIntensityEnabled: 0
+  m_LightVolumeEnabled: 0
   m_ApplyToSortingLayers: c3f6f8be
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
@@ -391,8 +349,10 @@ MonoBehaviour:
   m_NormalMapDistance: 3
   m_NormalMapQuality: 2
   m_UseNormalMap: 0
-  m_ShadowIntensityEnabled: 0
+  m_ShadowsEnabled: 0
   m_ShadowIntensity: 0.75
+  m_ShadowSoftness: 0
+  m_ShadowSoftnessFalloffIntensity: 0.5
   m_ShadowVolumeIntensityEnabled: 0
   m_ShadowVolumeIntensity: 0.75
   m_LocalBounds:
@@ -412,26 +372,3 @@ MonoBehaviour:
   - {x: 0.89172673, y: 0.1391449, z: 0}
   - {x: 0.8923036, y: 0.1747458, z: 0}
   - {x: -0.89228106, y: 0.17292905, z: 0}
---- !u!114 &3343755918671898335
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5930459321446844039}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 213b29fb0ad684122a297fef29858033, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  typ: 0
-  orbs: []
-  transientOrbs: 0
-  n: 0
-  orbType: 1
-  capacity: 30
-  siblingTs: []
-  anim: {fileID: 0}
-  demand: 0
-  init: 1
-  initialMag: 0

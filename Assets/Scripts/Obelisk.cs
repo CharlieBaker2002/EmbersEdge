@@ -10,7 +10,6 @@ public class Obelisk : MonoBehaviour, IOnDeath
     ParticleSystem.EmissionModule ps;
     public Light2D l;
     public Rigidbody2D rb;
-    public int[] orbs;
 
     bool upd = false;
 
@@ -47,7 +46,6 @@ public class Obelisk : MonoBehaviour, IOnDeath
         ps.enabled = true;
         p.Play();
         StartCoroutine(Delight());
-        GS.QA(this,() => GS.CallSpawnOrbs(transform.position,orbs),0.7f);
     }
 
     IEnumerator Delight()

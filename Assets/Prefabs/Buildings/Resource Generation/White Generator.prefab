@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 8728072773067341957}
   - component: {fileID: 663549886115013739}
   - component: {fileID: 8054308404265412484}
-  - component: {fileID: 5837029421877525666}
   m_Layer: 7
   m_Name: White Generator
   m_TagString: Allies
@@ -156,38 +155,12 @@ MonoBehaviour:
   - {fileID: -1838924832, guid: 55919048bb0e74634b48e396920f7926, type: 3}
   typ: 3
   actionTimer: -1
-  increaseSprite: {fileID: 0}
-  decreaseSprite: {fileID: 0}
-  limit: 25
-  current: 25
   FX: {fileID: 3189509133760383441, guid: 3ebfa320f58fc4e8a9c4219ecef7f00b, type: 3}
   connect: {fileID: 0}
   overrideBattery: 0
   batteryCapacity: 0
   batteryDrawRate: 0
   batteryInstabuffer: 0
---- !u!114 &5837029421877525666
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4464479778263070814}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 213b29fb0ad684122a297fef29858033, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  typ: 0
-  orbs: []
-  transientOrbs: 0
-  n: 0
-  orbType: 0
-  capacity: 30
-  siblingTs: []
-  demand: 0
-  init: 1
-  initialMag: 0
 --- !u!1001 &5330877814445775803
 PrefabInstance:
   m_ObjectHideFlags: 0

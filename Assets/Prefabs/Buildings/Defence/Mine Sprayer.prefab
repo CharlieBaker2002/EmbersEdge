@@ -116,7 +116,6 @@ GameObject:
   - component: {fileID: 4816399736014682659}
   - component: {fileID: 4816399736014682657}
   - component: {fileID: 4816399736014682656}
-  - component: {fileID: 2889625729449508185}
   - component: {fileID: 5570864781393850251}
   m_Layer: 7
   m_Name: Mine Sprayer
@@ -254,28 +253,6 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
---- !u!114 &2889625729449508185
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4816399736014682658}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 213b29fb0ad684122a297fef29858033, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  typ: 0
-  orbs: []
-  transientOrbs: 0
-  n: 0
-  orbType: 2
-  capacity: 3
-  siblingTs: []
-  demand: 0
-  init: 1
-  initialMag: 0
 --- !u!114 &5570864781393850251
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -302,7 +279,6 @@ GameObject:
   - component: {fileID: 4816399736768080805}
   - component: {fileID: 4816399736768080802}
   - component: {fileID: 8983562740169204775}
-  - component: {fileID: 1780736140935113620}
   m_Layer: 7
   m_Name: ChargerTurretCore
   m_TagString: Allies
@@ -505,6 +481,7 @@ MonoBehaviour:
   PROXIMAL: 0
   turret: 1
   maxSearch: 10
+  priority: {fileID: 0}
   allowBuildings: 0
   preferBuildings: 0
   T: {fileID: 0}
@@ -556,19 +533,6 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 0.94, y: 0.94}
   m_EdgeRadius: 0
---- !u!114 &1780736140935113620
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4816399736768080809}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 20a672b454ca349d48a09732303ac85f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  oms: []
 --- !u!1001 &2757160414426673362
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -144,7 +144,7 @@ public class SwordTower : Building
 
     void Morph()
     {
-        GS.QuickMorphWithOrbs(baseSR,morphSprite,transform.parent);
+        GS.QuickMorph(baseSR,morphSprite,transform.parent);
     }
  
 }

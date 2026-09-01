@@ -344,20 +344,6 @@ public class BlueprintManager : MonoBehaviour
             return;
         }
 
-        ResourceManager.instance.DropResources(-1, swapRes);
-
-        List<OrbScript> delOrbs = new List<OrbScript>();
-        foreach (Transform t in SpawnManager.instance.orbParent)
-        {
-            if (t.transform.position.sqrMagnitude > 80000)
-            {
-                delOrbs.Add(t.GetComponent<OrbScript>());
-            }
-        }
-        foreach (OrbScript o in delOrbs)
-        {
-            o.ReturnToPool();
-        }
     }
     
     public IEnumerator DestroyLoot() //teleport if on death.
@@ -368,7 +354,6 @@ public class BlueprintManager : MonoBehaviour
             toDiscover.Add(bp);
         }
         held.Clear();
-        ResourceManager.instance.DestroyResources();
         yield return null;
       
         CharacterScript.CS.ls.StopAllCoroutines();

@@ -46,7 +46,7 @@ public class TurretScript : Building
 
     private void MorphUpgrade()
     {
-        GS.QuickMorphWithOrbs(transform.parent.gameObject, baseSprites[level+1]);
+        GS.QuickMorph(transform.parent.gameObject, baseSprites[level+1]);
     }
 
     void Update()

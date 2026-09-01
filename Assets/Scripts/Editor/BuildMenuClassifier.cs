@@ -57,16 +57,6 @@ public static class BuildMenuClassifier
             "Assets/Prefabs/Buildings/Storage/Ember Store.prefab",
             "Assets/Prefabs/Buildings/Storage/Large Ember Store.prefab",
         }),
-        ("Storage", "Orb Infrastructure", new[]
-        {
-            "Assets/Prefabs/Buildings/Resource Generation/Cell.prefab",
-            "Assets/Prefabs/Buildings/Resource Generation/White Harvester.prefab",
-            null,
-            "Assets/Prefabs/Buildings/Storage/Store White.prefab",
-            "Assets/Prefabs/Buildings/Storage/Store Green.prefab",
-            "Assets/Prefabs/Buildings/Storage/Store Blue.prefab",
-            "Assets/Prefabs/Buildings/Storage/Store Red.prefab",
-        }),
         ("Resource Generation", "Pylons & Generators", new[]
         {
             "Assets/Prefabs/EnergyPylon.prefab",
