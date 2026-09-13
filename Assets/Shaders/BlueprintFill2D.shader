@@ -37,6 +37,9 @@ Shader "EmbersEdge/BlueprintFill2D"
         _Style       ("Style (0-9)", Float) = 0
         _Brightness  ("Body Brightness", Range(0, 2)) = 0.6
         _Rect        ("Sprite UV Rect (x,y,w,h)", Vector) = (0, 0, 1, 1)
+        _Centre      ("Building Centre (world xy)", Vector) = (0, 0, 0, 0)
+        _Reach       ("Ring Reach (world, centre → farthest corner)", Float) = 1
+        _TexelWorld  ("Texel Size (world)", Float) = 0.03
         _Blueprint   ("Body Tint", Color) = (0.22, 0.18, 0.4, 0.32)
         _Outline     ("Outline / Glow", Color) = (0.72, 0.58, 1.0, 0.95)
         _Hatch       ("Hatch Alpha", Range(0, 1)) = 0.14
@@ -88,6 +91,9 @@ Shader "EmbersEdge/BlueprintFill2D"
                 float  _Style;
                 float  _Brightness;
                 float4 _Rect;
+                float4 _Centre;
+                float  _Reach;
+                float  _TexelWorld;
                 float4 _Blueprint;
                 float4 _Outline;
                 float  _Hatch;
@@ -111,6 +117,7 @@ Shader "EmbersEdge/BlueprintFill2D"
                 float4 positionCS : SV_POSITION;
                 float4 color      : COLOR;
                 float2 uv         : TEXCOORD0;
+                float2 worldPos   : TEXCOORD1;
             };
 
             Varyings vert (Attributes IN)
@@ -118,6 +125,7 @@ Shader "EmbersEdge/BlueprintFill2D"
                 Varyings OUT;
                 OUT.positionCS = TransformObjectToHClip(IN.positionOS.xyz);
                 OUT.uv = IN.uv;
+                OUT.worldPos = TransformObjectToWorld(IN.positionOS.xyz).xy;
                 OUT.color = IN.color * _RendererColor;
                 return OUT;
             }
@@ -155,6 +163,12 @@ Shader "EmbersEdge/BlueprintFill2D"
                 float2 luv   = saturate((IN.uv - _Rect.xy) / max(_Rect.zw, 1e-5));   // 0..1 inside the sprite
                 float  h     = Hash2(texel);
                 float  lum   = dot(tex.rgb, float3(0.299, 0.587, 0.114));
+                // ONE circle per BUILDING: radius/angle measured in world space from the building's centre
+                // (GhostIntake hands every sprite the same _Centre/_Reach), 0 at the centre … 1 at the
+                // farthest corner of any of its sprites
+                float2 dW   = IN.worldPos - _Centre.xy;
+                float  rW   = length(dW) / max(_Reach, 1e-4);
+                float  angW = atan2(dW.y, dW.x) / 6.2831853 + 0.5;
 
                 // ---- outline: one texel where the sprite meets transparency
                 float2 ts = _MainTex_TexelSize.xy;
@@ -291,18 +305,12 @@ Shader "EmbersEdge/BlueprintFill2D"
                     // so an idle ghost SETTLES to a faint, still body. The frontier wears an era-coloured
                     // contour with a soft era glow band just ahead of it; the printed pixels and their
                     // sparkle flash are the local art colour.
-                    float2 rectTexels = _Rect.zw * _MainTex_TexelSize.zw;                          // sprite size in texels
-                    float2 aspect = rectTexels / max(rectTexels.x, rectTexels.y);                   // longest side = 1
-                    float2 dv = (luv - 0.5) * 2.0 * aspect;
-                    float r = length(dv);                                                           // circular radius, 0 centre … ~1.41 corner
-                    float ang = atan2(dv.y, dv.x) / 6.2831853 + 0.5;                                // 0..1 around the circle
-                    float rN = saturate(r / 1.42);
-                    order = saturate(rN * 0.5 + pow(lum, 0.7) * 0.35 + h * 0.15);
+                    float r   = rW;                                                                  // the building's circle, 0 centre … 1 far corner
+                    float ang = angW;
+                    order = saturate(r * 0.5 + pow(lum, 0.7) * 0.35 + h * 0.15);
                     // the boundary: contour radius follows progress; a soft era glow charges the band just outside it
-                    float rCorner = length(aspect);                                                // the sprite's far corner — the ring gets there at 100%
-                    float rFront = _Progress * rCorner;
-                    float halfTexels = max(rectTexels.x, rectTexels.y) * 0.5;
-                    float ringW = 1.5 / max(halfTexels, 1.0) * 1.42;
+                    float rFront = _Progress;                                                        // reaches the farthest corner at 100%
+                    float ringW = 1.5 * _TexelWorld / max(_Reach, 1e-4);                             // ~1.5 texels, in ring units
                     // the ring: a bright line with dashes running round it, a soft glow just inside, a fainter
                     // wake ring trailing behind, all shimmering with noise around the circumference
                     float ringMain = 1.0 - smoothstep(0.0, ringW, abs(r - rFront));
@@ -369,28 +377,43 @@ Shader "EmbersEdge/BlueprintFill2D"
                 // band, and where it passes the texels refract a fraction of a texel (with a whisper of
                 // chromatic split) and lift in brightness — the print reads as wet/glassy until it completes
                 // RADIAL sheen: gloss rings pulsing out from the centre (aspect-corrected, like the print) plus
-                // a slow rotating spoke, each broken up by drifting Perlin-style noise so it never reads as
-                // one clean sweep
-                float2 sheenRect = _Rect.zw * _MainTex_TexelSize.zw;
-                float2 sheenAsp = sheenRect / max(sheenRect.x, sheenRect.y);
-                float2 sd = (luv - 0.5) * 2.0 * sheenAsp;
-                float  sr = length(sd);
-                float  sa = atan2(sd.y, sd.x) / 6.2831853 + 0.5;                                 // 0..1 around
+                // wandering glints, each broken up by drifting Perlin-style noise so it never reads as one
+                // clean sweep
+                float  sr = rW * 1.42;                                                            // the building's circle (sprite-corner scale)
+                float  sa = angW;
                 float2 nUv = luv * (_SheenTiles * 3.0) + t * float2(0.17, -0.11);
                 float n  = Fbm2(nUv);
                 float b1 = GlossBand(sr * _SheenTiles - t * _SheenSpeed);                          // rings outward
                 float b2 = GlossBand(sr * _SheenTiles * 0.6 + t * _SheenSpeed * 0.45 + 0.5);       // a slower ring drifting inward
-                float b3 = GlossBand(sa + t * _SheenSpeed * 0.35) * saturate(sr * 3.0);           // rotating spoke, fading at the centre
+                // GLINTS, not a radar spoke: three angular highlights whose bearing WANDERS on its own noise
+                // walk (no constant rotation — they drift, hesitate and double back), each fading in and out
+                // on a slow noise envelope so only some show at any moment, each sitting in a soft radial
+                // window that wanders too — light catching a glassy surface rather than a sweep
+                float b3 = 0.0;
+                [unroll] for (int k = 0; k < 3; k++)
+                {
+                    float seed = 11.7 + k * 23.9;
+                    float tsh  = t * _SheenSpeed;
+                    float bear = Fbm2(float2(tsh * 0.21 + seed, seed * 0.37)) * 2.6;                              // bearing (turns), wandering
+                    float wid  = 0.05 + 0.08 * Noise2(float2(seed * 1.9, tsh * 0.13 + seed));                       // lobe half-width (turns)
+                    float env  = smoothstep(0.34, 0.78, Noise2(float2(tsh * 0.27 + seed * 0.61, 2.7 + seed)));      // fade in / out
+                    float rMid = 0.35 + 0.55 * Noise2(float2(seed * 0.83, tsh * 0.11 + seed * 1.3));               // radial window centre
+                    float dAng = abs(frac(sa - bear + 0.5) - 0.5);                                                  // angular distance (turns)
+                    float lobe = pow(saturate(1.0 - dAng / wid), 2.0);
+                    float rWin = saturate(1.0 - abs(sr - rMid) / 0.55);
+                    b3 = max(b3, lobe * env * rWin);
+                }
+                b3 *= saturate(sr * 3.0);                                                                           // fades at the centre
                 float gloss = saturate(max(b1, max(b2, b3)) * (0.3 + 0.7 * n) + n * n * 0.18) * _Sheen;
                 // refraction direction comes off the noise field too (a slow, curling wobble)
                 float2 wob = (float2(Fbm2(nUv + 3.3), Fbm2(nUv - 5.9)) - 0.5) * 2.0 * _MainTex_TexelSize.xy * _SheenWobble * gloss;
                 float2 lo = _Rect.xy + _MainTex_TexelSize.xy * 0.5, hi = _Rect.xy + _Rect.zw - _MainTex_TexelSize.xy * 0.5;
                 float2 uvw = clamp(IN.uv + wob, lo, hi);
                 float2 chroma = float2(_MainTex_TexelSize.x * 0.35 * gloss, 0.0);
-                float  rW = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, clamp(uvw + chroma, lo, hi)).r;
+                float  rCh = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, clamp(uvw + chroma, lo, hi)).r;
                 half4  texW = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uvw);
-                float  bW = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, clamp(uvw - chroma, lo, hi)).b;
-                float3 refracted = float3(rW, texW.g, bW) * IN.color.rgb;
+                float  bCh = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, clamp(uvw - chroma, lo, hi)).b;
+                float3 refracted = float3(rCh, texW.g, bCh) * IN.color.rgb;
                 float  lumW = dot(refracted, float3(0.299, 0.587, 0.114));
                 refracted = lerp(refracted, _Outline.rgb * (0.3 + 0.7 * lumW), _Tint);
                 art.rgb = lerp(art.rgb, refracted, saturate(gloss * 1.5));

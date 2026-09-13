@@ -36,6 +36,12 @@ public class GhostIntake : MonoBehaviour, IChipConsumer
     static readonly int BrightnessId = Shader.PropertyToID("_Brightness");
     static readonly int ActiveId = Shader.PropertyToID("_Active");
     static readonly int JitterId = Shader.PropertyToID("_Jitter");
+    static readonly int CentreId = Shader.PropertyToID("_Centre");
+    static readonly int ReachId = Shader.PropertyToID("_Reach");
+    static readonly int TexelWorldId = Shader.PropertyToID("_TexelWorld");
+    // ONE ring per building: the combined centre of every sprite and the distance to the farthest corner
+    Vector2 ringCentre;
+    float ringReach = 1f;
     const float ActiveHold = 1.2f, ActiveFade = 0.8f, ActiveRise = 0.45f;   // the print "lives" this long after each chip, then settles; it wakes over ActiveRise
     float activeUntil = float.NegativeInfinity;
     float activeLevel;
@@ -235,6 +241,17 @@ public class GhostIntake : MonoBehaviour, IChipConsumer
         Color ore = OreHue();
         Color body = Color.Lerp(ore, Color.black, 0.6f); body.a = 0.32f;
         Color line = ore; line.a = 0.95f;
+        // the building's ONE circle: centre of the combined sprite bounds, reaching the farthest corner
+        bool any = false;
+        Bounds all = new Bounds();
+        for (int i = 0; i < srs.Length; i++)
+        {
+            var s = srs[i];
+            if (s == null || s.sprite == null) continue;
+            if (!any) { all = s.bounds; any = true; } else all.Encapsulate(s.bounds);
+        }
+        ringCentre = any ? (Vector2)all.center : (Vector2)transform.position;
+        ringReach = any ? Mathf.Max(0.05f, new Vector2(all.extents.x, all.extents.y).magnitude) : 1f;
         float bestArea = -1f;
         for (int i = 0; i < srs.Length; i++)
         {
@@ -249,6 +266,9 @@ public class GhostIntake : MonoBehaviour, IChipConsumer
             mpb.SetColor(BlueprintId, body);
             mpb.SetColor(OutlineId, line);
             mpb.SetVector(RectId, UvRect(s.sprite));
+            mpb.SetVector(CentreId, new Vector4(ringCentre.x, ringCentre.y, 0f, 0f));
+            mpb.SetFloat(ReachId, ringReach);
+            mpb.SetFloat(TexelWorldId, s.sprite != null && s.sprite.textureRect.width > 0f ? s.bounds.size.x / s.sprite.textureRect.width : 0.03f);
             mpb.SetFloat(StyleId, (int)BM.Style);
             mpb.SetFloat(BrightnessId, BM.BlueprintBrightness);
             mpb.SetFloat(ActiveId, 0f);
@@ -343,21 +363,35 @@ public class GhostIntake : MonoBehaviour, IChipConsumer
     /// uniform random here — statistically the same distribution, which is all a quantile needs).</summary>
     float[] BuildOrderTable(int style)
     {
-        if (mainSR == null || mainSR.sprite == null || mainSR.sprite.texture == null) return null;
-        Color32[] px;
-        int w, h;
-        try { px = ReadSpritePixels(mainSR.sprite, out w, out h); }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning("[GhostIntake] sprite readback failed (" + e.Message + ") — print shares are approximate.");
-            return null;
-        }
-        if (px == null) return null;
+        if (srs == null) return null;
         float jitter = fillMat != null && fillMat.HasProperty(JitterId) ? fillMat.GetFloat(JitterId) : 0.07f;
-        var rng = new System.Random(mainSR.sprite.GetInstanceID());
+        var rng = new System.Random(GetInstanceID());
         var blockHash = new Dictionary<long, float>();
-        var orders = new List<float>(w * h);
-        Rect rect = mainSR.sprite.textureRect;
+        var orders = new List<float>(4096);
+        foreach (var sr in srs)
+        {
+            if (sr == null || sr.sprite == null || sr.sprite.texture == null) continue;
+            Color32[] px;
+            int w, h;
+            try { px = ReadSpritePixels(sr.sprite, out w, out h); }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("[GhostIntake] sprite readback failed (" + e.Message + ") — print shares are approximate.");
+                return null;
+            }
+            if (px == null) continue;
+            Rect rect = sr.sprite.textureRect;
+            Bounds lb = sr.sprite.bounds;                                                 // sprite-local extents (world via the renderer's transform)
+            AppendOrders(style, sr, px, w, h, rect, lb, jitter, rng, blockHash, orders);
+        }
+        if (orders.Count == 0) return null;
+        orders.Sort();
+        return orders.ToArray();
+    }
+
+    void AppendOrders(int style, SpriteRenderer sr, Color32[] px, int w, int h, Rect rect, Bounds lb, float jitter,
+                      System.Random rng, Dictionary<long, float> blockHash, List<float> orders)
+    {
         for (int j = 0; j < h; j++)
             for (int i = 0; i < w; i++)
             {
@@ -384,18 +418,17 @@ public class GhostIntake : MonoBehaviour, IChipConsumer
                     case 8: o = bly * 0.55f + hb * 0.45f; break;
                     case 9:
                     {
-                        float mx = Mathf.Max(w, h);
-                        float r = new Vector2((lx - 0.5f) * 2f * (w / mx), (ly - 0.5f) * 2f * (h / mx)).magnitude;
-                        o = Mathf.Clamp01(r / 1.42f) * 0.5f + Mathf.Pow(lum, 0.7f) * 0.35f + hv * 0.15f;
+                        // the building's ONE circle: this texel's world position vs the shared centre/reach
+                        Vector3 local = new Vector3(lb.min.x + lx * lb.size.x, lb.min.y + ly * lb.size.y, 0f);
+                        Vector2 wp = sr.transform.TransformPoint(local);
+                        float r = Mathf.Clamp01((wp - ringCentre).magnitude / ringReach);
+                        o = r * 0.5f + Mathf.Pow(lum, 0.7f) * 0.35f + hv * 0.15f;
                         break;
                     }
                     default: o = ly * (1f - jitter) + hv * jitter; break;
                 }
                 orders.Add(Mathf.Clamp01(o));
             }
-        if (orders.Count == 0) return null;
-        orders.Sort();
-        return orders.ToArray();
     }
 
     /// <summary>One-off CPU copy of the sprite's texels (textures aren't readable): blit the texture
@@ -468,20 +501,18 @@ public class GhostIntake : MonoBehaviour, IChipConsumer
     /// <summary>A point on the expanding boundary (the contour ellipse the shader draws), in world space.</summary>
     Vector3 BoundaryPoint(float progress)
     {
-        // a CIRCLE (the shader's contour is aspect-corrected), radius in world units growing to the
-        // sprite's far corner; points outside the sprite are fine — sparks may leave its silhouette
-        var bnd = mainSR.bounds;
-        float rMax = new Vector2(bnd.extents.x, bnd.extents.y).magnitude;   // the far corner, like the shader's ring
-        float rFront = Mathf.Clamp01(progress) * rMax;
+        // the building's ONE circle (the shader's ring): centre of all its sprites, reaching the farthest
+        // corner at 100%; points outside a sprite are fine — sparks may leave the silhouette
+        float rFront = Mathf.Clamp01(progress) * ringReach;
         float a = Random.Range(0f, Mathf.PI * 2f);
-        return bnd.center + new Vector3(Mathf.Cos(a) * rFront, Mathf.Sin(a) * rFront, 0f);
+        return new Vector3(ringCentre.x + Mathf.Cos(a) * rFront, ringCentre.y + Mathf.Sin(a) * rFront, 0f);
     }
 
     void EmitSpark(float speedMul)
     {
         if (sparks == null || mainSR == null) return;
         Vector3 p = BoundaryPoint(fillShown);
-        Vector3 outward = (p - mainSR.bounds.center);
+        Vector3 outward = (p - (Vector3)ringCentre);
         outward = outward.sqrMagnitude > 1e-4f ? outward.normalized : (Vector3)Random.insideUnitCircle.normalized;
         var ep = new ParticleSystem.EmitParams
         {

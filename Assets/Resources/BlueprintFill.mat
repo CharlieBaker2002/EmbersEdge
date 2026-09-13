@@ -38,6 +38,8 @@ Material:
     - _SheenTiles: 1.5
     - _SheenWobble: 0.6
     - _Style: 0
+    - _Reach: 1
+    - _TexelWorld: 0.03
     - _Brightness: 0.6
     - _Hatch: 0.14
     - _HatchPeriod: 6
@@ -49,5 +51,6 @@ Material:
     - _Blueprint: {r: 0.22, g: 0.18, b: 0.4, a: 0.32}
     - _Outline: {r: 0.72, g: 0.58, b: 1, a: 0.95}
     - _Rect: {r: 0, g: 0, b: 1, a: 1}
+    - _Centre: {r: 0, g: 0, b: 0, a: 0}
     - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
