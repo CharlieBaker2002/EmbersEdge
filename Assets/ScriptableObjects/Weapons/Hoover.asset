@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 817360ae91fb447938b274e2f141591a, type: 3}
+  m_Name: Hoover
+  m_EditorClassIdentifier: Assembly-CSharp::MechanismSO
+  s: {fileID: 21300000, guid: f71f5fe11808c4e35a1132fa91fab1b2, type: 3}
+  g: {fileID: 8907001187164770275, guid: c828e81c5d5274b6abd9b3a82562f811, type: 3}
+  cost: 00000000000000000000000000000000
+  shopCost: 60
+  description: "Hold to syphon loose ore into the tank (20). Press again when full,
+    or anywhere at base, to spray it back out \u2014 into a blueprint's intake or
+    onto the ground for the drones."
+  unique: 0
+  relevents: []
+  classifier: 0
+  p: {fileID: 5576411457380577755, guid: c828e81c5d5274b6abd9b3a82562f811, type: 3}
+  powerRequired: 1
+  continual: 0
+  level: 0

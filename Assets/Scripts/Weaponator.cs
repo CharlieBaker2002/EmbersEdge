@@ -14,6 +14,7 @@ public class Weaponator : Combinator
         {
             MechanismSO z = (MechanismSO)b;
             if (z.p.taip != Part.PartType.Weapon) continue;
+            if (z.relevents == null || z.relevents.Count <= level) continue;   // no upgrade line (Hoover) — nothing to combine into
             AddSlot(new int[]{0,0,0,0},z.name,z.s,true,() =>
             {
                 InstantAct(b);

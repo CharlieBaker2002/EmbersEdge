@@ -119,7 +119,9 @@ MonoBehaviour:
   rotatable: 1
   noBody: 0
   physic: {fileID: 0}
-  builtBlasts: 2
+  builtBlasts: 1
+  oreRequired: 10
+  oreIntakeRadius: 1.25
   icons: []
   prevN: 0
   numIconsTrue: 0

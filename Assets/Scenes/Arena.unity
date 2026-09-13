@@ -4086,7 +4086,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0fc2f3081851a4eabbaa4d8a9bcdccc5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  orbParent: {fileID: 1184484308}
+  poolParent: {fileID: 1184484308}
   marauders:
   - {fileID: 11400000, guid: f60c75cd3bb9d417181004a932f0212e, type: 2}
   - {fileID: 11400000, guid: f45ef91775aad440a87b23d6553ea327, type: 2}
@@ -4095,11 +4095,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9ebf60457ff204b29b7d88caa981a080, type: 2}
   - {fileID: 11400000, guid: 22fa7ae4ad15e4b8cb523214488945b1, type: 2}
   incrementer: 6
-  orbs:
-  - {fileID: 8329714380412973213, guid: a34bdb11067e24d978641260e678e3a1, type: 3}
-  - {fileID: 9193107739749979630, guid: a6a8d0b5058244ec0aba6ed3c30fb915, type: 3}
-  - {fileID: 3925818993121235806, guid: cfa2e799c59a54c5f9e380fcccde83af, type: 3}
-  - {fileID: 5397904569395374560, guid: d778dd102f0fa4c038f031a75bd309b0, type: 3}
   chests: []
   Allies: {fileID: 1185829901}
   AllyBuildings: {fileID: 345978632}
@@ -4687,8 +4682,6 @@ MonoBehaviour:
   REVEALALLROOMS: 0
   LOSSPROTECTION: 1
   DAMAGEPROTECTION: 0
-  DAILYORBBOUNTY: 0
-  CHEATBUILD: 0
   IGNOREEFFICIENCY: 1
   DIFFICULTY: 3
   ARENAMODE: 1
@@ -4996,6 +4989,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: a869d3d7189844349b17e71dad54b6f2, type: 2}
   - {fileID: 11400000, guid: 879c3d0ae92cc4c7f9773b0d875c136a, type: 2}
   - {fileID: 11400000, guid: 9efc58b7716fb45639bf4ec4c33a511d, type: 2}
+  - {fileID: 11400000, guid: 454bd2be83e3e4fa490be75b18f32772, type: 2}
   prepared:
   - {fileID: 11400000, guid: 676256ca5880a49ea85a31a56f8b0a09, type: 2}
   - {fileID: 11400000, guid: cd9abea3b81de4680bf43179ea6a61ce, type: 2}
@@ -5073,24 +5067,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08417183403704d6292619614558c626, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  orbs: 00000000000000000000000000000000
-  orbCaps: 00000000000000000000000000000000
-  initResources: c80000001e0000000800000003000000
   player: {fileID: 1033488688}
-  throneMags:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  magnets: []
-  pylons: []
   fuel: 0
   energy: 0
   maxFuel: 0
   maxEnergy: 0
   fuelToEnergy: 2
   fuelConsumption: 0.25
-  heldOrbs: []
   energySlider: {fileID: 1595940853}
   fuelSlider: {fileID: 650778094}
   resourceUIs:
@@ -5098,8 +5081,6 @@ MonoBehaviour:
   - {fileID: 1387828788}
   - {fileID: 427640881}
   - {fileID: 128552054}
-  held: 00000000000000000000000000000000
-  maxHeld: a00000001e0000000800000004000000
   latentShield: {fileID: 1033488692}
   coreAnims:
   - {fileID: 1547994533}
@@ -80855,11 +80836,6 @@ MonoBehaviour:
   shields: []
   maxHp: 1
   hp: 1
-  orbs:
-  - 0
-  - 0
-  - 0
-  - 0
   blood: {fileID: 229773256281956843, guid: 9d99b7730bb0e48d2a8da47fe9330a42, type: 3}
   shieldBlood: {fileID: 4440462609882193689, guid: ba91f671f6cf8481ebe5295adbae61c3, type: 3}
   bloodHold: {fileID: 0}
@@ -80867,7 +80843,6 @@ MonoBehaviour:
   hasDied: 0
   invulnerable: 0
   animateBeforeDie: 0
-  orbSpawnPlace: {fileID: 0}
   dmgsrs: []
   thicknesses: 00000000
   overrideCol: {r: 0, g: 0, b: 0, a: 0}
@@ -81992,6 +81967,8 @@ MonoBehaviour:
   noBody: 0
   physic: {fileID: 866402318}
   builtBlasts: 2
+  oreRequired: 3
+  oreIntakeRadius: 1.25
   icons: []
   prevN: 0
   numIconsTrue: 0
@@ -87715,6 +87692,7 @@ MonoBehaviour:
   inits:
   - {fileID: 11400000, guid: 1638f957feb5b42ac82fee153ead238b, type: 2}
   - {fileID: 11400000, guid: 879c3d0ae92cc4c7f9773b0d875c136a, type: 2}
+  - {fileID: 11400000, guid: 454bd2be83e3e4fa490be75b18f32772, type: 2}
   seconds: []
   thirds: []
 --- !u!1 &1417212843
@@ -105669,11 +105647,6 @@ MonoBehaviour:
   shields: []
   maxHp: 10
   hp: 10
-  orbs:
-  - 0
-  - 0
-  - 0
-  - 0
   blood: {fileID: 0}
   shieldBlood: {fileID: 0}
   bloodHold: {fileID: 0}
@@ -105681,7 +105654,6 @@ MonoBehaviour:
   hasDied: 0
   invulnerable: 0
   animateBeforeDie: 0
-  orbSpawnPlace: {fileID: 0}
   dmgsrs: []
   thicknesses: 00000000
   overrideCol: {r: 0, g: 0, b: 0, a: 0}
@@ -110371,6 +110343,8 @@ MonoBehaviour:
   noBody: 0
   physic: {fileID: 0}
   builtBlasts: 2
+  oreRequired: 3
+  oreIntakeRadius: 1.25
   icons: []
   prevN: 0
   numIconsTrue: 0
@@ -110513,7 +110487,6 @@ MonoBehaviour:
   shields: []
   maxHp: 10
   hp: 10
-  orbs: []
   blood: {fileID: 0}
   shieldBlood: {fileID: 0}
   bloodHold: {fileID: 0}
@@ -110521,7 +110494,6 @@ MonoBehaviour:
   hasDied: 0
   invulnerable: 0
   animateBeforeDie: 0
-  orbSpawnPlace: {fileID: 0}
   dmgsrs: []
   thicknesses: 01000000
   overrideCol: {r: 0, g: 0, b: 0, a: 0}
@@ -110684,6 +110656,8 @@ MonoBehaviour:
   noBody: 0
   physic: {fileID: 0}
   builtBlasts: 2
+  oreRequired: 3
+  oreIntakeRadius: 1.25
   icons: []
   prevN: 0
   numIconsTrue: 0

@@ -63,7 +63,7 @@ public class ChipWall : Building, IChipConsumer
     /// <summary>Masonry gate: plain rock only (ore belongs to the refiner), any size, and only
     /// while juice is actually wanted — an idle wall's ring protection lapses with its appetite
     /// (the station rule), so leftover spill stays fair game for hungrier customers.</summary>
-    public bool AcceptsChip(int sizeClass, int element) => element < 0 && JuiceWant > 0f;
+    public bool AcceptsChip(int sizeClass, int element) => JuiceWant > 0f;   // any chip: plain rock no longer drops (ore-only mines, 2026-09-11)
     /// <summary>Want in bag-space units for the fleet's planning, net of ring spill. Flat
     /// medium-chip exchange rate — the ChipFactory's demand heuristic.</summary>
     public float ChipDemandSpace
@@ -101,7 +101,6 @@ public class ChipWall : Building, IChipConsumer
             var chip = OreChip.all[k];
             if (chip == null || chip.Absorbing || chip.transform.InDungeon()) continue;
             if (chip.claimedBy != null) continue;
-            if (chip.element >= 0) continue;   // ore never feeds a wall
             if (((Vector2)chip.transform.position - pos).sqrMagnitude > suctionRadius * suctionRadius) continue;
             stock += chip.JuiceValue;
         }

@@ -10,7 +10,6 @@ GameObject:
   m_Component:
   - component: {fileID: 7277314486712507667}
   - component: {fileID: 1349290901619509161}
-  - component: {fileID: 895718873668815370}
   - component: {fileID: 5487799677017105390}
   m_Layer: 7
   m_Name: Refiner
@@ -95,27 +94,6 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!114 &895718873668815370
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 667382443573879202}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8f90e18be6b5942dd9554a75508eed3a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EmberConnector
-  taip: 2
-  cables: []
-  connections: []
-  cableConnectionDirections: 
-  ember: 0
-  maxEmber: 8
-  desiredEmber: 0
-  emberTravel: 0
-  jobCount: 0
 --- !u!114 &5487799677017105390
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -144,6 +122,8 @@ MonoBehaviour:
   noBody: 0
   physic: {fileID: 5897687195578688418}
   builtBlasts: 2
+  oreRequired: 50
+  oreIntakeRadius: 1.25
   icons: []
   prevN: 0
   numIconsTrue: 0
@@ -157,11 +137,16 @@ MonoBehaviour:
   suctionRadius: 1.75
   refineSeconds: 1.2
   appetiteSpace: 8
-  dailyJuice: 48
-  juicePerEmber: 12
-  juiceUsedToday: 0
+  mediumYield:
+    small: 2
+    medium: 0
+    large: 0
+  largeYield:
+    small: 1
+    medium: 2
+    large: 0
+  outputInterval: 0.08
   eatSpot: {fileID: 2034738805674478739}
-  connect: {fileID: 895718873668815370}
   inboundChipSpace: 0
 --- !u!1 &1859663314862803801
 GameObject:

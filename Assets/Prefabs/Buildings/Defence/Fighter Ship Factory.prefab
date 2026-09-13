@@ -268,6 +268,8 @@ MonoBehaviour:
   noBody: 0
   physic: {fileID: 4760292924330976936}
   builtBlasts: 1
+  oreRequired: 25
+  oreIntakeRadius: 1.25
   icons: []
   prevN: 0
   numIconsTrue: 0

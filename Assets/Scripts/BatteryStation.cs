@@ -122,7 +122,7 @@ public class BatteryStation : EnergyPad, IChipConsumer
     public float ChipIntakeRadius => suctionRadius;
     /// <summary>Plain rock is grinder food proper; ore grinds into the same juice, so it's mere
     /// fallback (appeal 0) — the fleet only feeds it here once every hungry refiner is served.</summary>
-    public int ChipAppeal(int sizeClass, int element) => element >= 0 ? 0 : 1;
+    public int ChipAppeal(int sizeClass, int element) => 1;   // ordinary food (one ore, no elements); refiner 2 / construction 3 outrank it
     /// <summary>Juice still wanted, in bag-space units — what the fleet plans hauls against.
     /// The exchange rate is the REAL yield of the largest class the bore takes (the class the
     /// fleet feeds first): a flat average here made small-bore hauls land at 40% of plan, so

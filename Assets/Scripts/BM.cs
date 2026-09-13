@@ -7,6 +7,17 @@ using System.Linq;
 
 public class BM : MonoBehaviour //Building Manager
 {
+    /// <summary>The construction schematic look (see BlueprintFill2D.shader) — switch it in the
+    /// inspector while playing and every ghost re-styles on the next frame.</summary>
+    public enum BlueprintStyle { Schematic, Hologram, Draft, Materialise, Rings, Blocks, Fusion, FusionLattice, FusionPulse, Decompress }
+    [Header("Construction blueprint look")]
+    [Tooltip("How a placed-but-unbuilt building draws while ore arrives. Live: change it during play.")]
+    public BlueprintStyle blueprintStyle = BlueprintStyle.Decompress;
+    [Tooltip("Brightness of the unprinted schematic body (outline and print head are unaffected). Live.")]
+    [Range(0f, 2f)] public float blueprintBrightness = 0.6f;
+    public static BlueprintStyle Style => i != null ? i.blueprintStyle : BlueprintStyle.Schematic;
+    public static float BlueprintBrightness => i != null ? i.blueprintBrightness : 0.6f;
+
     public static BM i;
     public GameObject UI;
     public GameObject redBuilding;
@@ -383,8 +394,9 @@ public class BM : MonoBehaviour //Building Manager
     }
 
     /// <summary>Turn a placed instance into a live building at the current anchor: grid
-    /// occupancy, era tint, decompressors, registry. Building is free and INSTANT — no
-    /// resource tasks, no ember phase; every behaviour wakes and the build completes now.</summary>
+    /// occupancy, era tint, registry. Placement is free; the building then stands as a BLUEPRINT
+    /// ghost until <see cref="Building.oreRequired"/> chips reach it (GhostIntake prints the art
+    /// in per chip and completes it). Zero-cost buildings complete immediately.</summary>
     void Commit(GameObject built, Building bb, bool freshInstance)
     {
         if (dungeonMode)
@@ -431,7 +443,9 @@ public class BM : MonoBehaviour //Building Manager
             {
                 beh.enabled = true;
             }
-            bb.CompleteBuild();
+            // Ore-built: Start → BuildFirst hands the ghost to a GhostIntake, which completes it
+            // once the last chip lands. Zero-cost buildings still complete here and now.
+            if (!bb.UsesOreConstruction) bb.CompleteBuild();
         }, freshInstance ? 2 : 0);
     }
 
@@ -533,6 +547,7 @@ public class BM : MonoBehaviour //Building Manager
                 BuildingTile tile = a.GetComponent<BuildingTile>();
                 Building build = t.buildings[i].GetComponentInChildren<Building>(true);
                 tile.img.sprite = build.icon == null ? build.sr.sprite : build.icon;
+                tile.cost = new int[] { Mathf.Max(0, build.oreRequired), 0, 0, 0 };   // ore price on the tile (slot 0)
                 tile.txt.text = t.buildings[i].name;
                 tile.UpdateCost();
                 tile.ChangeBackground();

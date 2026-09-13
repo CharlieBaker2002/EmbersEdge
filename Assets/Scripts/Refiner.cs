@@ -2,47 +2,47 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// The colony's chip refinery — the chip-eating counterpart of the Battery Station's grinder
-/// (IChipConsumer, so the bag-drone fleet gathers and delivers for it with no drone changes).
-/// Chips sucked into the mouth digest one at a time and come out as RESOURCES:
-///   • plain rock (element -1, small/medium only — large is slag) → JUICE (OreChip.JuiceValue)
-///     banked toward EMBER at one ember per juicePerEmber, credited to this building's own
-///     EmberConnector and routed down the cable network to whoever wants it
-///     (constructors → ember generators → stores), exactly like an expander collection;
-///   • ORE chip (element 0..3, strictly medium since the mines cut it that way) → a burst of
-///     ember (the orb economy is gone — every chip refines toward ember).
-/// Throughput is day-capped: every swallowed chip spends its JuiceValue from a dailyJuice
-/// budget, and intake shuts (AcceptsChip, so drones stop hauling too) once the day's budget
-/// can't cover a chip. A full connector also pauses PLAIN intake — ore never blocks on ember
-/// room.
+/// The colony's ore refinery — an ORE SPLITTER (IChipConsumer, so the bag-drone fleet gathers and
+/// delivers for it with no drone changes). It no longer makes ember: a chip sucked into the mouth
+/// digests for <see cref="refineSeconds"/> and comes back out as MORE, SMALLER chips —
+///   • medium chip → 2 small chips,
+///   • large chip  → 2 medium chips + 1 small chip
+/// (per <see cref="mediumYield"/> / <see cref="largeYield"/>). Every chip still counts as ONE ore
+/// wherever chips are counted (construction, the Hoover), so refining multiplies ore. Small chips
+/// are refused (nothing left to split) and every piece that comes out is stamped
+/// <see cref="OreChip.refined"/> — the refinery refuses refined chip, so its own output isn't
+/// sucked straight back in and a chip is split at most once; drones and other consumers treat
+/// refined chip like any other.
 /// </summary>
 public class Refiner : Building, IChipConsumer
 {
+    [System.Serializable]
+    public struct SplitYield
+    {
+        [Tooltip("Small chips out.")]  public int small;
+        [Tooltip("Medium chips out.")] public int medium;
+        [Tooltip("Large chips out.")]  public int large;
+        public SplitYield(int s, int m, int l) { small = s; medium = m; large = l; }
+        public int Count => Mathf.Max(0, small) + Mathf.Max(0, medium) + Mathf.Max(0, large);
+    }
+
     [Header("Refiner")]
     [Tooltip("Loose, unclaimed chips inside this radius are dragged into the mouth when it's idle.")]
     public float suctionRadius = 1.75f;
-    [Tooltip("Seconds to digest one chip (the absorb shrink plays inside this window).")]
+    [Tooltip("Seconds to split one chip (the absorb shrink plays inside this window).")]
     public float refineSeconds = 1.2f;
-    [Tooltip("Bag-space units of chip the refiner wants on hand — the fleet plans hauls against " +
+    [Tooltip("Bag-space units of chip the refinery wants on hand — the fleet plans hauls against " +
              "this, net of whatever already sits in the suction ring.")]
     public float appetiteSpace = 8f;
+    [Tooltip("What a MEDIUM chip splits into.")]
+    public SplitYield mediumYield = new SplitYield(2, 0, 0);
+    [Tooltip("What a LARGE chip splits into.")]
+    public SplitYield largeYield = new SplitYield(1, 2, 0);
+    [Tooltip("Seconds between pieces leaving the mouth after a split.")]
+    public float outputInterval = 0.08f;
 
-    [Tooltip("Total chip juice (OreChip.JuiceValue) the refiner can digest per day — plain and ore alike.")]
-    public float dailyJuice = 48f;
-    [Tooltip("Juice banked per ember: plain-rock juice accumulates and pays out one ember per this much.")]
-    public float juicePerEmber = 12f;
-
-    /// <summary>Juice spent from today's budget (resets each new day).</summary>
-    [HideInInspector] public float juiceUsedToday;
-    // plain-rock juice banked toward the next ember (carries across chips and days)
-    float juiceBank;
-
-
-    [Tooltip("Where chips ease in and shrink away. Falls back to the building centre.")]
+    [Tooltip("Where chips ease in and shrink away, and where the pieces come back out. Falls back to the building centre.")]
     [SerializeField] private Transform eatSpot;
-    /// <summary>This building's node in the ember cable network (taip Generator — a pure source,
-    /// cabled to the nearest store like an ember generator).</summary>
-    public EmberConnector connect;
 
     [HideInInspector] public int inboundChipSpace;
 
@@ -54,21 +54,18 @@ public class Refiner : Building, IChipConsumer
         all.Clear();
     }
 
-    // the chip on the digest plate (its size/element captured at swallow — the OreChip object
-    // is presentation-only once AbsorbInto runs and destroys itself)
+    // the chip on the plate (its size captured at swallow — the OreChip object is
+    // presentation-only once AbsorbInto runs and destroys itself)
     float refineT;
-    int digestSize, digestElement;
+    int digestSize;
     float suctionScanT;
-
-    System.Action newDay;
+    Coroutine outputCo;
 
     public override void Start()
     {
         base.Start();
         GS.OnNewEra += UpdateColours;
         UpdateColours(GS.era);
-        newDay = () => juiceUsedToday = 0f;
-        if (SpawnManager.instance != null) SpawnManager.instance.OnNewDay += newDay;
     }
 
     void UpdateColours(int era)
@@ -80,21 +77,18 @@ public class Refiner : Building, IChipConsumer
     {
         base.OnDestroy();
         GS.OnNewEra -= UpdateColours;
-        if (SpawnManager.instance != null && newDay != null) SpawnManager.instance.OnNewDay -= newDay;
     }
 
     protected override void BEnable()
     {
         if (!all.Contains(this)) all.Add(this);
         ChipConsumers.Register(this);
-        EnergyManager.i.CreateCableConnections();   // join the ember graph (source node)
     }
 
     protected override void BDisable()
     {
         all.Remove(this);
         ChipConsumers.Unregister(this);
-        if (EnergyManager.i != null) EnergyManager.i.CreateCableConnections();
     }
 
     // ------------------------------------------------------------------ chip intake (IChipConsumer)
@@ -102,18 +96,13 @@ public class Refiner : Building, IChipConsumer
     public bool ChipIntakeActive => builtYet && enabled;
     public Vector2 ChipDropPoint => transform.position;
     public float ChipIntakeRadius => suctionRadius;
-    /// <summary>Ore is the refiner's real prize (appeal 2, so the fleet reserves it for
-    /// hungry refiners); plain rock is ordinary ember feed it shares evenly with the grinder.</summary>
-    public int ChipAppeal(int sizeClass, int element) => element >= 0 ? 2 : 1;
+    /// <summary>Splitting is worth doing (appeal 2 — above the grinders' 1, below construction's 3).</summary>
+    public int ChipAppeal(int sizeClass, int element) => 2;
     public int InboundChipSpace { get => inboundChipSpace; set => inboundChipSpace = value; }
-
-    /// <summary>The intake gate: every chip must fit today's remaining juice budget; beyond that,
-    /// ore always fits (the mines cut it strictly medium) while plain rock must fit the
-    /// small/medium bore AND have ember room to land in — a full connector stops the fleet
-    /// hauling rock that would only pile up.</summary>
-    public bool AcceptsChip(int sizeClass, int element)
-        => OreChip.JuiceFor(sizeClass) <= dailyJuice - juiceUsedToday
-           && (element >= 0 || (sizeClass <= 1 && connect.ember < connect.maxEmber));
+    /// <summary>Only chip with something to split: medium and large.</summary>
+    public bool AcceptsChip(int sizeClass, int element) => sizeClass >= 1;
+    /// <summary>A chip is split at most once — output never loops back in.</summary>
+    public bool RefusesRefined => true;
 
     /// <summary>Appetite net of the stock already settled in the suction ring (dumped hauls the
     /// mouth hasn't got to yet) — in-flight chips are netted off by logistics itself.</summary>
@@ -133,13 +122,13 @@ public class Refiner : Building, IChipConsumer
     {
         if (Time.time - ringScanT < 0.25f) return ringStockCached;
         ringScanT = Time.time;
-        float stock = refineT > 0f ? (digestSize == 2 ? 4 : digestSize + 1) : 0f;
+        float stock = refineT > 0f ? OreChip.SpaceFor(digestSize) : 0f;
         Vector2 pos = Mouth().position;
         for (int k = 0; k < OreChip.all.Count; k++)
         {
             var chip = OreChip.all[k];
             if (chip == null || chip.Absorbing || chip.transform.InDungeon()) continue;
-            if (!AcceptsChip(chip.sizeClass, chip.element)) continue;
+            if (chip.refined || !AcceptsChip(chip.sizeClass, chip.element)) continue;
             if (((Vector2)chip.transform.position - pos).sqrMagnitude > suctionRadius * suctionRadius) continue;
             stock += chip.SpaceCost;
         }
@@ -149,7 +138,7 @@ public class Refiner : Building, IChipConsumer
 
     Transform Mouth() => eatSpot != null ? eatSpot : transform;
 
-    // ------------------------------------------------------------------ digest
+    // ------------------------------------------------------------------ split
 
     void Update()
     {
@@ -157,14 +146,14 @@ public class Refiner : Building, IChipConsumer
         if (refineT > 0f)
         {
             refineT -= Time.deltaTime;
-            if (refineT <= 0f) FinishRefine();
+            if (refineT <= 0f) FinishSplit();
             return;
         }
         TickSuction();
     }
 
-    /// <summary>One chip at a time: when the plate is free, the nearest edible, unclaimed, settled
-    /// chip in the ring eases into the mouth (OreChip.AbsorbInto) and starts the digest.</summary>
+    /// <summary>One chip at a time: when the plate is free, the nearest splittable, unclaimed,
+    /// settled chip in the ring eases into the mouth (OreChip.AbsorbInto) and starts the split.</summary>
     void TickSuction()
     {
         if ((suctionScanT -= Time.deltaTime) > 0f) return;
@@ -177,8 +166,8 @@ public class Refiner : Building, IChipConsumer
             var chip = OreChip.all[k];
             if (chip == null || chip.Absorbing || chip.transform.InDungeon()) continue;
             if (chip.claimedBy != null) continue;                  // a drone is flying for it
+            if (chip.refined) continue;                            // already split once
             if (chip.Age < 0.35f) continue;                        // let fresh drops pop in first
-            // same dibs gate as every intake (a formality here — nothing outbids the refiner)
             if (!ChipConsumers.MayGive(this, chip.sizeClass, chip.element)) continue;
             float d = ((Vector2)chip.transform.position - pos).sqrMagnitude;
             if (d > suctionRadius * suctionRadius || d >= bestSqr) continue;
@@ -187,27 +176,34 @@ public class Refiner : Building, IChipConsumer
         }
         if (best == null) return;
         digestSize = best.sizeClass;
-        digestElement = best.element;
-        juiceUsedToday += best.JuiceValue;   // budget spent at swallow, so the gate stays honest
         best.AbsorbInto(Mouth());
         refineT = refineSeconds;
     }
 
-    void FinishRefine()
+    void FinishSplit()
     {
+        var y = digestSize >= 2 ? largeYield : mediumYield;
+        if (y.Count <= 0) return;
+        if (outputCo != null) StopCoroutine(outputCo);
+        outputCo = StartCoroutine(OutputCo(y));
+    }
+
+    /// <summary>The pieces pop out of the mouth one by one, stamped refined.</summary>
+    System.Collections.IEnumerator OutputCo(SplitYield y)
+    {
+        var sizes = new List<int>(y.Count);
+        for (int k = 0; k < y.large; k++) sizes.Add(2);
+        for (int k = 0; k < y.medium; k++) sizes.Add(1);
+        for (int k = 0; k < y.small; k++) sizes.Add(0);
+        Vector3 mouth = Mouth().position;
+        foreach (int size in sizes)
         {
-            // every chip (rock or ore) → juice banked toward ember; each full juicePerEmber pays out one unit
-            // on our connector, routed to live demand at once (constructors → ember generators →
-            // stores), riding the cables like expander ember
-            juiceBank += OreChip.JuiceFor(digestSize);
-            while (juiceBank >= juicePerEmber)
-            {
-                if (connect.ember >= connect.maxEmber) break;   // network saturated — the bank waits
-                juiceBank -= juicePerEmber;
-                connect.ember++;
-                connect.onRefresh?.Invoke();
-                EnergyManager.i.RouteExtractedEmber(connect);
-            }
+            var chip = DroneManager.SpawnScrap(mouth + GS.RandCircle(0.1f, 0.3f), size, 0, mouth);
+            if (chip != null) chip.refined = true;
+            var fx = MineField.ChipFxPrefab();
+            if (fx != null) Instantiate(fx, mouth, Quaternion.Euler(0f, 0f, Random.Range(0f, 360f)), transform);
+            yield return new WaitForSeconds(outputInterval);
         }
+        outputCo = null;
     }
 }

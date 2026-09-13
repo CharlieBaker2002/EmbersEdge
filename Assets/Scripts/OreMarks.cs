@@ -81,8 +81,7 @@ public static class OreMarks
     static void Tint(Ore o, bool on)
     {
         if (o == null) return;
-        int t = o.element;
-        Tilemap map = t >= 0 && t < TilemapResource.m.Length ? TilemapResource.m[t] : null;
+        Tilemap map = TilemapResource.MapOf(o.tier);
         if (map == null) return;
         Vector3Int cell = map.WorldToCell(o.transform.position);
         map.SetTileFlags(cell, TileFlags.None);   // RuleTiles lock colour by default

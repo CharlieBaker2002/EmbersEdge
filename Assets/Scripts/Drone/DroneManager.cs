@@ -61,15 +61,36 @@ public class DroneManager : MonoBehaviour
     public float drillCostRegular = 0.05f;
     public float drillCostHard = 0.15f;
     public float drillCostVeryHard = 0.3f;
+    [Tooltip("Energy a drone spends per chip it picks up (moving chip is work: 0.01 => 100 chips per full charge).")]
+    public float chipMoveCost = 0.01f;
+    [Tooltip("Chip space a REGULAR (no-kit) drone can carry in its claws per trip — construction hauling only (2 = one medium chip).")]
+    public int bareChipSpace = 2;
 
     [Header("Ore chips")]
-    [Tooltip("Debris pieces per broken wall (random in range).")]
+    [Tooltip("LEGACY (plain rock no longer drops chip — only ore blocks do). Kept for the inspector's sake.")]
     public int chipsMinPerBreak = 1;
     public int chipsMaxPerBreak = 3;
+    [Tooltip("Ore INTENSITY → chip blend (index = tier: 0 low, 1 mid, 2 high). A broken dungeon ore block " +
+             "drops chipsPerBlock chips (1–5 across the tiers); a base ore unit drops one — each chip's size " +
+             "is rolled from the tier's small/medium/large weights (they needn't sum to 1).")]
+    public OreTierYield[] oreTiers =
+    {
+        new OreTierYield("Low",  1, 3, 0.90f, 0.10f, 0.00f),
+        new OreTierYield("Mid",  2, 4, 0.70f, 0.27f, 0.03f),
+        new OreTierYield("High", 3, 5, 0.50f, 0.38f, 0.12f),
+    };
+    [Tooltip("Largest chip size class BASE ore may release (0 small / 1 medium / 2 large). Large chip is the dungeon's prize: base tiles and the Cell roll their tier's blend but a roll above this drops to it.")]
+    [Range(0, 2)] public int baseOreMaxChipSize = 1;
+    public static int BaseOreMaxChipSize => i != null ? i.baseOreMaxChipSize : 1;
     [Tooltip("Hard cap on live chips; oldest are culled first.")]
     public int maxChips = 300;
-    [Tooltip("HDR multiplier on the Lit ore materials' `thecolor` for ORE chips — debris from an ore wall glows hotter than the wall overlay itself.")]
-    public float oreChipGlow = 2.5f;
+    [Tooltip("HDR multiplier on the era ore material's `thecolor` for chips, BY SIZE CLASS (small / medium / large) — a bigger chip glows hotter.")]
+    public float[] oreChipGlowBySize = { 1.4f, 2.6f, 4.8f };
+    float ChipGlow(int sizeClass)
+    {
+        if (oreChipGlowBySize == null || oreChipGlowBySize.Length == 0) return 2.5f;
+        return oreChipGlowBySize[Mathf.Clamp(sizeClass, 0, oreChipGlowBySize.Length - 1)];
+    }
 
     public static float Haste => i != null ? i.haste : 1.5f;
     public static float DroneMoveForce => i != null ? i.droneMoveForce : 5f;
@@ -82,6 +103,8 @@ public class DroneManager : MonoBehaviour
     public static float BagRallyStandoff => i != null ? i.bagRallyStandoff : 4f;
     public static Vector2 ScrapPoint => i != null ? i.scrapPoint : new Vector2(0f, -6f);
     public static float RepairCostPerHp => i != null ? i.repairCostPerHp : 0.025f;
+    public static float ChipMoveCost => i != null ? i.chipMoveCost : 0.01f;
+    public static int BareChipSpace => i != null ? Mathf.Max(1, i.bareChipSpace) : 2;
     public static float IdleWanderRadius => i != null ? i.idleWanderRadius : 8f;
     public static float IdleSpeedScale => i != null ? i.idleSpeedScale : 0.55f;
     public static float IdleCooldown => i != null ? i.idleCooldown : 6f;
@@ -330,14 +353,15 @@ public class DroneManager : MonoBehaviour
 
     static Ore OreAt(Vector2 w)
     {
-        for (int t = 0; t < 4 && t < TilemapResource.m.Length; t++)
+        var maps = TilemapResource.Maps;
+        if (maps == null) return null;
+        for (int t = 0; t < maps.Length; t++)
         {
-            var map = TilemapResource.m[t];
+            var map = maps[t];
             if (map == null) continue;
             var cell = map.WorldToCell(w);
             var g = map.GetInstantiatedObject(cell);
-            if (g == null) continue;
-            var o = g.GetComponent<Ore>();
+            var o = g != null ? g.GetComponent<Ore>() : null;
             if (o == null || o.Depleted) continue;
             // a tile partially obscured by the boundary line isn't selectable — every corner must
             // sit inside the map with clearance for the line's width
@@ -439,35 +463,58 @@ public class DroneManager : MonoBehaviour
 
     Sprite[] chipSprites;
     GameObject chipPrefab;
-    readonly Material[] chipOreMats = new Material[4];   // glow-boosted runtime copies, built lazily
-    static readonly string[] OreMatNames = { "LitWhite", "LitGreen", "LitBlue", "LitRed" };
+    readonly Material[] chipOreMats = new Material[3];   // glow-boosted runtime copies per size class, built lazily
+    int chipOreMatEra = -1;
     static readonly int ThecolorID = Shader.PropertyToID("thecolor");
 
+    /// <summary>The blend table for an ore intensity tier (clamped; safe with an empty table).</summary>
+    public static OreTierYield TierYield(int tier)
+    {
+        var t = i != null ? i.oreTiers : null;
+        if (t == null || t.Length == 0) return OreTierYield.Default(tier);
+        return t[Mathf.Clamp(tier, 0, t.Length - 1)] ?? OreTierYield.Default(tier);
+    }
+
+    /// <summary>Roll one chip's size class (0 small / 1 medium / 2 large) from a tier's blend.</summary>
+    public static int RollChipSize(int tier) => TierYield(tier).RollSize();
+
     /// <summary>Called from MineField.BreakCell for EVERY broken wall (player or drone). Null-safe
-    /// static: quietly no-ops when no manager exists.</summary>
-    public static void SpawnChips(Vector3 pos, CellType tier, int oreElement)
+    /// static: quietly no-ops when no manager exists. Chip comes ONLY out of ORE blocks — plain
+    /// rock breaks to nothing — and how MUCH comes out is the block's INTENSITY tier
+    /// (<paramref name="oreTier"/>: -1 none, 0 low, 1 mid, 2 high): a low block sheds a chip or
+    /// two, mostly small; a high one two or three, mostly medium with the odd large.</summary>
+    public static void SpawnChips(Vector3 pos, int oreTier)
     {
         if (i == null) return;
-        // Plain rock sizes with wall hardness — each scattered piece rolls within the tier's band
-        // (regular: small; hard: small/medium; very hard: medium/large); ORE is a currency —
-        // strictly ONE medium chip per broken ore wall, so a pocket's ore count is exact and no
-        // consumer ever has to size-gate coloured chip.
-        int n = oreElement >= 0 ? 1 : Random.Range(i.chipsMinPerBreak, i.chipsMaxPerBreak + 1);
+        if (oreTier < 0) return;   // plain rock: no debris
+        var yield = TierYield(oreTier);
+        int n = Random.Range(yield.chipsPerBlock.x, yield.chipsPerBlock.y + 1);
         var mf = MineField.i;
         for (int k = 0; k < n; k++)
         {
-            int size = oreElement >= 0 ? 1
-                : tier == CellType.VeryHard ? Random.Range(1, 3)
-                : tier == CellType.Hard ? Random.Range(0, 2)
-                : 0;
+            int size = yield.RollSize();
             float pad = 0.06f + 0.035f * size;   // sprite half-extent (matches OreChip.WallPad)
             // stay inside the cavity: a scatter offset whose padded footprint touches rock
             // snaps back to the freshly-broken cell's centre (open by definition)
             Vector3 p = pos + GS.RandCircle(0.05f, 0.4f);
             if (mf != null && !FitsInCavity(mf, p, pad)) p = pos;
-            i.SpawnChip(p, size, oreElement, pos);
+            i.SpawnChip(p, size, 0, pos);
         }
     }
+
+    /// <summary>Base-side ore yield: <paramref name="units"/> chips beside <paramref name="pos"/>,
+    /// each sized from the tile's intensity blend (a drill drone eating a marked tile, the Cell
+    /// harvesting its neighbours or manifesting its own ore) — capped at
+    /// <see cref="baseOreMaxChipSize"/>: the largest chip only comes out of the mines.</summary>
+    public static void SpawnOreUnits(Vector3 pos, int tier, int units)
+    {
+        if (i == null) Ensure();
+        for (int k = 0; k < units; k++)
+            i.SpawnChip(pos + GS.RandCircle(0.1f, 0.5f), RollBaseChipSize(tier), 0, pos);
+    }
+
+    /// <summary>A base-ore roll: the tier's blend, clamped to <see cref="baseOreMaxChipSize"/>.</summary>
+    public static int RollBaseChipSize(int tier) => Mathf.Min(RollChipSize(tier), BaseOreMaxChipSize);
 
     /// <summary>True when a chip-sized square (half-extent <paramref name="pad"/>) around
     /// <paramref name="p"/> touches no solid cell — i.e. the whole SPRITE sits in open cavity.</summary>
@@ -479,7 +526,7 @@ public class DroneManager : MonoBehaviour
             && !mf.IsSolidWorld(new Vector2(p.x + pad, p.y + pad));
     }
 
-    void SpawnChip(Vector3 pos, int sizeClass, int element, Vector2 burstFrom)
+    OreChip SpawnChip(Vector3 pos, int sizeClass, int element, Vector2 burstFrom)
     {
         // never cache a failed load — an empty result (asset pipeline mid-refresh) would
         // otherwise poison the whole session
@@ -487,7 +534,7 @@ public class DroneManager : MonoBehaviour
             chipSprites = LoadStripNumeric("OreChips");
         if (chipPrefab == null)
             chipPrefab = Resources.Load<GameObject>("OreChip");
-        if (chipSprites.Length < 12) return;
+        if (chipSprites.Length < 12) return null;
 
         // cap: cull the oldest chip
         if (OreChip.all.Count >= maxChips && OreChip.all.Count > 0)
@@ -512,29 +559,37 @@ public class DroneManager : MonoBehaviour
             chip = go.AddComponent<OreChip>();
             chip.sr = go.AddComponent<SpriteRenderer>();
         }
-        if (chip == null) return;
+        if (chip == null) return null;
         chip.sizeClass = sizeClass;
         chip.element = element;
         if (chip.sr == null) chip.sr = chip.GetComponent<SpriteRenderer>();
         if (chip.sr != null)
         {
             chip.sr.sprite = chipSprites[sizeClass * 4 + Random.Range(0, 4)];
-            if (element >= 0 && element < 4)
+            if (element >= 0)
             {
-                // ore debris glows HOTTER than the wall overlay it fell out of: a runtime copy
-                // of the element's Lit mat with its HDR `thecolor` boosted (the shared asset
-                // keeps the calm wall-overlay glow)
-                if (chipOreMats[element] == null)
+                // ore debris glows HOTTER than the wall it fell out of, and the bigger the chip the
+                // hotter: a runtime copy of the ERA's ore material ("Purple 1" — the same one the
+                // dungeon overlay and Ore_Base wear) per size class with its HDR `thecolor` scaled by
+                // oreChipGlowBySize; rebuilt when the era turns.
+                if (chipOreMatEra != GS.era)
                 {
-                    var src = Resources.Load<Material>("OreMats/" + OreMatNames[element]);
+                    for (int m = 0; m < chipOreMats.Length; m++) { if (chipOreMats[m] != null) Destroy(chipOreMats[m]); chipOreMats[m] = null; }
+                    chipOreMatEra = GS.era;
+                }
+                int slot = Mathf.Clamp(sizeClass, 0, chipOreMats.Length - 1);
+                if (chipOreMats[slot] == null)
+                {
+                    var src = OreSourceMaterial();
                     if (src != null)
                     {
                         var boosted = new Material(src);
-                        boosted.SetColor(ThecolorID, src.GetColor(ThecolorID) * oreChipGlow);
-                        chipOreMats[element] = boosted;
+                        if (boosted.HasProperty(ThecolorID))
+                            boosted.SetColor(ThecolorID, src.GetColor(ThecolorID) * ChipGlow(slot));
+                        chipOreMats[slot] = boosted;
                     }
                 }
-                if (chipOreMats[element] != null) chip.sr.material = chipOreMats[element];
+                if (chipOreMats[slot] != null) chip.sr.material = chipOreMats[slot];
             }
             else if (SpawnManager.instance != null)
             {
@@ -544,15 +599,38 @@ public class DroneManager : MonoBehaviour
             }
         }
         chip.Tumble(burstFrom);
+        return chip;
+    }
+
+    /// <summary>The ore material for an INTENSITY tier, in the era's colour (GS.MatByEra): tier 0
+    /// = the plain era material ("Purple"), tier 1 = bright ("Purple 1"), tier 2 = superbright
+    /// ("SpecialPurple"). The base's Ore_Base/Low|Mid|High tilemaps wear these; the dungeon
+    /// overlay and the chips use tier 1 (intensity shows as vein count there). Null before
+    /// SpawnManager exists (callers keep their authored material then).</summary>
+    public static Material OreSourceMaterial(int tier = 1)
+    {
+        if (SpawnManager.instance == null) return null;
+        return tier <= 0 ? GS.MatByEra(GS.era)
+             : tier == 1 ? GS.MatByEra(GS.era, bright: true)
+             : GS.MatByEra(GS.era, superBright: true);
     }
 
     /// <summary>Dumped scrap at the base (bag-drone haul) — same chip visuals, base-side, so it
     /// survives the return-home despawn.</summary>
-    public static void SpawnScrap(Vector3 pos, int sizeClass, int element)
+    public static OreChip SpawnScrap(Vector3 pos, int sizeClass, int element)
     {
         if (i == null) Ensure();
         // burstFrom == pos → degenerate direction, so each piece tumbles a random way (dump puff)
-        i.SpawnChip(pos, sizeClass, element, pos);
+        return i.SpawnChip(pos, sizeClass, element, pos);
+    }
+
+    /// <summary>Scrap with a DIRECTED burst (the player's Hoover spraying its load): the chip
+    /// tumbles away from <paramref name="burstFrom"/>. Returns the chip so the caller can put
+    /// its own speed on it; null when no chip could be made.</summary>
+    public static OreChip SpawnScrap(Vector3 pos, int sizeClass, int element, Vector2 burstFrom)
+    {
+        if (i == null) Ensure();
+        return i.SpawnChip(pos, sizeClass, element, burstFrom);
     }
 
     static void DespawnAllChips()
@@ -672,5 +750,38 @@ public class DroneManager : MonoBehaviour
     {
         foreach (Telepad t in TelepadNetwork.DungeonPadsSnapshot())
             if (t != null) Destroy(t.gameObject);
+    }
+}
+
+/// <summary>One ore intensity tier's chip blend (DroneManager.oreTiers). Weights needn't sum to 1.</summary>
+[System.Serializable]
+public class OreTierYield
+{
+    public string name = "Tier";
+    [Tooltip("Chips a broken DUNGEON ore block of this tier sheds (x..y inclusive). Base ore drops one per unit.")]
+    public Vector2Int chipsPerBlock = new Vector2Int(1, 2);
+    [Tooltip("Relative chance of a SMALL chip.")]  public float small = 0.75f;
+    [Tooltip("Relative chance of a MEDIUM chip.")] public float medium = 0.25f;
+    [Tooltip("Relative chance of a LARGE chip.")]  public float large = 0f;
+
+    public OreTierYield() { }
+    public OreTierYield(string n, int minChips, int maxChips, float s, float m, float l)
+    { name = n; chipsPerBlock = new Vector2Int(minChips, maxChips); small = s; medium = m; large = l; }
+
+    public static OreTierYield Default(int tier)
+        => tier <= 0 ? new OreTierYield("Low", 1, 3, 0.90f, 0.10f, 0f)
+         : tier == 1 ? new OreTierYield("Mid", 2, 4, 0.70f, 0.27f, 0.03f)
+         : new OreTierYield("High", 3, 5, 0.50f, 0.38f, 0.12f);
+
+    /// <summary>Weighted roll → size class 0/1/2.</summary>
+    public int RollSize()
+    {
+        float s = Mathf.Max(0f, small), m = Mathf.Max(0f, medium), l = Mathf.Max(0f, large);
+        float total = s + m + l;
+        if (total <= 0f) return 1;
+        float r = Random.value * total;
+        if (r < s) return 0;
+        if (r < s + m) return 1;
+        return 2;
     }
 }

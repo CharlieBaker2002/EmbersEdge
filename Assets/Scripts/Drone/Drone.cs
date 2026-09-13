@@ -73,6 +73,7 @@ public class Drone : AllyAI, IOnDeath
         public int space;
         public int sizeClass;   // chips only
         public int element;     // chips (-1 plain, else ore 0..3)
+        public bool refined;    // chips: came out of a Refiner split (the Refiner won't take it back)
         public GameObject payload;
     }
     readonly System.Collections.Generic.List<CargoEntry> cargo = new System.Collections.Generic.List<CargoEntry>();
@@ -1213,12 +1214,18 @@ public class Drone : AllyAI, IOnDeath
 
     // ------------------------------------------------------------------ collecting (bag drones)
 
-    int SackMaxSpace => sack != null ? sack.maxSpace : DroneManager.BagCapacity;
+    // Physical room: the sack, or — for a REGULAR drone with no kit — a claw-load
+    // (DroneManager.bareChipSpace) it may carry to a construction site only.
+    int SackMaxSpace => sack != null ? sack.maxSpace
+        : equipment == DroneEquipment.None ? DroneManager.BareChipSpace : DroneManager.BagCapacity;
     int SpaceLeft => SackMaxSpace - cargoSpaceUsed;
+    // The bag tariff, for everyone: a bare drone pays per space unit exactly what a bag does
+    // (not 1/claw-load, which would make one chip cost half a charge).
+    int TariffSpace => sack != null ? sack.maxSpace : DroneManager.BagCapacity;
     // One full charge buys EXACTLY one full bag: every space unit swallowed costs 1/maxSpace
     // energy, so capacity is whichever runs out first — physical room or remaining charge.
-    float CollectCostPerSpace => 1f / SackMaxSpace;
-    int EffectiveSpaceLeft => Mathf.Min(SpaceLeft, Mathf.FloorToInt(energy * SackMaxSpace + 1e-3f));
+    float CollectCostPerSpace => 1f / TariffSpace;
+    int EffectiveSpaceLeft => Mathf.Min(SpaceLeft, Mathf.FloorToInt(energy * TariffSpace + 1e-3f));
 
     // ---- the daily haul quota ----
     // Every bag gets ONE bag's worth of loot pickup per day, wherever it's swallowed: a dungeon
@@ -1229,7 +1236,7 @@ public class Drone : AllyAI, IOnDeath
     // collects) — base pickups also CHECK it.
     int hauledDay = -1;
     int hauledSpaceToday;
-    public bool HasDailyHaulQuota => hauledDay != SpawnManager.day || hauledSpaceToday < SackMaxSpace;
+    public bool HasDailyHaulQuota => hauledDay != SpawnManager.day || hauledSpaceToday < TariffSpace;
 
     void TickCollecting()
     {
@@ -1425,9 +1432,10 @@ public class Drone : AllyAI, IOnDeath
     {
         if (chipTarget != null)
         {
-            AddCargo(new CargoEntry { kind = 0, space = chipTarget.SpaceCost, sizeClass = chipTarget.sizeClass, element = chipTarget.element });
+            AddCargo(new CargoEntry { kind = 0, space = chipTarget.SpaceCost, sizeClass = chipTarget.sizeClass, element = chipTarget.element, refined = chipTarget.refined });
             chipTarget.AbsorbInto(transform);   // visible swallow: ease-out shrink into the front
             chipTarget = null;
+            energy = Mathf.Max(0f, energy - DroneManager.ChipMoveCost);   // moving chip is work
         }
         else if (equipmentTarget != null)
         {
@@ -1510,7 +1518,8 @@ public class Drone : AllyAI, IOnDeath
         {
             if (e.kind == 0)
             {
-                DroneManager.SpawnScrap((Vector3)p + GS.RandCircle(0.1f, 0.9f), e.sizeClass, e.element);
+                var dumped = DroneManager.SpawnScrap((Vector3)p + GS.RandCircle(0.1f, 0.9f), e.sizeClass, e.element);
+                if (dumped != null) dumped.refined = e.refined;
             }
             else if (e.payload != null)
             {
@@ -1689,13 +1698,17 @@ public class Drone : AllyAI, IOnDeath
             }
         }
 
-        // chips are BAG work only — regular drones have nothing to carry them in — and a chip
-        // sweep spends the daily haul quota like any other pickup. EVERY chip-eating building
-        // posts here through ChipConsumers (grinders today; walls/ammo/refiner tomorrow), and
-        // the search already prefers the largest chip class the customer takes.
+        // Chip runs: BAGS serve every chip-eater (grinders, refiner, walls, construction) and
+        // spend the daily haul quota like any other pickup; REGULAR drones have no bag, but
+        // they carry a claw-load (DroneManager.bareChipSpace) to CONSTRUCTION SITES only —
+        // ghost buildings are everyone's job, quota-free. EVERY chip-eating building posts
+        // through ChipConsumers, and the search prefers the largest chip class the customer takes.
         IChipConsumer eater = null;
-        OreChip chip = equipment == DroneEquipment.Bag && HasDailyHaulQuota
-            ? ChipConsumers.FindChipJob(this, EffectiveSpaceLeft, out eater) : null;
+        OreChip chip = null;
+        if (equipment == DroneEquipment.Bag && HasDailyHaulQuota)
+            chip = ChipConsumers.FindChipJob(this, EffectiveSpaceLeft, out eater);
+        else if (equipment == DroneEquipment.None)
+            chip = ChipConsumers.FindChipJob(this, EffectiveSpaceLeft, out eater, constructionOnly: true);
         if (chip != null)
         {
             chip.claimedBy = this;
@@ -1934,8 +1947,8 @@ public class Drone : AllyAI, IOnDeath
                     }
                     // keep gathering while the customer still wants more than the fleet has
                     // inbound — and this drone still has quota to spend on it
-                    bool wantMore = EffectiveSpaceLeft > 0 && HasDailyHaulQuota
-                        && ChipConsumers.NetDemandSpace(c) > 0f;
+                    bool wantMore = EffectiveSpaceLeft > 0 && (equipment == DroneEquipment.None || HasDailyHaulQuota)
+                        && ChipConsumers.NetDemandSpace(c) > 0f;   // bare drones: construction is quota-free
                     if (wantMore)
                     {
                         var next = ChipConsumers.FindChipFor(c, this, EffectiveSpaceLeft);
@@ -1959,7 +1972,7 @@ public class Drone : AllyAI, IOnDeath
                 FaceDir(cpos - (Vector2)transform.position);
                 // swallowed on the normal bag tariff; its inbound share was reserved at the CLAIM
                 // (the fair-share ledger still ticks at the HANDOVER, in DumpChipsFor)
-                AddCargo(new CargoEntry { kind = 0, space = chip.SpaceCost, sizeClass = chip.sizeClass, element = chip.element });
+                AddCargo(new CargoEntry { kind = 0, space = chip.SpaceCost, sizeClass = chip.sizeClass, element = chip.element, refined = chip.refined });
                 pendingChipSpace = 0;   // pending → carried; the earmark totals don't change
                 chip.AbsorbInto(transform);
                 consumerChipTarget = null;
@@ -2294,7 +2307,7 @@ public class Drone : AllyAI, IOnDeath
     bool CargoHasChipFor(IChipConsumer c)
     {
         for (int k = 0; k < cargo.Count; k++)
-            if (cargo[k].kind == 0 && ChipConsumers.MayGive(c, cargo[k].sizeClass, cargo[k].element)) return true;
+            if (cargo[k].kind == 0 && !(cargo[k].refined && c.RefusesRefined) && ChipConsumers.MayGive(c, cargo[k].sizeClass, cargo[k].element)) return true;
         return false;
     }
 
@@ -2313,6 +2326,7 @@ public class Drone : AllyAI, IOnDeath
             for (int k = cargo.Count - 1; k >= 0; k--)
             {
                 if (cargo[k].kind != 0) continue;
+                if (cargo[k].refined && c.RefusesRefined) continue;
                 if (!ChipConsumers.MayGive(c, cargo[k].sizeClass, cargo[k].element)) continue;
                 int a = c.ChipAppeal(cargo[k].sizeClass, cargo[k].element);
                 if (a < pickAppeal || (a == pickAppeal && cargo[k].sizeClass <= pickSize)) continue;
@@ -2321,8 +2335,9 @@ public class Drone : AllyAI, IOnDeath
             if (pick < 0) break;
             maxSpace -= cargo[pick].space;
             given += cargo[pick].space;
-            DroneManager.SpawnScrap((Vector3)c.ChipDropPoint + GS.RandCircle(0.15f, 0.45f),
+            var dropped = DroneManager.SpawnScrap((Vector3)c.ChipDropPoint + GS.RandCircle(0.15f, 0.45f),
                 cargo[pick].sizeClass, cargo[pick].element);
+            if (dropped != null) dropped.refined = cargo[pick].refined;
             cargoSpaceUsed -= cargo[pick].space;
             cargo.RemoveAt(pick);
         }
@@ -2925,8 +2940,7 @@ public class Drone : AllyAI, IOnDeath
         if (give > 0)
         {
             energy = Mathf.Max(0f, energy - give * DroneManager.BaseOreCostPerUnit);
-            for (int k = 0; k < give; k++)
-                DroneManager.SpawnScrap((Vector3)p + GS.RandCircle(0.1f, 0.5f), 1, Mathf.Clamp(oreTarget.element, 0, 3));
+            DroneManager.SpawnOreUnits(p, oreTarget.tier, give);   // sized by the tile's intensity blend
         }
     }
 

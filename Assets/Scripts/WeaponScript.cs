@@ -73,9 +73,9 @@ public class WeaponScript : Part
         cd.offset = new Vector2(0f, sr.sprite.rect.height * 0.5f * 0.015625f);
         mecha.weapons.Add(this);
         enabled = true;
-        if (level >= 1 && !leveled)
+        if (level >= 1 && !leveled && TryGetComponent(out WeaponLeveler leveler))   // leveler-less weapons (Hoover) skip
         {
-            GetComponent<WeaponLeveler>().LevelUp(level - 1);
+            leveler.LevelUp(level - 1);
             leveled = true;
         }
         CharacterScript.CS.weapons.Add(this);
@@ -84,13 +84,13 @@ public class WeaponScript : Part
         shootHeight = sr.sprite.rect.height * 0.015625f;
     }
     
-    private void Awake()
+    protected virtual void Awake()
     {
         ammoInClip = ammoPerClip;
         totalAmmo = maximumAmmo - ammoPerClip;
     }
     
-    private void Start()
+    protected virtual void Start()
     {
         for (int i = 0; i < 3; i++)
         {
@@ -110,7 +110,7 @@ public class WeaponScript : Part
         OnEnable();
     }
     
-    void OnEnable()
+    protected virtual void OnEnable()
     {
         //LeanTween.scale(gameObject,Vector 3.one,0.5f).setEaseOutBack();
         if (cd != null)
@@ -153,7 +153,7 @@ public class WeaponScript : Part
         
     }
 
-    void OnDisable()
+    protected virtual void OnDisable()
     {
         if (cd != null)
         {
@@ -228,7 +228,7 @@ public class WeaponScript : Part
         enabled = false;
     }
 
-    void Update()
+    protected virtual void Update()
     {
         // stim speeds the player's gear: reload + attack recovery tick at the cooldown rate
         float cdr = CharacterScript.CS != null ? CharacterScript.CS.cdRate : 1f;
@@ -293,7 +293,7 @@ public class WeaponScript : Part
         }
     }
     
-    public void Reload()
+    public virtual void Reload()
     {
         if(reloadTimer <= 0f && totalAmmo > 0 && ammoInClip < ammoPerClip)
         {
@@ -514,7 +514,10 @@ public class WeaponScript : Part
     
     public override bool CanAddThisPart()
     {
-        return CharacterScript.CS.weapons.Count < 1 + MechaSuit.level;
+        // the Hoover is a tool, not a gun: it never spends a weapon slot
+        int guns = 0;
+        foreach (var w in CharacterScript.CS.weapons) if (w != null && !(w is Hoover)) guns++;
+        return guns < 1 + MechaSuit.level;
     }
 
 }

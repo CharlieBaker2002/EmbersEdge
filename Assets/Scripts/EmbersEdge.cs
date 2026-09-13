@@ -602,7 +602,9 @@ public class EmbersEdge : MonoBehaviour
         }
         
         var g = Instantiate(enemy, pos, Quaternion.identity, GS.FindParent(GS.Parent.enemies));
-        SpawnBoltFX.Chain(this, transform.position, pos);   // the strike that materialises it
+        // the strike that materialises it: sized to this enemy, and IT reveals the enemy when the
+        // bolt lands (until then g is live but unseen)
+        SpawnBoltFX.Chain(this, transform.position, pos, g);
         SpawnManager.instance.alives.Add(g);
         MapManager.i.OnTriggerExit2D(g.GetComponentInChildren<Collider2D>());
         if (SoulGenerator.gs.Count > 0)

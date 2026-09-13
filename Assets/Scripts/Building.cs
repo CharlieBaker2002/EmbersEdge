@@ -48,6 +48,11 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     private bool box = true;
     [Header("Times & Costs")]
     public int builtBlasts = 2;
+    [Header("Construction (ore)")]
+    [Tooltip("Chips this building must swallow before it comes alive (0 = instant). Any chip counts as one ore. Stamped per prefab by Tools/Ore Build Kit; dungeon placements are always instant.")]
+    public int oreRequired = 3;
+    [Tooltip("Suction reach around the ghost BEYOND its footprint half-extent — chips sprayed or dumped inside are pulled in and printed.")]
+    public float oreIntakeRadius = 1.25f;
     [SerializeField] public List<EEIcon> icons = new();
     private bool subscribed = false;
     [HideInInspector]
@@ -626,9 +631,28 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         Destroy(hasExtraParent && transform.parent != null ? transform.parent.gameObject : gameObject);
     }
 
+    /// <summary>Base-side placements are built from ORE: the ghost swallows <see cref="oreRequired"/>
+    /// chips (drone-hauled or player-sprayed) while its art prints in, then completes. Dungeon
+    /// placements and zero-cost buildings stay instant.</summary>
+    public bool UsesOreConstruction => oreRequired > 0 && !builtYet && PathZone.AtBase(transform.position);
+
+    /// <summary>The "n/N" readout over a ghost while ore is arriving (the same numText the
+    /// ember-icon phase uses; a ghost never runs that phase).</summary>
+    public void ShowOreProgress(int delivered, int required, bool show = true)
+    {
+        if (numText == null) return;
+        numText.text = $"{delivered}/{required}";
+        numText.gameObject.SetActive(show && required > 0);
+    }
+
     void BuildFirst()
     {
         SwitchMonos(false,true);
+        if (UsesOreConstruction)
+        {
+            GhostIntake.Begin(this);   // ore-built: the intake completes us when the last chip lands
+            return;
+        }
         if (builtBlasts > 0)
         {
             LoadWithEEs(builtBlasts);

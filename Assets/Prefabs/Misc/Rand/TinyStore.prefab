@@ -5295,6 +5295,8 @@ MonoBehaviour:
   sharpness: 0
   hitRate: 1
   hardness: 0
+  ramBaseSpeed: 1.5
+  ramSelfRecoil: 0.5
   dragCoef: 0.98
   PS: {fileID: 0}
   onCollides: []
@@ -5308,6 +5310,7 @@ MonoBehaviour:
   velCap: 1
   rooted: 1
   wall: 0
+  building: 0
   ignoreWalls: 0
   convertProjectiles: 0
   absorbProjectiles: 0
@@ -5333,11 +5336,6 @@ MonoBehaviour:
   shields: []
   maxHp: 10
   hp: 10
-  orbs:
-  - 0
-  - 0
-  - 0
-  - 0
   blood: {fileID: 0}
   shieldBlood: {fileID: 0}
   bloodHold: {fileID: 0}
@@ -5345,7 +5343,6 @@ MonoBehaviour:
   hasDied: 0
   invulnerable: 0
   animateBeforeDie: 0
-  orbSpawnPlace: {fileID: 0}
   dmgsrs: []
   thicknesses: 01000000
   overrideCol: {r: 0, g: 0, b: 0, a: 0}
@@ -10804,9 +10801,15 @@ MonoBehaviour:
   hasExtraParent: 0
   icon: {fileID: 0}
   size: {x: 0.5, y: 0.5}
+  isWall: 0
+  multiDrag: 0
+  dungeonBuildable: 0
+  rotatable: 1
+  noBody: 0
   physic: {fileID: 1387170092748612890}
   builtBlasts: 2
-  rebuildCost: 00000000000000000000000000000000
+  oreRequired: 1
+  oreIntakeRadius: 1.25
   icons: []
   prevN: 0
   numIconsTrue: 0
@@ -10814,6 +10817,9 @@ MonoBehaviour:
   builtYet: 0
   anchorCell: {x: 0, y: 0}
   gridSize: {x: 1, y: 1}
+  energyIconOffset: {x: 0, y: 0, z: 0}
+  energyIconScale: 1
+  demolisher: {fileID: 0}
   r: {fileID: 7140496035225639106}
   ps: {fileID: 6627284547396786547}
   particle: {fileID: 1825924090718363134, guid: 0b3133a6a536246139fab79b6a6bd2fa, type: 3}

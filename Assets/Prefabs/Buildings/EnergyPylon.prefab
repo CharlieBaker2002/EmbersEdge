@@ -10,9 +10,10 @@ GameObject:
   m_Component:
   - component: {fileID: 4256667435858726095}
   - component: {fileID: 396053266464167756}
-  - component: {fileID: 4228794242279667164}
+  - component: {fileID: 3961939903466927042}
+  - component: {fileID: 9110878769623498410}
   m_Layer: 0
-  m_Name: EnergyHub
+  m_Name: EnergyPylon
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -27,11 +28,10 @@ Transform:
   m_GameObject: {fileID: 323440563046157391}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.16, y: -2.73, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1780123806940025293}
+  m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &396053266464167756
@@ -83,7 +83,7 @@ SpriteRenderer:
   m_SortingLayer: 2
   m_SortingOrder: 10
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 9b9c2f5fe8f744b7981c1c09d5d66cd2, type: 3}
+  m_Sprite: {fileID: 21300000, guid: e55e1aa750a284332977807f847f9860, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -93,7 +93,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!114 &4228794242279667164
+--- !u!114 &3961939903466927042
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -102,9 +102,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 323440563046157391}
   m_Enabled: 0
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1067df3e870fa4d02baa49707a92a906, type: 3}
+  m_Script: {fileID: 11500000, guid: 0c7934b30d5e848fc841a95b61460dd3, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnergyPad
+  m_EditorClassIdentifier: Assembly-CSharp::EnergyPylon
   buildingBehaviours: []
   sr: {fileID: 396053266464167756}
   groundEdit: {fileID: 0}
@@ -120,7 +120,9 @@ MonoBehaviour:
   rotatable: 1
   noBody: 0
   physic: {fileID: 0}
-  builtBlasts: 1
+  builtBlasts: 2
+  oreRequired: 10
+  oreIntakeRadius: 1.25
   icons: []
   prevN: 0
   numIconsTrue: 0
@@ -131,40 +133,34 @@ MonoBehaviour:
   energyIconOffset: {x: 0, y: 0, z: 0}
   energyIconScale: 1
   demolisher: {fileID: 0}
-  batteryPrefab: {fileID: 6756930137817037866, guid: a0931eeec8e434f718cf1aac8a9f5725, type: 3}
-  slotTransforms:
-  - {fileID: 1780123806940025293}
-  inboundBatteries: 0
-  pinnedMin: 0
-  hub: 1
---- !u!1 &6440757191080431217
-GameObject:
+  longPylonSprite: {fileID: 21300000, guid: aeb0f5c88c4ab4a78bc85712aa6db9d2, type: 3}
+  multiPylonSprite: {fileID: 21300000, guid: 04eb57c69b2724d1e9b9af5549ea16a6, type: 3}
+  tileSprites:
+  - {fileID: 21300000, guid: aeb0f5c88c4ab4a78bc85712aa6db9d2, type: 3}
+  - {fileID: 21300000, guid: 04eb57c69b2724d1e9b9af5549ea16a6, type: 3}
+  tier2Cost: 1e000000000000000100000000000000
+  tier3Cost: 3c000000000000000300000000000000
+  perCableCap: 4
+  surgeMaxOwn: 1
+  surgeRefillRate: 1
+  cableClickRadius: 0.15
+  multi: 0
+  longRange: 0
+--- !u!114 &9110878769623498410
+MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1780123806940025293}
-  m_Layer: 0
-  m_Name: A
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1780123806940025293
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6440757191080431217}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.0675, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 4256667435858726095}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_GameObject: {fileID: 323440563046157391}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 174b40221b40240ec9042eac6ffa7a58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Connectable
+  cablePrefab: {fileID: 6500000000000000003, guid: fce14332a1a1448ea5748718856c2379, type: 3}
+  dragClickThreshold: 0.2
+  snapDuration: 0.45
+  snapVertices: 12
+  snapWiggleAmp: 0.22
+  cableTextureTiling: 1

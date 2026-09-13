@@ -127,14 +127,15 @@ public class MineField : MonoBehaviour
     float[] boundaryR;               // radius (cells) per angular bin
 
     [Header("Ore clusters (index = era)")]
-    [Tooltip("Ore spawns in CLUSTERS, not lone cells: per element, seeds land inside that element's " +
-             "distance band (normalized 0=centre..1=edge) and grow into organic blobs whose size scales " +
-             "with distance — small pickings near the entry, rich veins at the rim.")]
+    [Tooltip("Ore spawns in CLUSTERS, not lone cells: ONE kind of ore (the era's), laid down in four " +
+             "distance bands (near/mid/far/deep, normalized 0=centre..1=edge) — seeds land inside a band and " +
+             "grow into organic blobs whose size scales with distance: small pickings near the entry, rich " +
+             "veins at the rim.")]
     public OreEraConfig[] oreEras = { new OreEraConfig(), new OreEraConfig(), new OreEraConfig() };
     [Range(0f, 1f)]
-    [Tooltip("How EVENLY each element's clusters spread through its band: 0 = seeds land wherever the " +
-             "dice fall (can clump badly), 1 = strongly even spacing (best-candidate/blue-noise " +
-             "sampling — each seed picks the spot furthest from its element's existing clusters).")]
+    [Tooltip("How EVENLY each band's clusters spread: 0 = seeds land wherever the dice fall (can clump " +
+             "badly), 1 = strongly even spacing (best-candidate/blue-noise sampling — each seed picks the " +
+             "spot furthest from every existing cluster).")]
     public float oreFairness = 0.4f;
 
     [Header("Point budget per era (x = min @ difficulty 0, y = max @ difficulty 3)")]
@@ -190,8 +191,11 @@ public class MineField : MonoBehaviour
     // One overlay tilemap per ore element (index = orb index: 0 white, 1 green, 2 blue, 3 red), drawn above
     // the rock. Each uses its element's emissive material (LitWhite/Green/Blue/Red) so ore reads as a glowing
     // vein on an otherwise normal wall — the wall keeps its own hardness sprite underneath.
+    // The ore glow, drawn over the rock in the era's material — THREE stacked layers so intensity reads
+    // as vein count with the existing art: a low block gets one overlay sprite (three specks), mid two
+    // (six), high all three (nine) — each layer a different oretileoverlay variant so the veins don't overlap.
+    const int OreLayers = 3;
     Tilemap[] oreOverlayMaps;
-    static readonly string[] OreMatNames = { "OreMats/LitWhite", "OreMats/LitGreen", "OreMats/LitBlue", "OreMats/LitRed" };
     Transform lightsParent;
     // Every explored EMPTY cell — the excavated dungeon. The light cookie is rasterised from this set,
     // so the illumination is a pure function of shape (order/time independent).
@@ -551,16 +555,15 @@ public class MineField : MonoBehaviour
         if (floorMat != null) floorMap.GetComponent<TilemapRenderer>().material = floorMat;
         renderMap = CreateMap("RenderMap", renderSortingOrder, render: true, collide: false);
 
-        // One overlay map per element, just above the rock — each carries its element's emissive material
-        // (LitWhite/Green/Blue/Red) so the ore glow is the element's colour.
-        oreOverlayMaps = new Tilemap[4];
-        for (int e = 0; e < 4; e++)
+        // The ore overlay layers, just above the rock, in the ERA's bright ore material (tier 1 —
+        // DroneManager.OreSourceMaterial is the one rule for the wall glow, the chips and the base ore).
+        oreOverlayMaps = new Tilemap[OreLayers];
+        var oreMat = DroneManager.OreSourceMaterial(1);
+        if (oreMat == null) Debug.LogWarning("[MineField] no era ore material (SpawnManager missing?) — ore overlay renders unlit.");
+        for (int e = 0; e < OreLayers; e++)
         {
-            oreOverlayMaps[e] = CreateMap($"OreOverlay{e}", renderSortingOrder + oreOverlaySortingOrder,
-                                          render: true, collide: false);
-            var mat = Resources.Load<Material>(OreMatNames[e]);
-            if (mat != null) oreOverlayMaps[e].GetComponent<TilemapRenderer>().material = mat;
-            else Debug.LogWarning($"[MineField] ore material '{OreMatNames[e]}' not found in Resources.");
+            oreOverlayMaps[e] = CreateMap($"OreOverlay{e}", renderSortingOrder + oreOverlaySortingOrder + e, render: true, collide: false);
+            if (oreMat != null) oreOverlayMaps[e].GetComponent<TilemapRenderer>().material = oreMat;
         }
 
         fogMap = CreateMap("FogMap", fogSortingOrder, render: true, collide: false);
@@ -757,8 +760,8 @@ public class MineField : MonoBehaviour
         var render = new TileBase[w * h];
         var fog = new TileBase[w * h];
         var floor = new TileBase[w * h];
-        var overlays = new TileBase[4][];
-        for (int e = 0; e < 4; e++) overlays[e] = new TileBase[w * h];
+        var overlays = new TileBase[OreLayers][];
+        for (int e = 0; e < OreLayers; e++) overlays[e] = new TileBase[w * h];
         int voidCount = 0;
         for (int k = 0; k < data.Length; k++)
         {
@@ -777,16 +780,16 @@ public class MineField : MonoBehaviour
             {
                 // Base wall look = the cell's own hardness (NOT random).
                 render[k] = HardnessPool(data[k].type)[Random.Range(0, 16)];
-                // Ore is just an emissive overlay laid on that wall — the wall keeps its hardness sprite. It
-                // goes on the map for its element so it glows in that element's colour (white/green/blue/red).
-                if (data[k].HasOre)
-                    overlays[data[k].ore][k] = oreOverlayPool[Random.Range(0, oreOverlayPool.Length)];
+                // Ore is just an emissive overlay laid on that wall — the wall keeps its hardness sprite; the
+                // overlay material makes it glow the era's colour and the INTENSITY tier (CellData.ore 0/1/2)
+                // stacks 1/2/3 distinct overlay variants so richer ore shows more veins.
+                if (data[k].HasOre) StackOreOverlays(overlays, k, data[k].ore);
             }
             fog[k] = fogTile; // everything starts fogged; FloodExplore clears the entry
         }
         fogRemaining = w * h - voidCount;   // only real cells count toward "fully defogged"
         renderMap.SetTilesBlock(bounds, render);
-        for (int e = 0; e < 4; e++) oreOverlayMaps[e].SetTilesBlock(bounds, overlays[e]);
+        for (int e = 0; e < OreLayers; e++) oreOverlayMaps[e].SetTilesBlock(bounds, overlays[e]);
         floorMap.SetTilesBlock(bounds, floor);
         fogMap.SetTilesBlock(bounds, fog);
     }
@@ -1078,20 +1081,20 @@ public class MineField : MonoBehaviour
         var cfg = OreCfg(currentEra);
         if (cfg == null) return;
         float radius = 0.5f * Mathf.Min(w, h);
-        // Radial spread is STRATIFIED, not random: each element's band splits into `clusters` equal
+        // Radial spread is STRATIFIED, not random: each distance band splits into `clusters` equal
         // sub-bands and each cluster sits at the centre of its own — distance-from-entry is perfectly
         // even by construction (radius only relaxes if no valid cell exists at the target ring).
         // Fairness picks WHERE on the ring: best-candidate sampling where each seed considers several
         // valid candidate spots on its ring and takes the one FURTHEST (in 2D, through the dungeon
-        // space) from EVERY already-placed cluster — all elements together, cluster size ignored — so
+        // space) from EVERY already-placed cluster — all bands together, cluster size ignored — so
         // the ore field as a whole spreads evenly. oreFairness scales the candidate count — 0 → 1
         // candidate (pure random, clumps allowed), 1 → 16 (strongly even spatial spread).
         int candN = 1 + Mathf.RoundToInt(Mathf.Clamp01(oreFairness) * 15f);
         var seeds = new List<Vector2>(48);   // ALL placed cluster seeds, every element
 
-        for (int e = 0; e < 4; e++)
+        for (int e = 0; e < OreEraConfig.Bands; e++)
         {
-            OreElementConfig el = cfg.Element(e);
+            OreElementConfig el = cfg.Band(e);
             if (el == null || el.clusters <= 0) continue;
             Vector2 band = el.range;
             for (int c = 0; c < el.clusters; c++)
@@ -1119,11 +1122,11 @@ public class MineField : MonoBehaviour
                 }
                 if (bestScore < 0f) continue;
                 seeds.Add(new Vector2(best.x, best.y));
-                // size lerps across the ELEMENT'S OWN band: near edge -> x, far edge -> y
+                // size lerps across the BAND: near edge -> x, far edge -> y
                 float t = Mathf.InverseLerp(band.x, Mathf.Max(band.x + 0.0001f, band.y), bestD);
                 int size = Mathf.Max(1, Mathf.RoundToInt(
                     Mathf.Lerp(el.clusterCells.x, el.clusterCells.y, t) * Random.Range(0.75f, 1.25f)));
-                GrowOreBlob(best, (sbyte)e, size);
+                GrowOreBlob(best, (sbyte)Mathf.Clamp(el.intensity, 0, 2), size);   // the band's intensity tier
             }
         }
     }
@@ -1304,7 +1307,7 @@ public class MineField : MonoBehaviour
     {
         int idx = Idx(cell);
 
-        int orb = data[idx].ore;   // -1 = no ore; else element index (chips carry the value now)
+        int oreTier = data[idx].ore;   // -1 = no ore; else the block's INTENSITY tier 0/1/2 (drives the chip blend)
         CellType brokenTier = data[idx].type;   // captured before the reset below
         data[idx].type = CellType.Empty;
         data[idx].durability = 0;
@@ -1315,7 +1318,7 @@ public class MineField : MonoBehaviour
         // Every broken wall scatters ore-chip debris (size class by hardness tier, element-lit
         // when the cell carried ore). Chips persist until the player returns to base. Spawned
         // AFTER the cell reads empty so the in-cavity scatter check accepts the broken cell.
-        DroneManager.SpawnChips(grid.GetCellCenterWorld(cell), brokenTier, orb);
+        DroneManager.SpawnChips(grid.GetCellCenterWorld(cell), oreTier);
 
         if (spawnerOfCell.TryGetValue(idx, out var minedSpawner))
         {
@@ -1811,11 +1814,27 @@ public class MineField : MonoBehaviour
         fogMap.SetTile(c, null);
     }
 
-    // Clear the ore glow on a cell (only one element map ever has a tile here, but clearing all is cheap).
+    // Clear the ore glow on a cell (every layer).
     void ClearOverlay(Vector3Int c)
     {
         if (oreOverlayMaps == null) return;
         for (int e = 0; e < oreOverlayMaps.Length; e++) oreOverlayMaps[e].SetTile(c, null);
+    }
+
+    /// <summary>Fill the overlay layers for one ore cell: tier 0 → 1 layer, 1 → 2, 2 → all three,
+    /// each layer a DIFFERENT sprite variant (random rotation) so stacked specks read as extra veins.</summary>
+    void StackOreOverlays(TileBase[][] overlays, int k, int tier)
+    {
+        int layers = Mathf.Clamp(tier + 1, 1, OreLayers);
+        int variants = Mathf.Max(1, oreOverlayPool.Length / 4);
+        // random permutation of variants → distinct sprite per layer
+        int a = Random.Range(0, variants);
+        int b = variants > 1 ? (a + Random.Range(1, variants)) % variants : a;
+        int c = variants > 2 ? (a + Random.Range(1, variants)) % variants : b;
+        if (variants > 2) while (c == a || c == b) c = (c + 1) % variants;
+        int[] pick = { a, b, c };
+        for (int e = 0; e < layers; e++)
+            overlays[e][k] = oreOverlayPool[pick[e] * 4 + Random.Range(0, 4)];
     }
 
     void RevealAround(Vector3Int c)
@@ -2101,14 +2120,16 @@ public class MineField : MonoBehaviour
 public class OreElementConfig
 {
     public Vector2 range = new Vector2(0f, 1f);
-    [Tooltip("Clusters seeded for this element in this era's dungeon.")]
+    [Tooltip("Ore INTENSITY of this band's blobs: 0 low (one vein layer, small chips), 1 mid, 2 high (three vein layers, medium/large chips).")]
+    [Range(0, 2)] public int intensity = 1;
+    [Tooltip("Clusters seeded in this band in this era's dungeon.")]
     public int clusters = 12;
     [Tooltip("Cluster size in CELLS at the near edge of the band (x), growing to its far edge (y).")]
     public Vector2 clusterCells = new Vector2(3f, 14f);
 
     public OreElementConfig() { }
-    public OreElementConfig(Vector2 rangeP, int clustersP, Vector2 cellsP)
-    { range = rangeP; clusters = clustersP; clusterCells = cellsP; }
+    public OreElementConfig(Vector2 rangeP, int clustersP, Vector2 cellsP, int intensityP = 1)
+    { range = rangeP; clusters = clustersP; clusterCells = cellsP; intensity = intensityP; }
 }
 
 /// <summary>
@@ -2133,17 +2154,24 @@ public class HardnessEraConfig
 }
 
 /// <summary>
-/// Per-era ore-cluster tuning (lives on MineField in the scene — NOT in the authoring asset). Every
-/// element carries its OWN band / cluster count / cluster size per dungeon.
+/// Per-era ore-cluster tuning (lives on MineField in the scene — NOT in the authoring asset). There is
+/// ONE ore (the era's); it is laid down in four DISTANCE BANDS, each with its own cluster count,
+/// cluster size and INTENSITY tier (0 low / 1 mid / 2 high — vein count + chip blend), so the field
+/// thickens and richens toward the rim. (These were the white/green/blue/red element
+/// configs before the colour structure was removed — the authored values carry over unchanged.)
 /// </summary>
 [System.Serializable]
 public class OreEraConfig
 {
-    public OreElementConfig white = new OreElementConfig(new Vector2(0f, 0.55f), 14, new Vector2(2f, 8f));
-    public OreElementConfig green = new OreElementConfig(new Vector2(0.15f, 0.75f), 12, new Vector2(3f, 10f));
-    public OreElementConfig blue  = new OreElementConfig(new Vector2(0.45f, 1f), 10, new Vector2(4f, 12f));
-    public OreElementConfig red   = new OreElementConfig(new Vector2(0.7f, 1f), 8, new Vector2(5f, 14f));
-
-    /// <summary>Config for an orb element (0 white, 1 green, 2 blue, 3 red).</summary>
-    public OreElementConfig Element(int e) => e == 0 ? white : e == 1 ? green : e == 2 ? blue : red;
+    [UnityEngine.Serialization.FormerlySerializedAs("white")]
+    public OreElementConfig near = new OreElementConfig(new Vector2(0f, 0.55f), 14, new Vector2(2f, 8f), 0);
+    [UnityEngine.Serialization.FormerlySerializedAs("green")]
+    public OreElementConfig mid  = new OreElementConfig(new Vector2(0.15f, 0.75f), 12, new Vector2(3f, 10f), 1);
+    [UnityEngine.Serialization.FormerlySerializedAs("blue")]
+    public OreElementConfig far  = new OreElementConfig(new Vector2(0.45f, 1f), 10, new Vector2(4f, 12f), 1);
+    [UnityEngine.Serialization.FormerlySerializedAs("red")]
+    public OreElementConfig deep = new OreElementConfig(new Vector2(0.7f, 1f), 8, new Vector2(5f, 14f), 2);
+    public const int Bands = 4;
+    /// <summary>Band config by index (0 near … 3 deep).</summary>
+    public OreElementConfig Band(int i) => i == 0 ? near : i == 1 ? mid : i == 2 ? far : deep;
 }

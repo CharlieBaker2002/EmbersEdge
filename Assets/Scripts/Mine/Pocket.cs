@@ -317,14 +317,15 @@ public class Pocket : MonoBehaviour
 
         if (po.enemy != null && po.enemy.prefab != null)
         {
-            // chain-strike from this room's own ember core when it has one (core/boss arenas),
-            // otherwise a dimmed bolt from the nearest undiscovered core spot (the core-hunting
-            // breadcrumb — still a hint, now electric)
-            if (EE != null) SpawnBoltFX.Chain(this, EE.transform.position, pos);
-            else SpawnBoltFX.ChainToNearestCore(this, pos);
             GameObject g = (EE != null)
                 ? EE.SpawnEnemy(po.enemy.prefab, pos)
                 : Instantiate(po.enemy.prefab, pos, Quaternion.identity, GS.FindParent(GS.Parent.enemies));
+            // chain-strike from this room's own ember core when it has one (core/boss arenas),
+            // otherwise a dimmed bolt from the nearest undiscovered core spot (the core-hunting
+            // breadcrumb — still a hint, now electric). g goes in so the ring is sized to it and it
+            // stays unseen until the strike lands.
+            if (EE != null) SpawnBoltFX.Chain(this, EE.transform.position, pos, g);
+            else SpawnBoltFX.ChainToNearestCore(this, pos, g);
             float price = MineAuthoringSO.EnemyPoints(po.enemy);
             unspawnedPoints = Mathf.Max(0f, unspawnedPoints - price);
             alives.Add(g);

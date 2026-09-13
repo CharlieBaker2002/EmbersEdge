@@ -26,7 +26,7 @@ public struct CellData
     public bool explored;     // the player has reached this cell (drives fog + frontier colliders)
     public bool voidCell;     // OUTSIDE the dungeon's boundary ring: invisible, unmineable, but solid
                               // (collision holds) — the world simply ends there.
-    public sbyte ore;         // -1 = no ore; else orb index 0..3 (white/green/blue/red). Drawn as an
+    public sbyte ore;         // -1 = no ore; else INTENSITY tier 0 low / 1 mid / 2 high (one ore — the era's). Drawn as an
                               // emissive overlay ON the wall — the wall keeps its own hardness look.
 
     public bool IsSolid => type != CellType.Empty;

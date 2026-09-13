@@ -1,100 +1,17 @@
-using System.Collections;
 using UnityEngine;
 
+/// <summary>
+/// RETIRED (2026-09-11). The time-driven random pixel decompression this used to run on freshly
+/// placed buildings is replaced by <see cref="GhostIntake"/>, which prints a building's art in
+/// as ORE ARRIVES (the BlueprintFill2D shader — no readable textures, no Sprite.Create churn).
+/// The class stays because 17 prefabs/scenes still reference the component; it does nothing.
+/// </summary>
 public class FastSpriteDecompressor : MonoBehaviour
 {
-    Sprite originalSprite;
-    private SpriteRenderer spriteRenderer;
+    [SerializeField] float decompressionTime = 10f;   // legacy serialised value, unused
 
-    private Texture2D decompressionTexture;
-    private Color[] originalPixels;
-    private Color[] targetPixels;
-    private float maxColorValue;
-
-    [SerializeField] float decompressionTime = 10f;
-    private float timer = 0.0f;
-    private Material mat;
-
-    private void Start()
+    void Start()
     {
-        if (RefreshManager.i.CASUALNOTREALTIME)
-        {
-            decompressionTime *= 0.25f;
-        }
-
-       
-        spriteRenderer = GetComponent<SpriteRenderer>();
-        mat = spriteRenderer.material;
-        spriteRenderer.material = Resources.Load<Material>("Sprite-Lit-Default");
-        originalSprite = spriteRenderer.sprite;
-
-        // Create a texture from the original sprite
-        decompressionTexture = new Texture2D((int)originalSprite.rect.width, (int)originalSprite.rect.height, TextureFormat.RGBA32, false)
-        {
-            filterMode = FilterMode.Point
-        };
-
-        originalPixels = originalSprite.texture.GetPixels((int)originalSprite.rect.x, (int)originalSprite.rect.y, (int)originalSprite.rect.width, (int)originalSprite.rect.height);
-        targetPixels = new Color[originalPixels.Length];
-        ClearTargetPixels();
-
-        CalculateMaxColorValue();
-
-        StartCoroutine(DecompressSprite());
-    }
-
-    private void ClearTargetPixels()
-    {
-        for (int i = 0; i < targetPixels.Length; i++)
-        {
-            targetPixels[i] = new Color(0, 0, 0, 0); // Explicitly clear to transparent black
-        }
-    }
-
-    private void CalculateMaxColorValue()
-    {
-        maxColorValue = 0f;
-        foreach (var color in originalPixels)
-        {
-            float value = ColorToValue(color);
-            if (value > maxColorValue)
-            {
-                maxColorValue = value;
-            }
-        }
-    }
-
-    private IEnumerator DecompressSprite()
-    {
-        while (timer < decompressionTime)
-        {
-            timer += Time.deltaTime;
-            float progress = Mathf.Clamp01(timer / decompressionTime);
-            UpdateSprite(progress);
-            yield return null;
-        }
-        // Restore the original settings
-        spriteRenderer.sprite = originalSprite;
-        spriteRenderer.material = mat;
-        Destroy(this);
-    }
-
-    private void UpdateSprite(float progress)
-    {
-        for (int i = 0; i < originalPixels.Length; i++)
-        {
-            if (Random.value < Mathf.SmoothStep(0, 1, Mathf.Pow(progress, 3)) && originalPixels[i].a > 0) // Only update non-fully transparent pixels
-            {
-                targetPixels[i] = originalPixels[i];
-            }
-        }
-        decompressionTexture.SetPixels(targetPixels);
-        decompressionTexture.Apply();
-        spriteRenderer.sprite = Sprite.Create(decompressionTexture, new Rect(0, 0, decompressionTexture.width, decompressionTexture.height), new Vector2(0.5f, 0.5f), originalSprite.pixelsPerUnit);
-    }
-
-    private static float ColorToValue(Color color)
-    {
-        return color.a * (color.r + color.g + color.b) / 3f;
+        enabled = false;
     }
 }

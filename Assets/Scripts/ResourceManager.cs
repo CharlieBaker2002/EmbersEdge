@@ -70,12 +70,6 @@ public class ResourceManager : MonoBehaviour
         energySlider.InitialiseSlider(maxEnergy);
     }
 
-    private IEnumerator Start()
-    {
-        yield return null;
-        ResourceBarsUI.Attach(this);
-    }
-
     private void Update()
     {
         float energySum = 0f;

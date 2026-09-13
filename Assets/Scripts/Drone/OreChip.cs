@@ -17,8 +17,10 @@ public class OreChip : MonoBehaviour
     static void ResetStatics() => all.Clear();
 
     [HideInInspector] public int sizeClass;    // 0 small, 1 big, 2 large
-    [HideInInspector] public int element = -1; // -1 plain rock, else 0..3 white/green/blue/red
+    [HideInInspector] public int element = -1; // 0 = ore (ONE kind — the era's); -1 = legacy plain rock (no longer spawns)
     [HideInInspector] public Drone claimedBy;  // a bag drone en route (avoids double pickup)
+    /// <summary>Came out of a Refiner split — the refinery won't take it again (see IChipConsumer.RefusesRefined).</summary>
+    [HideInInspector] public bool refined;
     /// <summary>Fleet-wide cooldown stamped by a bag drone that gave up reaching this chip —
     /// collect scans skip it until then (it may free itself, or the route may open).</summary>
     [HideInInspector] public float unreachableUntil;
@@ -66,16 +68,21 @@ public class OreChip : MonoBehaviour
 
     // ---- absorb-into-drone (the visible pickup) ----
     Transform mouth;      // collecting drone; its work face hangs at local -Y (FaceDir points it here)
+    float mouthOffset = 0.26f;   // how far down the mouth's -Y the swallow point sits (0 = the transform itself)
     float absorbT;
     Vector3 absorbScale;
     public bool Absorbing => mouth != null;
 
     /// <summary>The visible pickup: the chip latches onto the drone's front and ease-out shrinks
     /// into it. Cargo is banked by the drone at touch — this is pure presentation, ending in
-    /// Destroy. The chip leaves the loot registry immediately so nothing re-targets it.</summary>
-    public void AbsorbInto(Transform drone)
+    /// Destroy. The chip leaves the loot registry immediately so nothing re-targets it.
+    /// <paramref name="mouthOffset"/> is how far down the mouth's -Y the swallow point sits —
+    /// a drone's work face hangs 0.26 below it; a building or the player's Hoover nozzle
+    /// swallows at the transform itself (0).</summary>
+    public void AbsorbInto(Transform drone, float mouthOffset = 0.26f)
     {
         mouth = drone;
+        this.mouthOffset = mouthOffset;
         absorbT = 0f;
         absorbScale = transform.localScale;
         claimedBy = null;
@@ -155,7 +162,7 @@ public class OreChip : MonoBehaviour
             absorbT += Time.deltaTime / 0.35f;
             if (absorbT >= 1f) { Destroy(gameObject); return; }
             float e = 1f - (1f - absorbT) * (1f - absorbT) * (1f - absorbT);   // ease-out cubic
-            Vector3 front = mouth.position - mouth.up * 0.26f;   // the drone's mouth point
+            Vector3 front = mouth.position - mouth.up * mouthOffset;   // the swallow point
             transform.position = Vector3.Lerp(transform.position, front,
                 Mathf.Clamp01(10f * Time.deltaTime + 0.35f * e));   // sticks even while the drone moves
             transform.localScale = absorbScale * (1f - e);

@@ -44,8 +44,13 @@ public interface IChipConsumer
     int InboundChipSpace { get; set; }
 
     /// <summary>The intake gate: may this consumer eat a chip of this size class (0 small /
-    /// 1 medium / 2 large) and element (-1 plain rock, else 0..3 white/green/blue/red)?</summary>
+    /// 1 medium / 2 large)? `element` is 0 for every chip now (one ore — the era's); -1 was
+    /// the legacy plain-rock chip.</summary>
     bool AcceptsChip(int sizeClass, int element);
+
+    /// <summary>True for a consumer that must not be given chip already stamped
+    /// <see cref="OreChip.refined"/> (the Refiner: a chip is split at most once). Default false.</summary>
+    bool RefusesRefined => false;
 }
 
 /// <summary>
@@ -129,6 +134,7 @@ public static class ChipConsumers
         {
             var c = all[k];
             if (!Active(c) || !MayGive(c, chip.sizeClass, chip.element)) continue;
+            if (chip.refined && c.RefusesRefined) continue;   // its own output isn't its stock
             float r = c.ChipIntakeRadius;
             if ((c.ChipDropPoint - p).sqrMagnitude <= r * r) return true;
         }
@@ -179,6 +185,7 @@ public static class ChipConsumers
             if (chip.Age < OreChip.SettleSeconds) continue;
             if (Time.time < chip.unreachableUntil) continue;   // a drone recently failed to reach it
             if (chip.SpaceCost > spaceLeft) continue;
+            if (chip.refined && c.RefusesRefined) continue;             // split once only
             if (!MayGive(c, chip.sizeClass, chip.element)) continue;   // can't eat it, or a keener customer has dibs
             int appeal = c.ChipAppeal(chip.sizeClass, chip.element);
             if (appeal < bestAppeal) continue;
@@ -193,8 +200,10 @@ public static class ChipConsumers
 
     /// <summary>Job-board entry: the hungry customer the FLEET owes the most chip — least
     /// served lately on the fair-share ledger, nearest to the drone within a near-tie — that
-    /// has a fetchable chip. Claims nothing — the drone claims.</summary>
-    public static OreChip FindChipJob(Drone forDrone, int spaceLeft, out IChipConsumer consumer)
+    /// has a fetchable chip. Claims nothing — the drone claims. <paramref name="constructionOnly"/>
+    /// restricts the board to ghost buildings (GhostIntake) — what a bare, bagless drone may
+    /// carry chip to.</summary>
+    public static OreChip FindChipJob(Drone forDrone, int spaceLeft, out IChipConsumer consumer, bool constructionOnly = false)
     {
         consumer = null;
         if (all.Count == 0 || spaceLeft <= 0) return null;
@@ -203,6 +212,7 @@ public static class ChipConsumers
         {
             var c = all[k];
             if (!Active(c) || NetDemandSpace(c) <= 0f) continue;
+            if (constructionOnly && !(c is GhostIntake)) continue;
             scratch.Add(c);
         }
         if (scratch.Count == 0) return null;

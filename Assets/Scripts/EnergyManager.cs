@@ -442,7 +442,7 @@ public class EnergyManager : MonoBehaviour
             g.connect.desiredEmber = 0;
         }
 
-        foreach (EmberConnector c in Expander.expanders.Select(x=>x.connect).Concat(EmberCannon.ecs.Select(x=>x.connect)).Concat(Refiner.all.Where(r => r != null && r.connect != null).Select(x=>x.connect)))
+        foreach (EmberConnector c in Expander.expanders.Select(x=>x.connect).Concat(EmberCannon.ecs.Select(x=>x.connect)))
         {
             // Net of queued jobs: an ember routed but not yet dispatched still sits in c.ember
             // while the destination's emberTravel already counts it — c.emberTravel is -1 for
@@ -486,7 +486,7 @@ public class EnergyManager : MonoBehaviour
   
         List<EmberConnector> starts = new List<EmberConnector>();
         List<EmberConnector> ends = new List<EmberConnector>();
-        IEnumerable<EmberConnector> ecs = constructors.Select(x => x.connect).Concat(emberStores.Select(x => x.connect)).Concat(Expander.expanders.Select(x => x.connect)).Concat(EmberCannon.ecs.Select(x => x.connect)).Concat(emberGens.Where(g => g != null && g.connect != null).Select(g => g.connect)).Concat(Refiner.all.Where(r => r != null && r.connect != null).Select(r => r.connect));
+        IEnumerable<EmberConnector> ecs = constructors.Select(x => x.connect).Concat(emberStores.Select(x => x.connect)).Concat(Expander.expanders.Select(x => x.connect)).Concat(EmberCannon.ecs.Select(x => x.connect)).Concat(emberGens.Where(g => g != null && g.connect != null).Select(g => g.connect));
         foreach(EmberConnector e in ecs)
         {
             if (e.desiredEmber > e.ember + e.emberTravel)
@@ -599,10 +599,6 @@ public class EnergyManager : MonoBehaviour
         foreach (var g in emberGens)
         {
             if (g != null && g.connect != null) AddRouteConnector(g.connect);
-        }
-        foreach (var r in Refiner.all)
-        {
-            if (r != null && r.connect != null) AddRouteConnector(r.connect);
         }
         var allConnectors = routeConnectors;
 
@@ -782,7 +778,6 @@ public class EnergyManager : MonoBehaviour
             .Concat(constructors.Select(x => x.connect))
             .Concat(Expander.expanders.Select(x => x.connect)).Concat(EmberCannon.ecs.Select(x=> x.connect))
             .Concat(emberGens.Where(g => g != null && g.connect != null).Select(g => g.connect))
-            .Concat(Refiner.all.Where(r => r != null && r.connect != null).Select(r => r.connect))
             .ToList();
         
         // Create connections based on type rules

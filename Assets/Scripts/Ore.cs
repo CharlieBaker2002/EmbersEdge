@@ -4,7 +4,9 @@ using UnityEngine;
 public class Ore : MonoBehaviour
 {
     private float units;
-    public int element;
+    /// <summary>Intensity tier of this node (0 low / 1 mid / 2 high) — which Ore_Base map it lives
+    /// on and which chip blend its units release.</summary>
+    public int tier;
     private float chipCoef;
     private float initialUnits;  // captured at Setup so drone mining can pace by fraction-of-node
     private float droneYield;   // fractional units a mining drone has earned but not yet released
@@ -13,11 +15,11 @@ public class Ore : MonoBehaviour
 
     public bool Depleted => units <= 0f;
 
-    public void Setup(int typ, float _units, float coef)
+    public void Setup(int tierP, float _units, float coef)
     {
         units = _units;
         initialUnits = _units;
-        element = typ;
+        tier = tierP;
         chipCoef = coef;
     }
 
@@ -58,7 +60,8 @@ public class Ore : MonoBehaviour
     private IEnumerator Des()
     {
         yield return null;
-        TilemapResource.m[element].SetTile(TilemapResource.m[element].WorldToCell(transform.position), null);
+        var map = TilemapResource.MapOf(tier);
+        if (map != null) map.SetTile(map.WorldToCell(transform.position), null);
     }
 
 }

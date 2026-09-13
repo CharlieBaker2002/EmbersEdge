@@ -1,220 +1,63 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Code-built resource readout: ONE ember row (the orb economy is gone). The row is a fused
-/// slot — a thin on-person strip (EmberStore.pending, the run haul — only banked if you make it
-/// home) riding on the thicker bar of ember sitting in the base's stores, tinted to the CURRENT
-/// ERA's colour (re-sampled every frame so era transitions just work). Built at runtime under
-/// the existing "Resources" panel; the old TMP counters are disabled, and a compact numeric
-/// label keeps exact counts.
+/// The ember readout: ONE fused slot — a thin on-person strip (EmberStore.pending, the run haul,
+/// only banked if you make it home) riding on the thicker bar of ember sitting in the base's
+/// stores, tinted to the CURRENT ERA's colour (re-sampled every frame so era transitions just
+/// work), with opaque hairline ticks every <see cref="tickStep"/> ember and a compact numeric label.
+///
+/// AUTHORED, NOT BUILT: every piece is a scene child you can see and tune in the inspector —
+/// run Tools/Resource Bar Kit to (re)create and wire it under the UI/Resources panel. This script
+/// only DRIVES what's authored: fill widths, the leading-edge cap, tick count/positions, label
+/// text and colour. Bar width is read from the authored strips, so resizing them in the inspector
+/// just works. Ticks are the one thing that can't be authored (the count follows the live ember
+/// capacity) — they're cloned from the inactive Tick template child, so their look stays authored.
 /// </summary>
 public class ResourceBarsUI : MonoBehaviour
 {
-    // geometry (canvas px, panel is 300 wide anchored to the screen's right edge)
-    const float BarW = 265f;
-    const float ThickH = 22f;
-    const float ThinH = 9f;
-    const float Divide = 2f;      // hairline between the two strips of a slot
-    const float Border = 2f;      // frame thickness around the slot
-    const float RowSpacing = 86f;
-    const float TickW = 2f;
-    const float RightPad = 20f;
-    const float LabelH = 30f;
+    [Header("Authored refs — Tools/Resource Bar Kit wires these")]
+    [Tooltip("Thick bar: ember banked in the base's stores.")]
+    [SerializeField] Image storeFill;
+    [SerializeField] Image storeCap;
+    [SerializeField] RectTransform storeTicks;
+    [Tooltip("Thin strip: the run haul riding on the player (EmberStore.pending).")]
+    [SerializeField] Image heldFill;
+    [SerializeField] Image heldCap;
+    [SerializeField] RectTransform heldTicks;
+    [Tooltip("Inactive hairline cloned per tick — tune its colour/width here.")]
+    [SerializeField] Image tickTemplate;
+    [SerializeField] TextMeshProUGUI label;
 
-    static readonly Color frameCol = new(0.016f, 0.016f, 0.04f, 1f);    // near-black, fully opaque — the crisp edge
-    static readonly Color backCol = new(0.059f, 0.059f, 0.11f, 1f);     // slot interior, a shade above the frame
+    [Header("Tuning")]
+    [Tooltip("Ember per hairline tick.")]
+    [SerializeField] int tickStep = 10;
+    [Tooltip("How far the thin (haul) strip is lightened from the era colour.")]
+    [SerializeField, Range(0f, 1f)] float heldTint = 0.3f;
+    [Tooltip("How far the bright leading-edge cap is lightened.")]
+    [SerializeField, Range(0f, 1f)] float capTint = 0.65f;
+    [Tooltip("How far the numeric label is lightened.")]
+    [SerializeField, Range(0f, 1f)] float labelTint = 0.45f;
 
-    /// <summary>Ember per hairline tick.</summary>
-    const int TickStep = 10;
+    readonly List<RectTransform> storeTickPool = new();
+    readonly List<RectTransform> heldTickPool = new();
+    int storeTicksShown = -1, heldTicksShown = -1;
 
-    // shared 1px-wide vertical-gradient sprite (bright crown → dark base), tinted per fill
-    static Sprite gradSprite;
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() { gradSprite = null; }   // no-domain-reload: runtime textures die with play mode
-
-    ResourceManager rm;
-    Row[] rows;
-
-    class Row
+    void Awake()
     {
-        public Image thickFill, thinFill, thickCap, thinCap;
-        public TextMeshProUGUI label;
-        public Transform thickTicks, thinTicks;
-        public int thickTicksShown = -1, thinTicksShown = -1;
-    }
-
-    public static void Attach(ResourceManager rm)
-    {
-        RectTransform panel = rm.resourceUIs[0].rectTransform.parent as RectTransform;
-        var ui = new GameObject("ResourceBars", typeof(RectTransform)).AddComponent<ResourceBarsUI>();
-        ui.rm = rm;
-        var rt = (RectTransform)ui.transform;
-        rt.SetParent(panel, false);
-        rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
-        rt.pivot = new Vector2(1f, 1f);
-        rt.anchoredPosition = new Vector2(-RightPad, -30f);
-        rt.sizeDelta = new Vector2(BarW, RowSpacing);
-
-        // the bars ARE the readout now — the old text counters retire
-        foreach (TextMeshProUGUI t in rm.resourceUIs) t.gameObject.SetActive(false);
-
-        TMP_FontAsset font = rm.resourceUIs[0].font;
-        ui.rows = new Row[1];
-        ui.rows[0] = ui.BuildRow(0, font);
-    }
-
-    static Color ElementCol() => GS.ColFromEra();   // ember wears the era's colour
-
-    Row BuildRow(int i, TMP_FontAsset font)
-    {
-        var row = new Row();
-        RectTransform root = MakeRect($"Row{i}", (RectTransform)transform, BarW, RowSpacing);
-        root.anchoredPosition = new Vector2(0f, -RowSpacing * i);
-
-        // one fused slot: opaque frame → interior → thick strip below, thin strip above a hairline
-        float innerH = ThickH + Divide + ThinH;
-        RectTransform frame = MakeImg("Frame", root, BarW + 2f * Border, innerH + 2f * Border, frameCol).rectTransform;
-        RectTransform inner = MakeRect("Inner", frame, BarW, innerH);
-        inner.anchoredPosition = new Vector2(-Border, Border);
-        MakeImg("Back", inner, BarW, innerH, backCol);
-
-        RectTransform thick = MakeRect("Store", inner, BarW, ThickH);
-        RectTransform thin = MakeRect("Held", inner, BarW, ThinH);
-        thin.anchoredPosition = new Vector2(0f, ThickH + Divide);
-        MakeImg("Divide", inner, BarW, Divide, frameCol).rectTransform.anchoredPosition = new Vector2(0f, ThickH);
-
-        row.thickFill = MakeFill(thick, ThickH, out row.thickCap);
-        row.thinFill = MakeFill(thin, ThinH, out row.thinCap);
-        row.thickTicks = MakeRect("StoreTicks", thick, BarW, ThickH);
-        row.thinTicks = MakeRect("HeldTicks", thin, BarW, ThinH);
-
-        var lgo = new GameObject("Label", typeof(RectTransform));
-        row.label = lgo.AddComponent<TextMeshProUGUI>();
-        row.label.font = font;
-        row.label.fontSize = 24f;
-        row.label.fontStyle = FontStyles.Bold;
-        row.label.alignment = TextAlignmentOptions.BottomRight;
-        row.label.characterSpacing = 2f;
-        row.label.raycastTarget = false;
-        var lrt = (RectTransform)lgo.transform;
-        lrt.SetParent(root, false);
-        lrt.anchorMin = lrt.anchorMax = new Vector2(1f, 0f);
-        lrt.pivot = new Vector2(1f, 0f);
-        lrt.anchoredPosition = new Vector2(0f, innerH + 2f * Border + 3f);
-        lrt.sizeDelta = new Vector2(BarW, LabelH);
-        return row;
-    }
-
-    static RectTransform MakeRect(string nam, RectTransform parent, float w, float h)
-    {
-        var rt = (RectTransform)new GameObject(nam, typeof(RectTransform)).transform;
-        rt.SetParent(parent, false);
-        rt.anchorMin = rt.anchorMax = new Vector2(1f, 0f);
-        rt.pivot = new Vector2(1f, 0f);
-        rt.anchoredPosition = Vector2.zero;
-        rt.sizeDelta = new Vector2(w, h);
-        return rt;
-    }
-
-    static Image MakeImg(string nam, RectTransform parent, float w, float h, Color col)
-    {
-        var img = new GameObject(nam, typeof(RectTransform)).AddComponent<Image>();
-        img.color = col;
-        img.raycastTarget = false;
-        var rt = img.rectTransform;
-        rt.SetParent(parent, false);
-        rt.anchorMin = rt.anchorMax = new Vector2(1f, 0f);
-        rt.pivot = new Vector2(1f, 0f);
-        rt.anchoredPosition = Vector2.zero;
-        rt.sizeDelta = new Vector2(w, h);
-        return img;
-    }
-
-    // Fill = gradient-shaded bar growing from the left + a 1px bright cap at its leading edge.
-    static Image MakeFill(RectTransform strip, float h, out Image cap)
-    {
-        var fill = new GameObject("Fill", typeof(RectTransform)).AddComponent<Image>();
-        fill.sprite = Grad();
-        fill.raycastTarget = false;
-        var rt = fill.rectTransform;
-        rt.SetParent(strip, false);
-        rt.anchorMin = new Vector2(0f, 0f);
-        rt.anchorMax = new Vector2(0f, 1f);
-        rt.pivot = new Vector2(0f, 0.5f);
-        rt.anchoredPosition = Vector2.zero;
-        rt.sizeDelta = new Vector2(0f, 0f);
-
-        cap = new GameObject("Cap", typeof(RectTransform)).AddComponent<Image>();
-        cap.raycastTarget = false;
-        var crt = cap.rectTransform;
-        crt.SetParent(strip, false);
-        crt.anchorMin = new Vector2(0f, 0f);
-        crt.anchorMax = new Vector2(0f, 1f);
-        crt.pivot = new Vector2(1f, 0.5f);
-        crt.sizeDelta = new Vector2(2f, 0f);
-        return fill;
-    }
-
-    // Vertical sheen baked into a tiny texture: bright crown, true colour, darker base —
-    // tinting the Image gives every element the same shaded, non-flat read.
-    static Sprite Grad()
-    {
-        if (gradSprite != null) return gradSprite;
-        var t = new Texture2D(1, 4, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
-        t.SetPixel(0, 3, new Color(1.35f, 1.35f, 1.35f, 1f));
-        t.SetPixel(0, 2, Color.white);
-        t.SetPixel(0, 1, new Color(0.85f, 0.85f, 0.85f, 1f));
-        t.SetPixel(0, 0, new Color(0.6f, 0.6f, 0.6f, 1f));
-        t.Apply();
-        gradSprite = Sprite.Create(t, new Rect(0, 0, 1, 4), new Vector2(0.5f, 0.5f), 4f);
-        return gradSprite;
-    }
-
-    // Opaque hairlines through the strip at every whole-step boundary strictly inside the bar.
-    static void LayoutTicks(Transform holder, ref int shown, int max, int step)
-    {
-        int n = max > 0 && step > 0 ? Mathf.Max(0, Mathf.CeilToInt(max / (float)step) - 1) : 0;
-        if (n == shown) return;
-        shown = n;
-        for (int i = holder.childCount - 1; i >= 0; i--) Destroy(holder.GetChild(i).gameObject);
-        for (int i = 1; i <= n; i++)
+        if (storeFill == null || storeCap == null || heldFill == null || heldCap == null || label == null)
         {
-            var t = new GameObject("Tick", typeof(RectTransform)).AddComponent<Image>();
-            t.color = frameCol;
-            t.raycastTarget = false;
-            var rt = t.rectTransform;
-            rt.SetParent(holder, false);
-            rt.anchorMin = new Vector2(0f, 0f);
-            rt.anchorMax = new Vector2(0f, 1f);
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = new Vector2(BarW * (i * step) / max, 0f);
-            rt.sizeDelta = new Vector2(TickW, 0f);
+            Debug.LogError($"[ResourceBarsUI] '{name}' is missing authored refs — run Tools/Resource Bar Kit. Disabling.", this);
+            enabled = false;
         }
-    }
-
-    void SetStrip(Row row, bool thin, int now, int max, int step, Color col)
-    {
-        Image fill = thin ? row.thinFill : row.thickFill;
-        Image cap = thin ? row.thinCap : row.thickCap;
-        float frac = max > 0 ? Mathf.Clamp01(now / (float)max) : 0f;
-        float w = BarW * frac;
-        fill.rectTransform.sizeDelta = new Vector2(w, 0f);
-        fill.color = col;
-        cap.enabled = frac > 0.002f && frac < 0.998f;
-        cap.rectTransform.anchoredPosition = new Vector2(w, 0f);
-        cap.color = Color.Lerp(col, Color.white, 0.65f);
-        if (thin) LayoutTicks(row.thinTicks, ref row.thinTicksShown, max, step);
-        else LayoutTicks(row.thickTicks, ref row.thickTicksShown, max, step);
     }
 
     void LateUpdate()
     {
-        if (rm == null) return;
-        Row row = rows[0];
-        Color col = ElementCol();
-        Color thinCol = Color.Lerp(col, Color.white, 0.3f);
+        Color col = GS.ColFromEra();   // ember wears the era's colour
+        Color thinCol = Color.Lerp(col, Color.white, heldTint);
 
         // ember: run haul rides on top of what's actually sitting in the base's stores
         int held = EmberStore.pending;
@@ -230,9 +73,62 @@ public class ResourceBarsUI : MonoBehaviour
         }
         int maxHeld = Mathf.Max(cap, 1);
 
-        SetStrip(row, true, held, maxHeld, TickStep, thinCol);
-        SetStrip(row, false, stored, cap, TickStep, col);
-        row.label.text = held > 0 ? $"{held}  +  {stored}/{cap}" : $"{stored}/{cap}";
-        row.label.color = Color.Lerp(col, Color.white, 0.45f);
+        SetStrip(heldFill, heldCap, heldTicks, heldTickPool, ref heldTicksShown, held, maxHeld, thinCol);
+        SetStrip(storeFill, storeCap, storeTicks, storeTickPool, ref storeTicksShown, stored, cap, col);
+        label.text = held > 0 ? $"{held}  +  {stored}/{cap}" : $"{stored}/{cap}";
+        label.color = Color.Lerp(col, Color.white, labelTint);
+    }
+
+    /// <summary>Bar width comes from the authored strip the fill lives in, so the whole readout
+    /// follows whatever size the panel is given in the inspector.</summary>
+    static float StripWidth(Image fill)
+    {
+        RectTransform strip = fill.rectTransform.parent as RectTransform;
+        return strip != null ? strip.rect.width : fill.rectTransform.rect.width;
+    }
+
+    void SetStrip(Image fill, Image cap, RectTransform ticks, List<RectTransform> pool, ref int shown,
+                  int now, int max, Color col)
+    {
+        float barW = StripWidth(fill);
+        float frac = max > 0 ? Mathf.Clamp01(now / (float)max) : 0f;
+        float w = barW * frac;
+        fill.rectTransform.sizeDelta = new Vector2(w, 0f);
+        fill.color = col;
+        cap.enabled = frac > 0.002f && frac < 0.998f;
+        cap.rectTransform.anchoredPosition = new Vector2(w, 0f);
+        cap.color = Color.Lerp(col, Color.white, capTint);
+        LayoutTicks(ticks, pool, ref shown, max, barW);
+    }
+
+    // Opaque hairlines at every whole-step boundary strictly inside the bar. The count follows the
+    // live capacity, so clones come from the authored template; positions refresh every frame
+    // (cheap, a handful of ticks) so an inspector resize is picked up immediately.
+    void LayoutTicks(RectTransform holder, List<RectTransform> pool, ref int shown, int max, float barW)
+    {
+        if (holder == null || tickTemplate == null) return;
+        int n = max > 0 && tickStep > 0 ? Mathf.Max(0, Mathf.CeilToInt(max / (float)tickStep) - 1) : 0;
+        if (n != shown)
+        {
+            shown = n;
+            while (pool.Count > n)
+            {
+                RectTransform last = pool[^1];
+                pool.RemoveAt(pool.Count - 1);
+                if (last != null) Destroy(last.gameObject);
+            }
+            while (pool.Count < n)
+            {
+                Image t = Instantiate(tickTemplate, holder);
+                t.name = $"Tick{pool.Count + 1}";
+                t.gameObject.SetActive(true);
+                pool.Add(t.rectTransform);
+            }
+        }
+        for (int i = 0; i < pool.Count; i++)
+        {
+            if (pool[i] == null) continue;
+            pool[i].anchoredPosition = new Vector2(barW * ((i + 1) * tickStep) / max, 0f);
+        }
     }
 }

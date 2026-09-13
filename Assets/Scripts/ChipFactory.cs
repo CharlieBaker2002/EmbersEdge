@@ -166,7 +166,7 @@ public class ChipFactory : Building, IChipConsumer
     public float ChipIntakeRadius => suctionRadius;
     /// <summary>Any chip is factory food (it all grinds to juice), but ore is fallback only —
     /// hungry refiners (appeal 2) keep dibs on it, same standing as the charger's grinder.</summary>
-    public int ChipAppeal(int sizeClass, int element) => element >= 0 ? 0 : 1;
+    public int ChipAppeal(int sizeClass, int element) => 1;   // ordinary food (one ore, no elements); refiner 2 / construction 3 outrank it
     /// <summary>Juice still owed on the order queue, in bag-space units for the fleet's
     /// planning — net of the stock already settled in the suction ring (dumped hauls the
     /// mouth hasn't ground yet), which is as good as eaten.</summary>

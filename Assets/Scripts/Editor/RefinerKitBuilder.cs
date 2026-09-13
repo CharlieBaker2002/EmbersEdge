@@ -13,8 +13,8 @@ using UnityEngine;
 /// Headless: Unity -batchmode -quit -projectPath . -executeMethod RefinerKitBuilder.BuildAll
 ///
 /// The prefab is built from scratch (no donor): Refiner.png art, ghost-disabled main script,
-/// an EmberConnector (Generator — pure source, cabled
-/// to the nearest store), an authored physic box matching the 3×2 sprite, and an eat spot.
+/// an authored physic box matching the 3×2 sprite, and an eat spot (the refinery is an ORE
+/// SPLITTER now — no ember node).
 /// </summary>
 public static class RefinerKitBuilder
 {
@@ -75,10 +75,6 @@ public static class RefinerKitBuilder
             var box = physic.GetComponent<BoxCollider2D>();
             if (box != null) { box.size = new Vector2(2.9f, 1.9f); box.offset = Vector2.zero; }
 
-            var connect = root.AddComponent<EmberConnector>();
-            connect.taip = EmberConnector.typ.Generator;
-            connect.maxEmber = 8;
-
             var refiner = root.AddComponent<Refiner>();
             refiner.enabled = false;             // ghost-disabled: the intended unbuilt state
             refiner.sr = sr;
@@ -87,7 +83,6 @@ public static class RefinerKitBuilder
             refiner.maxHealth = 15f;
             refiner.builtBlasts = 2;
             refiner.physic = physic.GetComponent<LifeScript>();
-            refiner.connect = connect;
 
             var so = new SerializedObject(refiner);
             so.FindProperty("eatSpot").objectReferenceValue = eatSpot;

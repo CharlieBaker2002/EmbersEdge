@@ -2,88 +2,221 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// The enemy-spawn strike: a chain-lightning bolt from the thing that spawned an enemy (base
-/// ember core, dungeon spawner, pocket core) into the enemy as it materialises, replacing the old
-/// faint HintLine. Spawns from the same source within <see cref="CHAIN_WINDOW"/> seconds hop off
-/// the PREVIOUS enemy instead of re-striking from the source, so a rapid wave reads as one chain
-/// of lightning (same language as the static status effect's tree).
+/// The enemy-spawn strike: a thin thread of era-coloured light from whatever spawned an enemy
+/// (base ember core, dungeon spawner, pocket core) into the enemy as it materialises. Spawns from
+/// the same source inside <see cref="CHAIN_WINDOW"/> leave from the PREVIOUS enemy instead of the
+/// source, so a burst reads as one running chain — but each chain only carries
+/// <see cref="MAX_CHAIN_CREDITS"/> credits' worth of enemy (small 1, medium 3, large 6, by measured
+/// size) and runs at most <see cref="MAX_CHAIN_TIME"/> from its first strike, after which the next
+/// spawn re-strikes from the source — as it also does when the next enemy lands more than
+/// <see cref="MAX_HOP_DIST"/> from the last one, so a chain stays a local cluster rather than
+/// leaping the arena. What a chain has spent DECAYS as it ages (<see cref="CHAIN_CREDIT_DECAY"/>
+/// credits across that life), so a slow trickle keeps riding one thread while a rapid burst fills
+/// the budget and splits off a new one. Budgeting by weight rather than by hop count keeps the wave
+/// legible: seven stragglers can ride one thread, a big one nearly fills a thread by itself, and a
+/// trickle of spawns can't keep one chain creeping across the map indefinitely.
 ///
-/// All code-built, single-element (era colour only). The bolt is a LineRenderer on an instance of
-/// GS.MatByEra(superBright) — the Glow Unlit graph, so colour lives in `thecolor` (HDR, blooms),
-/// alpha rides _MainTex and vertex colour is inert (same contract as CableFlowTint). The crackle
-/// comes from two places at once: the LR points re-wander every tick, and the material cycles
-/// through procedurally drawn lightning-strip frames (the "sprite animation"). Fade-out is width
-/// collapse, never colour alpha (the shader ignores it).
+/// MINIMAL BY DESIGN: no crackle, no fork branches, no spark particles. The motion is carried by
+/// the SHADER — the hot head is baked into the strip texture at u = 1 and rides the line's
+/// stretched UVs as it grows — and by width/brightness envelopes, never by rebuilt geometry.
+///
+/// The strike also OWNS THE ENEMY'S ENTRANCE: pass the spawned GameObject to <see cref="Chain"/>
+/// and the arrival ring is sized to it while the unit itself stays unseen until the thread lands
+/// (see <see cref="SpawnStrikeMaterialise"/>).
+///
+/// Single-element: everything wears the era colour off GS.MatByEra(superBright) — the Glow Unlit
+/// graph, so colour lives in `thecolor` (HDR, blooms), alpha rides _MainTex and vertex colour is
+/// inert (same contract as CableFlowTint). Fades are width collapse + `thecolor` dimming, never
+/// colour alpha (the shader ignores it).
+///
+/// GEOMETRY RULE — the old bolt spammed "Invalid AABB" / non-finite sort distances: LineRenderers
+/// here are LOCAL space (the arena sits ~1000 units from the origin, so world-space points lose
+/// the precision that short segments need) with NO cap/corner vertices, and no two consecutive
+/// points may coincide (see <see cref="MIN_SEG"/>). Keep it that way in anything added here.
 /// </summary>
 public static class SpawnBoltFX
 {
-    const float CHAIN_WINDOW = 0.5f;   // spawns closer together than this hop off the previous enemy
-    const float MAX_BOLT_DIST = 30f;   // sanity cap (arena spawns can sit across the map) — burst only
+    const float CHAIN_WINDOW = 0.5f;    // spawns closer together than this leave from the previous enemy
+    const float MAX_CHAIN_TIME = 1.5f;  // ...and no chain runs longer than this from its first strike
+    const float MAX_HOP_DIST = 3f;      // ...and a hop never reaches further than this to the next enemy
+
+    // ---- chain budget ------------------------------------------------------------------------
+    // A chain carries CREDITS, not a hop count, so its length reads by WEIGHT: seven scrappy little
+    // things can ride one thread, but a big one all but fills it on its own. When the next enemy
+    // would take the running total past the budget, the source throws a fresh thread instead.
+    /// <summary>Most credits one chain may carry at any instant.</summary>
+    public const int MAX_CHAIN_CREDITS = 7;
+    public const int CREDITS_SMALL = 1, CREDITS_MEDIUM = 3, CREDITS_LARGE = 6;
+    /// <summary>Credits a chain sheds over its whole life — what it has spent decays as it ages, so
+    /// a drawn-out trickle keeps riding one thread while a rapid burst fills the budget and splits.
+    /// Charged PER GAP (against the previous strike, not the chain's start): the gaps sum to the
+    /// chain's age, so a chain that runs the full MAX_CHAIN_TIME sheds exactly this much. Decaying
+    /// from the start instead re-bills the same elapsed time at every hop, and a chain evaporates
+    /// its debt several times over.</summary>
+    public const float CHAIN_CREDIT_DECAY = 3.5f;
+    static float DecayPerSecond => CHAIN_CREDIT_DECAY / MAX_CHAIN_TIME;
+    // Measured against the live roster: smalls run 0.23–0.38 (Patroller/Quader/Shooter/Sower/
+    // Spinner/Waggler), mediums 0.50–0.64 (Scratcher/BombWinger), larges 0.95–1.00 (Jumper/Crosser).
+    const float MEDIUM_RADIUS = 0.45f, LARGE_RADIUS = 0.85f;
+    const float MAX_BOLT_DIST = 30f;    // sanity cap (arena spawns can sit across the map) — arrival only
+    const float MIN_BOLT_DIST = 0.15f;  // closer than this there's no thread worth drawing
+
+    /// <summary>Shortest allowed gap between consecutive LineRenderer points — below this the
+    /// strip geometry degenerates and Unity reports invalid AABBs.</summary>
+    internal const float MIN_SEG = 0.02f;
+
+    /// <summary>Half-width of a nondescript unit — what the arrival ring is sized against when
+    /// there's no enemy to measure.</summary>
+    internal const float DEFAULT_RADIUS = 0.5f;
+
+    /// <summary>Seconds between a thread leaving its source and LANDING — the beat the arrival
+    /// ring plays on, and the beat the enemy is allowed to appear on.</summary>
+    public static float ArrivalDelay => SpawnStrikeThread.TRAVEL;
 
     internal static readonly int ColorId = Shader.PropertyToID("thecolor");
     internal static readonly int MainTexId = Shader.PropertyToID("_MainTex");
     internal static readonly int EmissionId = Shader.PropertyToID("_Emission");
 
-    struct ChainState { public Vector2 lastEnd; public float time; }
+    struct ChainState { public Vector2 lastEnd; public float time; public float started; public float credits; }
     static readonly Dictionary<object, ChainState> chains = new Dictionary<object, ChainState>();
 
-    static Texture2D[] boltFrames;
-    static Texture2D hazeTex;
-    static Texture2D sparkTex;
-    static Material sparkMat;
+    static Texture2D threadTex, bandTex, dotTex;
 
-    // Play-stop destroys the runtime textures/materials but not these static refs (GS.qutting
-    // skips teardown) — drop them ourselves or the next play mode renders with dead assets.
+    // Play-stop destroys the runtime textures but not these static refs (GS.qutting skips
+    // teardown) — drop them ourselves or the next play mode renders with dead assets.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
         chains.Clear();
-        boltFrames = null;
-        hazeTex = null;
-        sparkTex = null;
-        sparkMat = null;
+        threadTex = null;
+        bandTex = null;
+        dotTex = null;
     }
 
-    /// <summary>The spawn strike. source keys the chain (one chain per core/spawner/pocket);
-    /// sourcePos is where a fresh chain strikes from; enemyPos is where the enemy materialised.</summary>
-    public static void Chain(object source, Vector2 sourcePos, Vector2 enemyPos, float intensity = 1f)
+    /// <summary>The spawn strike, taking the enemy itself: the arrival ring is sized to the unit,
+    /// and the unit stays hidden until the thread lands on it (then pops in over
+    /// <see cref="SpawnStrikeMaterialise.GROW"/>). This is the overload spawners should call —
+    /// spawn the enemy first, then hand it over.</summary>
+    public static void Chain(object source, Vector2 sourcePos, Vector2 enemyPos, GameObject enemy, float intensity = 1f)
     {
+        float radius = MeasureRadius(enemy);            // measured BEFORE the unit is hidden/shrunk
+        SpawnStrikeMaterialise.Play(enemy, ArrivalDelay);
+        Chain(source, sourcePos, enemyPos, intensity, radius);
+    }
+
+    /// <summary>What one enemy costs a chain, by measured size: 1 small, 3 medium, 6 large.</summary>
+    public static int SizeCredits(float unitRadius) =>
+        unitRadius >= LARGE_RADIUS ? CREDITS_LARGE :
+        unitRadius >= MEDIUM_RADIUS ? CREDITS_MEDIUM : CREDITS_SMALL;
+
+    /// <summary>The spawn strike. source keys the chain (one chain per core/spawner/pocket);
+    /// sourcePos is where a fresh chain leaves from; enemyPos is where the enemy materialised.</summary>
+    public static void Chain(object source, Vector2 sourcePos, Vector2 enemyPos, float intensity = 1f,
+                             float unitRadius = DEFAULT_RADIUS)
+    {
+        // hop off the previous enemy only while the chain is RECENT and still has room in its
+        // credit budget — otherwise the source throws a new thread, so a big wave arrives as a
+        // handful of short strikes rather than one endless daisy chain
+        int cost = SizeCredits(unitRadius);
         Vector2 from = sourcePos;
-        bool root = true;
-        if (source != null && chains.TryGetValue(source, out ChainState st) && Time.time - st.time <= CHAIN_WINDOW)
+        float credits = cost;
+        float started = Time.time;
+        if (source != null && chains.TryGetValue(source, out ChainState st))
         {
-            from = st.lastEnd;
-            root = false;
+            // what the chain still has on the books, after the gap since the LAST strike pays
+            // some of it back (see CHAIN_CREDIT_DECAY — per gap, never from the chain's start)
+            float spent = Mathf.Max(0f, st.credits - DecayPerSecond * (Time.time - st.time));
+            if (Time.time - st.time <= CHAIN_WINDOW              // the last hop was recent
+                && Time.time - st.started <= MAX_CHAIN_TIME      // and the chain as a whole is still young
+                && spent + cost <= MAX_CHAIN_CREDITS             // and it can still afford this one
+                && Vector2.Distance(st.lastEnd, enemyPos) <= MAX_HOP_DIST)   // and the next one is near it
+            {
+                from = st.lastEnd;          // hop off the enemy the last thread landed on
+                credits = spent + cost;
+                started = st.started;       // the clock runs from the chain's FIRST strike, not this one
+            }
         }
+
         if (source != null)
         {
-            chains[source] = new ChainState { lastEnd = enemyPos, time = Time.time };
+            chains[source] = new ChainState
+            {
+                lastEnd = enemyPos,
+                time = Time.time,
+                started = started,
+                credits = credits,
+            };
             if (chains.Count > 32) Prune();
         }
 
-        ImpactBurst(enemyPos, intensity);
-        float dist = Vector2.Distance(from, enemyPos);
-        if (dist > MAX_BOLT_DIST || dist < 0.05f) return;
-        if (root) ImpactBurst(from, 0.5f * intensity);   // the source cracks as the chain leaves it
-        Strike(from, enemyPos, intensity);
+        Strike(from, enemyPos, intensity, unitRadius);
     }
 
-    /// <summary>Pocket spawns with no core of their own: the bolt arrives from the nearest
-    /// UNDISCOVERED core spot — the old core-hunting breadcrumb, now electric but dimmed so it
-    /// stays a hint rather than a reveal.</summary>
-    public static void ChainToNearestCore(object source, Vector2 enemyPos)
+    /// <summary>Pocket spawns with no core of their own: the thread arrives from the nearest
+    /// UNDISCOVERED core spot — the old core-hunting breadcrumb, dimmed so it stays a hint.</summary>
+    public static void ChainToNearestCore(object source, Vector2 enemyPos, GameObject enemy = null)
     {
+        float radius = MeasureRadius(enemy);
+        SpawnStrikeMaterialise.Play(enemy, ArrivalDelay);
         Vector2? spot = MineDungeonManager.i != null ? MineDungeonManager.i.NearestCoreSpot(enemyPos) : null;
-        if (spot == null) { ImpactBurst(enemyPos); return; }
-        Chain(source, spot.Value, enemyPos, 0.5f);
+        if (spot == null) { Arrival(enemyPos, 0.5f, radius); return; }
+        Chain(source, spot.Value, enemyPos, 0.5f, radius);
     }
 
-    /// <summary>One bolt, no chain bookkeeping — full length on the very first frame.</summary>
-    public static void Strike(Vector2 from, Vector2 to, float intensity = 1f)
+    /// <summary>How big the thing being spawned actually is — the arrival ring is drawn around it,
+    /// so a Sower and a boss can't share one canned circle. Visual bounds only (trails, lines and
+    /// particle systems are excluded: they lie about a unit's footprint), collider as the fallback.</summary>
+    public static float MeasureRadius(GameObject enemy)
     {
-        var go = new GameObject("SpawnBolt");
-        go.transform.position = new Vector3(from.x, from.y, 0f);
-        go.AddComponent<SpawnBolt>().Init(from, to, Mathf.Clamp(intensity, 0.15f, 2f));
+        if (enemy == null) return DEFAULT_RADIUS;
+
+        bool any = false;
+        Bounds b = new Bounds(enemy.transform.position, Vector3.zero);
+        foreach (Renderer r in enemy.GetComponentsInChildren<Renderer>(true))
+        {
+            if (r is ParticleSystemRenderer || r is TrailRenderer || r is LineRenderer) continue;
+            if (!any) { b = r.bounds; any = true; } else b.Encapsulate(r.bounds);
+        }
+        if (!any)
+            foreach (Collider2D c in enemy.GetComponentsInChildren<Collider2D>(true))
+            {
+                if (!any) { b = c.bounds; any = true; } else b.Encapsulate(c.bounds);
+            }
+        if (!any) return DEFAULT_RADIUS;
+        return Mathf.Clamp(Mathf.Max(b.extents.x, b.extents.y), 0.12f, 6f);
+    }
+
+    /// <summary>One thread, no chain bookkeeping.</summary>
+    public static void Strike(Vector2 from, Vector2 to, float intensity = 1f, float unitRadius = DEFAULT_RADIUS)
+    {
+        if (!Application.isPlaying) return;   // an edit-mode call would leave undying junk in the scene
+        intensity = Mathf.Clamp(intensity, 0.15f, 2f);
+        float dist = Vector2.Distance(from, to);
+        if (dist > MAX_BOLT_DIST || dist < MIN_BOLT_DIST) { Arrival(to, intensity, unitRadius); return; }
+
+        NewFX("SpawnStrikeThread", from).AddComponent<SpawnStrikeThread>().Init(from, to, intensity, unitRadius);
+    }
+
+    /// <summary>The ring pulse that marks the enemy's end of the strike. The thread fires this
+    /// itself as it lands; it's called directly only when there's no thread to draw.</summary>
+    public static void Arrival(Vector2 pos, float intensity = 1f, float unitRadius = DEFAULT_RADIUS)
+    {
+        if (!Application.isPlaying) return;
+        SpawnStrikeRing.Ring(pos, intensity, unitRadius);
+    }
+
+    /// <summary>A runtime FX object. DontSave is not cosmetic: these live for a third of a second
+    /// and are driven by Update, so one serialised into a scene would wake with null refs and never
+    /// die (a saved scene full of undying strike objects is exactly how this bit once). Anything
+    /// spawned by this file must go through here.</summary>
+    internal static GameObject NewFX(string name, Vector2 at)
+    {
+        // DontSaveInEditor, not the full DontSave: it keeps these out of a saved scene (the bug
+        // that once left 45 undying strike objects in World.unity) WITHOUT the survive-scene-load
+        // behaviour the full flag drags along.
+        var go = new GameObject(name) { hideFlags = HideFlags.DontSaveInEditor };
+        go.transform.position = new Vector3(at.x, at.y, 0f);
+        return go;
     }
 
     static void Prune()
@@ -94,201 +227,40 @@ public static class SpawnBoltFX
         if (stale != null) foreach (object k in stale) chains.Remove(k);
     }
 
-    // ---- impact ------------------------------------------------------------------------------
+    // ---- shared glow plumbing ----------------------------------------------------------------
 
-    /// <summary>The materialise burst at the enemy end: a white-hot flash, fast speed-stretched
-    /// sparks and a few slow drifting embers, all fading through the era colour.</summary>
-    public static void ImpactBurst(Vector2 pos, float intensity = 1f)
+    /// <summary>An instance of the era's superbright glow material wearing <paramref name="tex"/>
+    /// (alpha rides the texture on this graph). Hands back the material's own HDR colour so the
+    /// caller can dim it for the fade; destroy the material when the effect dies.</summary>
+    internal static Material NewGlowMat(Texture2D tex, out Color baseCol, float dim = 1f)
     {
-        Color col = GS.ColFromEra();
-        var root = new GameObject("SpawnStrikeBurst");
-        root.transform.position = new Vector3(pos.x, pos.y, 0f);
-
-        var ep = new ParticleSystem.EmitParams();
-
-        // flash + drifting embers
-        ParticleSystem soft = NewBurstPS(root.transform, col, false);
-        ep.velocity = Vector3.zero;
-        ep.startLifetime = 0.14f;
-        ep.startSize = 0.95f * intensity;
-        soft.Emit(ep, 1);
-        int embers = Mathf.Max(3, Mathf.RoundToInt(7f * intensity));
-        for (int k = 0; k < embers; k++)
-        {
-            Vector2 dir = Random.insideUnitCircle.normalized;
-            ep.velocity = (Vector3)(dir * Random.Range(0.35f, 1.2f));
-            ep.startLifetime = Random.Range(0.45f, 0.85f);
-            ep.startSize = Random.Range(0.07f, 0.15f) * intensity;
-            soft.Emit(ep, 1);
-        }
-
-        // fast sparks, stretched along their velocity so they read as electric filaments
-        ParticleSystem sparks = NewBurstPS(root.transform, col, true);
-        int n = Mathf.Max(6, Mathf.RoundToInt(16f * intensity));
-        for (int k = 0; k < n; k++)
-        {
-            Vector2 dir = Random.insideUnitCircle.normalized;
-            ep.velocity = (Vector3)(dir * Random.Range(2.4f, 5.2f));
-            ep.startLifetime = Random.Range(0.16f, 0.36f);
-            ep.startSize = Random.Range(0.05f, 0.11f) * intensity;
-            sparks.Emit(ep, 1);
-        }
-
-        Object.Destroy(root, 1.6f);
+        Material src = SpawnManager.instance != null ? GS.MatByEra(GS.era, superBright: true) : null;
+        var m = src != null ? new Material(src) : new Material(Shader.Find("Sprites/Default"));
+        m.SetTexture(MainTexId, tex);
+        if (m.HasProperty(EmissionId)) m.SetTexture(EmissionId, tex);
+        baseCol = m.HasProperty(ColorId) ? m.GetColor(ColorId) : GS.ColFromEra();
+        baseCol = new Color(baseCol.r * dim, baseCol.g * dim, baseCol.b * dim, 1f);
+        SetBrightness(m, baseCol, 1f);
+        return m;
     }
 
-    static ParticleSystem NewBurstPS(Transform parent, Color col, bool stretch)
+    /// <summary>Fade/flare a glow material — brightness lives in the HDR `thecolor`, not alpha.</summary>
+    internal static void SetBrightness(Material m, Color baseCol, float k)
     {
-        var go = new GameObject(stretch ? "sparks" : "glow");
-        go.transform.SetParent(parent, false);
-        var ps = go.AddComponent<ParticleSystem>();
-        ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);   // configure before playing
-
-        var main = ps.main;
-        main.loop = false;
-        main.startColor = Color.white;
-        main.simulationSpace = ParticleSystemSimulationSpace.World;
-        main.maxParticles = 64;
-
-        var em = ps.emission;
-        em.enabled = false;   // everything arrives via Emit()
-
-        var colOver = ps.colorOverLifetime;
-        colOver.enabled = true;
-        var grad = new Gradient();
-        grad.SetKeys(
-            new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(col, 0.3f), new GradientColorKey(col, 1f) },
-            new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.85f, 0.35f), new GradientAlphaKey(0f, 1f) });
-        colOver.color = grad;
-
-        var r = go.GetComponent<ParticleSystemRenderer>();
-        r.renderMode = stretch ? ParticleSystemRenderMode.Stretch : ParticleSystemRenderMode.Billboard;
-        if (stretch)
-        {
-            r.lengthScale = 2.4f;
-            r.velocityScale = 0f;
-        }
-        r.material = SparkMat();
-        r.sortingLayerName = "Power Ups";
-        r.sortingOrder = 31;
-
-        ps.Play();
-        return ps;
+        if (m == null || !m.HasProperty(ColorId)) return;
+        m.SetColor(ColorId, new Color(baseCol.r * k, baseCol.g * k, baseCol.b * k, 1f));
     }
 
-    static Material SparkMat()
-    {
-        if (sparkMat == null)
-        {
-            // Sprite-Unlit for anything that fades via particle colour — Glow mats ignore alpha.
-            var sh = Shader.Find("Universal Render Pipeline/2D/Sprite-Unlit-Default") ?? Shader.Find("Sprites/Default");
-            sparkMat = new Material(sh) { mainTexture = SparkTex() };
-        }
-        return sparkMat;
-    }
-
-    // ---- the code-drawn sprite frames --------------------------------------------------------
-
-    /// <summary>Six lightning-strip frames (jagged white core + gaussian glow, alpha-shaped, tips
-    /// tapered) the bolt LR cycles through — drawn once, cached for the session.</summary>
-    internal static Texture2D[] BoltFrames()
-    {
-        if (boltFrames != null) return boltFrames;
-        const int N = 6, W = 384, H = 96, SEGS = 32;
-        boltFrames = new Texture2D[N];
-        for (int f = 0; f < N; f++)
-        {
-            // midpoint-displacement midline, endpoints pinned to the centre row
-            var ys = new float[SEGS + 1];
-            for (int i = 0; i <= SEGS; i++) ys[i] = H * 0.5f;
-            int step = SEGS;
-            float disp = H * 0.30f;
-            while (step > 1)
-            {
-                for (int i = 0; i + step <= SEGS; i += step)
-                {
-                    int mid = i + step / 2;
-                    ys[mid] = Mathf.Clamp((ys[i] + ys[i + step]) * 0.5f + Random.Range(-disp, disp),
-                                          H * 0.14f, H * 0.86f);
-                }
-                step /= 2;
-                disp *= 0.55f;
-            }
-
-            var px = new Color32[W * H];
-            float hotAt = Random.Range(0.15f, 0.85f), hotW = Random.Range(0.04f, 0.1f);
-            for (int x = 0; x < W; x++)
-            {
-                float u = x / (float)(W - 1);
-                float fi = u * SEGS;
-                int i0 = Mathf.Min((int)fi, SEGS - 1);
-                float yc = Mathf.Lerp(ys[i0], ys[i0 + 1], fi - i0);
-                float env = Mathf.Clamp01(Mathf.Min(u, 1f - u) / 0.09f);               // tip taper
-                env *= 0.8f + 0.2f * Mathf.Sin(u * 37f + f * 5f);                       // shimmer
-                env *= 1f + 0.5f * Mathf.Exp(-Mathf.Pow((u - hotAt) / hotW, 2f));      // hot pinch
-                for (int y = 0; y < H; y++)
-                {
-                    float d = Mathf.Abs(y - yc);
-                    float a = d < 2f ? 1f : 0.62f * Mathf.Exp(-Mathf.Pow((d - 2f) / 8.5f, 2f));
-                    a = Mathf.Clamp01(a * env);
-                    px[y * W + x] = new Color32(255, 255, 255, (byte)(a * 255f));
-                }
-            }
-            var tex = new Texture2D(W, H, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
-            tex.SetPixels32(px);
-            tex.Apply();
-            boltFrames[f] = tex;
-        }
-        return boltFrames;
-    }
-
-    /// <summary>A soft gaussian band for the wide under-glow pass beneath the bolt.</summary>
-    internal static Texture2D HazeTex()
-    {
-        if (hazeTex != null) return hazeTex;
-        const int W = 64, H = 64;
-        var px = new Color32[W * H];
-        for (int x = 0; x < W; x++)
-        {
-            float u = x / (float)(W - 1);
-            float env = Mathf.Clamp01(Mathf.Min(u, 1f - u) / 0.12f);
-            for (int y = 0; y < H; y++)
-            {
-                float a = 0.55f * env * Mathf.Exp(-Mathf.Pow((y - H * 0.5f) / (H * 0.22f), 2f));
-                px[y * W + x] = new Color32(255, 255, 255, (byte)(Mathf.Clamp01(a) * 255f));
-            }
-        }
-        hazeTex = new Texture2D(W, H, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
-        hazeTex.SetPixels32(px);
-        hazeTex.Apply();
-        return hazeTex;
-    }
-
-    static Texture2D SparkTex()
-    {
-        if (sparkTex != null) return sparkTex;
-        const int S = 48;
-        var px = new Color32[S * S];
-        for (int x = 0; x < S; x++)
-            for (int y = 0; y < S; y++)
-            {
-                float r = Mathf.Sqrt((x - S * 0.5f) * (x - S * 0.5f) + (y - S * 0.5f) * (y - S * 0.5f));
-                float a = Mathf.Pow(Mathf.Clamp01(1f - r / (S * 0.48f)), 1.8f);
-                px[y * S + x] = new Color32(255, 255, 255, (byte)(a * 255f));
-            }
-        sparkTex = new Texture2D(S, S, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
-        sparkTex.SetPixels32(px);
-        sparkTex.Apply();
-        return sparkTex;
-    }
-
+    /// <summary>A LineRenderer set up the safe way: LOCAL space, no cap/corner vertices (see the
+    /// geometry rule above), stretched UVs so a strip texture maps once along the whole line.</summary>
     internal static LineRenderer NewLR(GameObject go, Material m, int order)
     {
         var lr = go.AddComponent<LineRenderer>();
-        lr.useWorldSpace = true;
+        lr.useWorldSpace = false;
         lr.textureMode = LineTextureMode.Stretch;
-        lr.numCapVertices = 4;
-        lr.numCornerVertices = 4;
+        lr.alignment = LineAlignment.View;
+        lr.numCapVertices = 0;
+        lr.numCornerVertices = 0;
         lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         lr.receiveShadows = false;
         lr.sharedMaterial = m;
@@ -297,179 +269,70 @@ public static class SpawnBoltFX
         return lr;
     }
 
-    internal static Vector2 Rot(Vector2 v, float deg)
+    // ---- the code-drawn strips ---------------------------------------------------------------
+
+    /// <summary>The thread strip: a dim tail brightening into a hot head at u = 1, soft-edged
+    /// across the width. Stretched along the line, so as the line grows the head rides its tip —
+    /// the travel is the shader's job, not the geometry's.</summary>
+    internal static Texture2D ThreadTex()
     {
-        float r = deg * Mathf.Deg2Rad, c = Mathf.Cos(r), s = Mathf.Sin(r);
-        return new Vector2(c * v.x - s * v.y, s * v.x + c * v.y);
-    }
-}
-
-/// <summary>
-/// One bolt of the spawn chain. A quadratic-bezier backbone bows the strike off the straight line;
-/// every ~45ms the interior points re-wander (smoothed noise, endpoints pinned), the material hops
-/// to a different lightning frame, and the 1–3 fork branches rebuild off the fresh path — so the
-/// whole strike crackles without ever moving its endpoints. Life is width: a fat attack pop, then
-/// a flickering collapse to nothing (Glow Unlit ignores colour alpha, so width IS the fade).
-/// </summary>
-public class SpawnBolt : MonoBehaviour
-{
-    const float LIFE = 0.5f;
-    const float REROLL = 0.045f;
-    const float ATTACK = 0.07f;
-    const float BRANCH_LIFE = LIFE * 0.55f;
-    const int BRANCH_PTS = 8;
-
-    LineRenderer main, haze;
-    readonly List<LineRenderer> branches = new List<LineRenderer>();
-    readonly List<float> branchU = new List<float>();
-    readonly List<float> branchSide = new List<float>();
-    readonly List<float> branchAng = new List<float>();
-    readonly List<float> branchLen = new List<float>();
-
-    Material mainMat, hazeMat;
-    Vector3[] basePts, pts;
-    Vector2 perp;
-    float dist, peakW, t, rerollT, flicker = 1f;
-    int frame;
-
-    public void Init(Vector2 from, Vector2 to, float intensity)
-    {
-        dist = Vector2.Distance(from, to);
-        Vector2 dir = (to - from).normalized;
-        perp = new Vector2(-dir.y, dir.x);
-
-        // the backbone: a gentle random bow so no two strikes share a path
-        int n = Mathf.Clamp(Mathf.RoundToInt(dist * 4f) + 1, 12, 44);
-        basePts = new Vector3[n];
-        pts = new Vector3[n];
-        Vector2 ctrl = (from + to) * 0.5f
-                       + perp * (dist * Random.Range(0.10f, 0.22f) * (Random.value < 0.5f ? -1f : 1f));
-        for (int i = 0; i < n; i++)
+        if (threadTex != null) return threadTex;
+        const int W = 256, H = 16;
+        var px = new Color32[W * H];
+        for (int x = 0; x < W; x++)
         {
-            float u = i / (float)(n - 1), iu = 1f - u;
-            basePts[i] = pts[i] = iu * iu * from + 2f * iu * u * ctrl + u * u * to;
+            float u = x / (float)(W - 1);
+            float head = 0.16f + 0.84f * Mathf.Pow(u, 5f);           // dim thread → hot tip
+            head *= Mathf.Clamp01(u / 0.04f);                        // clean start at the source
+            for (int y = 0; y < H; y++)
+            {
+                float v = (y / (float)(H - 1) - 0.5f) * 2f;          // -1 .. 1 across the width
+                float edge = Mathf.Exp(-(v * v) / 0.34f);            // soft shoulders
+                px[y * W + x] = new Color32(255, 255, 255, (byte)(Mathf.Clamp01(head * edge) * 255f));
+            }
         }
-
-        Material src = GS.MatByEra(GS.era, superBright: true);
-        mainMat = new Material(src);
-        hazeMat = new Material(src);
-        hazeMat.SetTexture(SpawnBoltFX.MainTexId, SpawnBoltFX.HazeTex());
-        hazeMat.SetTexture(SpawnBoltFX.EmissionId, SpawnBoltFX.HazeTex());
-        if (hazeMat.HasProperty(SpawnBoltFX.ColorId))
-        {
-            // same hue, a fraction of the HDR punch — an aura, not a second bolt
-            Color c = hazeMat.GetColor(SpawnBoltFX.ColorId);
-            hazeMat.SetColor(SpawnBoltFX.ColorId, new Color(c.r * 0.3f, c.g * 0.3f, c.b * 0.3f, 1f));
-        }
-
-        var hazeGO = new GameObject("haze");
-        hazeGO.transform.SetParent(transform, false);
-        haze = SpawnBoltFX.NewLR(hazeGO, hazeMat, 27);
-        haze.positionCount = n;
-        haze.SetPositions(basePts);   // the aura rides the smooth backbone, not the crackle
-
-        main = SpawnBoltFX.NewLR(gameObject, mainMat, 29);
-        main.positionCount = n;
-
-        peakW = Mathf.Min(0.6f, 0.24f + 0.045f * Mathf.Sqrt(dist)) * intensity;
-
-        int nb = Random.Range(1, 4);
-        for (int k = 0; k < nb; k++)
-        {
-            var bg = new GameObject("branch");
-            bg.transform.SetParent(transform, false);
-            var blr = SpawnBoltFX.NewLR(bg, mainMat, 28);
-            blr.positionCount = BRANCH_PTS;
-            branches.Add(blr);
-            branchU.Add(Random.Range(0.2f, 0.8f));
-            branchSide.Add(Random.value < 0.5f ? -1f : 1f);
-            branchAng.Add(Random.Range(25f, 55f));
-            branchLen.Add(dist * Random.Range(0.16f, 0.32f));
-        }
-
-        frame = Random.Range(0, SpawnBoltFX.BoltFrames().Length);
-        ReRoll();
-        ApplyWidths();   // fully dressed before its first render — the strike is instantaneous
+        threadTex = new Texture2D(W, H, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+        threadTex.SetPixels32(px);
+        threadTex.Apply();
+        return threadTex;
     }
 
-    void ReRoll()
+    /// <summary>A soft radial dot (16×16) for glow particles — construction sparks, syphon streaks.</summary>
+    internal static Texture2D DotTex()
     {
-        rerollT = REROLL;
-        Texture2D[] frames = SpawnBoltFX.BoltFrames();
-        frame = (frame + Random.Range(1, frames.Length)) % frames.Length;   // never the same twice
-        mainMat.SetTexture(SpawnBoltFX.MainTexId, frames[frame]);
-        mainMat.SetTexture(SpawnBoltFX.EmissionId, frames[frame]);
-        flicker = Random.Range(0.82f, 1.15f);
+        if (dotTex != null) return dotTex;
+        const int S = 16;
+        var px = new Color32[S * S];
+        for (int y = 0; y < S; y++)
+            for (int x = 0; x < S; x++)
+            {
+                float dx = (x + 0.5f) / S - 0.5f, dy = (y + 0.5f) / S - 0.5f;
+                float r = Mathf.Sqrt(dx * dx + dy * dy) * 2f;
+                float a = 1f - Mathf.SmoothStep(0.15f, 1f, r);
+                px[y * S + x] = new Color32(255, 255, 255, (byte)(Mathf.Clamp01(a) * 255f));
+            }
+        dotTex = new Texture2D(S, S, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+        dotTex.SetPixels32(px);
+        dotTex.Apply();
+        return dotTex;
+    }
 
-        // smoothed noise wander — white noise per point reads fuzzy, two blur passes make it kink
-        int n = basePts.Length;
-        float amp = 0.08f + 0.05f * Mathf.Sqrt(dist);
-        var noise = new float[n];
-        for (int i = 1; i < n - 1; i++) noise[i] = Random.Range(-1f, 1f);
-        for (int pass = 0; pass < 2; pass++)
-            for (int i = 1; i < n - 1; i++)
-                noise[i] = (noise[i - 1] + noise[i] * 2f + noise[i + 1]) * 0.25f;
-        for (int i = 0; i < n; i++)
+    /// <summary>A plain soft-edged band — even along its length, feathered across it. The arrival
+    /// ring wears this.</summary>
+    internal static Texture2D BandTex()
+    {
+        if (bandTex != null) return bandTex;
+        const int W = 8, H = 32;
+        var px = new Color32[W * H];
+        for (int y = 0; y < H; y++)
         {
-            float u = i / (float)(n - 1);
-            float env = Mathf.Pow(Mathf.Sin(u * Mathf.PI), 0.6f);   // endpoints stay pinned
-            pts[i] = basePts[i] + (Vector3)(perp * (noise[i] * amp * env));
+            float v = (y / (float)(H - 1) - 0.5f) * 2f;
+            float a = Mathf.Clamp01(Mathf.Exp(-(v * v) / 0.30f) * 1.05f);
+            for (int x = 0; x < W; x++) px[y * W + x] = new Color32(255, 255, 255, (byte)(a * 255f));
         }
-        main.SetPositions(pts);
-
-        for (int k = 0; k < branches.Count; k++) BuildBranch(k);
-    }
-
-    // A fork: leaves the live path at its anchor, curls away from the main stroke as it goes.
-    void BuildBranch(int k)
-    {
-        LineRenderer blr = branches[k];
-        if (!blr.enabled) return;
-        int n = pts.Length;
-        int i = Mathf.Clamp(Mathf.RoundToInt(branchU[k] * (n - 1)), 1, n - 2);
-        Vector2 d = ((Vector2)(pts[i + 1] - pts[i - 1])).normalized;
-        d = SpawnBoltFX.Rot(d, branchSide[k] * (branchAng[k] + Random.Range(-8f, 8f)));
-        Vector2 bperp = new Vector2(-d.y, d.x);
-        Vector2 p = pts[i];
-        float step = branchLen[k] / (BRANCH_PTS - 1);
-        for (int j = 0; j < BRANCH_PTS; j++)
-        {
-            blr.SetPosition(j, p);
-            d = SpawnBoltFX.Rot(d, branchSide[k] * Random.Range(2f, 9f));
-            p += d * step + bperp * (Random.Range(-1f, 1f) * step * 0.35f);
-        }
-    }
-
-    void Update()
-    {
-        t += Time.deltaTime;
-        if (t >= LIFE) { Destroy(gameObject); return; }
-        rerollT -= Time.deltaTime;
-        if (rerollT <= 0f) ReRoll();
-        ApplyWidths();
-    }
-
-    void ApplyWidths()
-    {
-        float env = t < ATTACK
-            ? Mathf.Lerp(1.5f, 1f, t / ATTACK)
-            : Mathf.Pow(1f - (t - ATTACK) / (LIFE - ATTACK), 1.55f);
-        float w = peakW * flicker * env;
-        main.widthMultiplier = w;
-        haze.widthMultiplier = w * 3f;
-
-        float bl = t / BRANCH_LIFE;
-        float bw = bl >= 1f ? 0f : w * 0.45f * Mathf.Pow(1f - bl, 1.2f);
-        foreach (LineRenderer blr in branches)
-        {
-            if (bw <= 0f) blr.enabled = false;
-            else blr.widthMultiplier = bw;
-        }
-    }
-
-    void OnDestroy()
-    {
-        if (mainMat != null) Destroy(mainMat);
-        if (hazeMat != null) Destroy(hazeMat);
+        bandTex = new Texture2D(W, H, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+        bandTex.SetPixels32(px);
+        bandTex.Apply();
+        return bandTex;
     }
 }
