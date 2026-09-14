@@ -16,6 +16,8 @@ public class Expander : Building
     [SerializeField] private List<EmberParticle> statics;
     [SerializeField] protected Ember emb;
     public float maxDistance = 7.5f;
+    /// <summary>The hover ring shows the span it can expand to (HoverRing, 2026-09-14).</summary>
+    public override float HoverRingRadius => maxDistance;
     [SerializeField] ParticleSystem ps;
     protected ParticleSystem.EmissionModule em;
     private float timer;

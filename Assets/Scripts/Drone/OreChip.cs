@@ -1,13 +1,17 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Debris scattered by every broken dungeon wall (OreChips_0..3 small / 4..7 big / 8..11 large,
+/// Debris scattered by every broken dungeon wall (OreChips_0..3 small / 4..7 big / 8..11 large —
+/// the class is the slice's ember/emission pixel count, 1/2/3; Tools/Ore Chip Kit re-sorts the strip,
 /// element-lit when the wall carried ore). Physical litter: each chip bursts out of the break
 /// spinning, skids to rest, and is plowed aside by anything that walks through it (AllUnits
-/// layer — units shove chips, chips never touch each other, walls or projectiles). No value
-/// yet — bag drones haul them home as scrap; anything left despawns when the player returns
-/// to base.
+/// layer — units shove chips, chips never touch each other, walls or projectiles). Loose chips
+/// are EPHEMERAL: every clear cycle (the teleport home, a wave clearing — see ChipClearCycle)
+/// fades them out unless a consumer's intake ring already owns them or a powered Tube
+/// holds them (a stored chip leaves <see cref="all"/> and physics entirely; the store cluster
+/// drives it — see <see cref="stored"/>).
 /// </summary>
 public class OreChip : MonoBehaviour
 {
@@ -24,6 +28,27 @@ public class OreChip : MonoBehaviour
     /// <summary>Fleet-wide cooldown stamped by a bag drone that gave up reaching this chip —
     /// collect scans skip it until then (it may free itself, or the route may open).</summary>
     [HideInInspector] public float unreachableUntil;
+    /// <summary>Stamped every physics tick the player's Hoover is pulling this chip — building
+    /// intakes (the Collector) leave a chip under the player's pull alone.</summary>
+    [HideInInspector] public float playerPullStamp = float.NegativeInfinity;
+    public bool PulledByPlayer => Time.time - playerPullStamp < 0.25f;
+    /// <summary>Stamped every physics tick a Collector is dragging this chip to its pile — the
+    /// tube rings and belt tiles it crosses on the way leave it alone (a chip snatched mid-pull
+    /// stopped simulating and stayed in the Collector's pull list for good, 2026-09-14).</summary>
+    [HideInInspector] public float collectorPullStamp = float.NegativeInfinity;
+    public bool PulledByCollector => Time.time - collectorPullStamp < 0.25f;
+    /// <summary>What holds this chip off the ground (null = loose): a Tube cluster (TubeCluster)
+    /// or a belt line (BeltLine). A stored chip is OUT of <see cref="all"/> and physics-free —
+    /// the holder owns its position; it comes back to the world through <see cref="Unstore"/>
+    /// (dropped, set down at a belt's end) or a drone's <see cref="AbsorbInto"/> (fetched off a
+    /// shelf for a real consumer — never off a belt).</summary>
+    [System.NonSerialized] public object stored;
+    public bool Stored => stored != null;
+    /// <summary>Scale the pop-in / steady scale settles at (a store packs its chips smaller).</summary>
+    [HideInInspector] public float scaleMul = 1f;
+    bool fading;
+    /// <summary>Mid clear-cycle fade: already off the registry, about to be destroyed.</summary>
+    public bool Fading => fading;
     public SpriteRenderer sr;
     [HideInInspector] public Rigidbody2D rb;
 
@@ -86,13 +111,88 @@ public class OreChip : MonoBehaviour
         absorbT = 0f;
         absorbScale = transform.localScale;
         claimedBy = null;
+        stored = null;   // a store's cluster prunes the entry itself (Absorbing)
         all.Remove(this);
         if (rb != null) rb.simulated = false;   // stop skidding/being plowed mid-swallow
     }
 
+    /// <summary>Into a Tube or onto a Belt: off the loose registry, physics parked (body off so
+    /// nothing scatters the shelf), claims dropped. The holder moves it from here on.</summary>
+    public void Store(object holder)
+    {
+        stored = holder;
+        claimedBy = null;
+        all.Remove(this);
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector2.zero;
+            rb.angularVelocity = 0f;
+            rb.simulated = false;
+        }
+        var body = GetComponent<Collider2D>();
+        if (body != null) body.enabled = false;
+    }
+
+    /// <summary>Back out of a store as an ordinary loose chip (a box died under it, or the
+    /// shelf lost its room): registry, body and full scale return.</summary>
+    public void Unstore()
+    {
+        stored = null;
+        scaleMul = 1f;
+        if (!all.Contains(this)) all.Add(this);
+        if (rb != null) rb.simulated = true;
+        var body = GetComponent<Collider2D>();
+        if (body != null) body.enabled = true;
+    }
+
+    /// <summary>The clear-cycle vanish: a tiny minimal effect — the chip lifts a hair, flashes
+    /// toward white and shrinks away over <paramref name="seconds"/> (ease-in, so it lingers
+    /// then pops), then destroys itself. Off the registry at once so nothing targets it.</summary>
+    public void FadeOut(float seconds = 0.45f, float delay = 0f)
+    {
+        if (fading || Absorbing) return;
+        fading = true;
+        claimedBy = null;
+        stored = null;
+        all.Remove(this);
+        if (rb != null) rb.simulated = false;
+        var body = GetComponent<Collider2D>();
+        if (body != null) body.enabled = false;
+        StartCoroutine(FadeCo(seconds, delay));
+    }
+
+    IEnumerator FadeCo(float seconds, float delay)
+    {
+        if (delay > 0f) yield return new WaitForSeconds(delay);
+        Vector3 s0 = transform.localScale;
+        Vector3 p0 = transform.position;
+        Color c0 = sr != null ? sr.color : Color.white;
+        Color flash = Color.Lerp(c0, Color.white, 0.7f);
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.deltaTime / Mathf.Max(0.05f, seconds);
+            float k = Mathf.Clamp01(t);
+            float e = k * k;                                   // ease-in: holds, then goes
+            transform.localScale = s0 * (1f - e);
+            transform.position = p0 + Vector3.up * (0.07f * k);
+            if (sr != null)
+            {
+                Color c = Color.Lerp(c0, flash, Mathf.Sin(k * Mathf.PI));
+                c.a = c0.a * (1f - e);
+                sr.color = c;
+            }
+            yield return null;
+        }
+        Destroy(gameObject);
+    }
+
     /// <summary>Kick the chip out of the break point: outward skid + spin, damped to a stop.
     /// Also bolts on the physics body (runtime-added so pre-physics prefabs keep working).</summary>
-    public void Tumble(Vector2 burstFrom)
+    /// <summary>Give the chip its body and send it skidding away from <paramref name="burstFrom"/>.
+    /// <paramref name="kick"/> scales the launch speed (1 = the loose scrap puff; a drone's
+    /// careful deposit uses a fraction so the chip settles where it was put).</summary>
+    public void Tumble(Vector2 burstFrom, float kick = 1f)
     {
         if (rb == null)
         {
@@ -110,8 +210,8 @@ public class OreChip : MonoBehaviour
         Vector2 dir = (Vector2)transform.position - burstFrom;
         dir = dir.sqrMagnitude > 1e-6f ? dir.normalized : Random.insideUnitCircle.normalized;
         // big chunks lumber, small flakes zip
-        rb.linearVelocity = dir * (Random.Range(1.6f, 3.2f) / (1f + 0.45f * sizeClass));
-        rb.angularVelocity = Random.Range(180f, 540f) * (Random.value < 0.5f ? -1f : 1f);
+        rb.linearVelocity = dir * (kick * Random.Range(1.6f, 3.2f) / (1f + 0.45f * sizeClass));
+        rb.angularVelocity = Mathf.Lerp(60f, 1f, 1f - Mathf.Clamp01(kick)) * Random.Range(3f, 9f) * (Random.value < 0.5f ? -1f : 1f);
     }
 
     /// <summary>Dungeon walls are hard geometry to a skidding chip: reflect off the mine grid
@@ -156,6 +256,7 @@ public class OreChip : MonoBehaviour
 
     void Update()
     {
+        if (fading) return;   // FadeCo owns the transform now
         if (Absorbing)
         {
             if (mouth == null) { Destroy(gameObject); return; }   // drone died mid-swallow
@@ -175,8 +276,8 @@ public class OreChip : MonoBehaviour
         if (t < 1f)
         {
             float u = t - 1f;
-            transform.localScale = Vector3.one * (1f + 2.70158f * u * u * u + 1.70158f * u * u);
+            transform.localScale = Vector3.one * (scaleMul * (1f + 2.70158f * u * u * u + 1.70158f * u * u));
         }
-        else if (transform.localScale.x != 1f) transform.localScale = Vector3.one;
+        else if (transform.localScale.x != scaleMul) transform.localScale = Vector3.one * scaleMul;
     }
 }

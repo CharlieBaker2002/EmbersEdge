@@ -23,7 +23,12 @@ public class GridManager : MonoBehaviour
     private Color outColour    = new Color(0.05f, 0.05f, 0.05f, 0.5f); // black – out of range
     private Color brightClearColour   = new Color(0f, 1f, 0f, 1f); // super‑bright green
     private Color brightBlockedColour = new Color(0.8f, 0f, 0f, 1f);  // super‑bright red
-    private Color energyFreeColour   = new Color(0f, 0.4f, 0f, 0.5f); // yellow – energy & buildable
+    // POWER cells (see PowerReach): a buildable cell a placed pad/hub would power is blue, one inside
+    // a pylon's cable reach light blue; the ghost's own projected reach is the bright variant.
+    private Color energyColour            = new Color(0.05f, 0.32f, 1f, 0.55f);   // blue – buildable & pad/hub-powered
+    private Color energyLightColour       = new Color(0.18f, 0.3f, 0.55f, 0.3f);  // faint blue – buildable & in a pylon's reach (a wide field: keep it quiet)
+    private Color brightEnergyColour      = new Color(0.25f, 0.55f, 1f, 1f);      // super-bright blue – the ghost's reach
+    private Color brightEnergyLightColour = new Color(0.3f, 0.48f, 0.8f, 0.65f);  // a ghost pylon's reach — brighter than placed, still soft
 
     [SerializeField] Transform buildingGrid;
     [SerializeField] SpriteRenderer block;
@@ -46,6 +51,12 @@ public class GridManager : MonoBehaviour
 
     Vector2Int lastAnchor = new(int.MinValue, int.MinValue);
     Vector2Int lastSize   = Vector2Int.one;
+    readonly List<Vector2Int> lastPower = new List<Vector2Int>();   // the ghost's reach cells highlighted last frame
+
+    // cells the PLACED sources power (pads/hubs blue, pylons light blue) — rebuilt by RefreshEnergyCells
+    readonly HashSet<Vector2Int> padPower = new HashSet<Vector2Int>();
+    readonly HashSet<Vector2Int> pylonPower = new HashSet<Vector2Int>();
+    readonly List<Vector2Int> reachScratch = new List<Vector2Int>();
 
     private bool stopDeactivate = false;
     private bool deactivating   = false;
@@ -69,10 +80,16 @@ public class GridManager : MonoBehaviour
         yield return null;
         while (MapManager.MapBounds().size.x <= 0f) yield return null;
         EnsureGridFitsMap();
+        // sources coming, going, dying, rotating → recolour the power cells while the grid is up
+        if (EnergyManager.i != null) EnergyManager.i.OnPadsChanged += OnPylonChanged;
     }
 
     void OnEnable()  { MapManager.OnUpdateMap += OnMapRebuilt; }
-    void OnDisable() { MapManager.OnUpdateMap -= OnMapRebuilt; }
+    void OnDisable()
+    {
+        MapManager.OnUpdateMap -= OnMapRebuilt;
+        if (EnergyManager.i != null) EnergyManager.i.OnPadsChanged -= OnPylonChanged;
+    }
 
     // When the map grows (e.g. a new core expands the boundary), resize the grid in the background so it's
     // ready before the player next enters build mode. No-op if the map still fits the current grid.
@@ -301,8 +318,10 @@ public class GridManager : MonoBehaviour
     /// Paints / updates the preview for the current frame. Only the cells that changed since the last call are touched → cheap.
     /// • Un‑buildable cells (occupied or out of range) go bright red.
     /// • All cells in a fully‑valid footprint go bright green.
+    /// • If the ghost is a power source (<paramref name="ghost"/>: pad, hub, pylon), the buildable cells
+    ///   it WOULD power go bright blue (pylon reach: bright light blue) — see <see cref="PowerReach"/>.
     /// </summary>
-    public void PreviewArea(Vector2Int anchor, Vector2Int size, bool valid)
+    public void PreviewArea(Vector2Int anchor, Vector2Int size, bool valid, Building ghost = null)
     {
         // 1) Restore colours where the cursor was previously
         if (lastAnchor.x != int.MinValue)
@@ -318,6 +337,36 @@ public class GridManager : MonoBehaviour
                         overlay[gx, gy].sortingLayerID = SortingLayer.NameToID("Default");
                     }
                 }
+        }
+        for (int k = 0; k < lastPower.Count; ++k)
+        {
+            var c = lastPower[k];
+            if (Inside(c.x, c.y) && overlay[c.x, c.y] != null)
+            {
+                overlay[c.x, c.y].color = baseColour[c.x, c.y];
+                overlay[c.x, c.y].sortingLayerID = SortingLayer.NameToID("Default");
+            }
+        }
+        lastPower.Clear();
+
+        // 1b) The ghost's projected reach: every buildable cell it would power, before it's built
+        if (ghost != null)
+        {
+            reachScratch.Clear();
+            var kind = PowerReach.CellsFor(ghost, anchor, size, reachScratch);
+            if (kind != PowerReach.Kind.None)
+            {
+                Color bright = kind == PowerReach.Kind.Pad ? brightEnergyColour : brightEnergyLightColour;
+                for (int k = 0; k < reachScratch.Count; ++k)
+                {
+                    var c = reachScratch[k];
+                    if (!Inside(c.x, c.y) || overlay[c.x, c.y] == null) continue;
+                    if (occupied[c.x, c.y] || !inRange[c.x, c.y]) continue;   // red/black cells keep their meaning
+                    overlay[c.x, c.y].color = bright;
+                    overlay[c.x, c.y].sortingLayerID = SortingLayer.NameToID("Buildings");
+                    lastPower.Add(c);
+                }
+            }
         }
 
         // 2) Highlight current footprint
@@ -375,6 +424,7 @@ public class GridManager : MonoBehaviour
             BM.i.ChangeBuildingColour(true);
             buildingGrid.gameObject.SetActive(false);
             lastAnchor = new Vector2Int(int.MinValue, int.MinValue); // forget cached highlight
+            lastPower.Clear();
             deactivating = false;
         }
     }
@@ -400,31 +450,19 @@ public class GridManager : MonoBehaviour
     /// </summary>
     public void RebuildRangeCache()
     {
-        if (overlay == null) return; // grid not built yet (constructor placed before first build-mode entry)
-        var constructors = EnergyManager.constructors.Concat(EnergyManager.toBeBuilt).ToList(); // assumed to exist per brief
+        if (overlay == null) return; // grid not built yet
 
-        // Clip the buildable grid to the map's inner inset (pulled in by buildEdgeMargin). Computed once
-        // here, then a cheap point-in-polygon per cell — far cheaper than testing the footprint each frame.
+        // The buildable grid is the map's inner inset (pulled in by buildEdgeMargin) — nothing else.
+        // The Constructor's radius used to gate it too; the Constructor is retired (user call
+        // 2026-09-14: "outdated technology" — buildings are ore-built now), so the whole base is
+        // buildable right up to the margin. Computed once here, then a cheap point-in-polygon per cell.
         Vector2[] buildable = MapManager.GetBuildableBoundary(buildEdgeMargin);
 
         for (int gx = 0; gx < width; ++gx)
             for (int gy = 0; gy < height; ++gy)
             {
                 Vector3 cellWorld = GridToWorld(new Vector2Int(gx, gy));
-                bool range = false;
-                if (constructors.Count > 0 && (buildable == null || MapManager.PointInPoly(cellWorld, buildable)))
-                {
-                    foreach (var c in constructors)
-                    {
-                        if (c == null) continue;
-                        float r = c.radius;
-                        if ((c.transform.position - cellWorld).sqrMagnitude <= r * r)
-                        {
-                            range = true;
-                            break;
-                        }
-                    }
-                }
+                bool range = buildable == null || MapManager.PointInPoly(cellWorld, buildable);
 
                 inRange[gx, gy] = range;
                 bool blocked = occupied[gx, gy];
@@ -436,35 +474,45 @@ public class GridManager : MonoBehaviour
 
     #endregion
 
-    /// <summary>Re‑computes which cells are inside any pylon's reach and recolours the overlay.</summary>
+    /// <summary>Re‑computes which buildable cells the placed power sources reach (pads/hubs → blue,
+    /// pylon cable reach → light blue; generators reach nothing — they're connected TO) and recolours
+    /// the overlay. Placed-but-unbuilt sources count too, so a hub still waiting on its ore already
+    /// shows where it will power; dead (rebuilding) ones don't.</summary>
     public void RefreshEnergyCells()
     {
         if (overlay == null) return; // grid not built yet; ActivateGrid will refresh once it is
+        CollectPower();
         for (int gx = 0; gx < width; ++gx)
             for (int gy = 0; gy < height; ++gy)
             {
-                bool freeAccess = inRange[gx, gy] && !occupied[gx, gy];
-
                 Color targetColour;
-                if (freeAccess)
-                {
-                    targetColour = energyFreeColour; // yellow - energy & buildable
-                }
-                else if (occupied[gx, gy])
-                {
-                    targetColour = filledColour; // red - occupied
-                }
-                else if (!inRange[gx, gy])
-                {
-                    targetColour = outColour; // black - out of range
-                }
+                if (occupied[gx, gy]) targetColour = filledColour;            // red – occupied
+                else if (!inRange[gx, gy]) targetColour = outColour;          // black – out of range
                 else
                 {
-                    targetColour = clearColour; // green - in range but no energy
+                    var cell = new Vector2Int(gx, gy);
+                    targetColour = padPower.Contains(cell) ? energyColour          // blue – powered by a pad/hub
+                        : pylonPower.Contains(cell) ? energyLightColour           // light blue – a pylon can cable here
+                        : clearColour;                                            // green – buildable, no power
                 }
-
                 baseColour[gx, gy] = targetColour;
                 if (overlay[gx, gy] != null) overlay[gx, gy].color = targetColour;
             }
+    }
+
+    void CollectPower()
+    {
+        padPower.Clear();
+        pylonPower.Clear();
+        for (int k = 0; k < Building.buildings.Count; ++k)
+        {
+            var b = Building.buildings[k];
+            if (b == null || (b.builtYet && !b.enabled)) continue;             // dead / rebuilding
+            if (!PathZone.AtBase(b.transform.position)) continue;
+            reachScratch.Clear();
+            var kind = PowerReach.CellsFor(b, b.anchorCell, b.gridSize, reachScratch);
+            if (kind == PowerReach.Kind.Pad) padPower.UnionWith(reachScratch);
+            else if (kind == PowerReach.Kind.Pylon) pylonPower.UnionWith(reachScratch);
+        }
     }
 }

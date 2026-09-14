@@ -34,6 +34,9 @@ public class BuildingHealthBar : MonoBehaviour
 
     Building building;
     Transform vis;
+    Transform anchor;        // the building root the bar hangs off
+    Vector3 offset;          // WORLD offset from the anchor: the bar stays upright and in place
+                             // however the building turns (Soul Generator facing, R-key spins)
     SpriteRenderer back, bleedSR, fillSR;
     SpriteRenderer[] ticks = System.Array.Empty<SpriteRenderer>();
     int layerID;
@@ -87,6 +90,7 @@ public class BuildingHealthBar : MonoBehaviour
             return;
         }
         if (!vis.gameObject.activeSelf) vis.gameObject.SetActive(true);
+        if (anchor != null) vis.SetPositionAndRotation(anchor.position + offset, Quaternion.identity);
 
         if (live && !Mathf.Approximately(ls.maxHp, ticksForMaxHp)) LayoutTicks(ls.maxHp);
 
@@ -109,11 +113,13 @@ public class BuildingHealthBar : MonoBehaviour
         width = Mathf.Max(0.55f, building.size.x * 0.8f);
         // Anchor to the non-rotating root: hasExtraParent buildings keep this script on an
         // aiming child (same rule as the energy status icon).
-        Transform anchor = (building.hasExtraParent && building.transform.parent != null)
+        anchor = (building.hasExtraParent && building.transform.parent != null)
             ? building.transform.parent : building.transform;
         var root = new GameObject("HealthBar");
-        root.transform.SetParent(anchor, false);
-        root.transform.localPosition = new Vector3(0f, building.size.y * 0.5f + YPad, 0f);
+        root.AddComponent<OverlayVisual>();        // not the building's art — the blueprint print must ignore it
+        root.transform.SetParent(anchor, false);   // parented for lifetime only — placed in world space each frame
+        offset = new Vector3(0f, building.size.y * 0.5f + YPad, 0f);
+        root.transform.SetPositionAndRotation(anchor.position + offset, Quaternion.identity);
         vis = root.transform;
 
         // Reads as UI: the topmost sorting layer, above every world sprite and "Power Ups" VFX

@@ -168,7 +168,7 @@ public class Refiner : Building, IChipConsumer
             if (chip.claimedBy != null) continue;                  // a drone is flying for it
             if (chip.refined) continue;                            // already split once
             if (chip.Age < 0.35f) continue;                        // let fresh drops pop in first
-            if (!ChipConsumers.MayGive(this, chip.sizeClass, chip.element)) continue;
+            if (!ChipConsumers.MayGive(this, chip.sizeClass, chip.element, chip.refined)) continue;
             float d = ((Vector2)chip.transform.position - pos).sqrMagnitude;
             if (d > suctionRadius * suctionRadius || d >= bestSqr) continue;
             best = chip;

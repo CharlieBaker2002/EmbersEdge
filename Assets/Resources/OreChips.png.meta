@@ -182,7 +182,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: OreChips_1
+      name: OreChips_5
       rect:
         serializedVersion: 2
         x: 36
@@ -204,7 +204,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: OreChips_2
+      name: OreChips_6
       rect:
         serializedVersion: 2
         x: 43
@@ -226,7 +226,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: OreChips_3
+      name: OreChips_7
       rect:
         serializedVersion: 2
         x: 50
@@ -248,7 +248,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: OreChips_4
+      name: OreChips_8
       rect:
         serializedVersion: 2
         x: 57
@@ -270,7 +270,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: OreChips_5
+      name: OreChips_9
       rect:
         serializedVersion: 2
         x: 64
@@ -292,7 +292,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: OreChips_6
+      name: OreChips_10
       rect:
         serializedVersion: 2
         x: 71
@@ -314,7 +314,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: OreChips_7
+      name: OreChips_11
       rect:
         serializedVersion: 2
         x: 78
@@ -336,7 +336,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: OreChips_8
+      name: OreChips_1
       rect:
         serializedVersion: 2
         x: 9
@@ -358,7 +358,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: OreChips_9
+      name: OreChips_2
       rect:
         serializedVersion: 2
         x: 16
@@ -380,7 +380,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: OreChips_10
+      name: OreChips_3
       rect:
         serializedVersion: 2
         x: 23
@@ -402,7 +402,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: OreChips_11
+      name: OreChips_4
       rect:
         serializedVersion: 2
         x: 29
@@ -442,17 +442,17 @@ TextureImporter:
         value: '{"sliceOnImport":false,"gridCellCount":{"x":3.0,"y":1.0},"gridSpriteSize":{"x":11.0,"y":12.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":0,"keepEmptyRects":false,"isAlternate":false}'
     nameFileIdTable:
       OreChips_0: -4364529029890810422
-      OreChips_1: -4485788480864611520
-      OreChips_10: 136017357
-      OreChips_11: 72272559
-      OreChips_2: -1043725114183599431
-      OreChips_3: 4782783329971471167
-      OreChips_4: -3435149471507638112
-      OreChips_5: -6567028920621488866
-      OreChips_6: -7156331277461457723
-      OreChips_7: -7582862670001143166
-      OreChips_8: -574023888
-      OreChips_9: 1823133364
+      OreChips_1: -574023888
+      OreChips_10: -7156331277461457723
+      OreChips_11: -7582862670001143166
+      OreChips_2: 1823133364
+      OreChips_3: 136017357
+      OreChips_4: 72272559
+      OreChips_5: -4485788480864611520
+      OreChips_6: -1043725114183599431
+      OreChips_7: 4782783329971471167
+      OreChips_8: -3435149471507638112
+      OreChips_9: -6567028920621488866
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

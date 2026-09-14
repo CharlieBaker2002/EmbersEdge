@@ -37,6 +37,7 @@ public abstract class EnergyGaugeBar : MonoBehaviour
 
     protected Building building;
     Transform vis;
+    Transform anchor;        // the building root the bar hangs off
     SpriteRenderer frame, back, fillSR;
     SpriteRenderer[] ticks = System.Array.Empty<SpriteRenderer>();
     int layerID;
@@ -49,10 +50,20 @@ public abstract class EnergyGaugeBar : MonoBehaviour
     /// bar, fully covered). Return false to hide.</summary>
     protected abstract bool Sample(out float span, out float frac);
 
+    /// <summary>WORLD offset from the anchor to the bar's base: just right of the building's right
+    /// edge, at its bottom edge — upright and in place however the building turns. Read every
+    /// frame, so a gauge whose subject changes shape (a Tube cluster) can follow it.</summary>
+    protected virtual Vector3 BarOffset()
+        => new Vector3(building.size.x * 0.5f + XPad, -building.size.y * 0.5f, 0f);
+
+    /// <summary>The bar never grows past this (the building's own height by default).</summary>
+    protected virtual float BarMaxHeight() => building.size.y;
+
     bool Live()
     {
-        return building != null && building.builtYet
-            && building.physic != null && !building.physic.hasDied
+        if (building == null || !building.builtYet) return false;
+        if (building.noBody) return building.gameObject.activeInHierarchy;   // bodiless plumbing (belts): nothing to die
+        return building.physic != null && !building.physic.hasDied
             && building.physic.gameObject.activeInHierarchy;
     }
 
@@ -70,6 +81,7 @@ public abstract class EnergyGaugeBar : MonoBehaviour
         // No easing: visibility flips instantly, the fill is exactly this frame's sample.
         if (vis.gameObject.activeSelf != show) vis.gameObject.SetActive(show);
         if (!show) return;
+        if (anchor != null) vis.SetPositionAndRotation(anchor.position + BarOffset(), Quaternion.identity);
 
         if (Mathf.Abs(span - spanShown) > 0.01f) LayoutBar(span);
 
@@ -92,11 +104,12 @@ public abstract class EnergyGaugeBar : MonoBehaviour
     {
         // Anchor to the non-rotating root (same rule as the health bar / energy icon), sitting
         // just right of the building's right edge with the bar's base at the bottom edge.
-        Transform anchor = (building.hasExtraParent && building.transform.parent != null)
+        anchor = (building.hasExtraParent && building.transform.parent != null)
             ? building.transform.parent : building.transform;
         var root = new GameObject(GetType().Name);
-        root.transform.SetParent(anchor, false);
-        root.transform.localPosition = new Vector3(building.size.x * 0.5f + XPad, -building.size.y * 0.5f, 0f);
+        root.AddComponent<OverlayVisual>();        // not the building's art — the blueprint print must ignore it
+        root.transform.SetParent(anchor, false);   // parented for lifetime only — placed in world space each frame
+        root.transform.SetPositionAndRotation(anchor.position + BarOffset(), Quaternion.identity);
         vis = root.transform;
 
         layerID = SortingLayer.NameToID("UI");
@@ -124,7 +137,7 @@ public abstract class EnergyGaugeBar : MonoBehaviour
     void LayoutBar(float span)
     {
         spanShown = span;
-        barH = Mathf.Clamp(span * UnitH, MinH, building.size.y);
+        barH = Mathf.Clamp(span * UnitH, MinH, Mathf.Max(MinH, BarMaxHeight()));
         back.transform.localScale = new Vector3(Width, barH, 1f);
         frame.transform.localScale = new Vector3(Width + 2f * FrameW, barH + 2f * FrameW, 1f);
         frame.transform.localPosition = new Vector3(0f, -FrameW, 0f);

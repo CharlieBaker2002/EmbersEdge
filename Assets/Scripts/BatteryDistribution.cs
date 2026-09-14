@@ -7,15 +7,18 @@ using UnityEngine;
 ///
 ///   1. PLAYER PINS FIRST. A pad the player manually stocked (EnergyPad.pinnedMin) is topped back
 ///      up to its pin before anything else gets a battery — even if that starves a newer hub.
-///   2. DOCK PADS NEXT. A pad/hub feeding a DroneDock is guaranteed a battery before ordinary
+///   2. CHIP-STORE PADS NEXT (user rule 2026-09-13). A pad/hub a Tube draws from — beside
+///      it, or up a pylon chain — is guaranteed a battery before anything else below the pins:
+///      a dry shelf loses ore at the next clear cycle.
+///   3. DOCK PADS NEXT. A pad/hub feeding a DroneDock is guaranteed a battery before ordinary
 ///      pads see one — an unpowered dock stops recharging drones and stalls the whole colony.
-///   3. Then batteries spread PROPORTIONALLY TO CONSUMERS, not first-come-first-serve: each pad's
+///   4. Then batteries spread PROPORTIONALLY TO CONSUMERS, not first-come-first-serve: each pad's
 ///      weight is how many buildings actually draw from it (its presence in their BuildingPower
 ///      sources — pylons count, since a pylon's own Power view lists its upstream pads). Seats are
 ///      dealt D'Hondt style: the next battery goes to the pad maximising consumers/(assigned+1),
 ///      so a pad powering 2 buildings gets 2 before a 1-building hub gets its 1, and the extra
 ///      lands back on the busier pad.
-///   4. Pads powering NOTHING (and never pinned) get nothing.
+///   5. Pads powering NOTHING (and never pinned) get nothing.
 ///
 /// Sources for a move: loose base-side spares, then FULL station stock, then unpinned surplus
 /// sitting above another pad's target. Batteries riding home from a station (hasHome) are counted
@@ -37,6 +40,7 @@ public static class BatteryDistribution
     static readonly List<EnergyPad> pads = new List<EnergyPad>();
     static readonly List<int> consumers = new List<int>();
     static readonly List<bool> feedsDock = new List<bool>();
+    static readonly List<bool> feedsStore = new List<bool>();
     static readonly List<int> current = new List<int>();
     static readonly List<int> target = new List<int>();
     static readonly List<Battery> spares = new List<Battery>();
@@ -51,7 +55,7 @@ public static class BatteryDistribution
         lastQueryAt = Time.time;
 
         // ---- eligible pads: built, base-side, powering something (or player-pinned) ----
-        pads.Clear(); consumers.Clear(); feedsDock.Clear(); current.Clear(); target.Clear();
+        pads.Clear(); consumers.Clear(); feedsDock.Clear(); feedsStore.Clear(); current.Clear(); target.Clear();
         var list = Building.buildings;
         for (int k = 0; k < list.Count; k++)
         {
@@ -60,11 +64,12 @@ public static class BatteryDistribution
             if (list[k] is not EnergyPad p || p is BatteryStation || p is CapacitorNode) continue;
             if (!p.builtYet || !p.enabled || !p.gameObject.activeInHierarchy) continue;
             if (!PathZone.AtBase(p.transform.position)) continue;
-            int c = CountConsumers(p, out bool dock);
+            int c = CountConsumers(p, out bool dock, out bool store);
             if (c <= 0 && p.pinnedMin <= 0) continue;
             pads.Add(p);
             consumers.Add(c);
             feedsDock.Add(dock);
+            feedsStore.Add(store);
         }
         if (pads.Count == 0)
         {
@@ -129,12 +134,21 @@ public static class BatteryDistribution
         int pool = spares.Count;
         for (int i = 0; i < current.Count; i++) pool += current[i];
 
-        // ---- targets: pins off the top, then a battery for every dock pad, then D'Hondt ----
+        // ---- targets: pins off the top, then a battery for every chip-store pad, then every dock pad, then D'Hondt ----
         int remaining = pool;
         for (int i = 0; i < pads.Count; i++)
         {
             target.Add(Mathf.Min(pads[i].pinnedMin, pads[i].SlotCapacity));
             remaining -= target[i];
+        }
+        // a pad a CHIP STORE draws from comes first of all below the pins — a dry shelf loses
+        // ore at the next clear cycle (user rule 2026-09-13)
+        for (int i = 0; i < pads.Count && remaining > 0; i++)
+        {
+            if (!feedsStore[i] || consumers[i] <= 0) continue;
+            if (target[i] >= 1 || pads[i].SlotCapacity < 1) continue;
+            target[i] = 1;
+            remaining--;
         }
         // the pad keeping the DOCK alive is guaranteed a battery before ordinary pads see one —
         // an unpowered dock stops recharging drones and stalls the colony
@@ -161,16 +175,18 @@ public static class BatteryDistribution
             remaining--;
         }
 
-        // ---- the move: pins first (the player's hand), then an empty dock pad (the colony's
-        // lifeline), then the biggest ordinary deficit ----
+        // ---- the move: pins first (the player's hand), then an empty chip-store pad (the
+        // shelves' shield), then an empty dock pad (the colony's lifeline), then the biggest
+        // ordinary deficit ----
         int destI = -1, bestDef = 0, bestTier = int.MaxValue;
         for (int i = 0; i < pads.Count; i++)
         {
             int def = target[i] - current[i];
             if (def <= 0) continue;
             int tier = current[i] < Mathf.Min(pads[i].pinnedMin, pads[i].SlotCapacity) ? 0
-                : feedsDock[i] && current[i] < 1 ? 1
-                : 2;
+                : feedsStore[i] && current[i] < 1 ? 1
+                : feedsDock[i] && current[i] < 1 ? 2
+                : 3;
             if (tier < bestTier || (tier == bestTier && def > bestDef))
             { bestTier = tier; bestDef = def; destI = i; }
         }
@@ -303,11 +319,14 @@ public static class BatteryDistribution
 
     /// <summary>How many buildings actually draw from this pad: its presence in their resolved
     /// BuildingPower sources. Read-only — PowerOrNull never materialises a power view.
-    /// <paramref name="feedsDock"/> flags a DroneDock among them (the priority consumer).</summary>
-    static int CountConsumers(EnergyPad p, out bool feedsDock)
+    /// <paramref name="feedsDock"/> flags a DroneDock among them; <paramref name="feedsStore"/>
+    /// a Tube — beside the pad, or hanging off a pylon chain that draws from it (the
+    /// pylon is the counted consumer then; the flag rides up to the pad).</summary>
+    static int CountConsumers(EnergyPad p, out bool feedsDock, out bool feedsStore)
     {
         int n = 0;
         feedsDock = false;
+        feedsStore = false;
         var list = Building.buildings;
         for (int k = 0; k < list.Count; k++)
         {
@@ -319,9 +338,41 @@ public static class BatteryDistribution
             var pw = b.PowerOrNull;
             if (pw == null) continue;
             var srcs = pw.Sources;
+            bool draws = false;
             for (int s = 0; s < srcs.Count; s++)
-                if (ReferenceEquals(srcs[s], p)) { n++; if (b is DroneDock) feedsDock = true; break; }
+                if (ReferenceEquals(srcs[s], p)) { draws = true; break; }
+            if (draws)
+            {
+                n++;
+                if (b is DroneDock) feedsDock = true;
+                if (b is Tube) feedsStore = true;
+                continue;
+            }
+            if (b is Tube && !feedsStore)
+                for (int s = 0; s < srcs.Count && !feedsStore; s++)
+                    if (srcs[s] is EnergyPylon sp && PylonDrawsFrom(sp, p, 3)) feedsStore = true;
         }
         return n;
+    }
+
+    /// <summary>Does this pylon draw from pad <paramref name="p"/> — beside it, cabled to it, or
+    /// through up to <paramref name="hops"/> pylon-pylon cable hops? (Bounded: pylon cables are
+    /// bidirectional, so the walk would otherwise ping-pong.)</summary>
+    static bool PylonDrawsFrom(EnergyPylon pyl, EnergyPad p, int hops)
+    {
+        if (pyl == null) return false;
+        if (pyl.DrawsFromViaCable(p)) return true;
+        var pw = pyl.PowerOrNull;
+        if (pw != null)
+        {
+            var s = pw.Sources;
+            for (int i = 0; i < s.Count; i++) if (ReferenceEquals(s[i], p)) return true;
+        }
+        if (hops <= 0) return false;
+        var list = Building.buildings;
+        for (int k = 0; k < list.Count; k++)
+            if (list[k] is EnergyPylon up && !ReferenceEquals(up, pyl) && pyl.DrawsFromViaCable(up) && PylonDrawsFrom(up, p, hops - 1))
+                return true;
+        return false;
     }
 }

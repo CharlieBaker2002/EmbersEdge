@@ -13,6 +13,13 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     public GameObject groundEdit;
     public List<BaseTile> tiles = new List<BaseTile>();
     public static List<Building> buildings = new List<Building>();
+    /// <summary>Placement order — 1, 2, 3… as buildings start this game. The fleet feeds
+    /// chip-eaters in this order (user rule 2026-09-13: "in the order they were built"), so
+    /// the first-placed site completes before the next gets a chip.</summary>
+    [System.NonSerialized] public int placedIndex;
+    static int nextPlacedIndex;
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetPlacedIndex() => nextPlacedIndex = 0;   // no-domain-reload: statics survive play-stop
     [HideInInspector]
     public GameObject UIParent;
     public Action OnClose;
@@ -99,6 +106,28 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     /// pads/hubs; CapacitorNode and BatteryStation opt back out.</summary>
     public virtual bool ShowsSurgeBar => false;
 
+    /// <summary>Attach the hp bar (Start). Tiny 1-hp boxes (Tube) opt out.</summary>
+    public virtual bool ShowsHealthBar => true;
+
+    /// <summary>Show the overlay ICONS for this building — "no energy" while its supply is empty,
+    /// "insufficient" while it can't get what it asks for — on top of the bars. Off project-wide
+    /// (user call 2026-07-15); the chip-transport buildings opt in (user call 2026-09-14): Tube,
+    /// Belt, Crush Generator, Collector.</summary>
+    public virtual bool ShowsEnergyIcons => false;
+
+    /// <summary>Reach (world units) the hover ring shows round this building — the Collector's
+    /// pull, a pylon's cable radius, the Cell's loose-chip ring, the Expander's span. 0 = none;
+    /// a turret returns 0 and the ring reads its Finder instead (see HoverRing).</summary>
+    public virtual float HoverRingRadius => 0f;
+
+    /// <summary>The energy the status bookkeeping judges "empty" by — this building's adjacent
+    /// sources by default; a shape that pools sources across many tiles (a Tube cluster, a Belt
+    /// line) overrides with the pool, so its host tile reports for the whole shape.</summary>
+    protected virtual float StatusEnergy => Power.Energy;
+
+    /// <summary>The sustained rate the status bookkeeping judges "throttled" by (see <see cref="StatusEnergy"/>).</summary>
+    protected virtual float StatusDrawRate => Power.DrawRate;
+
     // Icon policy (user call 2026-07-15): NO overlay icons at all — the red/yellow bars carry
     // both the empty and the throttled state. Flip to false to bring the yellow "insufficient"
     // icon back; the status bookkeeping runs either way (and Unpowered maps to no icon
@@ -132,6 +161,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         numTextAction.Invoke(0);
         numText.gameObject.SetActive(false);
         buildings.Add(this);
+        placedIndex = ++nextPlacedIndex;
         UIParent.SetActive(false);
         if (!buildingBehaviours.Contains(this)) buildingBehaviours.Add(this);
         closeUIViaEscape = () => OnClose?.Invoke();
@@ -202,7 +232,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             DoBEnable();
         }
 
-        BuildingHealthBar.Attach(this);
+        if (ShowsHealthBar) BuildingHealthBar.Attach(this);
         if (PeakEnergyDemand > 0f) ThrottleBar.Attach(this);
         if (ShowsSurgeBar) SurgeBar.Attach(this);
 
@@ -496,16 +526,75 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
             OnClose.Invoke();
         }
         SwitchMonos(false);
+        deathDay = SpawnManager.day;   // the wreck waits for tomorrow — see RebuildAllowedNow
         // Destroyed look: grey + transparent. SwitchMonos just painted the secondary sprites
         // with the era ghost tint — that's the unbuilt-construction look, not wreckage.
         if (spriterenderers != null)
             foreach (SpriteRenderer s in spriterenderers)
                 if (s != null && s != sr) s.color = DestroyedTint;
-        // Repairs are DRONE work now — no orbs, no ember. The ghost persists until repair drones
-        // pump maxHealth worth of hp back in (RepairTick), which may span multiple drone-days.
+        if (UsesOreRebuild)
+        {
+            // ORE rebuild: the wreck becomes a construction ghost again and wants RebuildOreCost
+            // chips (BM.rebuildOreFraction of the build cost) — hauled by drones or sprayed by the
+            // player — printing back in exactly like a fresh build. Medics never tap it.
+            // No tint tween here: the intake swaps the blueprint material in next frame.
+            droneRepairGhost = false;
+            repairHp = 0f;
+            sr.color = DestroyedTint;
+            oreRebuild = GhostIntake.BeginRebuild(this);
+            return;
+        }
+        // Zero-cost / dungeon-side buildings: repairs are DRONE work — the ghost persists until
+        // repair drones pump maxHealth worth of hp back in (RepairTick), which may span days.
         sr.LeanSRColor(DestroyedTint, 0.2f).setEaseOutCubic();
         droneRepairGhost = true;
         repairHp = 0f;
+    }
+
+    // ------------------------------------------------------------------ ore rebuild
+
+    GhostIntake oreRebuild;
+
+    // The day (SpawnManager.day — it rolls at wave clear) this building last died. A wreck stays
+    // a wreck until the NEXT day (user rule 2026-09-13): no re-printing mid-wave — survive the
+    // wave, then rebuild. Every restore path (ore intake, medic drones, a wall's juice) runs
+    // RebuildAllowedNow; the Tube is the one exception (RebuildsSameDay).
+    int deathDay = int.MinValue;
+
+    /// <summary>May a wreck of this building be restored the same day it fell? Off for
+    /// everything but the Tube (its shelf must stand again before the wave-clear fade
+    /// eats the chips it dropped).</summary>
+    public virtual bool RebuildsSameDay => false;
+
+    /// <summary>The day has rolled (wave cleared) since this building last died.</summary>
+    public bool DayAfterDeath => SpawnManager.day > deathDay;
+
+    /// <summary>The day-gate every restore path runs: true from the day after the death on,
+    /// or at once for <see cref="RebuildsSameDay"/> buildings.</summary>
+    public bool RebuildAllowedNow => RebuildsSameDay || DayAfterDeath;
+
+    /// <summary>Chips a destroyed instance of this building wants before it stands again:
+    /// BM.rebuildOreFraction of <see cref="oreRequired"/>, rounded UP (a 1-chip wall still costs 1).</summary>
+    public int RebuildOreCost => oreRequired > 0 ? Mathf.Max(1, Mathf.CeilToInt(oreRequired * BM.RebuildOreFraction)) : 0;
+
+    /// <summary>Destroyed base-side buildings with a build cost rebuild from ORE (see OnDeath);
+    /// free buildings (granted pads, the Vessel) and dungeon placements fall back to drone repair.</summary>
+    public bool UsesOreRebuild => RebuildOreCost > 0 && PathZone.AtBase(transform.position);
+
+    /// <summary>True while a GhostIntake is eating the rebuild ore of this destroyed building.</summary>
+    public bool IsRebuildingFromOre => oreRebuild != null;
+
+    /// <summary>Any destroyed-and-not-yet-restored state: the drone-repair ghost or the ore rebuild.</summary>
+    public bool IsDestroyedGhost => droneRepairGhost || oreRebuild != null;
+
+    /// <summary>The rebuild intake's last chip landed: stand the building back up at full hp
+    /// (the same restore RepairTick performs at maxHealth).</summary>
+    public void CompleteRebuild()
+    {
+        oreRebuild = null;
+        droneRepairGhost = false;
+        repairHp = 0f;
+        SwitchMonos(true);
     }
 
     // ------------------------------------------------------------------ drone repair
@@ -526,7 +615,8 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         {
             if (!builtYet || icons.Count > 0 || upgradeAction != null) return false;
             if (markedForDemolition) return false;   // condemned — wreckers work here, not medics
-            if (droneRepairGhost) return true;
+            if (oreRebuild != null) return false;    // rebuilding from ORE — masons' work, not medics'
+            if (droneRepairGhost) return RebuildAllowedNow;   // a wreck waits for tomorrow
             // Live buildings heal toward the PHYSIC's maxHp, not the maxHealth field: pre-placed
             // buildings keep their authored physic (the Throne is 25 hp vs maxHealth 10), and
             // comparing against maxHealth made anything above that field invisible to drones.
@@ -543,6 +633,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         if (hp <= 0f) return 0f;
         if (droneRepairGhost)
         {
+            if (!RebuildAllowedNow) return 0f;   // the wreck waits for tomorrow (a wall's juice stays banked)
             float used = Mathf.Min(hp, maxHealth - repairHp);
             repairHp += used;
             if (sr != null)
@@ -837,13 +928,17 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     /// </summary>
     protected void ReportEnergyDraw(float desiredRate)
     {
-        if (Power.Energy <= 1e-3f)
+        if (StatusEnergy <= 1e-3f)
             SetEnergyStatus(EnergyStatus.Unpowered);
-        else if (Power.DrawRate < desiredRate - 1e-3f)
+        else if (StatusDrawRate < desiredRate - 1e-3f)
             SetEnergyStatus(EnergyStatus.Throttled);
         else
             SetEnergyStatus(EnergyStatus.Powered);
     }
+
+    /// <summary>The supply has energy but can't give what was asked for right now (a burst the
+    /// grid can't surge) — "insufficient". Judge emptiness first with <see cref="ReportEnergyDraw"/>.</summary>
+    protected void ReportInsufficientEnergy() => SetEnergyStatus(EnergyStatus.Throttled);
 
     /// <summary>Hide the energy overlay — the building isn't trying to draw (idle / full).</summary>
     protected void ClearEnergyStatus() => SetEnergyStatus(EnergyStatus.Powered);
@@ -856,7 +951,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         if (energyStatus == EnergyStatus.Unpowered)
         {
             if (status == EnergyStatus.Unpowered) return;     // already showing it
-            if (Power.Energy <= 1e-3f) return;                // still empty — keep "no energy" up
+            if (StatusEnergy <= 1e-3f) return;                // still empty — keep "no energy" up
             // energy is back: fall through and apply the requested status
         }
 
@@ -928,7 +1023,7 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     // reporting (idle / between waves). Clears it the moment power returns.
     IEnumerator WatchForPower()
     {
-        while (Power.Energy <= 1e-3f) yield return null;
+        while (StatusEnergy <= 1e-3f) yield return null;
         energyWatchCo = null;
         if (energyStatus == EnergyStatus.Unpowered)
         {
@@ -960,10 +1055,11 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         {
             icon = status switch
             {
-                // No icon for no-energy — the red bar carries that state. The Unpowered
-                // bookkeeping (sticky flag + WatchForPower) still runs underneath.
-                EnergyStatus.Unpowered => null,
-                EnergyStatus.Throttled => throttleIconReplacedByBar ? null : UIManager.i.insufficientEnergyIcon,
+                // No icon for no-energy by default — the red bar carries that state; the Unpowered
+                // bookkeeping (sticky flag + WatchForPower) still runs underneath. Buildings that
+                // opt in (ShowsEnergyIcons) get both signs.
+                EnergyStatus.Unpowered => ShowsEnergyIcons ? UIManager.i.noEnergyIcon : null,
+                EnergyStatus.Throttled => ShowsEnergyIcons || !throttleIconReplacedByBar ? UIManager.i.insufficientEnergyIcon : null,
                 _ => null
             };
         }

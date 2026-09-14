@@ -103,6 +103,11 @@ public class EnergyPylon : Building, IEnergyAccumulator
     // this Behaviour) reports zero energy/budget and refuses draws, so nothing flows through it —
     // and revival (drone repair -> SwitchMonos(true)) restores the network without rebuilding.
     private bool Dead => !enabled;
+    /// <summary>How far (world units) a dragged cable may reach — the pylon's light-blue power tiles.
+    /// A placement ghost hasn't run Start (UpgradeToLong), so it answers from its authored flag.</summary>
+    public float CableRadius => builtYet ? radius : (longRange ? 8f : 4f);
+    /// <summary>The hover ring shows how far a cable may reach (HoverRing, 2026-09-14).</summary>
+    public override float HoverRingRadius => CableRadius;
 
     /// <summary>
     /// Source cables this pylon pulls FROM — i.e. a generator the pylon was dragged onto. The

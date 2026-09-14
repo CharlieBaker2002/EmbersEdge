@@ -209,7 +209,7 @@ public class BatteryStation : EnergyPad, IChipConsumer
             // the bore must fit AND no keener hungry customer may have dibs — suction honours
             // the same reservation the fleet does (ore waits for a hungry refiner, it doesn't
             // get ground into juice just because it landed in the ring)
-            if (!ChipConsumers.MayGive(this, chip.sizeClass, chip.element)) continue;
+            if (!ChipConsumers.MayGive(this, chip.sizeClass, chip.element, chip.refined)) continue;
             if (((Vector2)chip.transform.position - pos).sqrMagnitude > suctionRadius * suctionRadius) continue;
             juice = Mathf.Min(maxJuice, juice + chip.JuiceValue);
             chip.AbsorbInto(eatSpot);                            // the ease-in + shrink grind

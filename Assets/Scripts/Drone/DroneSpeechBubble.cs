@@ -2,9 +2,10 @@ using System.Collections;
 using TMPro;
 using UnityEngine;
 
-/// <summary>Expressive beats a drone can play. This is the ANIMATION SEAM: today every emote
-/// renders as a minimal speech bubble (DroneSpeechBubble); when real body animations land they
-/// hang off the same Drone.Emote(...) calls without touching the behaviour code.</summary>
+/// <summary>Expressive beats a drone can play. This is the ANIMATION SEAM: since 2026-09-13
+/// an emote drives the drone's BODY animation (Drone.AnimateFrames — the full frame cycle for
+/// the beat); the speech bubble below is an optional overlay (DroneManager.speechBubbles, off
+/// by default). Behaviour code only ever calls Drone.Emote(...).</summary>
 public enum DroneEmote
 {
     Greet, Chat, Query, Happy, Sing, Sleepy, Startled, Grumble, Card,
@@ -55,6 +56,11 @@ public class DroneSpeechBubble : MonoBehaviour
         labelGo.transform.SetParent(visGo.transform, false);
         labelGo.transform.localPosition = new Vector3(0.02f, 0.26f, 0f);   // centre of the bubble body
         b.label = labelGo.AddComponent<TextMeshPro>();
+        // explicit font: a code-added TextMeshPro otherwise sits without one until TMP settings
+        // resolve, and the editor logs "Can't Generate Mesh, No Font Asset has been assigned"
+        var font = Resources.Load<TMP_FontAsset>("Fonts & Materials/QAZText");
+        if (font == null) font = TMP_Settings.defaultFontAsset;
+        if (font != null) b.label.font = font;
         b.label.rectTransform.sizeDelta = new Vector2(0.5f, 0.3f);
         b.label.alignment = TextAlignmentOptions.Center;
         b.label.enableAutoSizing = true;

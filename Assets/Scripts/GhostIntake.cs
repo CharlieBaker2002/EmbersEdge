@@ -21,6 +21,13 @@ using UnityEngine;
 ///   • spices the print with era-glow sparks along the expanding boundary while ore is landing
 ///     (<c>_Active</c> — the effect settles between deliveries);
 ///   • on the last chip restores the original materials and calls <see cref="Building.CompleteBuild"/>.
+/// REBUILDS run the same phase: a destroyed base-side building gets one via <see cref="BeginRebuild"/>
+/// (Building.OnDeath) wanting <see cref="Building.RebuildOreCost"/> chips — BM.rebuildOreFraction
+/// of its build cost — and stands back up through <see cref="Building.CompleteRebuild"/>; medic
+/// drones never tap an ore rebuild. A rebuild is DAY-GATED (user rule 2026-09-13): the wreck
+/// takes no chip — from the fleet or the Hoover — until the day after it fell
+/// (<see cref="Building.RebuildAllowedNow"/>; the Tube is exempt) — and NO wreck shows
+/// its "n/N" counter until that day, the Tube included (it may already be eating).
 /// Cancelling (Delete over the ghost) refunds every swallowed chip as loose scrap. Runs as a
 /// coroutine so it survives the ghost's disabled-script state; lives on the building's own
 /// GameObject and takes itself off on completion.
@@ -73,6 +80,9 @@ public class GhostIntake : MonoBehaviour, IChipConsumer
     float ringScanT = float.NegativeInfinity;
     int ringStockCached;
     bool done;
+    bool rebuild;                // a destroyed building printing back in (see BeginRebuild)
+    int rebuildRequired;
+    bool counterHidden;          // the "n/N" readout is off the wreck till the day after it fell (see CounterHidden)
 
     // order-quantile table per style (see class doc): sorted per-texel print orders
     readonly Dictionary<int, float[]> orderTables = new Dictionary<int, float[]>();
@@ -80,7 +90,9 @@ public class GhostIntake : MonoBehaviour, IChipConsumer
     Material sparkMat;
     float sparkAcc;
 
-    public int Required => b != null ? Mathf.Max(0, b.oreRequired) : 0;
+    /// <summary>The building this intake is building (its placement order ranks the site).</summary>
+    public Building Owner => b;
+    public int Required => b == null ? 0 : rebuild ? rebuildRequired : Mathf.Max(0, b.oreRequired);
     public int Delivered => swallowed.Count;
     public int Remaining => Mathf.Max(0, Required - Delivered);
 
@@ -93,17 +105,36 @@ public class GhostIntake : MonoBehaviour, IChipConsumer
         return g;
     }
 
+    /// <summary>Attach the REBUILD phase to a just-destroyed building (Building.OnDeath, after
+    /// SwitchMonos(false)): it wants the building's RebuildOreCost and completes via CompleteRebuild.</summary>
+    public static GhostIntake BeginRebuild(Building building)
+    {
+        var g = building.gameObject.AddComponent<GhostIntake>();
+        g.rebuild = true;
+        g.rebuildRequired = Mathf.Max(1, building.RebuildOreCost);
+        g.Init(building);
+        return g;
+    }
+
     void Init(Building building)
     {
         b = building;
-        b.ShowOreProgress(Delivered, Required);
+        counterHidden = CounterHidden;
+        RefreshCounter();
         ChipConsumers.Register(this);
         StartCoroutine(Run());   // visuals begin on its first tick — see Run
     }
 
     // ------------------------------------------------------------------ IChipConsumer
 
-    public bool ChipIntakeActive => !done && b != null && !b.builtYet && Remaining > 0 && !b.MarkedForDemolition;
+    /// <summary>A rebuild the day-gate still holds: wants nothing, accepts nothing, holds no
+    /// dibs — chips sprayed at it just lie in the ring (and fade at the next clear cycle).</summary>
+    bool Locked => rebuild && b != null && !b.RebuildAllowedNow;
+    /// <summary>No "n/N" over a wreck until the day after it fell — even the Tube, which
+    /// may already be taking its chip (user rule 2026-09-13).</summary>
+    bool CounterHidden => rebuild && b != null && !b.DayAfterDeath;
+    void RefreshCounter() => b.ShowOreProgress(Delivered, Required, !CounterHidden);
+    public bool ChipIntakeActive => !done && b != null && (rebuild || !b.builtYet) && Remaining > 0 && !b.MarkedForDemolition && !Locked;
     public Vector2 ChipDropPoint => transform.position;
     /// <summary>Footprint half-extent plus the authored reach — a sprayed load only has to land
     /// NEAR the ghost.</summary>
@@ -115,7 +146,7 @@ public class GhostIntake : MonoBehaviour, IChipConsumer
     /// plans hauls in bag space, so a medium chip's 2 is the honest rate), net of the ring stock.</summary>
     public float ChipDemandSpace => ChipIntakeActive ? Mathf.Max(0, Remaining - RingStock()) * 2f : 0f;
     public int InboundChipSpace { get => inbound; set => inbound = value; }
-    public bool AcceptsChip(int sizeClass, int element) => Remaining > 0;
+    public bool AcceptsChip(int sizeClass, int element) => Remaining > 0 && !Locked;
 
     /// <summary>Chips already settled inside the ring — as good as swallowed, so the fleet
     /// doesn't over-fetch. Cached on the scan cadence.</summary>
@@ -152,6 +183,7 @@ public class GhostIntake : MonoBehaviour, IChipConsumer
         {
             if (b == null) yield break;
             UpdateActivity();
+            TickCounter();
             float target = Required > 0 ? Delivered / (float)Required : 1f;
             if (fillShown < target)
             {
@@ -174,6 +206,15 @@ public class GhostIntake : MonoBehaviour, IChipConsumer
         }
     }
 
+    /// <summary>Show the "n/N" readout the moment the day rolls past the death day.</summary>
+    void TickCounter()
+    {
+        bool hidden = CounterHidden;
+        if (hidden == counterHidden) return;
+        counterHidden = hidden;
+        RefreshCounter();
+    }
+
     /// <summary>The nearest settled, unclaimed chip in the ring eases into the building and
     /// counts as one ore. Same dibs gate every intake runs (nothing outbids construction).</summary>
     void TickSuction()
@@ -189,7 +230,7 @@ public class GhostIntake : MonoBehaviour, IChipConsumer
             if (chip == null || chip.Absorbing || chip.transform.InDungeon()) continue;
             if (chip.claimedBy != null) continue;                   // a drone is flying for it
             if (chip.Age < 0.35f) continue;                         // let fresh drops pop in first
-            if (!ChipConsumers.MayGive(this, chip.sizeClass, chip.element)) continue;
+            if (!ChipConsumers.MayGive(this, chip.sizeClass, chip.element, chip.refined)) continue;
             float d = ((Vector2)chip.transform.position - pos).sqrMagnitude;
             if (d > r * r || d >= bestSqr) continue;
             best = chip;
@@ -201,7 +242,7 @@ public class GhostIntake : MonoBehaviour, IChipConsumer
         ChipConsumers.CreditServed(this, best.SpaceCost);
         best.AbsorbInto(transform, 0f);
         ringStockCached = Mathf.Max(0, ringStockCached - 1);
-        b.ShowOreProgress(Delivered, Required);
+        RefreshCounter();
         BurstSparks(SparkBurst);
     }
 
@@ -217,7 +258,8 @@ public class GhostIntake : MonoBehaviour, IChipConsumer
             BurstSparks(SparkBurst * 2);
         }
         ReleaseSparks();
-        b.CompleteBuild();
+        if (rebuild) b.CompleteRebuild();
+        else b.CompleteBuild();
         Destroy(this);
     }
 
@@ -231,9 +273,16 @@ public class GhostIntake : MonoBehaviour, IChipConsumer
             Debug.LogWarning("[GhostIntake] Resources/BlueprintFill.mat missing — construction runs without the print effect.");
             return;
         }
-        srs = b.hasExtraParent && b.transform.parent != null
+        var found = b.hasExtraParent && b.transform.parent != null
             ? b.transform.parent.GetComponentsInChildren<SpriteRenderer>(true)
             : b.GetComponentsInChildren<SpriteRenderer>(true);
+        // the building's OWN art only: overlays hung under it (health bar, energy gauges — a Chip
+        // Store's gauge sits off the far edge of its shape) would drag the ring centre and get
+        // painted as blueprint
+        var art = new List<SpriteRenderer>(found.Length);
+        for (int i = 0; i < found.Length; i++)
+            if (found[i] != null && !OverlayVisual.Owns(found[i])) art.Add(found[i]);
+        srs = art.ToArray();
         saved = new Material[srs.Length];
         mpb ??= new MaterialPropertyBlock();
         // schematic colours off the ERA'S ORE (the purple the ore glows, not the pale ember tint):

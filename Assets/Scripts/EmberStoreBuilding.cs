@@ -4,8 +4,50 @@ using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-public class EmberStoreBuilding : Building
+/// <summary>
+/// An Ember Store — and, since 2026-09-14, a grid SOURCE: each new day it banks as much energy as
+/// the ember it holds at that moment (8 ember → 8 energy), uncapped, and buildings in the four
+/// cardinal cells round its footprint draw from it like from a generator. Tiered by name:
+/// Small 1 / Ember Store 2 / Large 3 — both the sustained rate (energy/s) and the instabuffer
+/// (a burst pool a consumer may take in one frame). The tiny store (isTiny) is art only.
+/// </summary>
+public class EmberStoreBuilding : Building, IEnergyAccumulator
 {
+    [Header("Energy source (a new day banks energy = ember held)")]
+    [Tooltip("Sustained energy/s neighbours may draw. 0 = by tier from the name: Small 1 / Ember Store 2 / Large 3.")]
+    public float energyDrawRate = 0f;
+    [Tooltip("Burst pool on top of the rate (a whole shot in one frame). 0 = by tier: Small 1 / Ember Store 2 / Large 3.")]
+    public float energyInstabuffer = 0f;
+
+    readonly EnergyStore store = new EnergyStore(float.PositiveInfinity, 1f, 1f);
+    Action newDay;
+
+    public float Energy => store.Energy;
+    public float MaxEnergy => store.MaxEnergy;
+    public float DrawRate => store.DrawRate;
+    public float MaxDrawThisFrame(float dt) => store.MaxDrawThisFrame(dt);
+    public float PeekMaxDraw(float dt) => store.PeekMaxDraw(dt);
+    public event Action<float> OnUpdate;
+    public event Action OnUse;
+
+    public bool Use(float cost)
+    {
+        if (!store.Use(cost)) return false;
+        OnUpdate?.Invoke(store.Energy);
+        OnUse?.Invoke();
+        return true;
+    }
+
+    public void Add(float amount)
+    {
+        if (amount <= 0f) return;
+        store.Add(amount);
+        OnUpdate?.Invoke(store.Energy);
+    }
+
+    /// <summary>Small 1 / Ember Store 2 / Large 3 (instances carry a "(Clone)" suffix — StartsWith).</summary>
+    int Tier => name.StartsWith("Large") ? 3 : name.StartsWith("Small") ? 1 : 2;
+
     [SerializeField] Renderer r;
     [SerializeField] ParticleSystem ps;
     private List<EmberParticle> particles = new();
@@ -25,8 +67,15 @@ public class EmberStoreBuilding : Building
     {
         if (!isTiny)
         {
+            // the battery sizes before base.Start: a pre-built store registers as a source in there
+            int tier = Tier;
+            if (energyDrawRate <= 0f) energyDrawRate = tier;
+            if (energyInstabuffer <= 0f) energyInstabuffer = tier;
+            store.Configure(float.PositiveInfinity, energyDrawRate, energyInstabuffer);
             base.Start();
             connect.onRefresh += Refresh;
+            newDay = OnNewDay;
+            if (SpawnManager.instance != null) SpawnManager.instance.OnNewDay += newDay;
         }
         else
         {
@@ -37,15 +86,46 @@ public class EmberStoreBuilding : Building
         r.material = GS.MatByEra(GS.era, false, false, true);
         Refresh();
     }
-    
+
+    public override void OnDestroy()
+    {
+        base.OnDestroy();
+        if (SpawnManager.instance != null && newDay != null) SpawnManager.instance.OnNewDay -= newDay;
+    }
+
+    void Update()
+    {
+        if (isTiny) return;
+        store.Tick(Time.deltaTime);   // reconcile the instabuffer every frame, even when idle
+    }
+
+    /// <summary>The day rolled: bank energy equal to the ember held right now (x ember → x energy).</summary>
+    void OnNewDay()
+    {
+        if (!builtYet || connect == null) return;
+        int x = Mathf.Max(0, connect.ember);
+        if (x <= 0) return;
+        Add(x);
+        SpawnStrikeRing.Ring(transform.position, 1f, 0.5f * Mathf.Max(size.x, size.y));
+    }
+
     protected override void BEnable()
     {
         EnergyManager.i.RegisterEmberStore(this);
+        EnergyManager.i.RegisterSource(this, anchorCell, gridSize);   // a grid source, like a generator
     }
 
     protected override void BDisable()
     {
         EnergyManager.i.UnregisterEmberStore(this);
+        EnergyManager.i.UnregisterSource(this, anchorCell, gridSize);
+    }
+
+    protected override void OnRotated(Vector2Int oldAnchor, Vector2Int oldSize)
+    {
+        if (!builtYet || (oldAnchor == anchorCell && oldSize == gridSize)) return;   // square: a pure spin
+        EnergyManager.i?.UnregisterSource(this, oldAnchor, oldSize);
+        EnergyManager.i?.RegisterSource(this, anchorCell, gridSize);
     }
 
 

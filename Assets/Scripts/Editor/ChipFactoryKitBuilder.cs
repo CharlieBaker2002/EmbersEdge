@@ -148,8 +148,7 @@ public static class ChipFactoryKitBuilder
         var charger = AssetDatabase.LoadAssetAtPath<GameObject>(DonorPath);
         if (charger != null)
         {
-            foreach (var daddy in Object.FindObjectsByType<DaddyBuildingTile>(
-                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var daddy in Object.FindObjectsByType<DaddyBuildingTile>(FindObjectsInactive.Include))
             {
                 if (daddy.buildings == null) continue;
                 var list = new System.Collections.Generic.List<GameObject>(daddy.buildings);

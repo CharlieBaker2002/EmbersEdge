@@ -19,7 +19,7 @@ public static class OreBuildKitBuilder
         // storage
         { "Small Ember Store", 2 }, { "Ember Store", 3 }, { "Large Ember Store", 4 }, { "TinyStore", 1 },
         // generation
-        { "Small Ember Generator", 3 }, { "Ember Generator", 4 }, { "Pulse Generator", 3 },
+        { "Small Ember Generator", 3 }, { "Ember Generator", 4 }, { "Crush Generator", 30 }, { "Solo Generator", 2 },
         { "Blue Generator", 3 }, { "White Generator", 3 }, { "Solar Generator", 3 },
         { "Soul Generator", 3 }, { "Large Soul Generator", 5 },
         // defence
@@ -29,7 +29,7 @@ public static class OreBuildKitBuilder
         { "Cargoloft", 4 }, { "DroneDock", 4 },
         // infrastructure
         { "Constructor", 4 }, { "Refiner", 5 }, { "EmberCannon", 4 }, { "Chip Charger", 3 },
-        { "Chip Factory", 5 }, { "Cell", 4 }, { "Healing Platform", 3 }, { "Old Research Facility", 4 }, { "ConverterNew", 3 },
+        { "Chip Factory", 5 }, { "Cell", 4 }, { "Collector", 3 }, { "Tube", 2 }, { "Belt", 1 }, { "Healing Platform", 3 }, { "Old Research Facility", 4 }, { "ConverterNew", 3 },
         // granted / never built by hand
         { "Vessel", 0 }, { "Expander", 0 }, { "Telepad", 0 },
     };

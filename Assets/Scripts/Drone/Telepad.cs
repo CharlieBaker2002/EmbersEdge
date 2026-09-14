@@ -51,7 +51,7 @@ public class Telepad : Building
     }
 
     /// <summary>Built, alive and enabled — a ghost awaiting drone repair is not operational.</summary>
-    public bool IsOperational => builtYet && enabled && !IsGhostAwaitingRepair;
+    public bool IsOperational => builtYet && enabled && !IsDestroyedGhost;
 
     public Vector2 RallyPoint => transform.position;
 

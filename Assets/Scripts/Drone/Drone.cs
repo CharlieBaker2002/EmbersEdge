@@ -35,6 +35,8 @@ public class Drone : AllyAI, IOnDeath
     [Tooltip("Whole-drone animation frames (body/prop), cycled while powered.")]
     public Sprite[] frames;
     public float frameRate = 10f;
+    [Tooltip("Talking body animation (an emote's beat) = frames 0,1,2, a pause, 2,1,0, a pause (steps at frameRate). Seconds each pause holds. Otherwise the drone runs its plain frame cycle.")]
+    public float talkAnimPause = 0.3f;
 
     [Tooltip("Repair speed in hp/second at haste 1 (energy billed per hp actually applied).")]
     public float repairRate = 5f;
@@ -162,8 +164,17 @@ public class Drone : AllyAI, IOnDeath
     Vector2 pathPoint;   // current A* waypoint — steered at LIVE each tick (never a frozen direction)
     bool pathValid;
     bool pathDirect;     // target in direct line of sight — home on the live point, skip the A*
+    // PERF (2026-09-13 profiler): the chip-job scans are the dear part of the job board and every
+    // idle drone polls the board every fixed tick — after a scan finds nothing, this drone skips
+    // the chip legs for a beat (the battery legs are throttled fleet-wide already).
+    float chipSearchT;
+    void StampChipMiss() => chipSearchT = Time.time + 0.3f + Random.value * 0.2f;
     float frameTimer;
     int frameIndex;
+    int sweepStep = -1;                             // position in the talking sweep (-1 = restart from frame 0)
+    float emoteUntil = float.NegativeInfinity;      // an emote is BODY animation now: the sweep plays until this time
+    /// <summary>Saying something (the window a speech bubble used to be up for).</summary>
+    public bool Communicating => Time.time < emoteUntil;
 
     // ---- idle personality ----
     // Two dials rolled once per drone — how soon it gets bored at the dock, and how much it
@@ -239,9 +250,63 @@ public class Drone : AllyAI, IOnDeath
                 DroneEquipmentItem.Spawn(equipment, transform.position + GS.RandCircle(0.2f, 0.5f));
         }
         equipment = kind;
+        // single-use kit: a fresh drill has its whole capacity ahead of it, a fresh bag is unused
+        // (and gets a fresh daily haul quota — the old one belonged to the bag that broke)
+        if (kind == DroneEquipment.Drill) drillWear = 0f;
+        if (kind == DroneEquipment.Bag) { bagUsed = false; hauledSpaceToday = 0; }
         if (kind != DroneEquipment.Drill) ReleaseOre();   // mining needs the drill
         if (drillBit != null) drillBit.gameObject.SetActive(kind == DroneEquipment.Drill);
         if (sack != null) sack.gameObject.SetActive(kind == DroneEquipment.Bag);
+    }
+
+    // ------------------------------------------------------------------ single-use kit
+
+    // Drills and bags are CONSUMABLES: a drill breaks once it has chewed DroneManager.drillCapacity
+    // energy-worth of rock (block costs accrue across dives — it survives a recall with wear
+    // left); a bag breaks the first time it is EMPTIED after having carried anything (the
+    // dungeon hauler's dump at base, the base hauler's one big emptying — see TickBatteryWork,
+    // which now fills the bag across customers before delivering). No free replacement: the
+    // workshops forge new ones and the colony re-kits from stock.
+    float drillWear;
+    bool bagUsed;
+
+    /// <summary>Accrue drill wear for work just done; true when the drill broke (state already set).</summary>
+    bool WearDrill(float cost)
+    {
+        if (equipment != DroneEquipment.Drill) return false;
+        drillWear += Mathf.Max(0f, cost);
+        if (drillWear + 1e-4f < DroneManager.DrillCapacity) return false;
+        BreakKit();
+        return true;
+    }
+
+    /// <summary>An emptied bag that has done its one haul is spent; true when it broke (state set).</summary>
+    bool MaybeBreakBag()
+    {
+        if (equipment != DroneEquipment.Bag || !bagUsed || HasCargo) return false;
+        BreakKit();
+        return true;
+    }
+
+    /// <summary>The kit comes apart: no ground drop, no restock, no refund — a puff, a grumble,
+    /// and the drone carries on bare (dungeon: back to the pad hub; base: the job board).</summary>
+    void BreakKit()
+    {
+        if (equipment != DroneEquipment.Drill && equipment != DroneEquipment.Bag) return;
+        if (equipment == DroneEquipment.Drill)
+        {
+            StopDrillVisual();
+            ReleaseDrillClaim();
+            hasDrillTarget = false;
+            ReleaseOre();
+        }
+        SetEquipment(DroneEquipment.None, dropReplaced: false);
+        drillWear = 0f;
+        bagUsed = false;
+        Emote(DroneEmote.Grumble, 2f);
+        SpawnStrikeRing.Ring(transform.position, 0.8f, 0.3f);
+        if (transform.InDungeon()) state = State.DeployedTravel;
+        else if (!TryDispatchWork()) GoLoiter();
     }
 
     /// <summary>A workshop hands over fresh kit; the drone takes the next job on the board.</summary>
@@ -348,21 +413,47 @@ public class Drone : AllyAI, IOnDeath
             DroneManager.DroneTurnSpeed * Time.deltaTime);
     }
 
+    /// <summary>Body animation (user rule 2026-09-13, swapped on request). TALKING (an Emote's
+    /// window — what the speech bubble used to mark): the sweep — frames 0,1,2, a pause, 2,1,0,
+    /// a pause — stepping at frameRate, the pauses holding talkAnimPause seconds. OTHERWISE the
+    /// plain frame cycle at the authored pace. Flat drones sit on frame 0.</summary>
     void AnimateFrames()
     {
         if (frames == null || frames.Length == 0 || sr == null) return;
         if (!Charged)
         {
             sr.sprite = frames[0];
+            sweepStep = -1;
             return;
         }
-        frameTimer += Time.deltaTime * frameRate * Mathf.Max(0.2f, actRate);
-        if (frameTimer >= 1f)
+        float dt = Time.deltaTime * Mathf.Max(0.2f, actRate);
+        if (!Communicating)
         {
-            frameTimer -= 1f;
-            frameIndex = (frameIndex + 1) % frames.Length;
-            sr.sprite = frames[frameIndex];
+            frameTimer += dt * frameRate;
+            if (frameTimer >= 1f)
+            {
+                frameTimer -= 1f;
+                frameIndex = (frameIndex + 1) % frames.Length;
+                sr.sprite = frames[frameIndex];
+            }
+            sweepStep = -1;   // the next beat's sweep starts from frame 0
+            return;
         }
+        // sweep positions: 0..top = frames 0..top | top+1 = pause | top+2..2top+2 = frames top..0 | 2top+3 = pause
+        int top = Mathf.Min(2, frames.Length - 1);
+        int n = 2 * top + 4;
+        if (sweepStep < 0) { sweepStep = 0; frameIndex = 0; frameTimer = 0f; sr.sprite = frames[0]; }
+        bool pausing = sweepStep == top + 1 || sweepStep == n - 1;
+        frameTimer += pausing ? dt / Mathf.Max(0.01f, talkAnimPause) : dt * frameRate;
+        if (frameTimer < 1f) return;
+        frameTimer -= 1f;
+        sweepStep = (sweepStep + 1) % n;
+        int f = sweepStep <= top ? sweepStep
+            : sweepStep == top + 1 ? top
+            : sweepStep <= 2 * top + 2 ? 2 * top + 2 - sweepStep
+            : 0;
+        frameIndex = f;
+        sr.sprite = frames[f];
     }
 
     // ------------------------------------------------------------------ cargo / aggro
@@ -1143,6 +1234,7 @@ public class Drone : AllyAI, IOnDeath
             ReleaseDrillClaim();
             hasDrillTarget = false;
             headingDeg += Random.Range(-8f, 8f);   // organic drift, still roughly one direction
+            if (WearDrill(DroneManager.DrillCost(tier))) return;   // the drill just gave out
         }
     }
 
@@ -1214,11 +1306,18 @@ public class Drone : AllyAI, IOnDeath
 
     // ------------------------------------------------------------------ collecting (bag drones)
 
-    // Physical room: the sack, or — for a REGULAR drone with no kit — a claw-load
-    // (DroneManager.bareChipSpace) it may carry to a construction site only.
-    int SackMaxSpace => sack != null ? sack.maxSpace
-        : equipment == DroneEquipment.None ? DroneManager.BareChipSpace : DroneManager.BagCapacity;
-    int SpaceLeft => SackMaxSpace - cargoSpaceUsed;
+    // Physical room: the sack, or — for a REGULAR drone with no kit — its claws, which hold chips
+    // by COUNT, not by space (DroneManager.bareChipsPerTrip, normally ONE chip of any size), and
+    // only ever carry to a construction site.
+    // NB: every drone carries the SackWobble component (inactive off-bag), so "bare" must be read
+    // off the EQUIPMENT, never off `sack == null` — that test handed no-kit drones a whole bag's room.
+    bool Bare => equipment == DroneEquipment.None;
+    int SackMaxSpace => Bare ? OreChip.SpaceFor(2) * DroneManager.BareChipsPerTrip
+        : sack != null ? sack.maxSpace : DroneManager.BagCapacity;
+    // claws: room for the largest chip class while a claw is free, none once the count is met
+    int SpaceLeft => Bare
+        ? (cargo.Count < DroneManager.BareChipsPerTrip ? OreChip.SpaceFor(2) : 0)
+        : SackMaxSpace - cargoSpaceUsed;
     // The bag tariff, for everyone: a bare drone pays per space unit exactly what a bag does
     // (not 1/claw-load, which would make one chip cost half a charge).
     int TariffSpace => sack != null ? sack.maxSpace : DroneManager.BagCapacity;
@@ -1461,7 +1560,10 @@ public class Drone : AllyAI, IOnDeath
     {
         cargo.Add(e);
         cargoSpaceUsed += e.space;
-        if (e.kind != 2)   // chips spend the daily haul quota; carried items don't
+        if (equipment == DroneEquipment.Bag) bagUsed = true;   // this bag has done its one haul
+        // chips spend the daily haul quota; carried items don't — and neither does SHELVING
+        // (the idle tidy-up must never eat the quota a real customer's haul needs later)
+        if (e.kind != 2 && !(chipConsumer is Tube))
         {
             if (hauledDay != SpawnManager.day) { hauledDay = SpawnManager.day; hauledSpaceToday = 0; }
             hauledSpaceToday += e.space;
@@ -1485,7 +1587,12 @@ public class Drone : AllyAI, IOnDeath
 
     void TickDumpLoot()
     {
-        if (!HasCargo) { state = State.ReturningToDock; return; }
+        if (!HasCargo)
+        {
+            if (MaybeBreakBag()) return;   // single-use: the emptied bag comes apart
+            state = State.ReturningToDock;
+            return;
+        }
 
         // Chips land where they're WANTED first: any chip-eater still short — and able to TAKE
         // something aboard — gets fed before anything hits the scrap pile. Works flat too —
@@ -1495,8 +1602,8 @@ public class Drone : AllyAI, IOnDeath
             var c = ConsumerWantingChips();
             if (c != null)
             {
-                if (!MoveToward(c.ChipDropPoint, Mathf.Max(0.4f, c.ChipIntakeRadius * 0.7f))) return;
-                int wantSpace = Mathf.CeilToInt(ChipConsumers.NetDemandSpace(c));
+                if (!MoveToward(DropPointFor(c), DepositStopDistance(c))) return;
+                int wantSpace = Mathf.CeilToInt(c is Tube ? c.ChipDemandSpace : ChipConsumers.NetDemandSpace(c));
                 DumpChipsFor(c, wantSpace);
                 return;   // next tick: another hungry customer, or the scrap pile with the rest
             }
@@ -1504,6 +1611,7 @@ public class Drone : AllyAI, IOnDeath
 
         if (!MoveToward(DroneManager.ScrapPoint, 0.6f)) return;
         DumpCargoAt(DroneManager.ScrapPoint);
+        if (MaybeBreakBag()) return;   // single-use: the emptied bag comes apart
         // No solo hop back down — the next deployment rides the player's dive (or a freshly
         // built pad's TryDeployNow). More work if there is any, else patrol; a spent charge
         // routes home by itself (the loiter tick sends flat drones to the charger).
@@ -1622,8 +1730,14 @@ public class Drone : AllyAI, IOnDeath
 
     /// <summary>Animation seam: every expressive beat routes through here. Today it pops the
     /// minimal speech bubble; real body animation can later hang off the same calls.</summary>
+    /// <summary>An expressive beat. Since 2026-09-13 an emote IS body animation: the drone plays
+    /// the 0,1,2 / 2,1,0 sweep for as long as the bubble used to show (pop-in + hold + pop-out),
+    /// then falls back to its plain frame cycle. The ASCII bubble itself only appears when
+    /// DroneManager.speechBubbles is on.</summary>
     public void Emote(DroneEmote e, float hold = 1.4f)
     {
+        emoteUntil = Mathf.Max(emoteUntil, Time.time + hold + 0.24f);
+        if (!DroneManager.SpeechBubbles) return;
         if (bubble == null) bubble = DroneSpeechBubble.Attach(transform, sr);
         bubble.Show(e, hold);
     }
@@ -1700,31 +1814,23 @@ public class Drone : AllyAI, IOnDeath
 
         // Chip runs: BAGS serve every chip-eater (grinders, refiner, walls, construction) and
         // spend the daily haul quota like any other pickup; REGULAR drones have no bag, but
-        // they carry a claw-load (DroneManager.bareChipSpace) to CONSTRUCTION SITES only —
+        // they carry ONE chip at a time (any size; DroneManager.bareChipsPerTrip) to CONSTRUCTION SITES only —
         // ghost buildings are everyone's job, quota-free. EVERY chip-eating building posts
         // through ChipConsumers, and the search prefers the largest chip class the customer takes.
+        // Tubes are NOT on this board — shelving is the last leg of all, below.
         IChipConsumer eater = null;
         OreChip chip = null;
-        if (equipment == DroneEquipment.Bag && HasDailyHaulQuota)
-            chip = ChipConsumers.FindChipJob(this, EffectiveSpaceLeft, out eater);
-        else if (equipment == DroneEquipment.None)
-            chip = ChipConsumers.FindChipJob(this, EffectiveSpaceLeft, out eater, constructionOnly: true);
-        if (chip != null)
+        bool scanChips = Time.time >= chipSearchT;   // PERF: a beat between scans after a miss
+        if (scanChips)
         {
-            chip.claimedBy = this;
-            consumerChipTarget = chip;
-            chipConsumer = eater;
-            // inbound is reserved at the CLAIM (not the swallow), so parallel drones never
-            // all plan against the same demand; a spoiled claim hands its reservation back
-            pendingChipSpace = chip.SpaceCost;
-            chipsForConsumerSpace += chip.SpaceCost;
-            eater.InboundChipSpace += chip.SpaceCost;
-            batteryTask = BatteryTask.GatherChips;
-            state = State.BatteryWork;
-            return true;
+            if (equipment == DroneEquipment.Bag && HasDailyHaulQuota)
+                chip = ChipConsumers.FindChipJob(this, EffectiveSpaceLeft, out eater);
+            else if (equipment == DroneEquipment.None)
+                chip = ChipConsumers.FindChipJob(this, EffectiveSpaceLeft, out eater, constructionOnly: true);
+            if (chip != null) { TakeChipJob(chip, eater); return true; }
         }
 
-        if (!batteriesAllowed) return false;
+        if (!batteriesAllowed) { if (scanChips) StampChipMiss(); return false; }
 
         if (BatteryStation.all.Count > 0)
         {
@@ -1767,7 +1873,37 @@ public class Drone : AllyAI, IOnDeath
             state = State.BatteryWork;
             return true;
         }
+
+        // SHELVING — the least important job on the board (user rule 2026-09-13), but a JOB:
+        // it outranks patrol, chat and cards. Any drone with nothing else to do tidies loose
+        // chip onto the Tube shelves — a bag by the bagful, a bare drone one chip per
+        // trip — nearest-the-base-centre shape first. QUOTA-FREE (the daily haul quota exists
+        // to ration real customer work, and shelving pickups don't spend it — AddCargo). Chip
+        // never moves shelf to shelf: FindChipFor's shelf pass is closed to stores (a chip
+        // fetched off a shelf for a customer that no longer wants it goes back on a shelf via
+        // the dump run — never to the scrap pile).
+        if (scanChips && (equipment == DroneEquipment.Bag || equipment == DroneEquipment.None))
+        {
+            chip = ChipConsumers.FindChipJob(this, EffectiveSpaceLeft, out eater, shelving: true);
+            if (chip != null) { TakeChipJob(chip, eater); return true; }
+            StampChipMiss();
+        }
         return false;
+    }
+
+    /// <summary>Claim a chip job off the board. Inbound is reserved at the CLAIM (not the
+    /// swallow), so parallel drones never all plan against the same demand; a spoiled claim
+    /// hands its reservation back.</summary>
+    void TakeChipJob(OreChip chip, IChipConsumer eater)
+    {
+        chip.claimedBy = this;
+        consumerChipTarget = chip;
+        chipConsumer = eater;
+        pendingChipSpace = chip.SpaceCost;
+        chipsForConsumerSpace += chip.SpaceCost;
+        eater.InboundChipSpace += chip.SpaceCost;
+        batteryTask = BatteryTask.GatherChips;
+        state = State.BatteryWork;
     }
 
     void TickBatteryWork()
@@ -1947,8 +2083,8 @@ public class Drone : AllyAI, IOnDeath
                     }
                     // keep gathering while the customer still wants more than the fleet has
                     // inbound — and this drone still has quota to spend on it
-                    bool wantMore = EffectiveSpaceLeft > 0 && (equipment == DroneEquipment.None || HasDailyHaulQuota)
-                        && ChipConsumers.NetDemandSpace(c) > 0f;   // bare drones: construction is quota-free
+                    bool wantMore = EffectiveSpaceLeft > 0 && (equipment == DroneEquipment.None || HasDailyHaulQuota || c is Tube)
+                        && ChipConsumers.NetDemandSpace(c) > 0f;   // bare drones: construction is quota-free; shelving always is
                     if (wantMore)
                     {
                         var next = ChipConsumers.FindChipFor(c, this, EffectiveSpaceLeft);
@@ -1962,7 +2098,27 @@ public class Drone : AllyAI, IOnDeath
                             return;
                         }
                     }
-                    if (chipsForConsumerSpace > 0) { batteryTask = BatteryTask.DeliverChips; return; }
+                    // ONE EMPTYING PER BAG: this customer is served (or out of chip) — keep filling
+                    // the bag for whoever else is hungry before flying the delivery run. The chips
+                    // aboard reach every customer through the dump run's fair-share routing.
+                    if (equipment == DroneEquipment.Bag && EffectiveSpaceLeft > 0 && (HasDailyHaulQuota || c is Tube))
+                    {
+                        // a shelving run tops up for other shelves only; a customer run never adds shelf chip
+                        var more = ChipConsumers.FindChipJob(this, EffectiveSpaceLeft, out IChipConsumer other, shelving: c is Tube);
+                        if (more != null && other != null && other != c)
+                        {
+                            c.InboundChipSpace = Mathf.Max(0, c.InboundChipSpace - chipsForConsumerSpace);
+                            chipsForConsumerSpace = 0;
+                            chipConsumer = other;
+                            more.claimedBy = this;
+                            consumerChipTarget = more;
+                            pendingChipSpace = more.SpaceCost;
+                            chipsForConsumerSpace += more.SpaceCost;
+                            other.InboundChipSpace += more.SpaceCost;
+                            return;
+                        }
+                    }
+                    if (chipsForConsumerSpace > 0 || CargoChipSpace() > 0) { batteryTask = BatteryTask.DeliverChips; return; }
                     ReleaseBatteryWork();
                     if (!TryDispatchWork()) GoLoiter();
                     return;
@@ -1989,7 +2145,7 @@ public class Drone : AllyAI, IOnDeath
                     if (state == State.Loitering) GoLoiter();
                     return;
                 }
-                if (!MoveToward(c.ChipDropPoint, Mathf.Max(0.4f, c.ChipIntakeRadius * 0.7f))) return;
+                if (!MoveToward(DropPointFor(c), DepositStopDistance(c))) return;
                 // hand over only what's still wanted: the customer's net unserved demand plus
                 // this drone's own earmark (already counted inbound) — dive leftovers, and
                 // demand met by others mid-flight, stay aboard for the dump run's fair-share
@@ -1999,6 +2155,7 @@ public class Drone : AllyAI, IOnDeath
                 batteryTask = BatteryTask.None;
                 chipConsumer = null;
                 if (CargoChipSpace() > 0) { state = State.DumpLoot; return; }   // withheld chips ride on
+                if (MaybeBreakBag()) return;   // single-use: the emptied bag comes apart
                 if (!TryDispatchWork()) GoLoiter();
                 return;
             }
@@ -2295,19 +2452,50 @@ public class Drone : AllyAI, IOnDeath
         {
             var c = ChipConsumers.all[k];
             if (!ChipConsumers.Active(c)) continue;
-            if (ChipConsumers.NetDemandSpace(c) <= 0f) continue;
+            if (ChipConsumers.IsNonHostStoreBox(c)) continue;   // one bid per shelf (PERF)
+            // a shelf counts by PHYSICAL room (its ring-netted gross want), not net of other
+            // drones' reservations: chip in hand beats a claim in flight — the scrap pile is
+            // never the answer while a shelf has a slot
+            if ((c is Tube ? c.ChipDemandSpace : ChipConsumers.NetDemandSpace(c)) <= 0f) continue;
             if (!CargoHasChipFor(c)) continue;
             if (best == null || ChipConsumers.ServeFirst(c, best, transform.position)) best = c;
         }
         return best;
     }
 
+    /// <summary>Where this drone hands over to a customer. A Tube shape takes chip at ANY
+    /// of its boxes, so the drone goes to the one nearest itself (user rule 2026-09-13) rather
+    /// than the host box; every other customer is met at its drop point.</summary>
+    Vector2 DropPointFor(IChipConsumer c)
+    {
+        if (c is Tube s && s.cluster != null && s.cluster.members.Count > 0)
+        {
+            Vector2 me = transform.position, best = s.transform.position;
+            float bestSqr = float.MaxValue;
+            var boxes = s.cluster.members;
+            for (int k = 0; k < boxes.Count; k++)
+            {
+                if (boxes[k] == null) continue;
+                Vector2 p = boxes[k].transform.position;
+                float d = (p - me).sqrMagnitude;
+                if (d < bestSqr) { bestSqr = d; best = p; }
+            }
+            return best;
+        }
+        return c.ChipDropPoint;
+    }
+
+    /// <summary>How close a delivery flies before it lets go: well inside the customer's ring
+    /// (a store box or a wall: right up to it; the wide refiner/ghost rings: within 0.7), so
+    /// the deposit visibly leaves the drone and lands beside the building.</summary>
+    static float DepositStopDistance(IChipConsumer c) => Mathf.Clamp(c.ChipIntakeRadius * 0.4f, 0.35f, 0.7f);
+
     /// <summary>Any bagged chip this customer may be given? (Same gate the dump runs — a load
     /// that's all spoken-for by keener customers never triggers the flight.)</summary>
     bool CargoHasChipFor(IChipConsumer c)
     {
         for (int k = 0; k < cargo.Count; k++)
-            if (cargo[k].kind == 0 && !(cargo[k].refined && c.RefusesRefined) && ChipConsumers.MayGive(c, cargo[k].sizeClass, cargo[k].element)) return true;
+            if (cargo[k].kind == 0 && ChipConsumers.MayGive(c, cargo[k].sizeClass, cargo[k].element, cargo[k].refined)) return true;
         return false;
     }
 
@@ -2326,8 +2514,7 @@ public class Drone : AllyAI, IOnDeath
             for (int k = cargo.Count - 1; k >= 0; k--)
             {
                 if (cargo[k].kind != 0) continue;
-                if (cargo[k].refined && c.RefusesRefined) continue;
-                if (!ChipConsumers.MayGive(c, cargo[k].sizeClass, cargo[k].element)) continue;
+                if (!ChipConsumers.MayGive(c, cargo[k].sizeClass, cargo[k].element, cargo[k].refined)) continue;
                 int a = c.ChipAppeal(cargo[k].sizeClass, cargo[k].element);
                 if (a < pickAppeal || (a == pickAppeal && cargo[k].sizeClass <= pickSize)) continue;
                 pick = k; pickAppeal = a; pickSize = cargo[k].sizeClass;
@@ -2335,8 +2522,24 @@ public class Drone : AllyAI, IOnDeath
             if (pick < 0) break;
             maxSpace -= cargo[pick].space;
             given += cargo[pick].space;
-            var dropped = DroneManager.SpawnScrap((Vector3)c.ChipDropPoint + GS.RandCircle(0.15f, 0.45f),
-                cargo[pick].sizeClass, cargo[pick].element);
+            // DEPOSIT (2026-09-13, "more accurate"): the chip leaves the DRONE — spawned just
+            // ahead of it with a gentle nudge toward the customer's centre — so it settles well
+            // inside the ring (the old drop-point puff + full tumble kick skidded a small chip a
+            // unit or more, often clean out of a 0.45–0.75 ring). A shelf delivery is PLACED on
+            // the box (inside the ring's "put here on purpose" radius, so the shelf takes it
+            // whoever else is hungry), with barely any kick.
+            Vector2 target = DropPointFor(c);
+            Vector2 at; float kick;
+            if (c is Tube) { at = target + GS.RandCircleV2(0.02f, 0.1f); kick = 0.08f; }
+            else
+            {
+                Vector2 me = transform.position;
+                Vector2 to = target - me;
+                at = me + (to.sqrMagnitude > 1e-4f ? to.normalized * 0.12f : Vector2.zero) + GS.RandCircleV2(0f, 0.08f);
+                kick = 0.3f;
+            }
+            Vector2 burst = at - (target - at);   // Tumble's dir = at − burst → toward the customer's centre
+            var dropped = DroneManager.SpawnScrap((Vector3)at, cargo[pick].sizeClass, cargo[pick].element, burst, kick);
             if (dropped != null) dropped.refined = cargo[pick].refined;
             cargoSpaceUsed -= cargo[pick].space;
             cargo.RemoveAt(pick);
@@ -2941,6 +3144,7 @@ public class Drone : AllyAI, IOnDeath
         {
             energy = Mathf.Max(0f, energy - give * DroneManager.BaseOreCostPerUnit);
             DroneManager.SpawnOreUnits(p, oreTarget.tier, give);   // sized by the tile's intensity blend
+            if (WearDrill(give * DroneManager.BaseOreCostPerUnit)) return;   // the drill just gave out
         }
     }
 

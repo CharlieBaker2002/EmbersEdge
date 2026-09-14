@@ -26,6 +26,8 @@ public class OreCell : Building
     [Tooltip("Production pauses while this many loose, unclaimed chips already lie within looseRadius.")]
     public int maxLooseNearby = 8;
     public float looseRadius = 1.6f;
+    /// <summary>The hover ring shows the loose-chip ring production pauses on (HoverRing, 2026-09-14).</summary>
+    public override float HoverRingRadius => looseRadius;
     [Tooltip("Seconds between chips of one batch leaving the Cell.")]
     public float burstInterval = 0.12f;
     [Tooltip("Intensity of the ore the Cell manifests itself (0 low / 1 mid / 2 high — sets the chip size blend).")]
@@ -64,6 +66,17 @@ public class OreCell : Building
     void OnNewDay()
     {
         if (!builtYet) return;
+        StartCoroutine(NewDayBatch());
+    }
+
+    /// <summary>The day's batch lands strictly AFTER the wave-clear wipe (user rule 2026-09-14):
+    /// the wipe fires the instant the wave clears and the new day 1.25 s later, so this normally
+    /// waits for nothing — but a batch spawned inside the fade would be wiped with the old chip,
+    /// so it holds until the wipe has settled however the timings shift.</summary>
+    IEnumerator NewDayBatch()
+    {
+        while (Time.time < ChipClearCycle.WaveClearSettledAt) yield return null;
+        if (!builtYet) yield break;
         int n = orePerDay;
         if (chipAdjacentOre) n += ChipNeighbours();
         Produce(n);

@@ -235,7 +235,7 @@ public class ChipFactory : Building, IChipConsumer
             if (chip.Age < 0.35f) continue;                        // let fresh drops pop in first
             // suction honours the same dibs the fleet does: a chip a keener hungry customer
             // is waiting on (ore for a refiner) is not factory food, even inside the ring
-            if (!ChipConsumers.MayGive(this, chip.sizeClass, chip.element)) continue;
+            if (!ChipConsumers.MayGive(this, chip.sizeClass, chip.element, chip.refined)) continue;
             if (((Vector2)chip.transform.position - pos).sqrMagnitude > suctionRadius * suctionRadius) continue;
             juice += chip.JuiceValue;
             chip.AbsorbInto(eatSpot != null ? eatSpot : transform);

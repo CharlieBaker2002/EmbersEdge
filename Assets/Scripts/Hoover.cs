@@ -9,6 +9,8 @@ using UnityEngine.InputSystem;
 /// gun (Tab cycles to it, right click uses it) but its trigger is a syphon:
 ///   • HOLD Shoot: loose ore chips inside the cone in front of the nozzle are pulled in and
 ///     swallowed, up to <see cref="capacity"/>. Each swallow is one ore, whatever the chip's size.
+///     Aimed at a TUBE, the shelved chips lying in the cone step off the shelf one by one
+///     (<see cref="tubeDrawInterval"/>) and are pulled in the same way (user call 2026-09-14).
 ///   • PRESS Shoot while FULL (anywhere), or while holding ANY ore AT BASE: the load sprays back
 ///     out of the nozzle as chip props — into a ghost building's intake ring, a refiner's ring,
 ///     or just the ground for the drones to sort out.
@@ -45,6 +47,8 @@ public class Hoover : WeaponScript
     public float sprayFanDegrees = 14f;
     [Tooltip("Recoil impulse per sprayed chip.")]
     public float sprayRecoil = 0.15f;
+    [Tooltip("Seconds between chips drawn OFF A TUBE SHELF while the cone covers them (aim the held trigger at a tube to suck from it).")]
+    public float tubeDrawInterval = 0.06f;
 
     [Header("Syphon FX")]
     [Tooltip("Particles/second the Syphon system streams while the trigger is held.")]
@@ -67,11 +71,11 @@ public class Hoover : WeaponScript
     public int Held => held.Count;
     public bool Full => held.Count >= capacity;
 
-    bool hasStarted, syphoning, releasing;
-    InputAction shoot;
+    bool hooverStarted, syphoning, releasing;
+    InputAction shootAction;
     Action<InputAction.CallbackContext> onDown, onUp;
     int rumbleId = -1;
-    float pop;
+    float pop, tubeDrawT;
     Action<int> eraAction;
 
     // pull bookkeeping (chips currently under the cone this tick → tethers)
@@ -127,7 +131,7 @@ public class Hoover : WeaponScript
     protected override void Start()
     {
         CS = CharacterScript.CS;
-        hasStarted = true;
+        hooverStarted = true;
         if (syphon != null)
         {
             var em = syphon.emission;
@@ -146,12 +150,12 @@ public class Hoover : WeaponScript
         }
         transform.localPosition = transform.localPosition.normalized * 0.1f;
         engagement = 1f;
-        if (!hasStarted) return;
-        shoot = IM.i.pi.Player.Shoot;
+        if (!hooverStarted) return;
+        shootAction = IM.i.pi.Player.Shoot;
         onDown ??= _ => OnShootDown();
         onUp ??= _ => StopSyphon();
-        shoot.started += onDown;
-        shoot.canceled += onUp;
+        shootAction.started += onDown;
+        shootAction.canceled += onUp;
         this.QA(RefreshHud, 0f);   // after SwapWeapons' InitWeapon has written its own text
     }
 
@@ -166,9 +170,9 @@ public class Hoover : WeaponScript
         engagement = 0f;
         transform.localRotation = Quaternion.identity;
         transform.localPosition = transform.localPosition.normalized * (MechaSuit.poweredDist - sr.sprite.rect.height * 0.25f * 0.015625f);
-        if (!hasStarted || shoot == null) return;
-        shoot.started -= onDown;
-        shoot.canceled -= onUp;
+        if (!hooverStarted || shootAction == null) return;
+        shootAction.started -= onDown;
+        shootAction.canceled -= onUp;
     }
 
     void OnDestroy()
@@ -286,6 +290,7 @@ public class Hoover : WeaponScript
             Vector2 want = -dir * speed;
             chip.rb.linearVelocity = Vector2.MoveTowards(chip.rb.linearVelocity, want, pullAccel * dt);
             chip.claimedBy = null;   // the player outranks the fleet; drones re-plan if it vanishes
+            chip.playerPullStamp = Time.time;   // and building magnets (Collector) keep off it
             pulled.Add(chip);
             if (playerCol != null && ignoring.Add(chip))
             {
@@ -293,7 +298,44 @@ public class Hoover : WeaponScript
                 if (cc != null) Physics2D.IgnoreCollision(cc, playerCol, true);   // let it through the body
             }
         }
+        if (!Full) PullFromTubes(mouth, aim, cosHalf, mf, dt);
         RestoreDroppedCollisions();
+    }
+
+    /// <summary>Aimed at a tube: the shelved chip nearest the nozzle that lies inside the cone
+    /// (in range, in sight) steps off the shelf — loose, at rest, stamped as the player's — and
+    /// the next tick's pull takes it like any chip; one per <see cref="tubeDrawInterval"/> so the
+    /// shelf streams out rather than bursting. A chip a drone has claimed stays put.</summary>
+    void PullFromTubes(Vector2 mouth, Vector2 aim, float cosHalf, MineField mf, float dt)
+    {
+        tubeDrawT -= dt;
+        if (tubeDrawT > 0f) return;
+        var clusters = Tube.Clusters;
+        TubeCluster bestCl = null;
+        TubeCluster.Entry best = null;
+        float bd = float.MaxValue;
+        for (int c = 0; c < clusters.Count; c++)
+        {
+            var cl = clusters[c];
+            var list = cl.chips;
+            for (int i = 0; i < list.Count; i++)
+            {
+                var e = list[i];
+                var chip = e.chip;
+                if (chip == null || chip.Absorbing || chip.Fading || chip.claimedBy != null) continue;
+                Vector2 to = e.pos - mouth;
+                float d = to.magnitude;
+                if (d > range || d >= bd) continue;
+                if (d > nearRadius && Vector2.Dot(to / Mathf.Max(d, 1e-4f), aim) < cosHalf) continue;   // outside the cone
+                if (mf != null && !LineOfSight(mf, mouth, e.pos)) continue;
+                bd = d;
+                best = e;
+                bestCl = cl;
+            }
+        }
+        if (best == null) return;
+        if (bestCl.ReleaseTo(best) == null) return;
+        tubeDrawT = Mathf.Max(0.01f, tubeDrawInterval);
     }
 
     /// <summary>Chips no longer under pull get their body collision back (swallowed ones are

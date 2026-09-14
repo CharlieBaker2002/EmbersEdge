@@ -695,6 +695,10 @@ public class SpawnManager : MonoBehaviour
         if (!waveCompleted)
         {
             waveCompleted = true;
+            // The chip DESPAWN is instant — this frame, the moment the wave clears (user call
+            // 2026-09-14) — not 2 s later on onWaveComplete: the new day's Cell batch (1.25 s +
+            // its animation) must land AFTER the wipe, never inside it.
+            ChipClearCycle.OnWaveClear();
             CameraScript.QuickLeanDistort(0f,1f);
             SetToBase();
             StartCoroutine(InvokeWakeComplete());

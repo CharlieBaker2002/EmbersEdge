@@ -17,6 +17,9 @@ public class BM : MonoBehaviour //Building Manager
     [Range(0f, 2f)] public float blueprintBrightness = 0.6f;
     public static BlueprintStyle Style => i != null ? i.blueprintStyle : BlueprintStyle.Schematic;
     public static float BlueprintBrightness => i != null ? i.blueprintBrightness : 0.6f;
+    [Tooltip("A DESTROYED building is rebuilt from ore, not tapped back up by medic drones: it wants this fraction of its oreRequired (rounded up, so nothing rebuilds free) and prints back in like a fresh build.")]
+    [Range(0f, 1f)] public float rebuildOreFraction = 0.5f;
+    public static float RebuildOreFraction => i != null ? i.rebuildOreFraction : 0.5f;
 
     public static BM i;
     public GameObject UI;
@@ -121,6 +124,23 @@ public class BM : MonoBehaviour //Building Manager
         {
             if (b.builtYet) DemolitionMarks.Toggle(b);
             else b.CancelConstruction();
+        }
+    }
+
+    static Building hovered;
+    static int hoveredFrame = -1;
+    /// <summary>The placed building under the cursor THIS frame, cached per frame — any building
+    /// may ask every Update (the Collector shows its reach ring while hovered) for one raycast.</summary>
+    public static Building Hovered
+    {
+        get
+        {
+            if (hoveredFrame != Time.frameCount)
+            {
+                hoveredFrame = Time.frameCount;
+                hovered = IM.i != null ? BuildingUnderCursor() : null;
+            }
+            return hovered;
         }
     }
 
@@ -289,7 +309,7 @@ public class BM : MonoBehaviour //Building Manager
             // clips to the map's inner inset (pulled in by buildEdgeMargin), so cells near the edge is
             // already out-of-range and unbuildable. No per-frame bounds test needed.
             // colour overlay & sprite tint
-            GridManager.i.PreviewArea(anchorCell, gridSize, gridClear);
+            GridManager.i.PreviewArea(anchorCell, gridSize, gridClear, rbb);   // + the ghost's power reach in blue
 
             // multi-drag sweep: with the place button held (after a deliberate first click), stamp a
             // copy on every NEW clear cell the cursor passes over

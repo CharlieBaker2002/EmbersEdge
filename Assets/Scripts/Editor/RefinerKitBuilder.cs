@@ -125,8 +125,7 @@ public static class RefinerKitBuilder
         var bm = Object.FindAnyObjectByType<BM>(FindObjectsInactive.Include);
         if (bm != null && expander != null)
         {
-            foreach (var daddy in Object.FindObjectsByType<DaddyBuildingTile>(
-                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var daddy in Object.FindObjectsByType<DaddyBuildingTile>(FindObjectsInactive.Include))
             {
                 if (daddy.buildings == null) continue;
                 var list = new System.Collections.Generic.List<GameObject>(daddy.buildings);

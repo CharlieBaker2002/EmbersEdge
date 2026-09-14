@@ -63,8 +63,18 @@ public class DroneManager : MonoBehaviour
     public float drillCostVeryHard = 0.3f;
     [Tooltip("Energy a drone spends per chip it picks up (moving chip is work: 0.01 => 100 chips per full charge).")]
     public float chipMoveCost = 0.01f;
-    [Tooltip("Chip space a REGULAR (no-kit) drone can carry in its claws per trip — construction hauling only (2 = one medium chip).")]
-    public int bareChipSpace = 2;
+    [Tooltip("Energy-worth of drilling one drill survives (block costs accrue; 1 = one full charge of blocks, across dives). The drill breaks when it's spent — drills and bags are single-use kit, forged again at their workshops.")]
+    public float drillCapacity = 1f;
+    [Header("Drone expression")]
+    [Tooltip("Show the ASCII speech bubbles over emoting drones. OFF (user rule 2026-09-13): an emote only drives the body animation — the 0,1,2 / 2,1,0 sweep for the beat, the plain frame cycle otherwise.")]
+    public bool speechBubbles = false;
+    [Header("Chip clear cycles")]
+    [Tooltip("Loose base-side chips fade out when a wave clears. Chips on a powered Tube shelf or inside a building's intake ring are spared. (Teleporting never fades base chip — only the dungeon's debris fades on the way home.)")]
+    public bool clearBaseChipsOnWaveClear = true;
+    [Tooltip("Seconds a chip takes to fade at a clear cycle.")]
+    public float chipFadeSeconds = 0.45f;
+    [Tooltip("Chips a REGULAR (no-kit) drone carries in its claws per trip, ANY size — construction hauling only (1 = one chip at a time).")]
+    public int bareChipsPerTrip = 1;
 
     [Header("Ore chips")]
     [Tooltip("LEGACY (plain rock no longer drops chip — only ore blocks do). Kept for the inspector's sake.")]
@@ -104,7 +114,11 @@ public class DroneManager : MonoBehaviour
     public static Vector2 ScrapPoint => i != null ? i.scrapPoint : new Vector2(0f, -6f);
     public static float RepairCostPerHp => i != null ? i.repairCostPerHp : 0.025f;
     public static float ChipMoveCost => i != null ? i.chipMoveCost : 0.01f;
-    public static int BareChipSpace => i != null ? Mathf.Max(1, i.bareChipSpace) : 2;
+    public static float DrillCapacity => i != null ? Mathf.Max(0.01f, i.drillCapacity) : 1f;
+    public static bool ClearBaseChipsOnWaveClear => i == null || i.clearBaseChipsOnWaveClear;
+    public static bool SpeechBubbles => i != null && i.speechBubbles;
+    public static float ChipFadeSeconds => i != null ? Mathf.Max(0.05f, i.chipFadeSeconds) : 0.45f;
+    public static int BareChipsPerTrip => i != null ? Mathf.Max(1, i.bareChipsPerTrip) : 1;
     public static float IdleWanderRadius => i != null ? i.idleWanderRadius : 8f;
     public static float IdleSpeedScale => i != null ? i.idleSpeedScale : 0.55f;
     public static float IdleCooldown => i != null ? i.idleCooldown : 6f;
@@ -291,10 +305,14 @@ public class DroneManager : MonoBehaviour
     }
 
     /// <summary>Wave cleared: vehicles power down, pilots pop out to heal their hulls and
-    /// recharge — and the battery-logistics grace window starts (see BatteryWorkAllowed).</summary>
+    /// recharge — the battery-logistics grace window starts (see BatteryWorkAllowed) and the
+    /// base's loose chips were eaten here too, but that wipe now fires INSTANTLY at the wave clear
+    /// (SpawnManager.NextDayFR → ChipClearCycle.OnWaveClear), 2 s before this hook.</summary>
     void OnWaveComplete()
     {
         batteryHoldUntil = Time.time + Mathf.Max(0f, batteryWorkDelayAfterWave);
+        // (the chip despawn no longer rides this 2 s-delayed hook — SpawnManager.NextDayFR runs
+        // ChipClearCycle.OnWaveClear the instant the wave clears, ahead of the new day's Cell batch)
         for (int k = PilotedVehicle.all.Count - 1; k >= 0; k--)
         {
             var v = PilotedVehicle.all[k];
@@ -433,8 +451,9 @@ public class DroneManager : MonoBehaviour
 
     /// <summary>Drones ride the player's teleport: dive deploys every assigned charged drone
     /// through its pad link; returning home force-recalls EVERY drone still in the dungeon
-    /// (mid-flight ones included — the frozen dimension must never strand a drone) and clears
-    /// the chip debris ("chips last until you return to base").</summary>
+    /// (mid-flight ones included — the frozen dimension must never strand a drone) and runs
+    /// the clear cycle ("chips last until you return to base" — dungeon debris fades, and so
+    /// do loose base chips unless a powered Tube holds them; see ChipClearCycle).</summary>
     void OnTeleport(bool nowInDungeon)
     {
         if (nowInDungeon)
@@ -444,7 +463,7 @@ public class DroneManager : MonoBehaviour
         else
         {
             RecallAllFromDungeon();
-            DespawnAllChips();
+            ChipClearCycle.OnReturnHome();
             // home again — the pad-restock window opens: only now (until the next day tick) may
             // the fleet lift still-charged batteries off working pads for their station visit
             BatteryStation.StampHomecoming();
@@ -526,7 +545,7 @@ public class DroneManager : MonoBehaviour
             && !mf.IsSolidWorld(new Vector2(p.x + pad, p.y + pad));
     }
 
-    OreChip SpawnChip(Vector3 pos, int sizeClass, int element, Vector2 burstFrom)
+    OreChip SpawnChip(Vector3 pos, int sizeClass, int element, Vector2 burstFrom, float kick = 1f)
     {
         // never cache a failed load — an empty result (asset pipeline mid-refresh) would
         // otherwise poison the whole session
@@ -598,7 +617,7 @@ public class DroneManager : MonoBehaviour
                 chip.sr.material = GS.MatByEra(GS.era, lit: true);
             }
         }
-        chip.Tumble(burstFrom);
+        chip.Tumble(burstFrom, kick);
         return chip;
     }
 
@@ -627,20 +646,10 @@ public class DroneManager : MonoBehaviour
     /// <summary>Scrap with a DIRECTED burst (the player's Hoover spraying its load): the chip
     /// tumbles away from <paramref name="burstFrom"/>. Returns the chip so the caller can put
     /// its own speed on it; null when no chip could be made.</summary>
-    public static OreChip SpawnScrap(Vector3 pos, int sizeClass, int element, Vector2 burstFrom)
+    public static OreChip SpawnScrap(Vector3 pos, int sizeClass, int element, Vector2 burstFrom, float kick = 1f)
     {
         if (i == null) Ensure();
-        return i.SpawnChip(pos, sizeClass, element, burstFrom);
-    }
-
-    static void DespawnAllChips()
-    {
-        // dungeon debris only — the scrap pile hauled home stays
-        for (int k = OreChip.all.Count - 1; k >= 0; k--)
-        {
-            var chip = OreChip.all[k];
-            if (chip != null && chip.transform.InDungeon()) Destroy(chip.gameObject);
-        }
+        return i.SpawnChip(pos, sizeClass, element, burstFrom, kick);
     }
 
     /// <summary>Sliced sheet from Resources in NUMERIC slice order (a plain name sort puts _10

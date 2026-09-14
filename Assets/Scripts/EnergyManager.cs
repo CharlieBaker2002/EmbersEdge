@@ -28,7 +28,8 @@ public class EnergyManager : MonoBehaviour
     /// Register an EnergyPad's source claim at its full footprint. For hubs (single-battery
     /// directional pads), the cell registration is the same as a regular pad — but
     /// BuildingPower applies a directional filter (see <see cref="HubAccessibleFrom"/>)
-    /// so only consumers in the hub's forward column actually pick it up.
+    /// so only consumers in the hub's forward column actually pick it up: a hub powers ONLY what
+    /// touches its front edge (one cell deep — see <see cref="PowerReach"/>).
     /// </summary>
     public void RegisterPad(EnergyPad pad)
     {
@@ -45,6 +46,37 @@ public class EnergyManager : MonoBehaviour
             }
         }
         OnPadsChanged?.Invoke();
+    }
+
+    /// <summary>The cells directly in front of a hub's facing: its full width, <paramref name="depth"/>
+    /// cells deep, nearest first. Facing snaps to the dominant axis exactly as <see cref="HubAccessibleFrom"/>.</summary>
+    public static void HubForwardCells(EnergyPad hub, int depth, List<Vector2Int> into)
+        => HubForwardCells(hub.transform.up, hub.anchorCell, hub.gridSize, depth, into);
+
+    /// <summary>Same, for a footprint that isn't registered yet (the placement ghost).</summary>
+    public static void HubForwardCells(Vector2 up, Vector2Int a, Vector2Int s, int depth, List<Vector2Int> into)
+    {
+        int dx = Mathf.RoundToInt(up.x);
+        int dy = Mathf.RoundToInt(up.y);
+        if (dx != 0 && dy != 0)
+        {
+            if (Mathf.Abs(up.x) >= Mathf.Abs(up.y)) dy = 0; else dx = 0;
+        }
+        if (dx == 0 && dy == 0) dy = 1;
+        if (s.x <= 0 || s.y <= 0) s = Vector2Int.one;
+        for (int d = 1; d <= depth; d++)
+        {
+            if (dy != 0)
+            {
+                int y = dy > 0 ? a.y + s.y - 1 + d : a.y - d;
+                for (int x = 0; x < s.x; x++) into.Add(new Vector2Int(a.x + x, y));
+            }
+            else
+            {
+                int x = dx > 0 ? a.x + s.x - 1 + d : a.x - d;
+                for (int y = 0; y < s.y; y++) into.Add(new Vector2Int(x, a.y + y));
+            }
+        }
     }
 
     public void UnregisterPad(EnergyPad pad)

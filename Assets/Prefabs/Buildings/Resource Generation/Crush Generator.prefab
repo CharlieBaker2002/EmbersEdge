@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 541622690357497107}
   - component: {fileID: 2018161822163578109}
-  - component: {fileID: 3145056401604892688}
+  - component: {fileID: 6098875763239594970}
   m_Layer: 7
   m_Name: Crush Generator
   m_TagString: Allies
@@ -93,7 +93,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!114 &3145056401604892688
+--- !u!114 &6098875763239594970
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -102,9 +102,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 2000541545583142029}
   m_Enabled: 0
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 76d4aacc1f46c44578489af37b9303ec, type: 3}
+  m_Script: {fileID: 11500000, guid: a54b619f634714cbeb622be80574fc21, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Assembly-CSharp::CrushGenerator
   buildingBehaviours:
   - {fileID: 0}
   sr: {fileID: 2018161822163578109}
@@ -134,7 +134,7 @@ MonoBehaviour:
   energyIconOffset: {x: 0, y: 0, z: 0}
   energyIconScale: 1
   demolisher: {fileID: 0}
-  sprs:
+  frames:
   - {fileID: -40674267, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
   - {fileID: -1791213235, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
   - {fileID: -1173013403, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
@@ -169,14 +169,17 @@ MonoBehaviour:
   - {fileID: -1760547905, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
   - {fileID: 1638304276, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
   - {fileID: -1033889591, guid: bbd8390676d2041f883e7a78faba6283, type: 3}
-  typ: 2
-  actionTimer: -1
-  FX: {fileID: 3189509133760383441, guid: 3ebfa320f58fc4e8a9c4219ecef7f00b, type: 3}
-  connect: {fileID: 0}
-  overrideBattery: 0
-  batteryCapacity: 0
-  batteryDrawRate: 0
-  batteryInstabuffer: 0
+  chipsPerCrush: 25
+  energyPerCrush: 15
+  maxEnergy: 30
+  drawRate: 2
+  crushEnergy: 3
+  crushSeconds: 2
+  crushFrame: 17
+  crushFps: 24
+  resetFps: 6
+  intakeRadius: 0.9
+  suctionInterval: 0.2
 --- !u!1001 &8929228007466600301
 PrefabInstance:
   m_ObjectHideFlags: 0
