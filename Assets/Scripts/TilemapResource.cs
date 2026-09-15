@@ -10,9 +10,9 @@ using UnityEngine.Tilemaps;
 /// tiles; the Cell harvests its 3×3). Intensity rises outward: inner batches land on Low, outer
 /// on High, with some mixing — and a node's tier sets the chip blend its units release
 /// (DroneManager.oreTiers). The base shows intensity by MATERIAL for now (the tiled art has no
-/// vein variants yet): each map's authored material is the era-0 ore glow of its tier
-/// (Purple / Purple 1 / SpecialPurple); <see cref="DroneManager.OreSourceMaterial"/> keeps them
-/// on the current era.
+/// vein variants yet): each map's authored material is the ore glow level of its tier
+/// (Glow Dim / Glow Bright / Glow Super — <see cref="DroneManager.OreSourceMaterial"/>); the era
+/// hue is the global era colour, so nothing is swapped when the era turns.
 /// </summary>
 public class TilemapResource : MonoBehaviour
 {
@@ -42,8 +42,6 @@ public class TilemapResource : MonoBehaviour
     [Tooltip("How much a batch's intensity may wander from its distance (0 = strictly inner low → outer high).")]
     [Range(0f, 1f)] [SerializeField] float intensityJitter = 0.45f;
 
-    System.Action<int> eraAction;
-
     private void Awake()
     {
         i = this;
@@ -55,21 +53,6 @@ public class TilemapResource : MonoBehaviour
     void OnDestroy()
     {
         if (i == this) i = null;
-        if (eraAction != null) GS.OnNewEra -= eraAction;
-    }
-
-    /// <summary>Follow the era: the authored materials are era 0's; later eras swap in theirs.</summary>
-    void ApplyEraMaterials(int era)
-    {
-        if (tierMaps == null) return;
-        for (int tier = 0; tier < tierMaps.Length; tier++)
-        {
-            var map = tierMaps[tier];
-            if (map == null) continue;
-            var mat = DroneManager.OreSourceMaterial(tier);
-            var r = map.GetComponent<TilemapRenderer>();
-            if (mat != null && r != null && r.sharedMaterial != mat) r.material = mat;
-        }
     }
 
     bool AnyMapHasTile(Vector3Int pos)
@@ -81,9 +64,6 @@ public class TilemapResource : MonoBehaviour
 
     private IEnumerator Start()
     {
-        ApplyEraMaterials(GS.era);
-        eraAction = ApplyEraMaterials;
-        GS.OnNewEra += eraAction;
         if (tierMaps == null || tierMaps.Length == 0 || tierMaps[0] == null)
         {
             Debug.LogError("[TilemapResource] Ore_Base has no tier maps assigned (Low/Mid/High children).");

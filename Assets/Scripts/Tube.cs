@@ -106,9 +106,57 @@ public class Tube : Building, IChipConsumer
     [HideInInspector] public Vector2Int cell;
     [HideInInspector] public TubeCluster cluster;
 
+    // ------------------------------------------------------------------ keep priority
+    public const int RankLow = 0, RankNormal = 1, RankHigh = 2;
+    /// <summary>Keep priority of the SHAPE this box belongs to (all members hold the same value; see
+    /// TubeCluster.Rank). Default normal = every shape ranks equally.</summary>
+    [HideInInspector] public int rank = RankNormal;
+
+    static readonly int[] Free = new int[4];   // zero cost shared by the setting tiles
+    static readonly Color RankActiveCol = new Color(0.30f, 0.85f, 0.45f, 0.85f);
+    readonly List<(BaseTile tile, int rank)> rankTiles = new List<(BaseTile, int)>();
+    readonly Dictionary<BaseTile, Color> rankBaseCols = new Dictionary<BaseTile, Color>();
+
+    void WireRankTiles()
+    {
+        AddRank("Store Priority: Low", TPIcons.Weakest, RankLow);
+        AddRank("Store Priority: Medium", TPIcons.NoPref, RankNormal);
+        AddRank("Store Priority: High", TPIcons.Strongest, RankHigh);
+        OnOpen += RefreshRankTiles;   // the shape may have merged/split or been set from another box
+        RefreshRankTiles();
+    }
+
+    void AddRank(string nam, Sprite spr, int r)
+    {
+        AddSlot(Free, nam, spr, false, () => SetRank(r));
+        BaseTile tile = tiles[^1];
+        rankTiles.Add((tile, r));
+        rankBaseCols[tile] = tile.init;
+    }
+
+    /// <summary>Set the keep priority of the whole shape (every member box, so it survives re-clustering).</summary>
+    public void SetRank(int r)
+    {
+        r = Mathf.Clamp(r, RankLow, RankHigh);
+        if (cluster != null) for (int k = 0; k < cluster.members.Count; k++) cluster.members[k].rank = r;
+        else rank = r;
+        RefreshRankTiles();
+    }
+
+    void RefreshRankTiles()
+    {
+        int cur = cluster != null ? cluster.Rank : rank;
+        foreach ((BaseTile tile, int r) in rankTiles)
+        {
+            if (tile == null) continue;
+            Color c = cur == r ? Color.Lerp(rankBaseCols[tile], RankActiveCol, 0.75f) : rankBaseCols[tile];
+            tile.init = c;
+            tile.background.color = c;
+        }
+    }
+
     Material radMat;
     Color baseCol = Color.white;
-    int radEra = -1;
     float blip;
     static readonly int TheColorId = Shader.PropertyToID("thecolor");
 
@@ -121,6 +169,7 @@ public class Tube : Building, IChipConsumer
     public override void Start()
     {
         base.Start();
+        if (rankTiles.Count == 0) WireRankTiles();
         TubeEnergyBar.Attach(this);   // shows only on the shape's host box, sized to the shelf's need
     }
 
@@ -221,6 +270,9 @@ public class Tube : Building, IChipConsumer
     static TubeCluster ClusterAt(Vector2Int c)
         => byCell.TryGetValue(c, out var s) && s != null ? s.cluster : null;
 
+    /// <summary>The live tube box on a world cell, if any.</summary>
+    public static Tube At(Vector2Int c) => byCell.TryGetValue(c, out var s) && s != null ? s : null;
+
     /// <summary>A clear cycle: every shape starts paying for its shelf.</summary>
     public static void BeginShieldAll()
     {
@@ -272,17 +324,16 @@ public class Tube : Building, IChipConsumer
     // ------------------------------------------------------------------ visuals
 
     /// <summary>The era's ore material on a runtime copy so the shield can drive `thecolor`
-    /// without touching the shared asset (Collector pattern); re-cut when the era turns.</summary>
+    /// without touching the shared asset (Collector pattern); the era hue is a global, so it is cut once.</summary>
     void ApplyEraMaterial()
     {
         if (sr == null) return;
-        if (radMat == null || radEra != GS.era)
+        if (radMat == null)
         {
-            var src = GS.MatByEra(GS.era, bright: true);
+            var src = GS.Glow(GlowLevel.Bright);
             if (src == null) return;
             if (radMat != null) Destroy(radMat);
             radMat = new Material(src);
-            radEra = GS.era;
             baseCol = radMat.HasProperty(TheColorId) ? radMat.GetColor(TheColorId) : Color.white;
         }
         sr.sharedMaterial = radMat;
@@ -295,7 +346,6 @@ public class Tube : Building, IChipConsumer
     /// <paramref name="k"/> is the shield strength already scaled by power/phasing.</summary>
     public void TickVisual(float dt, float k, Color era, Vector2 centroid)
     {
-        if (radEra != GS.era) ApplyEraMaterial();
         blip = Mathf.MoveTowards(blip, 0f, dt / 0.35f);
         if (radMat != null && radMat.HasProperty(TheColorId))
             radMat.SetColor(TheColorId, baseCol * (1f + shieldRadiance * k + 0.5f * blip));

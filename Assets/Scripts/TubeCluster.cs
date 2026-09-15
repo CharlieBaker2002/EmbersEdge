@@ -92,6 +92,29 @@ public class TubeCluster
     static readonly Vector2Int[] Dirs = { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
 
     public int Capacity => members.Count * (host != null ? Mathf.Max(0, host.chipsPerStore) : 0);
+
+    /// <summary>Player-set keep priority of this shape (Tube.Rank: 0 low, 1 normal, 2 high; every
+    /// shape starts at normal, so they all rank equally until the player says otherwise). Drones
+    /// DRAIN the lowest-ranked shape that has chip first and TOP UP the highest-ranked first; a tie
+    /// on rank goes to the shape with the fewest chips once claims and inbound settle
+    /// (<see cref="Projected"/>). Lives on every member box so it survives re-clustering.</summary>
+    public int Rank => host != null ? host.rank : Tube.RankNormal;
+
+    /// <summary>Chips this shape is ABOUT to hold: shelved minus those a drone has already claimed
+    /// (leaving) plus inbound deliveries (arriving).</summary>
+    public int Projected
+    {
+        get
+        {
+            int leaving = 0;
+            for (int k = 0; k < chips.Count; k++)
+            {
+                var c = chips[k].chip;
+                if (c != null && c.claimedBy != null) leaving++;
+            }
+            return chips.Count - leaving + inbound;
+        }
+    }
     public int Free => Mathf.Max(0, Capacity - chips.Count);
     /// <summary>Slots not already spoken for by loose chips lying in the ring (a drop the
     /// intake hasn't swept yet is as good as shelved) — what the shelf advertises as want.</summary>
@@ -167,7 +190,9 @@ public class TubeCluster
         }
         if (cells.Count == 0) boundsMin = boundsMax = centroid;
         extent = far + cs * 0.7f;
-        for (int k = 0; k < members.Count; k++) members[k].cluster = this;
+        int rank = Tube.RankNormal;
+        for (int k = 0; k < members.Count; k++) rank = Mathf.Max(rank, members[k].rank);
+        for (int k = 0; k < members.Count; k++) { members[k].cluster = this; members[k].rank = rank; }
         power = new SourcePool(members);
         BuildContour();
         BuildSamples();
@@ -255,6 +280,20 @@ public class TubeCluster
         }
     }
 
+    /// <summary>Seconds a MOVING chip must exist before the shelf may catch it (just long enough
+    /// to be seen popping in).</summary>
+    const float StickyPopIn = 0.2f;
+    /// <summary>A moving chip's catch ring, as a multiple of intakeRadius² (≈1.35× the radius).</summary>
+    const float StickyRadiusSq = 1.8f;
+
+    static float SqrDistToSegment(Vector2 q, Vector2 a, Vector2 b)
+    {
+        Vector2 ab = b - a;
+        float len2 = ab.sqrMagnitude;
+        float t = len2 > 1e-8f ? Mathf.Clamp01(Vector2.Dot(q - a, ab) / len2) : 0f;
+        return (a + ab * t - q).sqrMagnitude;
+    }
+
     /// <summary>Loose chips in the ring the shelf may take, nearest first.</summary>
     void Candidates(List<OreChip> into)
     {
@@ -266,16 +305,22 @@ public class TubeCluster
             var chip = OreChip.all[k];
             if (chip == null || chip.Absorbing || chip.Fading || chip.rb == null) continue;
             if (chip.claimedBy != null || chip.PulledByPlayer || chip.PulledByCollector) continue;   // a drone, the player or a Collector has it
-            if (chip.Age < OreChip.SettleSeconds) continue;                   // let it land first
+            // Sticky (2026-09-14): a chip in flight (Hoover spray, a kick) is caught after a short
+            // pop-in guard instead of the full settle wait, and tested along the path it swept
+            // since the last scan — so one crossing the ring between scans can't sail past.
+            Vector2 v = chip.rb.simulated ? chip.rb.linearVelocity : Vector2.zero;
+            bool moving = v.sqrMagnitude > 0.04f;
+            if (chip.Age < (moving ? StickyPopIn : OreChip.SettleSeconds)) continue;   // let it land first
             if (chip.transform.InDungeon()) continue;
             Vector2 p = chip.transform.position;
+            Vector2 from = moving ? p - v * (host.intakeInterval + Time.deltaTime) : p;
             float d = float.MaxValue;
             for (int m = 0; m < members.Count; m++)
             {
-                float dm = ((Vector2)members[m].transform.position - p).sqrMagnitude;
+                float dm = SqrDistToSegment(members[m].transform.position, from, p);
                 if (dm < d) d = dm;
             }
-            if (d > r2) continue;
+            if (d > (moving ? r2 * StickyRadiusSq : r2)) continue;
             // the fleet's dibs: a keener HUNGRY customer (construction, refiner…) is owed this chip —
             // unless it was put right on top of the box (a deliberate spray / dump)
             if (d > onTop2 && ChipConsumers.TopAppealFor(chip.sizeClass, chip.element, chip.refined) > 0) continue;
@@ -336,6 +381,22 @@ public class TubeCluster
     /// suction pass. Only inside the building's own radius, never beyond; one chip per building
     /// per tick; the fleet's dibs still apply. Another tube never takes from a tube; a dead
     /// box's own rebuild goes through TickDonate.</summary>
+    /// <summary>Would <see cref="TickDeliver"/> give that consumer a chip — a shelved chip inside
+    /// its ring that the fleet's dibs let it have? (A Solo's feed ranking asks.)</summary>
+    public bool HasChipWithin(IChipConsumer c, Vector2 mouth, float radius)
+    {
+        float r2 = radius * radius;
+        for (int i = 0; i < chips.Count; i++)
+        {
+            var e = chips[i];
+            var chip = e.chip;
+            if (chip == null || chip.Absorbing || chip.Fading || chip.claimedBy != null) continue;
+            if ((e.pos - mouth).sqrMagnitude > r2) continue;
+            if (ChipConsumers.MayGive(c, chip.sizeClass, chip.element, chip.refined)) return true;
+        }
+        return false;
+    }
+
     void TickDeliver(float dt)
     {
         deliverT -= dt;
@@ -347,6 +408,7 @@ public class TubeCluster
         {
             var c = all[k];
             if (c is Tube || !ChipConsumers.Active(c) || ChipConsumers.NetDemandSpace(c) <= 0f) continue;
+            if (c is CrushGenerator g && !g.MayTakeFrom(CrushGenerator.Feed.Tube)) continue;   // a Solo's Collector / belt-in go first
             var b = ChipConsumers.BuildingOf(c);
             if (b is Tube) continue;
             Vector2 mouth = c.ChipDropPoint;

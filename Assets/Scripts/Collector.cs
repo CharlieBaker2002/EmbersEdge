@@ -81,7 +81,6 @@ public class Collector : Building
     Coroutine runCo;
     Material radMat;
     Color baseCol = Color.white;
-    int radEra = -1;
     float frameT, activity, bucket, nextPull, pushT;
     float activeUntil = float.NegativeInfinity;
     static readonly int TheColorId = Shader.PropertyToID("thecolor");
@@ -121,17 +120,16 @@ public class Collector : Building
     // ------------------------------------------------------------------ the cycle
 
     /// <summary>The era's ore material (the one the ore glows) on a runtime copy so the pull
-    /// radiance can drive `thecolor` without touching the shared asset; re-cut when the era turns.</summary>
+    /// radiance can drive `thecolor` without touching the shared asset; the era hue is a global, so it is cut once.</summary>
     void ApplyEraMaterial()
     {
         if (sr == null) return;
-        if (radMat == null || radEra != GS.era)
+        if (radMat == null)
         {
-            var src = GS.MatByEra(GS.era, bright: true);
+            var src = GS.Glow(GlowLevel.Bright);
             if (src == null) return;
             if (radMat != null) Destroy(radMat);
             radMat = new Material(src);
-            radEra = GS.era;
             baseCol = radMat.HasProperty(TheColorId) ? radMat.GetColor(TheColorId) : Color.white;
         }
         sr.sharedMaterial = radMat;
@@ -143,7 +141,6 @@ public class Collector : Building
         while (true)
         {
             float dt = Time.deltaTime;
-            if (radEra != GS.era) ApplyEraMaterial();
             // lively while chips are on the way (and a beat after the last lands), settling to idle
             bool lively = pulling.Count > 0 || Time.time < activeUntil;
             activity = Mathf.MoveTowards(activity, lively ? 1f : 0f, dt / ActiveEase);
@@ -336,6 +333,9 @@ public class Collector : Building
             if (chip != null && c.TakeDelivered(chip)) Gave(chip);
         }
     }
+
+    /// <summary>Is a parked chip in the pile free to hand that customer? (A Solo's feed ranking asks.)</summary>
+    public bool HasChipFor(IChipConsumer c) => parked.Count > 0 && !MarkedForDemolition && NearestParked(transform.position, c) != null;
 
     /// <summary>The parked chip nearest a point that nobody else has (and that a given customer accepts).</summary>
     OreChip NearestParked(Vector2 p, IChipConsumer forWhom)

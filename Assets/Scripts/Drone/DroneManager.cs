@@ -49,22 +49,24 @@ public class DroneManager : MonoBehaviour
     [Header("Base ore mining")]
     [Tooltip("Seconds of drill contact to eat one marked ore tile whole (yield is HALF its value — drones are half as ore-efficient as buildings).")]
     public float baseOreEatSeconds = 3f;
-    [Tooltip("Energy per ore-chip unit actually released when base-mining.")]
+    [Tooltip("Energy (of a drone's 10) per ore-chip unit actually released when base-mining.")]
     [UnityEngine.Serialization.FormerlySerializedAs("baseOreCostPerOrb")]
-    public float baseOreCostPerUnit = 0.05f;
+    public float baseOreCostPerUnit = 0.5f;
     [Tooltip("Seconds of click-hold on a base ore tile to toggle its deconstruction mark.")]
     public float oreMarkHoldSeconds = 1f;
 
-    [Header("Energy tariffs")]
-    [Tooltip("Energy per 1 hp healed on buildings/vehicles (0.025 => 40 hp per full charge).")]
-    public float repairCostPerHp = 0.025f;
-    public float drillCostRegular = 0.05f;
-    public float drillCostHard = 0.15f;
-    public float drillCostVeryHard = 0.3f;
-    [Tooltip("Energy a drone spends per chip it picks up (moving chip is work: 0.01 => 100 chips per full charge).")]
-    public float chipMoveCost = 0.01f;
-    [Tooltip("Energy-worth of drilling one drill survives (block costs accrue; 1 = one full charge of blocks, across dives). The drill breaks when it's spent — drills and bags are single-use kit, forged again at their workshops.")]
-    public float drillCapacity = 1f;
+    [Header("Energy tariffs (a full drone charge = Drone.MaxEnergy = 10)")]
+    [Tooltip("Energy per 1 hp healed on buildings/vehicles (0.25 => 40 hp per full charge).")]
+    public float repairCostPerHp = 0.25f;
+    public float drillCostRegular = 0.5f;
+    public float drillCostHard = 1.5f;
+    public float drillCostVeryHard = 3f;
+    [Tooltip("Handling energy a BAG drone spends per chip it picks up, on top of the bag's space tariff (0.1 => 100 chips per full charge).")]
+    public float chipMoveCost = 0.1f;
+    [Tooltip("Energy a drone WITHOUT a bag (claws) spends per chip it picks up — its whole cost of moving that chip (0.5 => 20 chips per full charge).")]
+    public float bareChipPickupCost = 0.5f;
+    [Tooltip("Energy-worth of drilling one drill survives (block costs accrue; 10 = one full charge of blocks, across dives). The drill breaks when it's spent — drills and bags are single-use kit, forged again at their workshops.")]
+    public float drillCapacity = 10f;
     [Header("Drone expression")]
     [Tooltip("Show the ASCII speech bubbles over emoting drones. OFF (user rule 2026-09-13): an emote only drives the body animation — the 0,1,2 / 2,1,0 sweep for the beat, the plain frame cycle otherwise.")]
     public bool speechBubbles = false;
@@ -112,9 +114,10 @@ public class DroneManager : MonoBehaviour
     public static float RallyLeash => i != null ? i.rallyLeash : 7f;
     public static float BagRallyStandoff => i != null ? i.bagRallyStandoff : 4f;
     public static Vector2 ScrapPoint => i != null ? i.scrapPoint : new Vector2(0f, -6f);
-    public static float RepairCostPerHp => i != null ? i.repairCostPerHp : 0.025f;
-    public static float ChipMoveCost => i != null ? i.chipMoveCost : 0.01f;
-    public static float DrillCapacity => i != null ? Mathf.Max(0.01f, i.drillCapacity) : 1f;
+    public static float RepairCostPerHp => i != null ? i.repairCostPerHp : 0.25f;
+    public static float ChipMoveCost => i != null ? i.chipMoveCost : 0.1f;
+    public static float BareChipPickupCost => i != null ? i.bareChipPickupCost : 0.5f;
+    public static float DrillCapacity => i != null ? Mathf.Max(0.01f, i.drillCapacity) : 10f;
     public static bool ClearBaseChipsOnWaveClear => i == null || i.clearBaseChipsOnWaveClear;
     public static bool SpeechBubbles => i != null && i.speechBubbles;
     public static float ChipFadeSeconds => i != null ? Mathf.Max(0.05f, i.chipFadeSeconds) : 0.45f;
@@ -123,7 +126,7 @@ public class DroneManager : MonoBehaviour
     public static float IdleSpeedScale => i != null ? i.idleSpeedScale : 0.55f;
     public static float IdleCooldown => i != null ? i.idleCooldown : 6f;
     public static float BaseOreEatSeconds => i != null ? i.baseOreEatSeconds : 3f;
-    public static float BaseOreCostPerUnit => i != null ? i.baseOreCostPerUnit : 0.05f;
+    public static float BaseOreCostPerUnit => i != null ? i.baseOreCostPerUnit : 0.5f;
 
     /// <summary>Standing drill-drone demand across every base pad's request slots.</summary>
     public static int TelepadDrillDemand()
@@ -475,15 +478,14 @@ public class DroneManager : MonoBehaviour
     public static float DrillCost(CellType tier)
     {
         var m = i;
-        if (tier == CellType.VeryHard) return m != null ? m.drillCostVeryHard : 0.3f;
-        if (tier == CellType.Hard) return m != null ? m.drillCostHard : 0.15f;
-        return m != null ? m.drillCostRegular : 0.05f;
+        if (tier == CellType.VeryHard) return m != null ? m.drillCostVeryHard : 3f;
+        if (tier == CellType.Hard) return m != null ? m.drillCostHard : 1.5f;
+        return m != null ? m.drillCostRegular : 0.5f;
     }
 
     Sprite[] chipSprites;
     GameObject chipPrefab;
     readonly Material[] chipOreMats = new Material[3];   // glow-boosted runtime copies per size class, built lazily
-    int chipOreMatEra = -1;
     static readonly int ThecolorID = Shader.PropertyToID("thecolor");
 
     /// <summary>The blend table for an ore intensity tier (clamped; safe with an empty table).</summary>
@@ -588,14 +590,9 @@ public class DroneManager : MonoBehaviour
             if (element >= 0)
             {
                 // ore debris glows HOTTER than the wall it fell out of, and the bigger the chip the
-                // hotter: a runtime copy of the ERA's ore material ("Purple 1" — the same one the
+                // hotter: a runtime copy of the ore glow material ("Glow Bright" — the same one the
                 // dungeon overlay and Ore_Base wear) per size class with its HDR `thecolor` scaled by
-                // oreChipGlowBySize; rebuilt when the era turns.
-                if (chipOreMatEra != GS.era)
-                {
-                    for (int m = 0; m < chipOreMats.Length; m++) { if (chipOreMats[m] != null) Destroy(chipOreMats[m]); chipOreMats[m] = null; }
-                    chipOreMatEra = GS.era;
-                }
+                // oreChipGlowBySize (the era hue is a global, so the copies are never rebuilt).
                 int slot = Mathf.Clamp(sizeClass, 0, chipOreMats.Length - 1);
                 if (chipOreMats[slot] == null)
                 {
@@ -614,24 +611,24 @@ public class DroneManager : MonoBehaviour
             {
                 // plain rock reads as base-palette era material (lit — dungeon debris sits
                 // under the dungeon light like everything else)
-                chip.sr.material = GS.MatByEra(GS.era, lit: true);
+                chip.sr.material = GS.Glow(GlowLevel.Lit);
             }
         }
         chip.Tumble(burstFrom, kick);
         return chip;
     }
 
-    /// <summary>The ore material for an INTENSITY tier, in the era's colour (GS.MatByEra): tier 0
-    /// = the plain era material ("Purple"), tier 1 = bright ("Purple 1"), tier 2 = superbright
-    /// ("SpecialPurple"). The base's Ore_Base/Low|Mid|High tilemaps wear these; the dungeon
+    /// <summary>The ore material for an INTENSITY tier (GS.Glow — hue is the global era colour):
+    /// tier 0 = Dim ("Glow Dim"), tier 1 = Bright ("Glow Bright"), tier 2 = Super ("Glow Super").
+    /// The base's Ore_Base/Low|Mid|High tilemaps wear these; the dungeon
     /// overlay and the chips use tier 1 (intensity shows as vein count there). Null before
     /// SpawnManager exists (callers keep their authored material then).</summary>
     public static Material OreSourceMaterial(int tier = 1)
     {
         if (SpawnManager.instance == null) return null;
-        return tier <= 0 ? GS.MatByEra(GS.era)
-             : tier == 1 ? GS.MatByEra(GS.era, bright: true)
-             : GS.MatByEra(GS.era, superBright: true);
+        return tier <= 0 ? GS.Glow(GlowLevel.Dim)
+             : tier == 1 ? GS.Glow(GlowLevel.Bright)
+             : GS.Glow(GlowLevel.Super);
     }
 
     /// <summary>Dumped scrap at the base (bag-drone haul) — same chip visuals, base-side, so it

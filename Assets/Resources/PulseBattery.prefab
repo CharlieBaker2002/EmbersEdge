@@ -176,8 +176,6 @@ MonoBehaviour:
   mats:
   - {fileID: 2100000, guid: e9282e169e7284d898067cc468c8d4cd, type: 2}
   - {fileID: 2100000, guid: 896cfe6ca3acd46daaa7fd7d86d5ad42, type: 2}
-  - {fileID: 2100000, guid: 950abc9ba0acc45b785d9abb7f42f4d6, type: 2}
-  - {fileID: 2100000, guid: efc1990f82ffe4bd9b6d951c122f5cc1, type: 2}
   pad: {fileID: 0}
   padSlot: -1
   lastChargeDay: -1

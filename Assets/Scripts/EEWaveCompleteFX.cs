@@ -6,10 +6,10 @@ public class EEWaveCompleteFX : MonoBehaviour
 {
     [SerializeField] LineRenderer lr;
     float t = 0.05f;
+    [Tooltip("Drive the line's vertex-colour fade (off for the no-colour variant).")]
+    [SerializeField] bool setColour = true;
     Vector3[] vs = new Vector3[100];
     private Gradient grad;
-    [SerializeField] Material[] mats;
-    [SerializeField] bool setColour = true;
 
     [Header("Shockwave")]
     [SerializeField] bool spawnShockwave = true;
@@ -25,11 +25,6 @@ public class EEWaveCompleteFX : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        if (setColour)
-        {
-            lr.material = mats[GS.era];
-        }
-
         // Spawn a distortion ring we drive ourselves so it stays locked onto the line wave.
         if (spawnShockwave)
         {

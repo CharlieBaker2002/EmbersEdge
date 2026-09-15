@@ -20,7 +20,7 @@ public class EmberParticle : MonoBehaviour
     
     public void Start()
     {
-        sr.material = GS.MatByEra(GS.era, true, false,true);
+        sr.material = GS.Glow(GlowLevel.Super);
         if(isStatic) return;
         vel = Random.insideUnitCircle.normalized*speed;
         transform.localPosition = Random.insideUnitCircle * rad;

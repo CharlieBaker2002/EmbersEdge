@@ -170,12 +170,20 @@ public class Pocket : MonoBehaviour
         coreActivated = true;
         corePassive = false;
         if (promptShown) { UIManager.DeleteKey("V"); promptShown = false; }
+        if (MineDungeonManager.i != null) MineDungeonManager.i.activePocket = this;   // V routes here from now on
 
         EE.Activate(1f, SampleSOs());
         if (PortalScript.i != null) PortalScript.i.NoPortal();
-        if (tether != null) tether.AttachToCore(EE.transform.position,
-            Mathf.Max(FurthestCavityDist(EE.transform.position),
-                      Vector2.Distance(GS.CS().position, EE.transform.position)) + 1f);
+        Vector2 corePos = EE.transform.position;
+        float len = Mathf.Max(FurthestCavityDist(corePos), Vector2.Distance(GS.CS().position, corePos)) + 1f;
+        // The discovery cast may already be gone — untethered with V away from the core, replaced by a
+        // second pocket opened in the same drill bite, or released on a teleport home. Throwing the
+        // line onto the core IS the tether, so cast a fresh one from the hand straight onto it. Without
+        // this the core armed with no line at all: no lock feedback, the portal silently off, and
+        // nothing to say why V had stopped doing anything.
+        if (tether == null || !tether.Live)
+            tether = EmberTether.Cast(this, corePos, len, unspawnedPoints, T.EmberValue);
+        tether.AttachToCore(corePos, len);
         spawnRoutine = StartCoroutine(SpawnRoutine());
         return true;
     }

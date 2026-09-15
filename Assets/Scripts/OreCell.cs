@@ -1,41 +1,44 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
 /// The Cell — the base's ore producer (the orb-era "Cell"/OrbManifester reborn for the chip
-/// economy). It manifests ORE CHIPS instead of orbs:
-///   • a steady trickle — one chip every <see cref="secondsPerOre"/> seconds (0 = off);
-///   • a daily batch of <see cref="orePerDay"/> at each new day, plus — set it on an ore seam —
-///     it chips every base ore tile in the 3×3 around it (one chip per unit released, in that
-///     tile's element), exactly as the old Cell harvested its neighbours.
-/// Chips burst out of the Cell as ordinary base-side scrap: the bag fleet hauls them to
-/// whoever is hungry (construction first), or the player Hoovers them up. Production pauses
-/// while <see cref="maxLooseNearby"/> unclaimed chips already lie in its ring — a Cell nobody
-/// is collecting from doesn't carpet the base. The CellTrigger animation fires on each batch
-/// and its end-event <see cref="Spawn"/> releases the chips.
+/// economy). It manifests ORE CHIPS instead of orbs, ONLY at the new-day event:
+///   • it chips every base ore tile in the 3×3 around it (one chip per unit released, in that
+///     tile's blend), exactly as the old Cell harvested its neighbours, and
+///   • adds a flat <see cref="bonusChips"/> of its own — but only while there IS base ore in
+///     that 3×3. No ore in range, no chip at all (user rule 2026-09-14).
+/// The day's chips don't burst out at once: they trickle out evenly over
+/// <see cref="productionSeconds"/> (user call 2026-09-14), each from where it came from (a tile's
+/// chips beside the tile, the bonus beside the Cell). Chips leave as ordinary base-side scrap:
+/// the bag fleet hauls them to whoever is hungry (construction first), or the player Hoovers
+/// them up. The bonus is skipped while <see cref="maxLooseNearby"/> unclaimed chips already lie
+/// in its ring — a Cell nobody is collecting from doesn't carpet the base. The CellTrigger
+/// animation fires on each batch and its end-event <see cref="Spawn"/> starts the trickle.
 /// </summary>
 public class OreCell : Building
 {
     [Header("Ore Cell")]
-    [Tooltip("Seconds per ore chip while built (0 = daily batch only).")]
-    public float secondsPerOre = 30f;
-    [Tooltip("Extra ore chips manifested at each new day.")]
-    public int orePerDay = 2;
-    [Tooltip("At each new day also chip every base ore tile in the 3×3 around the Cell (one chip per unit released, in the tile's element).")]
+    [Tooltip("Flat chips the Cell adds of its own at each new day — only while any base ore lies in the 3×3 around it.")]
+    public int bonusChips = 5;
+    [Tooltip("At each new day chip every base ore tile in the 3×3 around the Cell (one chip per unit released, in the tile's blend).")]
     public bool chipAdjacentOre = true;
-    [Tooltip("Production pauses while this many loose, unclaimed chips already lie within looseRadius.")]
+    [Tooltip("The bonus is skipped while this many loose, unclaimed chips already lie within looseRadius.")]
     public int maxLooseNearby = 8;
     public float looseRadius = 1.6f;
     /// <summary>The hover ring shows the loose-chip ring production pauses on (HoverRing, 2026-09-14).</summary>
     public override float HoverRingRadius => looseRadius;
-    [Tooltip("Seconds between chips of one batch leaving the Cell.")]
-    public float burstInterval = 0.12f;
-    [Tooltip("Intensity of the ore the Cell manifests itself (0 low / 1 mid / 2 high — sets the chip size blend).")]
+    [Tooltip("Seconds the day's chips take to come out — spread evenly, not all at once.")]
+    public float productionSeconds = 15f;
+    [Tooltip("Intensity of the bonus chips the Cell manifests itself (0 low / 1 mid / 2 high — sets the chip size blend).")]
     [Range(0, 2)] public int intensity = 1;
 
+    /// <summary>One chip still to come out: from an ore tile (its tier's blend) or the Cell's bonus.</summary>
+    struct Pending { public Vector3 pos; public int tier; public bool fromTile; }
+
     Animator anim;
-    float t;
-    int pendingSpawn;
+    readonly List<Pending> pending = new List<Pending>();
     System.Action newDay;
     Coroutine spawnCo;
     static readonly int TriggerId = Animator.StringToHash("Trigger");
@@ -54,15 +57,6 @@ public class OreCell : Building
         if (SpawnManager.instance != null && newDay != null) SpawnManager.instance.OnNewDay -= newDay;
     }
 
-    void Update()
-    {
-        if (!builtYet || secondsPerOre <= 0f) return;
-        t += Time.deltaTime;
-        if (t < secondsPerOre) return;
-        t = 0f;
-        Produce(1);
-    }
-
     void OnNewDay()
     {
         if (!builtYet) return;
@@ -77,18 +71,24 @@ public class OreCell : Building
     {
         while (Time.time < ChipClearCycle.WaveClearSettledAt) yield return null;
         if (!builtYet) yield break;
-        int n = orePerDay;
-        if (chipAdjacentOre) n += ChipNeighbours();
-        Produce(n);
+        int before = pending.Count;
+        bool oreInRange = chipAdjacentOre && HarvestNeighbours();
+        if (oreInRange && bonusChips > 0 && LooseNearby() < maxLooseNearby)
+            for (int k = 0; k < bonusChips; k++)
+                pending.Add(new Pending { pos = transform.position, tier = intensity, fromTile = false });
+        if (pending.Count == before) yield break;   // no ore in range: nothing today
+        if (anim != null && anim.isActiveAndEnabled) anim.SetTrigger(TriggerId);   // CellTrigger → Spawn() at its end
+        else Spawn();
     }
 
-    /// <summary>The old Cell's harvest: every base ore tile in the 3×3 around us gives up a
-    /// unit, released as a chip beside it. Returns how many extra chips the Cell itself adds
-    /// (none — neighbour chips spawn at their tiles).</summary>
-    int ChipNeighbours()
+    /// <summary>The old Cell's harvest: every base ore tile in the 3×3 around us gives up its
+    /// units now, queued to come out beside that tile over the trickle. True when any live ore
+    /// tile lies in range (whether or not this bite released a whole unit) — the bonus's gate.</summary>
+    bool HarvestNeighbours()
     {
         var maps = TilemapResource.Maps;
-        if (maps == null) return 0;
+        if (maps == null) return false;
+        bool any = false;
         foreach (var map in maps)
         {
             if (map == null) continue;
@@ -100,20 +100,13 @@ public class OreCell : Building
                     if (g == null) continue;
                     var o = g.GetComponent<Ore>();
                     if (o == null || o.Depleted) continue;
+                    any = true;
                     int k = o.Chip();
-                    if (k > 0) DroneManager.SpawnOreUnits(o.transform.position, o.tier, k);   // the tile's own blend
+                    for (int u = 0; u < k; u++)
+                        pending.Add(new Pending { pos = o.transform.position, tier = o.tier, fromTile = true });
                 }
         }
-        return 0;
-    }
-
-    void Produce(int n)
-    {
-        if (n <= 0 || !builtYet) return;
-        if (LooseNearby() >= maxLooseNearby) return;   // nobody's collecting — hold
-        pendingSpawn += n;
-        if (anim != null && anim.isActiveAndEnabled) anim.SetTrigger(TriggerId);   // CellTrigger → Spawn() at its end
-        else Spawn();
+        return any;
     }
 
     int LooseNearby()
@@ -134,21 +127,45 @@ public class OreCell : Building
     public void Spawn()
     {
         if (anim != null) anim.ResetTrigger(TriggerId);
-        if (spawnCo == null && pendingSpawn > 0) spawnCo = StartCoroutine(SpawnCo());
+        if (spawnCo == null && pending.Count > 0) spawnCo = StartCoroutine(SpawnCo());
     }
 
+    /// <summary>The trickle: the queue comes out evenly across productionSeconds (a chip queued
+    /// while it runs just follows at the same pace). If the Cell dies mid-trickle, ore already
+    /// taken from the tiles still comes out at once — never lost — while the bonus is dropped.</summary>
     IEnumerator SpawnCo()
     {
-        while (pendingSpawn > 0 && builtYet)
+        float interval = Mathf.Max(0f, productionSeconds) / Mathf.Max(1, pending.Count);
+        while (pending.Count > 0)
         {
-            pendingSpawn--;
-            Vector3 p = transform.position + GS.RandCircle(0.12f, 0.3f);
-            var chip = DroneManager.SpawnScrap(p, DroneManager.RollBaseChipSize(intensity), 0, transform.position);   // base cap applies
-            var fx = MineField.ChipFxPrefab();
-            if (fx != null) Instantiate(fx, transform.position, Quaternion.Euler(0f, 0f, Random.Range(0f, 360f)), transform);
-            yield return new WaitForSeconds(burstInterval);
+            if (!builtYet) { FlushTileChips(); break; }
+            var job = pending[0];
+            pending.RemoveAt(0);
+            Emit(job);
+            if (pending.Count > 0 && interval > 0f) yield return new WaitForSeconds(interval);
         }
-        pendingSpawn = 0;
+        pending.Clear();
         spawnCo = null;
+    }
+
+    void Emit(Pending job)
+    {
+        if (job.fromTile) DroneManager.SpawnOreUnits(job.pos, job.tier, 1);   // the tile's own blend
+        else DroneManager.SpawnScrap(job.pos + GS.RandCircle(0.12f, 0.3f), DroneManager.RollBaseChipSize(job.tier), 0, transform.position);   // base cap applies
+        var fx = MineField.ChipFxPrefab();
+        if (fx != null) Instantiate(fx, job.pos, Quaternion.Euler(0f, 0f, Random.Range(0f, 360f)), transform);
+    }
+
+    void FlushTileChips()
+    {
+        for (int k = 0; k < pending.Count; k++)
+            if (pending[k].fromTile) DroneManager.SpawnOreUnits(pending[k].pos, pending[k].tier, 1);
+        pending.Clear();
+    }
+
+    protected override void BDisable()
+    {
+        base.BDisable();
+        if (pending.Count > 0) FlushTileChips();   // a dying / disabled Cell doesn't eat harvested ore
     }
 }

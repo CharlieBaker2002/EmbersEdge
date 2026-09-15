@@ -42,6 +42,8 @@ public class ForceField : Building
     /// <summary>Pure trickle consumer — its whole demand is the sustained charge rate
     /// (0.25/s, rendered as a single stripe).</summary>
     public override float PeakEnergyDemand => chargeRate;
+    /// <summary>The hover ring shows how far the wall can be projected (HoverRing, 2026-09-14).</summary>
+    public override float HoverRingRadius => maxReach;
     private Coroutine loop;
     private float rebuildCharge;
 

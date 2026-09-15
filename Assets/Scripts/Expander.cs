@@ -25,16 +25,10 @@ public class Expander : Building
     private int queue = 0;
     private int ringind;
 
-    private void Awake()
-    {
-        UpdateColours(GS.era);
-    }
-
     public override void Start()
     {
         base.Start();
         em = ps.emission;
-        GS.OnNewEra += UpdateColours;
         int n = statics.Count;
         while (statics.Count > n * 0.4f)
         {
@@ -56,17 +50,6 @@ public class Expander : Building
         EnergyManager.i.CreateCableConnections();
     }
     
-    void UpdateColours(int era)
-    {
-        Debug.Log(era);
-        ring.material = GS.MatByEra(era, true, true,true);
-        foreach(EmberParticle p in statics)
-        {
-            p.sr.material = GS.MatByEra(GS.era, true, false, true);
-        }
-        ps.GetComponent<ParticleSystemRenderer>().material = GS.MatByEra(GS.era, true, false, true);
-    }
-
 
     public void StopSpinning()
     {
@@ -156,7 +139,6 @@ public class Expander : Building
     public override void OnDestroy()
     {
         base.OnDestroy();
-        GS.OnNewEra -= UpdateColours;
     }
 
     private void OnDisable()

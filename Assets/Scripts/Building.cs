@@ -115,6 +115,12 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
     /// Belt, Crush Generator, Collector.</summary>
     public virtual bool ShowsEnergyIcons => false;
 
+    /// <summary>Does this building's grid footprint block cell (x, y) of its size-in-cells rect?
+    /// True everywhere by default; the Throne frees its four corner cells (user call 2026-09-14:
+    /// "2×2 obstructed except the very corner points"). Honoured by RegisterGridOccupancy and
+    /// GridManager.StampExistingBuildings; placement (BM.Commit) stays rectangular.</summary>
+    public virtual bool OccupiesFootprintCell(int x, int y, Vector2Int cells) => true;
+
     /// <summary>Reach (world units) the hover ring shows round this building — the Collector's
     /// pull, a pylon's cable radius, the Cell's loose-chip ring, the Expander's span. 0 = none;
     /// a turret returns 0 and the ring reads its Finder instead (see HoverRing).</summary>
@@ -1213,6 +1219,11 @@ public class Building : MonoBehaviour, IOnDeath, IClickable //functionality for 
         anchorCell = anchor;
         gridSize = sizeCells;
         GridManager.i.SetArea(anchor, sizeCells, true);
+        // a footprint with holes (the Throne's free corners) gives those cells back
+        for (int x = 0; x < sizeCells.x; x++)
+            for (int y = 0; y < sizeCells.y; y++)
+                if (!OccupiesFootprintCell(x, y, sizeCells))
+                    GridManager.i.SetArea(anchor + new Vector2Int(x, y), Vector2Int.one, false);
     }
 
     /// <summary>

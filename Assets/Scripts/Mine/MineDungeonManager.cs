@@ -416,6 +416,20 @@ public class MineDungeonManager : MonoBehaviour
         if (activePocket != null) activePocket.ResetPocket();
     }
 
+    /// <summary>
+    /// V near a dormant ember core: throw the tether onto it. Tries EVERY discovered pocket, not just
+    /// the active one — a later discovery (a second room opened by the same drill bite) takes the
+    /// active slot while the core still sits there waiting to be tethered. The pocket that fires
+    /// makes itself the active pocket (Pocket.TryActivateCore).
+    /// </summary>
+    public bool TryActivateCoreNearPlayer()
+    {
+        if (activePocket != null && activePocket.TryActivateCore()) return true;
+        foreach (var p in pockets)
+            if (p != null && p != activePocket && p.TryActivateCore()) return true;
+        return false;
+    }
+
     // =====================================================================================
     //  Dimension freeze — teleporting freezes time in the dimension you leave and resumes the
     //  one you arrive in. Leaving the dungeon DISABLES every enemy in it (nothing is deleted);

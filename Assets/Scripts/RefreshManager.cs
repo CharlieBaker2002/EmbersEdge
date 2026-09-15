@@ -67,6 +67,7 @@ public class RefreshManager : MonoBehaviour
         GS.OnNewEra = null;
         GS.isRaidPhase = false;
         GS.era = 0;
+        EraGlow.Apply(0);
         GS.bounds = GS.Manager.GetComponent<Collider2D>();
         EmbersEdge.currentCores = 1;
         EmbersEdge.warmUpTime = 10;
@@ -180,15 +181,6 @@ public class RefreshManager : MonoBehaviour
 
     private void Start()
     {
-        GS.OnNewEra += OnNewEra;
-    }
-
-    private void OnNewEra(int era)
-    {
-        foreach (EEIcon e in EEIcon.icons)
-        {
-            e.SetColour();
-        }
     }
 
     public void FixedUpdate()

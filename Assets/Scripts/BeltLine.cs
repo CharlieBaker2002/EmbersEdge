@@ -6,18 +6,21 @@ using UnityEngine;
 /// (every tile enable/disable/spin), ticked by its host tile (the tail).
 ///
 /// The line is a lockstep machine. Every chip sits on a tile (up to chipsPerTile to a tile, in a
-/// tight cluster) or is sliding onto the next. A step begins only when (a) nothing is at the end OR the
-/// building there is currently accepting chip (a chip consumer with gross want > 0 and its
-/// intake live — a full crush generator, an unpowered Tube, a construction site whose count is
-/// met all stop the line; a Collector with a full pile too), and (b) the pooled sources
-/// touching any tile have paid energyPerStep for EVERY chip that will move (rate-paced: the
-/// bucket fills against the grid's per-frame caps, the step fires when it holds the bill).
-/// Then every mover slides one tile forward over stepSeconds, the tiles' chevrons scroll
-/// together, and the tail's chips cross onto the exit cell — fed straight into the building
-/// there (<see cref="IChipConsumer.TakeDelivered"/>; else set down inside its ring for its own
-/// suction, zero scatter), set down for a Collector's pull, or just set down when nothing wants
-/// them. Chips whose next tile is full (a merge from a side branch, a ring) wait their turn;
-/// the rest still move.
+/// tight cluster) or is sliding onto the next. A step begins when the pooled sources touching
+/// any tile have paid energyPerStep for EVERY chip that will move (rate-paced: the bucket fills
+/// against the grid's per-frame caps, the step fires when it holds the bill) — stationary chips
+/// cost nothing. Then every mover slides one tile forward over stepSeconds, the tiles' chevrons
+/// scroll together, and the tail's chips cross onto the exit cell.
+///
+/// The end (user rules 2026-09-14): the line never waits on the end as a whole — chips keep
+/// moving up — but the TAIL only lets go of as much chip as the building at the exit cell is
+/// accepting right now (a consumer's live demand, a Collector's free pile slots), fed straight in
+/// (<see cref="IChipConsumer.TakeDelivered"/>). Nothing there, or a full / crushing / unpowered
+/// building = the chips stay aboard: they stack up on the tail and back up the line, and a
+/// stacked line stops (and stops paying). A line that faces into itself
+/// (a ring, or a run whose tail turns back into its own middle) has no exit at all: the tile
+/// that closes the loop is its tail, and chips pile up there. Chips whose next tile is full (a
+/// merge from a side branch, the pile at the end) wait their turn; the rest still move.
 ///
 /// Getting on: a chip whose centre lands ON a tile (direct contact — the Hoover's spray, a
 /// nudge) is taken aboard while the tile has room, mid-step included; a Collector beside a
@@ -42,8 +45,14 @@ public class BeltLine
     /// <summary>Tail first, then upstream (BFS over feeders) — a ring keeps member order.</summary>
     public readonly List<Belt> order = new List<Belt>();
     public readonly List<Belt> heads = new List<Belt>();
-    /// <summary>The tile pointing at ground / a building (null for a closed ring).</summary>
+    /// <summary>The tile pointing at ground / a building — or, for a line that faces into itself,
+    /// the tile that closes the loop (<see cref="closed"/>).</summary>
     public Belt tail;
+    /// <summary>The line faces into itself: the tail's front is one of our own tiles, so nothing
+    /// ever gets off — chips pile up on the tail instead of circling forever.</summary>
+    public bool closed;
+    /// <summary>Chips that will move on the coming (or current) step — the next bill, in chips.</summary>
+    public int PendingMovers { get; private set; }
     /// <summary>The tile that ticks and gauges for the line.</summary>
     public Belt host;
     public readonly List<Entry> chips = new List<Entry>();
@@ -80,6 +89,7 @@ public class BeltLine
     public void Finish()
     {
         tail = null;
+        closed = false;
         heads.Clear();
         order.Clear();
         for (int k = 0; k < members.Count; k++)
@@ -87,6 +97,19 @@ public class BeltLine
             var m = members[k];
             if (m.next == null) tail = m;
             if (m.prev.Count == 0) heads.Add(m);
+        }
+        if (tail == null && members.Count > 0)
+        {
+            // faces into itself: follow the chevrons from a head (any tile, for a bare ring) —
+            // the last new tile before the walk comes back round closes the loop and is the end
+            seen.Clear();
+            var cur = heads.Count > 0 ? heads[0] : members[0];
+            while (cur != null && seen.Add(cur))
+            {
+                tail = cur;
+                cur = cur.next;
+            }
+            closed = true;
         }
         bfs.Clear();
         seen.Clear();
@@ -195,6 +218,22 @@ public class BeltLine
         return true;
     }
 
+    /// <summary>The player's Hoover (or a Solo Generator beside the belt) takes a chip off the
+    /// belt where it lies (user call 2026-09-14): off its tile, loose, at rest — for the Hoover
+    /// stamped as the player's so contact loading doesn't take it straight back while the syphon
+    /// pulls; a Solo swallows it at once. Null if the entry is gone.</summary>
+    public OreChip ReleaseTo(Entry e, bool byPlayer = true)
+    {
+        if (e == null || !chips.Remove(e)) return null;
+        if (e.tile != null) e.tile.occupants.Remove(e);
+        var chip = e.chip;
+        if (chip == null || chip.Absorbing || chip.Fading) return null;
+        chip.Unstore();
+        Still(chip);
+        if (byPlayer) chip.playerPullStamp = Time.time;
+        return chip;
+    }
+
     // ------------------------------------------------------------------ tick
 
     public void Tick(float dt)
@@ -267,14 +306,46 @@ public class BeltLine
 
     // ------------------------------------------------------------------ stepping
 
-    /// <summary>Is whatever sits at the end taking chip right now? Gross want, not net of
-    /// inbound — what rides here is what will fill it.</summary>
-    bool EndAcceptingNow()
+    /// <summary>How much chip may leave the tail this step, in bag-space units: the want of the
+    /// building at the exit cell RIGHT NOW (a consumer's live gross demand, a Collector's free
+    /// pile slots). Zero — bare ground, a line facing into itself, a full / crushing / unpowered
+    /// building — and the tail holds its chips: they stack up at the end while the rest of the
+    /// line keeps moving up behind them (user rule 2026-09-14).</summary>
+    float ExitBudget()
     {
-        if (end == null) return true;   // nothing there: the belt runs and sets chips down
-        if (end is IChipConsumer c) return ChipConsumers.Active(c) && c.ChipDemandSpace > 0f;
-        if (end is Collector col) return col != null && col.builtYet && !col.MarkedForDemolition && col.Reserved < col.capacity;
-        return true;
+        if (tail == null || closed || end == null) return 0f;
+        if (end is CrushGenerator g && !g.MayTakeFrom(CrushGenerator.Feed.IntoBelt)) return 0f;   // a Solo's Collector goes first
+        if (end is IChipConsumer c) return ChipConsumers.Active(c) ? Mathf.Max(0f, c.ChipDemandSpace) : 0f;
+        if (end is Collector col)
+            return col != null && col.builtYet && !col.MarkedForDemolition ? Mathf.Max(0, col.capacity - col.Reserved) * 2f : 0f;
+        return 0f;
+    }
+
+    /// <summary>What one exiting chip spends of the budget: its bag space, never less than a
+    /// medium's 2 — chip-counting buildings (a crusher, a Tube, a construction ghost) quote
+    /// demand as 2 per chip whatever its size, so a small chip must not count as half of one.</summary>
+    static float ExitCost(OreChip chip) => Mathf.Max(2, chip.SpaceCost);
+
+    /// <summary>This line ends INTO that building (it's what the exit cell feeds).</summary>
+    public bool FeedsInto(object building) => tail != null && !closed && building != null && End == building;
+
+    /// <summary>A chip is on (or sliding onto) the tail of a line ending into that building, and
+    /// the line can pay to move it — chip the building will get through the exit shortly. An
+    /// unpowered line never counts, so it can't hold a Solo's lower-ranked feeds hostage.</summary>
+    public bool ReadyToFeed(object building)
+    {
+        if (!FeedsInto(building) || host == null) return false;
+        bool any = false;
+        for (int k = 0; k < tail.occupants.Count; k++) if (!tail.occupants[k].exiting) { any = true; break; }
+        if (!any) return false;
+        float cost = Mathf.Max(0f, host.energyPerStep);
+        return cost <= 0f || bucket + (power != null ? power.Energy() : 0f) + 1e-5f >= cost;
+    }
+
+    bool EndTakes(OreChip chip)
+    {
+        if (!(end is IChipConsumer c)) return true;
+        return c.AcceptsChip(chip.sizeClass, chip.element) && !(chip.refined && c.RefusesRefined);
     }
 
     /// <summary>Which chips move this step: tail first, so a group may take the tile its
@@ -284,17 +355,27 @@ public class BeltLine
         movers.Clear();
         incoming.Clear();
         int cap = Mathf.Max(0, host.chipsPerTile);
+        float budget = ExitBudget();
         for (int i = 0; i < order.Count; i++)
         {
             var tile = order[i];
             var occ = tile.occupants;
             if (occ.Count == 0) continue;
-            var nx = tile.next;
-            if (nx == null)
+            if (tile == tail)
             {
-                for (int k = 0; k < occ.Count; k++) if (occ[k].landT >= 1f) movers.Add(occ[k]);   // the tail lets go
+                // the tail lets go only what the building at the end takes right now (a Solo
+                // one chip short of its crush gets ONE) — the rest hold their stack
+                for (int k = 0; k < occ.Count && budget > 0f; k++)
+                {
+                    var e = occ[k];
+                    if (e.landT < 1f || e.chip == null || !EndTakes(e.chip)) continue;
+                    movers.Add(e);
+                    budget -= ExitCost(e.chip);
+                }
                 continue;
             }
+            var nx = tile.next;
+            if (nx == null) continue;
             int leaving = 0;
             for (int k = 0; k < nx.occupants.Count; k++) if (movers.Contains(nx.occupants[k])) leaving++;
             incoming.TryGetValue(nx, out int inc);
@@ -314,10 +395,10 @@ public class BeltLine
     {
         // idle: the host just reports the supply — the "no energy" sign whenever nothing
         // touching the line has energy, no sign otherwise
-        if (chips.Count == 0) { host.ReportDraw(0f); return; }
-        if (!EndAcceptingNow()) { host.ReportDraw(0f); return; }
+        if (chips.Count == 0) { PendingMovers = 0; host.ReportDraw(0f); return; }
         PlanMovers();
-        if (movers.Count == 0) { host.ReportDraw(0f); return; }
+        PendingMovers = movers.Count;
+        if (movers.Count == 0) { bucket = 0f; host.ReportDraw(0f); return; }   // all stacked up: stands still, pays nothing
         float cost = movers.Count * Mathf.Max(0f, host.energyPerStep);
         if (bucket + 1e-5f < cost)
         {
@@ -338,7 +419,7 @@ public class BeltLine
         for (int k = 0; k < movers.Count; k++)
         {
             var e = movers[k];
-            if (e.tile.next == null) e.exiting = true;
+            if (e.tile == tail) e.exiting = true;
             else
             {
                 e.tile = e.tile.next;
@@ -390,18 +471,38 @@ public class BeltLine
     }
 
     /// <summary>A tail chip has crossed onto the exit cell: fed straight into the building
-    /// there if it takes this chip (else left exactly where it is — a consumer's own suction,
-    /// a Collector's pull), or simply set down when nothing wants it. Never a scatter.</summary>
+    /// there (<see cref="IChipConsumer.TakeDelivered"/>; a consumer without a hand-in eases it
+    /// in from where it lies, a Collector pulls it). If the building stopped accepting while the
+    /// chip crossed (it filled, started crushing, lost power, was demolished) the chip goes back
+    /// onto the tail rather than onto the ground. Never a scatter.</summary>
     void Deliver(Entry e)
     {
         var chip = e.chip;
         if (chip == null || chip.Absorbing || chip.Fading) return;
-        chip.Unstore();
+        bool open = end is IChipConsumer t ? ChipConsumers.Active(t) && EndTakes(chip)
+                  : end is Collector col && col != null && col.builtYet && !col.MarkedForDemolition;
+        if (open)
+        {
+            chip.Unstore();
+            Place(chip, ExitPoint + Belt.SlotOffset(e.slot));
+            Still(chip);
+            if (end is IChipConsumer c) c.TakeDelivered(chip);
+            return;
+        }
+        if (tail != null && tail.occupants.Count < Mathf.Max(0, host.chipsPerTile))
+        {
+            e.exiting = false;
+            e.tile = tail;
+            e.from = chip.transform.position;
+            e.landT = 0f;
+            e.slot = FreeSlot(tail);
+            tail.occupants.Add(e);
+            chips.Add(e);
+            return;
+        }
+        chip.Unstore();   // no room to go back (the tail refilled behind it): set down, no scatter
         Place(chip, ExitPoint + Belt.SlotOffset(e.slot));
         Still(chip);
-        if (!(end is IChipConsumer t) || !ChipConsumers.Active(t)) return;
-        if (!t.AcceptsChip(chip.sizeClass, chip.element) || (chip.refined && t.RefusesRefined)) return;
-        t.TakeDelivered(chip);
     }
 
     // ------------------------------------------------------------------ the end building
@@ -414,7 +515,7 @@ public class BeltLine
         if (!force && Time.time - endT < 0.25f) return;
         endT = Time.time;
         end = null;
-        if (tail == null) return;
+        if (tail == null || closed) return;
         Vector2 x = ExitPoint;
         var all = ChipConsumers.all;
         for (int k = 0; k < all.Count; k++)

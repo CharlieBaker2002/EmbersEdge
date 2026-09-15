@@ -23,14 +23,13 @@ public static class HoverRingKitBuilder
     {
         "Assets/Prefabs/Buildings/Resource Generation/Collector.prefab",
         "Assets/Prefabs/Buildings/EnergyPylon.prefab",
-        "Assets/Prefabs/Buildings/LongRangePylon.prefab",
-        "Assets/Prefabs/Buildings/MultiPylon.prefab",
         "Assets/Prefabs/Buildings/Resource Generation/Cell.prefab",
         "Assets/Prefabs/Buildings/Core Infrastructure/Expander.prefab",
         "Assets/Prefabs/Buildings/Defence/PelterTurret.prefab",
         "Assets/Prefabs/Buildings/Defence/Push Tower.prefab",
         "Assets/Prefabs/Buildings/Defence/Mine Sprayer.prefab",
         "Assets/Prefabs/Buildings/Defence/SwordTurret.prefab",
+        "Assets/Prefabs/Buildings/Defence/Force Field.prefab",
     };
 
     [InitializeOnLoadMethod]

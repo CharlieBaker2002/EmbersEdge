@@ -21,7 +21,7 @@ public static class HooverKitBuilder
     const string PrefabPath = "Assets/Prefabs/Parts/Weapons/Hoover.prefab";
     const string SOPath = "Assets/ScriptableObjects/Weapons/Hoover.asset";
     const string DonorPrefab = "Assets/Prefabs/Parts/Weapons/Pistol.prefab";
-    const string EraLitMat = "Assets/Lighting/Materials/LitPurple.mat";   // authored default; runtime swaps to GS.MatByEra(era, lit)
+    const string EraLitMat = "Assets/Resources/Glow/Glow Lit.mat";   // the Lit glow level (era hue is a global)
     static readonly string[] Scenes = { "Assets/Scenes/World.unity", "Assets/Scenes/Arena.unity" };
 
     public static void BuildAll()

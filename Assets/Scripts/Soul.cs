@@ -92,7 +92,7 @@ public class Soul : MonoBehaviour
 
    void Build(Sprite[] f)
    {
-      Material mat = GS.MatByEra(GS.era, true, false, true);   // superbright era glow = dungeon colour
+      Material mat = GS.Glow(GlowLevel.Super);   // superbright era glow = dungeon colour
       sr = new SpriteRenderer[WISPS];
       home = new Vector3[WISPS];
       ctrl = new Vector3[WISPS];

@@ -13,6 +13,8 @@ using UnityEngine;
 /// It stands OPEN (frame 0) waiting for <see cref="chipsPerCrush"/> chips: anything settling in
 /// its ring is sucked in (a drone deposit, the Hoover's spray), and a Collector beside it, a
 /// Tube beside it or a Belt ending at it hand chip straight in (<see cref="TakeDelivered"/>).
+/// A Solo ranks those feeds (<see cref="MayTakeFrom"/>): Collector → Belt into it → Tube →
+/// Belt tiles beside it, which it pulls chip off itself.
 /// With its fill (and, when it needs any, the crush energy taken in one go) it slams shut —
 /// frames 0→<see cref="crushFrame"/> at <see cref="crushFps"/> —
 /// banks <see cref="energyPerCrush"/> into ITSELF on the crush frame, then eases back open
@@ -148,7 +150,92 @@ public class CrushGenerator : Building, IEnergyAccumulator, IChipConsumer
         {
             scanT = Mathf.Max(0.05f, suctionInterval);
             TickSuction();
+            TickBeltPull();
         }
+    }
+
+    // ------------------------------------------------------------------ Solo feed priority
+
+    /// <summary>A Solo Generator: needs no grid energy for its crush.</summary>
+    public bool IsSolo => crushEnergy <= 0f;
+
+    /// <summary>Where a Solo's chip comes from, in PREFERENCE order (user rule 2026-09-14).</summary>
+    public enum Feed { Collector = 0, IntoBelt = 1, Tube = 2, AdjacentBelt = 3 }
+
+    /// <summary>Solo feed priority: a Collector beside it → a Belt ending INTO it → Tube shelf
+    /// inside its ring → a Belt tile passing beside it. A source may hand a Solo chip only while
+    /// no higher-ranked source has chip ready for it (so a lower one never fills the Solo ahead
+    /// of a better one). Loose ground chip — drone deposits, the Hoover's spray — is outside the
+    /// ranking. Any other crusher takes from anything.</summary>
+    public bool MayTakeFrom(Feed src)
+    {
+        if (!IsSolo) return true;
+        if (src > Feed.Collector && CollectorHasChip()) return false;
+        if (src > Feed.IntoBelt && IntoBeltHasChip()) return false;
+        if (src > Feed.Tube && TubeHasChip()) return false;
+        return true;
+    }
+
+    bool CollectorHasChip()
+    {
+        var cols = Collector.All;
+        for (int k = 0; k < cols.Count; k++)
+        {
+            var col = cols[k];
+            if (col == null || !col.builtYet || col.MarkedForDemolition) continue;
+            if (ChipConsumers.FootprintsAdjacent(col, this) && col.HasChipFor(this)) return true;
+        }
+        return false;
+    }
+
+    bool IntoBeltHasChip()
+    {
+        var lines = Belt.Lines;
+        for (int l = 0; l < lines.Count; l++) if (lines[l].ReadyToFeed(this)) return true;
+        return false;
+    }
+
+    bool TubeHasChip()
+    {
+        var clusters = Tube.Clusters;
+        for (int c = 0; c < clusters.Count; c++) if (clusters[c].HasChipWithin(this, ChipDropPoint, intakeRadius)) return true;
+        return false;
+    }
+
+    /// <summary>Last in the ranking: a Solo takes chip straight off a Belt tile beside it (a line
+    /// passing by, or leading away) — the nearest chip riding a tile that touches its footprint,
+    /// one per scan, swallowed at once. The tail of a line ending INTO it is left alone: that
+    /// chip comes in through the exit, a better-ranked feed.</summary>
+    void TickBeltPull()
+    {
+        if (!IsSolo || !ChipIntakeActive || held >= chipsPerCrush) return;
+        if (!MayTakeFrom(Feed.AdjacentBelt)) return;
+        Vector2 me = transform.position;
+        var lines = Belt.Lines;
+        BeltLine bestLine = null;
+        BeltLine.Entry best = null;
+        float bd = float.MaxValue;
+        for (int l = 0; l < lines.Count; l++)
+        {
+            var line = lines[l];
+            if (line.chips.Count == 0) continue;
+            bool intoMe = line.FeedsInto(this);
+            for (int i = 0; i < line.chips.Count; i++)
+            {
+                var e = line.chips[i];
+                if (e.exiting || e.tile == null || e.chip == null || e.chip.Absorbing || e.chip.Fading) continue;
+                if (intoMe && e.tile == line.tail) continue;
+                if (!ChipConsumers.FootprintAdjacent(this, e.tile.Centre)) continue;
+                float d = ((Vector2)e.chip.transform.position - me).sqrMagnitude;
+                if (d >= bd) continue;
+                bd = d;
+                best = e;
+                bestLine = line;
+            }
+        }
+        if (best == null) return;
+        var chip = bestLine.ReleaseTo(best, byPlayer: false);
+        if (chip != null) TakeDelivered(chip);
     }
 
     // ------------------------------------------------------------------ chip intake (IChipConsumer)

@@ -240,7 +240,7 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
         if (quickChargeSprs == null || quickChargeSprs.Length == 0 || mats == null || mats.Length == 0)
             yield break;
         visual = false;
-        sr.material = mats[GS.Era1()];
+        sr.material = mats[1];
         yield return StartCoroutine(GS.Animate(sr, quickChargeSprs, 1f));
         visual = true;
     }
@@ -295,7 +295,7 @@ public class Battery : MonoBehaviour, IClickable, IEnergyAccumulator, ISelectabl
         }
         else if (buffer < -0.1f)
         {
-            sr.material = mats[GS.Era1()];
+            sr.material = mats[1];
             // Capacitor mode shows the RAW insta fraction — surge debits jump, no smoothing
             // (charge display keeps its original eased energyBuffer look).
             sr.sprite = GS.PercentParameter(energysprs, (capMode ? shown : energyBuffer) / shownMax);

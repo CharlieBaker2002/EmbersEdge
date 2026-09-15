@@ -101,7 +101,6 @@ public class SpawnManager : MonoBehaviour
     private bool activityRolled = false; // activity is rolled once per cycle (forecast or arm); reset on defeat/era
     private bool previewActive = false;  // a wave preview (pre-dungeon forecast OR armed) is currently shown
 
-    public Material[] eraMats;
 
     public enum DayState { Day, PreAttack, Attack }
     public DayState dayState = DayState.Day;

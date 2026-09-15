@@ -535,7 +535,7 @@ MonoBehaviour:
   drillScanRadius: 8
   drillBit: {fileID: 0}
   sack: {fileID: 0}
-  energy: 1
+  energy: 10
   chatPartner: {fileID: 0}
 --- !u!114 &5056663678020072757
 MonoBehaviour:

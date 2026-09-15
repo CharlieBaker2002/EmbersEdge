@@ -15,7 +15,7 @@ public static class OreBuildKitBuilder
     {
         // walls / nodes
         { "Wall", 1 }, { "Energy Wall", 2 }, { "EnergyPad", 1 }, { "EnergyPylon", 1 },
-        { "LongRangePylon", 2 }, { "MultiPylon", 2 }, { "EnergyHub", 2 }, { "CapacitorNode", 1 },
+        { "EnergyHub", 2 }, { "CapacitorNode", 1 },
         // storage
         { "Small Ember Store", 2 }, { "Ember Store", 3 }, { "Large Ember Store", 4 }, { "TinyStore", 1 },
         // generation

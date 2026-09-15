@@ -11,7 +11,7 @@ using UnityEngine;
 ///
 /// The cable material (Glow Unlit) is emissive where its _Emission texture is non-black,
 /// and the shader's _Color tints exactly those details — like the battery glow rig. Heat
-/// runs that colour grey → era colour → the SUPERBRIGHT era colour (GS.MatByEra) at full
+/// runs that colour grey → era colour → the SUPERBRIGHT era colour (EraGlow.Colour) at full
 /// load. A broken link (either endpoint dead/destroyed) dims the details right down,
 /// mirroring how dead buildings drop their tint.
 ///
@@ -63,6 +63,8 @@ public class CableFlowTint : MonoBehaviour
         // Per-cable material instance so each cable heats independently.
         if (lr != null) mat = lr.material;
         if (mat != null) origBodyTex = mat.GetTexture(MainTexId);
+        // this script paints the FULL colour itself — no global era hue on top of it
+        if (mat != null && mat.HasProperty(EraGlow.EraLevelId)) mat.SetFloat(EraGlow.EraLevelId, 0f);
     }
 
     /// <summary>Energy actually carried across the cable — call once per debit, any direction.</summary>
@@ -95,13 +97,13 @@ public class CableFlowTint : MonoBehaviour
         dim = Mathf.SmoothDamp(dim, broken ? 1f : 0f, ref dimVel, 0.12f, Mathf.Infinity, dt);
 
         // Hot end: plain era colour at low magnitude, running to the SUPERBRIGHT era colour
-        // (GS.MatByEra superBright — hue-saturated HDR, e.g. purple with B≈34) at full load.
+        // (EraGlow.Colour(Super) — hue-saturated HDR, e.g. purple with B≈34) at full load.
         // NEVER a uniform ×boost on the era colour: equal-channel HDR blooms toward WHITE,
         // not deeper purple. The blend is GEOMETRIC (log-space), not linear: bloom perception
         // is roughly logarithmic, so a linear lerp toward B≈34 already blooms hard at low
         // loads — a trickling pelter out-glowed the charger's volleys. Geometric keeps low
         // loads near the plain era colour and saves the bloom for genuinely hot cables.
-        Color era = GS.ColFromEra(), super = SuperbrightEraColor();
+        Color era = GS.ColFromEra(), super = EraGlow.Colour(GlowLevel.Super);
         Color hot = new Color(GeomLerp(era.r, super.r, eased),
                               GeomLerp(era.g, super.g, eased),
                               GeomLerp(era.b, super.b, eased));
@@ -136,14 +138,6 @@ public class CableFlowTint : MonoBehaviour
         a = Mathf.Max(a, 1e-3f);
         b = Mathf.Max(b, 1e-3f);
         return a * Mathf.Pow(b / a, t);
-    }
-
-    /// <summary>The current era's superbright material colour — the full-heat look. Reads
-    /// `thecolor` off GS.MatByEra(superBright) so cables and superbright props stay in lockstep.</summary>
-    static Color SuperbrightEraColor()
-    {
-        var m = GS.MatByEra(GS.era, superBright: true);
-        return m != null && m.HasProperty(ColorId) ? m.GetColor(ColorId) : GS.ColFromEra();
     }
 
     private void OnDestroy()

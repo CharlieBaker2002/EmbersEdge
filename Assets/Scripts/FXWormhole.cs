@@ -24,9 +24,9 @@ public class FXWormhole : MonoBehaviour
     IEnumerator Start()
     {
         i = this;
-        extraR.material = GS.MatByEra(GS.era, true);
-        render.material = GS.MatByEra(GS.era, true);
-        sr.material = GS.MatByEra(GS.era, true);
+        extraR.material = GS.Glow(GlowLevel.Bright);
+        render.material = GS.Glow(GlowLevel.Bright);
+        sr.material = GS.Glow(GlowLevel.Bright);
         em = ps.emission;
         var main = ps.main;
         v = ps.velocityOverLifetime;

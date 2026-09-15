@@ -252,7 +252,7 @@ MonoBehaviour:
   groundEdit: {fileID: 0}
   tiles: []
   UIParent: {fileID: 0}
-  canOpen: 0
+  canOpen: 1
   hasExtraParent: 0
   icon: {fileID: 8167320876880042905, guid: 7ab6558b3c94d4ad69283dc355264df9, type: 3}
   size: {x: 0.25, y: 0.25}

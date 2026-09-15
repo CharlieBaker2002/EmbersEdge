@@ -28,7 +28,7 @@ public class MapBoundaryParticles : MonoBehaviour
     [Tooltip("Gentle spin, max degrees/second (random sign per particle).")]
     public float spin = 40f;
 
-    [Header("Era material (GS.MatByEra)")]
+    [Header("Glow level (GS.Glow — era hue is global)")]
     public bool bright = true;
     public bool lit = false;
     public bool superBright = false;
@@ -49,20 +49,6 @@ public class MapBoundaryParticles : MonoBehaviour
             yield return null;
 
         BuildSystem();
-        GS.OnNewEra += SetEra;
-    }
-
-    void OnDestroy()
-    {
-        GS.OnNewEra -= SetEra;
-    }
-
-    void SetEra(int era)
-    {
-        if (pr == null) return;
-        var m = new Material(GS.MatByEra(era, bright, lit, superBright));
-        if (jlTex != null) m.mainTexture = jlTex;
-        pr.sharedMaterial = m;
     }
 
     void BuildSystem()
@@ -124,7 +110,7 @@ public class MapBoundaryParticles : MonoBehaviour
         pr = GetComponent<ParticleSystemRenderer>();
         pr.renderMode = ParticleSystemRenderMode.Billboard;
         pr.alignment = ParticleSystemRenderSpace.View;
-        var mat = new Material(GS.MatByEra(GS.era, bright, lit, superBright));
+        var mat = new Material(GS.Glow(bright, lit, superBright));
         mat.mainTexture = jlTex != null ? jlTex : SoftDot();
         pr.sharedMaterial = mat;
         pr.sortingLayerName = sortingLayer;

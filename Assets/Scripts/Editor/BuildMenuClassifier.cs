@@ -60,8 +60,6 @@ public static class BuildMenuClassifier
         ("Resource Generation", "Pylons & Generators", new[]
         {
             "Assets/Prefabs/EnergyPylon.prefab",
-            "Assets/Prefabs/LongRangePylon.prefab",
-            "Assets/Prefabs/MultiPylon.prefab",
             null,
             "Assets/Prefabs/Buildings/Resource Generation/Small Ember Generator.prefab",
             "Assets/Prefabs/Buildings/Resource Generation/Ember Generator.prefab",

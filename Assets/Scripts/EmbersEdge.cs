@@ -38,7 +38,6 @@ public class EmbersEdge : MonoBehaviour
     public Transform attachPoint;
 
     float size = 0.00825f;
-    public Material[] mats;
     public GameObject ps;
 
     public MarauderSO[] SOs;
@@ -141,7 +140,6 @@ public class EmbersEdge : MonoBehaviour
         size = Mathf.LerpUnclamped(0.006f, 0.01f, scale);
         ChangeN(Mathf.RoundToInt(25 + scale * 20));
         SOs = (MarauderSO[])s.Clone();
-        lr.material = mats[GS.era];
         spawnCoef = 0.25f + 0.5f * scale + 0.5f * (SetM.difficulty - 1); //0.25 - 0.75f; (previously 1-2);
     }
 
@@ -554,10 +552,6 @@ public class EmbersEdge : MonoBehaviour
             {
                 SpawnManager.instance.OnNewDay += changeNOnDay;
                 transform.position = MapManager.i.ProximityData(transform.position, 3f).Item1;
-            }
-            else
-            {
-                lr.material = mats[GS.Era1()]; //this is done before era changes so era1
             }
             refresh = 0.05f;
             fluidness = 0.1f;

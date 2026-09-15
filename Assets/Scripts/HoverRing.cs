@@ -47,7 +47,9 @@ public class HoverRing : MonoBehaviour
     {
         if (ring == null || building == null) return;
         float r = Radius;
-        bool hover = r > 0.01f && building.builtYet && BM.Hovered == building;
+        // open while hovered OR while the building is selected (its UI panel open — user call 2026-09-14)
+        bool selected = building.UIParent != null && building.UIParent.activeInHierarchy;
+        bool hover = r > 0.01f && building.builtYet && (selected || BM.Hovered == building);
         a = Mathf.MoveTowards(a, hover ? alpha : 0f, Time.deltaTime * alpha / Mathf.Max(0.01f, fadeSeconds));
         Apply(a, r);
     }

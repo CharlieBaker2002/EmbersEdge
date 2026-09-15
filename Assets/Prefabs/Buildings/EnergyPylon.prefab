@@ -62,7 +62,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: e9282e169e7284d898067cc468c8d4cd, type: 2}
+  - {fileID: 2100000, guid: ef9c135c3b53a49eb8da1cbf58f008cc, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -85,12 +85,12 @@ SpriteRenderer:
   m_SortingLayer: 2
   m_SortingOrder: 10
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: e55e1aa750a284332977807f847f9860, type: 3}
+  m_Sprite: {fileID: -406888522429419534, guid: 89436f6f4d6b0476f9cc10f01986aa7f, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 0.5, y: 0.5}
+  m_Size: {x: 0.96875, y: 0.96875}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
@@ -115,7 +115,7 @@ MonoBehaviour:
   canOpen: 1
   hasExtraParent: 0
   icon: {fileID: 0}
-  size: {x: 0.5, y: 0.5}
+  size: {x: 1, y: 1}
   isWall: 0
   multiDrag: 0
   dungeonBuildable: 0
@@ -135,19 +135,12 @@ MonoBehaviour:
   energyIconOffset: {x: 0, y: 0, z: 0}
   energyIconScale: 1
   demolisher: {fileID: 0}
-  longPylonSprite: {fileID: 21300000, guid: aeb0f5c88c4ab4a78bc85712aa6db9d2, type: 3}
-  multiPylonSprite: {fileID: 21300000, guid: 04eb57c69b2724d1e9b9af5549ea16a6, type: 3}
-  tileSprites:
-  - {fileID: 21300000, guid: aeb0f5c88c4ab4a78bc85712aa6db9d2, type: 3}
-  - {fileID: 21300000, guid: 04eb57c69b2724d1e9b9af5549ea16a6, type: 3}
-  tier2Cost: 1e000000000000000100000000000000
-  tier3Cost: 3c000000000000000300000000000000
+  longPylonSprite: {fileID: 1111965710, guid: 89436f6f4d6b0476f9cc10f01986aa7f, type: 3}
+  multiPylonSprite: {fileID: -1184027665, guid: 89436f6f4d6b0476f9cc10f01986aa7f, type: 3}
   perCableCap: 4
   surgeMaxOwn: 1
   surgeRefillRate: 1
   cableClickRadius: 0.15
-  multi: 0
-  longRange: 0
 --- !u!114 &9110878769623498410
 MonoBehaviour:
   m_ObjectHideFlags: 0

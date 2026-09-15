@@ -242,17 +242,20 @@ public static class ChipConsumers
         // Nothing loose fits: a REAL customer (appeal > 0 — construction, refiner, walls, the
         // grinders) may draw on the Tube shelves. Stores never restock from each other,
         // and loose chips always go first (they're the ones the next clear cycle eats).
-        // SHELF ORDER (user rule 2026-09-13): the shape nearest the BASE CENTRE is drained
-        // first — a farther shelf gives nothing while a nearer one still holds a chip this
-        // customer may take; on one shelf the usual largest-then-nearest-to-the-drone pick.
+        // SHELF ORDER (user rule 2026-09-14): the LOWEST keep-priority shape that has chip is
+        // drained first; on a rank tie the shape with the FEWEST chips once claims/inbound settle
+        // (TubeCluster.Projected) — a higher-ranked shelf
+        // gives nothing while a lower one still holds a chip this customer may take; a full tie
+        // and within one shelf: the usual largest-then-nearest-to-the-drone pick. (Tubes themselves have appeal 0, so a
+        // shelf never restocks from another shelf.)
         var shelves = Tube.Clusters;
-        float bestSrc = float.MaxValue;   // the winning shelf's distance² from the base centre
+        float bestSrc = float.MaxValue;   // the winning shelf's sort key (lower drains first)
         for (int i = 0; i < shelves.Count; i++)
         {
             var shelf = shelves[i];
             var list = shelf.chips;
             if (list.Count == 0) continue;
-            float src = (shelf.centroid - BaseCentre).sqrMagnitude;
+            float src = ShelfDrainKey(shelf);
             for (int k = 0; k < list.Count; k++)
             {
                 var chip = list[k].chip;
@@ -267,7 +270,7 @@ public static class ChipConsumers
                 if (appeal < bestAppeal) continue;
                 if (appeal == bestAppeal)
                 {
-                    if (src > bestSrc) continue;                                   // a nearer shelf already offers
+                    if (src > bestSrc) continue;                                   // a lower-ranked / emptier shelf already offers
                     if (src == bestSrc && chip.sizeClass < bestSize) continue;
                 }
                 float d = ((Vector2)chip.transform.position - pos).sqrMagnitude;
@@ -321,10 +324,16 @@ public static class ChipConsumers
     public static bool ServeFirst(IChipConsumer a, IChipConsumer b, Vector2 pos)
     {
         // Shelving is the LAST chip job (user rule 2026-09-13): any real customer outranks a
-        // Tube, and between shelves the one nearest the base centre fills first.
+        // Tube. Between shelves (user rule 2026-09-14) the HIGHEST keep-priority shape tops up
+        // first; on a rank tie the one about to hold the fewest chips, then nearest the base centre.
         bool storeA = a is Tube, storeB = b is Tube;
         if (storeA != storeB) return storeB;
-        if (storeA) return ShelfDistSqr(a) < ShelfDistSqr(b);
+        if (storeA)
+        {
+            float ka = ShelfFillKey(a), kb = ShelfFillKey(b);
+            if (ka != kb) return ka < kb;
+            return (a.ChipDropPoint - pos).sqrMagnitude < (b.ChipDropPoint - pos).sqrMagnitude;   // tie: nearest shelf to the drone
+        }
         int oa = BuildOrder(a), ob = BuildOrder(b);
         if (oa != ob) return oa < ob;
         return (a.ChipDropPoint - pos).sqrMagnitude < (b.ChipDropPoint - pos).sqrMagnitude;
@@ -337,9 +346,18 @@ public static class ChipConsumers
          : c is GhostIntake g && g.Owner != null ? g.Owner.placedIndex
          : int.MaxValue;
 
-    /// <summary>A store's shape distance² from the base centre (a box without a cluster ranks last).</summary>
-    static float ShelfDistSqr(IChipConsumer c)
-        => c is Tube s && s.cluster != null ? (s.cluster.centroid - BaseCentre).sqrMagnitude : float.MaxValue;
+    // Shelf sort keys — lower wins. Tiers: store priority (Tube.Rank* — drain low first / fill
+    // high first), then projected chip count (fewest first for both). Distance from the base
+    // centre plays NO part (user rule 2026-09-14); a full tie falls through to the drone's own
+    // position (nearest chip / nearest shelf to the drone).
+    const float RankTier = 1e6f;
+
+    /// <summary>Drain order for a shape that HAS chip: lowest rank first, then fewest projected chips.</summary>
+    static float ShelfDrainKey(TubeCluster cl) => cl.Rank * RankTier + cl.Projected;
+
+    /// <summary>Top-up order: highest rank first, then fewest projected chips.</summary>
+    static float ShelfFillKey(IChipConsumer c)
+        => c is Tube s && s.cluster != null ? (Tube.RankHigh - s.cluster.Rank) * RankTier + s.cluster.Projected : float.MaxValue;
 
     // ---------------------------------------------------------------- footprints (direct handovers)
 

@@ -36,7 +36,6 @@ public class DM : MonoBehaviour
             yield return new WaitForSeconds(1f);
             GS.IncrementEra();
             MakeDungeon(1);
-            EmbersEdge.mainCore.lr.material = EmbersEdge.mainCore.mats[GS.era];
         }
         else if(RefreshManager.i.STARTDUNGEON == 3)
         {
@@ -46,7 +45,6 @@ public class DM : MonoBehaviour
             yield return new WaitForSeconds(3f);
             GS.IncrementEra();
             MakeDungeon(2);
-            EmbersEdge.mainCore.lr.material = EmbersEdge.mainCore.mats[GS.era];
         }
         else
         {

@@ -24,7 +24,7 @@ using UnityEngine;
 /// and the arrival ring is sized to it while the unit itself stays unseen until the thread lands
 /// (see <see cref="SpawnStrikeMaterialise"/>).
 ///
-/// Single-element: everything wears the era colour off GS.MatByEra(superBright) — the Glow Unlit
+/// Single-element: everything wears the era colour off GS.Glow(Super) — the Glow Unlit
 /// graph, so colour lives in `thecolor` (HDR, blooms), alpha rides _MainTex and vertex colour is
 /// inert (same contract as CableFlowTint). Fades are width collapse + `thecolor` dimming, never
 /// colour alpha (the shader ignores it).
@@ -234,7 +234,7 @@ public static class SpawnBoltFX
     /// caller can dim it for the fade; destroy the material when the effect dies.</summary>
     internal static Material NewGlowMat(Texture2D tex, out Color baseCol, float dim = 1f)
     {
-        Material src = SpawnManager.instance != null ? GS.MatByEra(GS.era, superBright: true) : null;
+        Material src = SpawnManager.instance != null ? GS.Glow(GlowLevel.Super) : null;
         var m = src != null ? new Material(src) : new Material(Shader.Find("Sprites/Default"));
         m.SetTexture(MainTexId, tex);
         if (m.HasProperty(EmissionId)) m.SetTexture(EmissionId, tex);

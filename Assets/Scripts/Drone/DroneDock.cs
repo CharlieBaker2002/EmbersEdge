@@ -94,7 +94,7 @@ public class DroneDock : Building
         {
             Drone d = residents[k];
             if (d == null || charging.Contains(d)) continue;
-            if (d.energy >= 0.999f || d.transform.InDungeon()) continue;
+            if (d.energy >= Drone.MaxEnergy - 1e-3f || d.transform.InDungeon()) continue;
             if (d.ChargedToday) continue;   // today's cycle already spent — lights out till dawn
             if (d.state != Drone.State.Docked) continue;
             if (((Vector2)d.transform.position - SlotPosition(k)).sqrMagnitude > 1.5f * 1.5f) continue;
@@ -123,7 +123,7 @@ public class DroneDock : Building
             Drone d = residents[k];
             if (d == null)
                 BeginDraw(() => SpawnResident(slot));
-            else if (d.energy < 0.999f && !d.ChargedToday)   // a race-stamped drone doesn't bill twice
+            else if (d.energy < Drone.MaxEnergy - 1e-3f && !d.ChargedToday)   // a race-stamped drone doesn't bill twice
                 BeginDraw(() => { if (d != null) d.Recharge(); });
         }
     }

@@ -150,6 +150,7 @@ public static class GS
     public static void IncrementEra()
     {
         era++;
+        EraGlow.Apply(era);          // the whole visual era swap: one global shader colour
         OnNewEra?.Invoke(era);
         EmbersEdge.currentCores = 1;
         SpawnManager.daySinceNewEra = era == 1
@@ -1424,25 +1425,13 @@ public static class GS
         return (float)SpawnManager.daySinceNewEra / daysforeraComplete[era];
     }
 
-    /// <summary>
-    /// era 0 = 0. Superbright & bright cannot be lit
-    /// </summary>
-    public static Material MatByEra(int era, bool bright = false, bool lit = false, bool superBright = false)
-    {
-        if (superBright)
-        {
-            return SpawnManager.instance.eraMats[era + 9];
-        }
-        if (lit)
-        {
-            return SpawnManager.instance.eraMats[era + 6];
-        }
-        if (!bright)
-        {
-            return SpawnManager.instance.eraMats[era];
-        }
-        return SpawnManager.instance.eraMats[era + 3];
-    }
+    /// <summary>The era glow material of a brightness level. There is no per-era material any more:
+    /// the era hue is the global `_EraColor` (<see cref="EraGlow"/>), set once per era change.</summary>
+    public static Material Glow(GlowLevel level) => EraGlow.Mat(level);
+
+    /// <summary>Flag form for authored components (superBright > lit > bright > dim).</summary>
+    public static Material Glow(bool bright, bool lit = false, bool superBright = false)
+        => EraGlow.Mat(superBright ? GlowLevel.Super : lit ? GlowLevel.Lit : bright ? GlowLevel.Bright : GlowLevel.Dim);
 
     /// <summary>
     /// t in range 0 to 1

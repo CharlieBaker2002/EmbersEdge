@@ -69,7 +69,8 @@ public class LifeScript : MonoBehaviour
     public int[] thicknesses = {1};
     private bool isAlly;
     public static readonly int Thickness = Shader.PropertyToID("_Thickness");
-    private static readonly Color[] dungeonHealthyCols = {new(1.5f,1.08f,3.6f), new(2.75f,2.75f,2.1f), new(3f,2f,1.6f)};
+    /// <summary>Dungeon-wall healthy outline: the era's outline colour from the glow palette.</summary>
+    static Color DungeonHealthyCol => EraGlow.Outline();
     private static readonly Color allyHealthyCol = new (0.6f,1f,0.8f);
     private static readonly Color hurtCol = new (3f, 0.14f, 0.32f);
     public static readonly int Outline = Shader.PropertyToID("_Outline");
@@ -145,7 +146,7 @@ public class LifeScript : MonoBehaviour
             for(int i = 0; i < dmgsrs.Count; i++)
             {
                 dmgsrs[i].material.SetFloat(Thickness, thicknesses[i] * (1 + (1 - amount)) * 0.5f);
-                dmgsrs[i].material.SetColor(Outline,Color.Lerp(hurtCol,dungeonHealthyCols[GS.era], amount));
+                dmgsrs[i].material.SetColor(Outline,Color.Lerp(hurtCol,DungeonHealthyCol, amount));
             }
         }
     }

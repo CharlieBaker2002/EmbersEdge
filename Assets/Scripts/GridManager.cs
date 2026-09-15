@@ -251,7 +251,7 @@ public class GridManager : MonoBehaviour
             b.gridSize = sizeCells;
             for (int x = 0; x < sizeCells.x; x++)
                 for (int y = 0; y < sizeCells.y; y++)
-                    if (Inside(a.x + x, a.y + y)) occupied[a.x + x, a.y + y] = true;
+                    if (Inside(a.x + x, a.y + y) && b.OccupiesFootprintCell(x, y, sizeCells)) occupied[a.x + x, a.y + y] = true;
         }
     }
 

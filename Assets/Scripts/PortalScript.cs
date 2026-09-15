@@ -82,19 +82,14 @@ public class PortalScript : MonoBehaviour
         CS = CharacterScript.CS;
         recall = IM.i.pi.Player.Portal;
         recall.started += _ => OnRecallPressed();
-        GS.OnNewEra += i =>
-        {
-            foreach (SpriteRenderer sr in quaterSRS)
-            {
-                sr.material = GS.MatByEra(i, true);
-            }
-        };
         GS.OnNewEra += era =>
         {
+            // LEVEL swaps only (the era hue is a global): quarters go lit → bright, the rim light bright → dim
+            foreach (SpriteRenderer sr in quaterSRS) sr.material = GS.Glow(GlowLevel.Bright);
             rimSRs[0].sprite = rimSprites[era];
             rimSRs[1].sprite = rimLightSprites[era];
             rimSRs[2].sprite = outerRimSprites[era];
-            rimSRs[1].material = GS.MatByEra(era, false, false);
+            rimSRs[1].material = GS.Glow(GlowLevel.Dim);
         };
         recall.Enable();
         OnDamageCancel = dmg => { if (dmg < 0f && timer > 0f) { Cancel(); } };

@@ -150,8 +150,11 @@ public class Drone : AllyAI, IOnDeath
     /// <summary>actRate for visual pacing (drill spin etc.) — floor keeps animations alive under slows.</summary>
     public float ActRateVisible => Mathf.Max(0.2f, actRate);
 
-    /// <summary>0..1: one full charge is one day's work. Refilled only by the dock.</summary>
-    [HideInInspector] public float energy = 1f;
+    /// <summary>A full charge (user rule 2026-09-14: 10). Every tariff on DroneManager is in
+    /// these units — one full charge is still one day's work.</summary>
+    public const float MaxEnergy = 10f;
+    /// <summary>0..MaxEnergy. Refilled only by the dock.</summary>
+    [HideInInspector] public float energy = MaxEnergy;
 
     int cargoUnits;
     public int CargoUnits => cargoUnits;
@@ -481,10 +484,11 @@ public class Drone : AllyAI, IOnDeath
     // async), so subscription-order races around the day++ tick can't hand out a second cycle.
     [HideInInspector] public int lastChargeDay = -1;
     public bool ChargedToday => lastChargeDay == SpawnManager.day;
+    float dockRedirectT;   // ReturningToDock's charged-drone redirect throttle
 
     public void Recharge()
     {
-        energy = 1f;
+        energy = MaxEnergy;
         lastChargeDay = SpawnManager.day;
     }
 
@@ -695,6 +699,17 @@ public class Drone : AllyAI, IOnDeath
 
                 case State.ReturningToDock:
                     if (threatened && !HasCargo) { state = State.Evading; break; }
+                    // The dock is for a FLAT battery or sheltering from a wave (user rule
+                    // 2026-09-14): a charged base-side drone on a quiet day never flies home
+                    // between jobs — it takes the next job or patrols on. Throttled so a job
+                    // that bails straight back here can't ping-pong states every tick.
+                    if (Charged && Peaceful() && !transform.InDungeon() && Time.time >= dockRedirectT)
+                    {
+                        dockRedirectT = Time.time + 1f;
+                        if (equipment == DroneEquipment.Bag && HasCargo) { state = State.DumpLoot; break; }
+                        if (!TryDispatchWork()) GoLoiter();
+                        break;
+                    }
                     if (MoveToward(DockPoint(), 0.35f)) state = State.Docked;
                     break;
 
@@ -1318,13 +1333,15 @@ public class Drone : AllyAI, IOnDeath
     int SpaceLeft => Bare
         ? (cargo.Count < DroneManager.BareChipsPerTrip ? OreChip.SpaceFor(2) : 0)
         : SackMaxSpace - cargoSpaceUsed;
-    // The bag tariff, for everyone: a bare drone pays per space unit exactly what a bag does
-    // (not 1/claw-load, which would make one chip cost half a charge).
+    // The bag tariff (bag drones): one full charge buys EXACTLY one full bag — every space unit
+    // swallowed costs MaxEnergy/maxSpace energy, so capacity is whichever runs out first,
+    // physical room or remaining charge. A bare drone instead pays a flat
+    // DroneManager.BareChipPickupCost per chip it picks up (user rule 2026-09-14: 0.5).
     int TariffSpace => sack != null ? sack.maxSpace : DroneManager.BagCapacity;
-    // One full charge buys EXACTLY one full bag: every space unit swallowed costs 1/maxSpace
-    // energy, so capacity is whichever runs out first — physical room or remaining charge.
-    float CollectCostPerSpace => 1f / TariffSpace;
-    int EffectiveSpaceLeft => Mathf.Min(SpaceLeft, Mathf.FloorToInt(energy * TariffSpace + 1e-3f));
+    float CollectCostPerSpace => MaxEnergy / TariffSpace;
+    int EffectiveSpaceLeft => Bare
+        ? (energy + 1e-4f >= DroneManager.BareChipPickupCost ? SpaceLeft : 0)
+        : Mathf.Min(SpaceLeft, Mathf.FloorToInt(energy / MaxEnergy * TariffSpace + 1e-3f));
 
     // ---- the daily haul quota ----
     // Every bag gets ONE bag's worth of loot pickup per day, wherever it's swallowed: a dungeon
@@ -1534,7 +1551,8 @@ public class Drone : AllyAI, IOnDeath
             AddCargo(new CargoEntry { kind = 0, space = chipTarget.SpaceCost, sizeClass = chipTarget.sizeClass, element = chipTarget.element, refined = chipTarget.refined });
             chipTarget.AbsorbInto(transform);   // visible swallow: ease-out shrink into the front
             chipTarget = null;
-            energy = Mathf.Max(0f, energy - DroneManager.ChipMoveCost);   // moving chip is work
+            // moving chip is work: a flat fee for claws, the small handling fee on top of a bag's space tariff
+            energy = Mathf.Max(0f, energy - (Bare ? DroneManager.BareChipPickupCost : DroneManager.ChipMoveCost));
         }
         else if (equipmentTarget != null)
         {
@@ -1569,7 +1587,8 @@ public class Drone : AllyAI, IOnDeath
             hauledSpaceToday += e.space;
         }
         // the bag's tariff: space swallowed is charge spent, so one full charge = one full bag
-        energy = Mathf.Max(0f, energy - e.space * CollectCostPerSpace);
+        // (a bare drone's chip already paid its flat pickup fee in PickupTarget)
+        if (!(Bare && e.kind == 0)) energy = Mathf.Max(0f, energy - e.space * CollectCostPerSpace);
         SetCargoUnits(cargoSpaceUsed);
         if (sack != null) sack.SetFill(cargoSpaceUsed / (float)SackMaxSpace);
     }

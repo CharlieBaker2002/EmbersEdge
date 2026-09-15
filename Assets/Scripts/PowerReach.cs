@@ -35,6 +35,11 @@ public static class PowerReach
             RadiusCells(anchor, size, pylon.CableRadius, into);
             return Kind.Pylon;
         }
+        if (b is Throne)   // the centre store, felt all round the Throne's block (a pad's ring)
+        {
+            RingCells(anchor, size, into);
+            return Kind.Pad;
+        }
         return Kind.None;
     }
 

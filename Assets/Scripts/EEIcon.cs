@@ -12,7 +12,7 @@ public class EEIcon : MonoBehaviour
     private Material m;
     private Color c;
     [SerializeField] Color startCol;
-    [SerializeField] private GameObject[] FXs;
+    [SerializeField] private GameObject fx;
 
     public static List<EEIcon> icons = new List<EEIcon>();
 
@@ -26,8 +26,10 @@ public class EEIcon : MonoBehaviour
     public void SetColour()
     {
         if(m!=null) Destroy(m);
-        m = Instantiate(GS.MatByEra(GS.era,false));
-        c = m.GetColor(Color1);
+        m = Instantiate(GS.Glow(GlowLevel.Dim));
+        // this copy is faded to an explicit grey later, so it paints the full era colour itself
+        if (m.HasProperty(EraGlow.EraLevelId)) m.SetFloat(EraGlow.EraLevelId, 0f);
+        c = EraGlow.Colour(GlowLevel.Dim);
         m.SetColor(Color1, c);
         sr.material = m;
     }
@@ -41,7 +43,7 @@ public class EEIcon : MonoBehaviour
             yield return null;
         }
         m.SetColor(Color1, startCol);
-        transform.LeanScale(Vector3.zero, 0.25f).setEaseInBack().setOnComplete(() => Instantiate(FXs[GS.era], transform.position,
+        transform.LeanScale(Vector3.zero, 0.25f).setEaseInBack().setOnComplete(() => Instantiate(fx, transform.position,
             Quaternion.Euler(0f, 0f, Random.Range(0f, 360f)), GS.FindParent(GS.Parent.fx))).delay = 0.25f;
     }
 

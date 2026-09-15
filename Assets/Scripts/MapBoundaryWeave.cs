@@ -6,7 +6,7 @@ using UnityEngine;
 /// Secondary boundary VFX: animated sprite "wisps" that spawn at random points along the map edge
 /// like shooting stars — they streak along the boundary, weave in and out across the line, slow
 /// down, and fade out. Each plays a looping sprite-sheet animation (frame stepped per-wisp in Update,
-/// no tween) with the era material (GS.MatByEra), and rides the live boundary polygon (world space, so it tracks reshaping
+/// no tween) with the era glow material (GS.Glow), and rides the live boundary polygon (world space, so it tracks reshaping
 /// + Shrink scaling).
 ///
 /// Drop on an empty GameObject (e.g. a child of MapManager). Frames default to the JLVisual sheet.
@@ -18,7 +18,7 @@ public class MapBoundaryWeave : MonoBehaviour
     public Sprite[] frames;
     public int fps = 12;
 
-    [Header("Era material (GS.MatByEra)")]
+    [Header("Glow level (GS.Glow — era hue is global)")]
     public bool bright = true;
     public bool lit = false;
     public bool superBright = false;
@@ -95,19 +95,6 @@ public class MapBoundaryWeave : MonoBehaviour
             Debug.LogWarning("[MapBoundaryWeave] No frames — assign JLVisual sprites or place them in Resources.");
 
         nextSpawn = Random.Range(spawnEvery.x, spawnEvery.y);
-        GS.OnNewEra += SetEra;
-    }
-
-    void OnDestroy()
-    {
-        GS.OnNewEra -= SetEra;
-    }
-
-    void SetEra(int era)
-    {
-        Material m = GS.MatByEra(era, bright, lit, superBright);
-        foreach (var w in wisps)
-            if (w != null && w.sr != null) w.sr.sharedMaterial = m;
     }
 
     void Update()
@@ -219,7 +206,7 @@ public class MapBoundaryWeave : MonoBehaviour
         var sr = go.AddComponent<SpriteRenderer>();
         sr.sortingLayerName = sortingLayer;
         sr.sortingOrder = sortingOrder;
-        sr.sharedMaterial = GS.MatByEra(GS.era, bright, lit, superBright);
+        sr.sharedMaterial = GS.Glow(bright, lit, superBright);
         if (frames != null && frames.Length > 0)
             sr.sprite = frames[0];   // frames are stepped per-wisp in Update (no tween — see below)
         Color c0 = sr.color; c0.a = 0f; sr.color = c0;   // start transparent, fade in

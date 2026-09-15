@@ -17,29 +17,95 @@ using UnityEngine;
 public static class BaseKitBuilder
 {
     const string PendingKey = "BaseKit.removeConstructor";
+    const string PendingThroneKey = "BaseKit.configureThrone";
     const string ScenePath = "Assets/Scenes/World.unity";
     const string Tag = "BaseKit";
 
     [InitializeOnLoadMethod]
     static void RunPendingAfterCompile()
     {
-        if (!SessionState.GetBool(PendingKey, false)) return;
+        if (!SessionState.GetBool(PendingKey, false) && !SessionState.GetBool(PendingThroneKey, false)) return;
         if (EditorApplication.isPlayingOrWillChangePlaymode)
         {
             EditorApplication.playModeStateChanged += RunWhenEditMode;
             return;
         }
-        SessionState.SetBool(PendingKey, false);
-        EditorApplication.delayCall += RemoveCentreConstructor;
+        EditorApplication.delayCall += RunPending;
     }
 
     static void RunWhenEditMode(PlayModeStateChange s)
     {
         if (s != PlayModeStateChange.EnteredEditMode) return;
         EditorApplication.playModeStateChanged -= RunWhenEditMode;
-        if (!SessionState.GetBool(PendingKey, false)) return;
-        SessionState.SetBool(PendingKey, false);
-        EditorApplication.delayCall += RemoveCentreConstructor;
+        EditorApplication.delayCall += RunPending;
+    }
+
+    static void RunPending()
+    {
+        if (SessionState.GetBool(PendingKey, false)) { SessionState.SetBool(PendingKey, false); RemoveCentreConstructor(); }
+        if (SessionState.GetBool(PendingThroneKey, false)) { SessionState.SetBool(PendingThroneKey, false); ConfigureThrone(); }
+    }
+
+    /// <summary>The Throne's footprint becomes the 2×2 world block (8×8 cells; the corners are
+    /// freed at runtime by Throne.OccupiesFootprintCell). Scene field only — the body stays the
+    /// authored PhysicCircle.</summary>
+    [MenuItem("Tools/Base Kit/Configure Throne (2×2 block, centre store starts empty)")]
+    public static void ConfigureThrone()
+    {
+        if (Application.isPlaying) { Debug.LogWarning($"[{Tag}] Stop play mode first."); return; }
+        var active = EditorSceneManager.GetActiveScene();
+        bool wasOpen = active.path == ScenePath;
+        var scene = wasOpen ? active : EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
+        bool dirty = false;
+        Throne throne = null;
+        foreach (var root in scene.GetRootGameObjects())
+            foreach (var t in root.GetComponentsInChildren<Throne>(true))
+            {
+                throne = t;
+                var so = new SerializedObject(t);
+                var size = so.FindProperty("size");
+                if (size == null) continue;
+                if (size.vector2Value == new Vector2(2f, 2f)) continue;
+                size.vector2Value = new Vector2(2f, 2f);
+                so.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(t);
+                dirty = true;
+                Debug.Log($"[{Tag}] Throne '{t.name}': size → 2×2.");
+            }
+        // the store on the Throne starts EMPTY like any store (user call 2026-09-14 — the brief
+        // 8/8 opening charge is retired): startEnergy 0 on the instance
+        if (throne != null)
+        {
+            EmberStoreBuilding centre = null;
+            float best = 0.6f * 0.6f;
+            foreach (var root in scene.GetRootGameObjects())
+                foreach (var s in root.GetComponentsInChildren<EmberStoreBuilding>(true))
+                {
+                    float d = (s.transform.position - throne.transform.position).sqrMagnitude;
+                    if (d <= best) { best = d; centre = s; }
+                }
+            if (centre != null)
+            {
+                var so = new SerializedObject(centre);
+                var se = so.FindProperty("startEnergy");
+                if (se != null && se.floatValue != 0f)
+                {
+                    se.floatValue = 0f;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                    EditorUtility.SetDirty(centre);
+                    dirty = true;
+                    Debug.Log($"[{Tag}] Centre store '{centre.name}': startEnergy → 0 (starts empty).");
+                }
+            }
+        }
+        if (dirty)
+        {
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log($"[{Tag}] World scene saved.");
+        }
+        else Debug.Log($"[{Tag}] Throne already 2×2 — nothing to do.");
+        if (!wasOpen) EditorSceneManager.CloseScene(scene, true);
     }
 
     [MenuItem("Tools/Base Kit/Remove Centre Constructor")]

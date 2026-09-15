@@ -184,7 +184,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sr: {fileID: 8069370220714372110}
   startCol: {r: 0.05882353, g: 0.05882353, b: 0.05882353, a: 0}
-  FXs:
-  - {fileID: 6651289717143185095, guid: 9f075f24253c947c08930feec170f97b, type: 3}
-  - {fileID: 4839477906628141637, guid: 6e3ce090feaf74a06a15a28bda8446a8, type: 3}
-  - {fileID: 410946907556383122, guid: c24aaca1a18a14deea3d8936afbb5866, type: 3}
+  fx: {fileID: 6651289717143185095, guid: 9f075f24253c947c08930feec170f97b, type: 3}

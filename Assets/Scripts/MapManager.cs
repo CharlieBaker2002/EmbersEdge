@@ -26,7 +26,6 @@ public class MapManager : MonoBehaviour
     Vector2[] sizeDelta = new Vector2[2];
     [SerializeField] Vector3[] poses;
     Vector3[] initPoses;
-    [SerializeField] private Material[] mats;
     private Sprite savedSprite;
     
     [Space(6)]
@@ -537,7 +536,6 @@ public class MapManager : MonoBehaviour
 
     IEnumerator Start()
     {
-        GS.OnNewEra += (ctx) => { lr.material = mats[ctx]; };
         GS.bounds = poly;
         sizeDelta[0] = mmt[0].sizeDelta;
         sizeDelta[1] = mmt[1].sizeDelta;

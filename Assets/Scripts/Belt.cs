@@ -19,11 +19,10 @@ using UnityEngine;
 /// <see cref="energyPerStep"/> PER CHIP from the sources touching ANY tile of the line (a chip
 /// riding 10 tiles pays 10 steps = 1 energy at the default 0.1; 10 chips over 10 tiles = 10),
 /// and the tiles animate only while a step is in progress — a belt with nothing on it stands
-/// still. At the tail the chip is fed straight into a building that accepts chip, placed exactly
-/// on the exit cell with no scatter (a Tube, a crush generator or a Collector's pile takes it
-/// at once; other consumers' own suction eases it in), or simply set down there when nothing
-/// wants it. While a building that takes chip sits at the end but is NOT currently accepting,
-/// the whole line waits.
+/// still. At the tail a chip leaves only while the building at the exit cell is accepting chip
+/// right now, and only as many as it currently wants — fed straight in. Otherwise (nothing
+/// there, or a full / crushing / unpowered building) the chips stay aboard and stack up at the
+/// end (costing nothing while stacked); a line facing into itself piles up on the tile closing the loop.
 ///
 /// Belts are invulnerable (no body: nothing to hit, nothing to path around), cost no upkeep,
 /// and come alive per tile from 1 ore. Contrast the Tube: free transport, but fragile and billed
@@ -168,7 +167,7 @@ public class Belt : Building
 
     /// <summary>Re-link every live tile: each feeds whatever belt sits in its front cell, and
     /// every run of linked tiles becomes one line (a tile pointing into the side of another run
-    /// merges into it; a closed ring is a line with no tail — nothing gets off). Riding chips
+    /// merges into it; a line facing into itself ends on the tile closing its loop — nothing gets off). Riding chips
     /// go back onto the tile they were on, in whichever line owns it now; a chip whose tile is
     /// gone is set down where it is. Synchronous: cheap, and a demolished tile must let its
     /// chips go at once.</summary>

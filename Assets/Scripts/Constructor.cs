@@ -62,7 +62,6 @@ public class Constructor : Building
         GridManager.i.RebuildRangeCache(); 
         GridManager.i.RefreshEnergyCells();
         connect.onRefresh += RefreshStores;
-        GS.OnNewEra += SetMat;
     }
 
     private void RefreshMax()
@@ -133,7 +132,6 @@ public class Constructor : Building
         EnergyManager.constructors.Add(this);
         EnergyManager.i.CreateCableConnections();
         SpawnManager.instance.onWaveComplete += act;
-        SetMat(0);
         EnergyManager.toBeBuilt.Remove(this);
         GridManager.i.RebuildRangeCache();
         GridManager.i.RefreshEnergyCells();
@@ -145,7 +143,6 @@ public class Constructor : Building
         base.Start();
         GridManager.i.RebuildRangeCache();
         GridManager.i.RefreshEnergyCells();
-        GS.OnNewEra -= SetMat;
     }
     
     private void RefreshStores()
@@ -170,11 +167,6 @@ public class Constructor : Building
         }
     }
     
-    private void SetMat(int i)
-    {
-        stick.material = GS.MatByEra(GS.era, false, false, true);
-    }
-
     protected override void BDisable()
     {
         EnergyManager.constructors.Remove(this);

@@ -92,9 +92,10 @@ public class EmberTether : MonoBehaviour
     /// </summary>
     public static bool HandleRecall()
     {
-        // throw the tether onto a passive core (manual activation)
-        if (MineDungeonManager.i != null && MineDungeonManager.i.activePocket != null &&
-            MineDungeonManager.i.activePocket.TryActivateCore())
+        // throw the tether onto a passive core (manual activation) — ANY discovered pocket's core, not
+        // just the active pocket's: a later discovery (a second room opened by the same drill bite)
+        // takes the active slot while the core still sits there waiting
+        if (MineDungeonManager.i != null && MineDungeonManager.i.TryActivateCoreNearPlayer())
             return true;
 
         if (i == null || i.released) return false;
@@ -105,6 +106,9 @@ public class EmberTether : MonoBehaviour
 
     /// <summary>Is the player currently bound (any live tether)?</summary>
     public static bool Tethered => i != null && !i.released;
+
+    /// <summary>Is THIS tether still up — not untethered, completed or fading out?</summary>
+    public bool Live => !released;
 
     // ---- construction --------------------------------------------------------------------------
 
@@ -126,7 +130,7 @@ public class EmberTether : MonoBehaviour
 
         disc = MakeSprite("Disc", discFrames.Length > 0 ? discFrames[0] : null, 45);
         // the ember disc glows in the era colour — same era-glow emissive the Souls/EmberParticles use
-        disc.sharedMaterial = GS.MatByEra(GS.era, true, false, true);
+        disc.sharedMaterial = GS.Glow(GlowLevel.Super);
         rod = MakeSprite("Rod", rodFrames.Length > 0 ? rodFrames[0] : null, 46);
         BuildBar();
     }
@@ -231,7 +235,9 @@ public class EmberTether : MonoBehaviour
     /// </summary>
     public void AttachToCore(Vector2 corePos, float newMaxLen)
     {
-        castFrom = anchor;            // the disc whips from its old plant to the core
+        // a landed disc whips from its old plant to the core; a cast still in flight (a fresh throw
+        // made for the core itself — Pocket.TryActivateCore) keeps its hand origin and lands on it
+        if (castT >= CAST_TIME) castFrom = anchor;
         anchor = corePos;
         castT = 0f;
         maxLen = Mathf.Max(maxLen, newMaxLen);
@@ -427,7 +433,7 @@ public class EmberTether : MonoBehaviour
         if (frames.Length == 0) yield break;
         const int K = 6;
         const float DUR = 0.9f;
-        Material mat = GS.MatByEra(GS.era, true, false, true);   // era glow, same as Soul
+        Material mat = GS.Glow(GlowLevel.Super);   // era glow, same as Soul
 
         var host = new GameObject("TetherWisps");
         host.transform.position = from;

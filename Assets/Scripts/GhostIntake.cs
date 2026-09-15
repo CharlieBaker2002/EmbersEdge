@@ -328,18 +328,13 @@ public class GhostIntake : MonoBehaviour, IChipConsumer
         if (Application.isPlaying) BuildSparks();
     }
 
-    /// <summary>The era's ore colour as a saturated, non-HDR tint: the hue of the ore material's
-    /// `thecolor` (Purple 1's deep purple in era 0) at full value — so contours and sparks read as
-    /// the ore, not as a washed-out pink. Falls back to the era colour.</summary>
+    /// <summary>The era's ore colour as a saturated, non-HDR tint: the hue of the ore glow's rendered
+    /// colour (EraGlow.Colour(Bright)) at full value — so contours and sparks read as the ore, not as a
+    /// washed-out pink.</summary>
     static Color OreHue()
     {
-        var m = DroneManager.OreSourceMaterial();
-        if (m != null && m.HasProperty("thecolor"))
-        {
-            Color.RGBToHSV(m.GetColor("thecolor"), out float hue, out float sat, out _);
-            return Color.HSVToRGB(hue, Mathf.Max(0.75f, sat), 1f);
-        }
-        return GS.ColFromEra();
+        Color.RGBToHSV(EraGlow.Colour(GlowLevel.Bright), out float hue, out float sat, out _);
+        return Color.HSVToRGB(hue, Mathf.Max(0.75f, sat), 1f);
     }
 
     /// <summary>The sprite's rect in texture UV space (x, y, w, h) — the shader's print raster and
@@ -531,7 +526,7 @@ public class GhostIntake : MonoBehaviour, IChipConsumer
         sol.enabled = true;
         sol.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0f));
         var r = go.GetComponent<ParticleSystemRenderer>();
-        // the ORE's glow (Purple 1's `thecolor`, moderately HDR) on a soft dot — purple, not a white-hot core
+        // the ORE's glow (Glow Bright's `thecolor`, moderately HDR, era-tinted by the shader) on a soft dot — not a white-hot core
         var src = DroneManager.OreSourceMaterial();
         if (src != null)
         {

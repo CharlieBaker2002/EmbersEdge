@@ -18,8 +18,8 @@ public class RevealFX : MonoBehaviour
     
     private IEnumerator Start()
     {
-        extraR.material = GS.MatByEra(GS.era, true,false,true);
-        render.material = GS.MatByEra(GS.era, true,false,true);
+        extraR.material = GS.Glow(GlowLevel.Super);
+        render.material = GS.Glow(GlowLevel.Super);
         yield return null;
         em = ps.emission;
         var main = ps.main;

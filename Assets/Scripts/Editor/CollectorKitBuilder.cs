@@ -73,8 +73,8 @@ public static class CollectorKitBuilder
                 sr.sortingLayerID = donorSR.sortingLayerID;
                 sr.sortingOrder = donorSR.sortingOrder;
             }
-            // the material stays the era ore material the prefab was authored with ("Purple 1");
-            // Collector re-cuts GS.MatByEra(bright) at runtime and drives its `thecolor`
+            // the material stays the ore glow the prefab was authored with ("Glow Bright");
+            // Collector cuts a copy of GS.Glow(Bright) at runtime and drives its `thecolor`
 
             // ground child (inactive until placed — Building.groundEdit)
             var groundT = root.transform.Find("ground");

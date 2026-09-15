@@ -19,19 +19,6 @@ public class EmberCable : MonoBehaviour
     private float timer;
     public bool waitForDeac = false;
 
-    private void Awake()
-    {
-        if (GS.era != 0)
-        {
-            UpdateColour(GS.era);
-        }
-    }
-
-    void UpdateColour(int era)
-    {
-        sr.material = GS.MatByEra(era, true, false, true);
-    }
-
     public IEnumerator Animate(bool forwards, List<EmberConnector> chain)
     {
         timer = 0.25f;

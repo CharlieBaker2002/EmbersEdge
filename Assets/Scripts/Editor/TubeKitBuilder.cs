@@ -87,8 +87,8 @@ public static class TubeKitBuilder
                 sr.sortingLayerID = donorSR.sortingLayerID;
                 sr.sortingOrder = donorSR.sortingOrder;
             }
-            // material stays the era ore material the prefab was authored with ("Purple 1");
-            // Tube re-cuts GS.MatByEra(bright) at runtime and drives its `thecolor`
+            // material stays the ore glow the prefab was authored with ("Glow Bright");
+            // Tube cuts a copy of GS.Glow(Bright) at runtime and drives its `thecolor`
 
             // nested Physic body: one 0.25 cell, boxed just inside the sprite
             LifeScript life = root.GetComponentInChildren<LifeScript>(true);
@@ -155,7 +155,7 @@ public static class TubeKitBuilder
                 store.maxHealth = 2f;
                 store.builtBlasts = 1;
                 store.oreRequired = 2;
-                store.canOpen = false;
+                store.canOpen = true;   // keep-priority tiles live on the box UI
                 store.rotatable = false;           // the connections decide the spin
                 store.multiDrag = true;            // sweep rows of boxes like walls
                 log.Add("Tube script added (ghost-disabled)");

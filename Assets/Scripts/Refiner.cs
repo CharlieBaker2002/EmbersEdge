@@ -64,19 +64,12 @@ public class Refiner : Building, IChipConsumer
     public override void Start()
     {
         base.Start();
-        GS.OnNewEra += UpdateColours;
-        UpdateColours(GS.era);
-    }
-
-    void UpdateColours(int era)
-    {
-        if (sr != null) sr.material = GS.MatByEra(era, false, false, true);
+        if (sr != null) sr.material = GS.Glow(GlowLevel.Super);
     }
 
     public override void OnDestroy()
     {
         base.OnDestroy();
-        GS.OnNewEra -= UpdateColours;
     }
 
     protected override void BEnable()

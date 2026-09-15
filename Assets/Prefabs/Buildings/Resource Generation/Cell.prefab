@@ -161,11 +161,11 @@ MonoBehaviour:
   energyIconScale: 1
   demolisher: {fileID: 0}
   secondsPerOre: 30
-  orePerDay: 2
+  bonusChips: 5
   chipAdjacentOre: 1
   maxLooseNearby: 8
   looseRadius: 1.6
-  burstInterval: 0.12
+  productionSeconds: 15
   intensity: 1
 --- !u!114 &84914836268152877
 MonoBehaviour:

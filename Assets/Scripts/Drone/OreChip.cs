@@ -219,13 +219,31 @@ public class OreChip : MonoBehaviour
     /// half-extent so the VISIBLE chip never overlaps a wall tile, not just its centre.
     /// Axis-separated tile reflection (a corner hit flips both); base-side positions are out
     /// of the grid's bounds so this no-ops there.</summary>
+    // Gentle boundary return (base side only): extra clearance kept inside the map edge, the
+    // inward acceleration, and the inward speed it stops adding at (linearDamping 2.5 keeps it soft).
+    const float BoundaryClearance = 0.25f;
+    const float BoundaryReturnAccel = 4f;
+    const float BoundaryReturnSpeed = 1.5f;
+
     void FixedUpdate()
     {
         if (rb == null || !rb.simulated) return;
-        var mf = MineField.i;
-        if (mf == null) return;
         Vector2 p = rb.position;
         float wallPad = WallPad;
+        // Base side: a chip that skids out past the map boundary is unreachable (drones would
+        // chase it off the edge forever) — ease it back inside with a gentle, damped-terminal
+        // pull toward the origin instead of a hard clamp. Sleeping bodies wake on the write.
+        if (PathZone.AtBase(p) && !MapManager.InsideBoundsWithClearance(p, wallPad + BoundaryClearance))
+        {
+            Vector2 inward = (-p).normalized;
+            Vector2 bv = rb.linearVelocity;
+            float along = Vector2.Dot(bv, inward);
+            if (along < BoundaryReturnSpeed)
+                bv += inward * Mathf.Min(BoundaryReturnAccel * Time.fixedDeltaTime, BoundaryReturnSpeed - along);
+            rb.linearVelocity = bv;
+        }
+        var mf = MineField.i;
+        if (mf == null) return;
         // Squeeze rescue: the contact solver corrects POSITIONS — a body plowing a chip against
         // rock (the miner stands right where chips burst out) buries it regardless of velocity,
         // and the reflection below only steers, it can never un-bury. Lift the footprint back

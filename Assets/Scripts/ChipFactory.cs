@@ -85,8 +85,9 @@ public class ChipFactory : Building, IChipConsumer
     public override void Start()
     {
         base.Start();
-        GS.OnNewEra += UpdateColours;
-        UpdateColours(GS.era);
+        GS.OnNewEra += ApplyEraSprite;
+        if (sr != null) sr.material = GS.Glow(GlowLevel.Super);
+        ApplyEraSprite(GS.era);
         newDay = () => buildsToday = 0;
         if (SpawnManager.instance != null) SpawnManager.instance.OnNewDay += newDay;
 
@@ -130,20 +131,17 @@ public class ChipFactory : Building, IChipConsumer
         CM.Message($"Chip Factory: {(boost == null ? "Battery" : boost.name)} ordered ({buildsToday}/{buildsPerDay} today)", false);
     }
 
-    void UpdateColours(int era)
+    /// <summary>Era ART only — the glow material never changes (EraGlow tints it globally).</summary>
+    void ApplyEraSprite(int era)
     {
-        if (sr != null)
-        {
-            sr.material = GS.MatByEra(era, false, false, true);
-            if (eraSprites != null && eraSprites.Length > 0)
-                sr.sprite = eraSprites[Mathf.Clamp(era, 0, eraSprites.Length - 1)];
-        }
+        if (sr != null && eraSprites != null && eraSprites.Length > 0)
+            sr.sprite = eraSprites[Mathf.Clamp(era, 0, eraSprites.Length - 1)];
     }
 
     public override void OnDestroy()
     {
         base.OnDestroy();
-        GS.OnNewEra -= UpdateColours;
+        GS.OnNewEra -= ApplyEraSprite;
         if (SpawnManager.instance != null && newDay != null) SpawnManager.instance.OnNewDay -= newDay;
     }
 

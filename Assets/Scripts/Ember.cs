@@ -230,9 +230,9 @@ public class Ember : MonoBehaviour
         }
     }
     
-    void UpdateColours(int era)
+    void ApplyGlow()
     {
-        Material mat = GS.MatByEra(era, true, false, true);
+        Material mat = GS.Glow(GlowLevel.Super);
         if (!portalEmber)
         {
             sr.material = mat;
@@ -253,7 +253,7 @@ public class Ember : MonoBehaviour
 
     void Start()
     {
-        if(sr!= null) UpdateColours(GS.era);
+        if(sr!= null) ApplyGlow();
         onComplete += SetParticle;
         PlaySequence();
     }

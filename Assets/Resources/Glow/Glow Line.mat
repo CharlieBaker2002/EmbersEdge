@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: L2MatGlow
+  m_Name: Glow Line
   m_Shader: {fileID: -6465566751694194690, guid: 162e17cda7b2f479785757284ca519e2, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -44,7 +44,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Emission:
-        m_Texture: {fileID: 2800000, guid: 85f3ca4c921a244a3b7583fc6d92804e, type: 3}
+        m_Texture: {fileID: 2800000, guid: 3c6a2412257264b848d03e8cb70c7731, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _EmissionMap:
@@ -52,7 +52,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 2800000, guid: 85f3ca4c921a244a3b7583fc6d92804e, type: 3}
+        m_Texture: {fileID: 2800000, guid: 3c6a2412257264b848d03e8cb70c7731, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MaskTex:
@@ -89,6 +89,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _EraLevel: 5
     - PixelSnap: 0
     - _BumpScale: 1
     - _Cutoff: 0.5
@@ -112,10 +113,10 @@ Material:
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _Flip: {r: 1, g: 1, b: 1, a: 1}
     - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
-    - thecolor: {r: 1.2078432, g: 0.7263541, b: 0.10980389, a: 1}
+    - thecolor: {r: 1.4980392, g: 1.4980392, b: 1.4980392, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
---- !u!114 &3344442677535587376
+--- !u!114 &7704431931268487131
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}

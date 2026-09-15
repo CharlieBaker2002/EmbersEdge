@@ -6,10 +6,11 @@ using Random = UnityEngine.Random;
 
 /// <summary>
 /// An Ember Store — and, since 2026-09-14, a grid SOURCE: each new day it banks as much energy as
-/// the ember it holds at that moment (8 ember → 8 energy), uncapped, and buildings in the four
-/// cardinal cells round its footprint draw from it like from a generator. Tiered by name:
-/// Small 1 / Ember Store 2 / Large 3 — both the sustained rate (energy/s) and the instabuffer
-/// (a burst pool a consumer may take in one frame). The tiny store (isTiny) is art only.
+/// the ember it holds at that moment (8 ember → 8 energy), capped at its ember capacity (a Small
+/// store banks 8/8), and buildings in the four cardinal cells round its footprint draw from it
+/// like from a generator. Tiered by name: Small 1 / Ember Store 2 / Large 3 — both the sustained
+/// rate (energy/s) and the instabuffer (a burst pool a consumer may take in one frame). Every
+/// store starts empty (<see cref="startEnergy"/> 0). The tiny store (isTiny) is art only.
 /// </summary>
 public class EmberStoreBuilding : Building, IEnergyAccumulator
 {
@@ -18,8 +19,11 @@ public class EmberStoreBuilding : Building, IEnergyAccumulator
     public float energyDrawRate = 0f;
     [Tooltip("Burst pool on top of the rate (a whole shot in one frame). 0 = by tier: Small 1 / Ember Store 2 / Large 3.")]
     public float energyInstabuffer = 0f;
+    [Tooltip("Energy banked at start (clamped to the capacity — the store's ember capacity). 0 everywhere, the centre store included (user call 2026-09-14): stores start empty.")]
+    public float startEnergy = 0f;
 
-    readonly EnergyStore store = new EnergyStore(float.PositiveInfinity, 1f, 1f);
+    // capacity = the ember capacity (connect.maxEmber): a store's energy bank holds as much as its shelf
+    readonly EnergyStore store = new EnergyStore(8f, 1f, 1f);
     Action newDay;
 
     public float Energy => store.Energy;
@@ -71,7 +75,9 @@ public class EmberStoreBuilding : Building, IEnergyAccumulator
             int tier = Tier;
             if (energyDrawRate <= 0f) energyDrawRate = tier;
             if (energyInstabuffer <= 0f) energyInstabuffer = tier;
-            store.Configure(float.PositiveInfinity, energyDrawRate, energyInstabuffer);
+            float capacity = connect != null && connect.maxEmber > 0 ? connect.maxEmber : float.PositiveInfinity;
+            store.Configure(capacity, energyDrawRate, energyInstabuffer);
+            if (startEnergy > 0f) store.Add(startEnergy);   // the centre store opens full (8/8)
             base.Start();
             connect.onRefresh += Refresh;
             newDay = OnNewDay;
@@ -82,8 +88,7 @@ public class EmberStoreBuilding : Building, IEnergyAccumulator
             transform.localScale = Vector3.zero;
             LeanTween.scale(gameObject,Vector3.one,1f).setEase(LeanTweenType.easeInOutQuad);
         }
-        GS.OnNewEra += UpdateEmberColours;
-        r.material = GS.MatByEra(GS.era, false, false, true);
+        r.material = GS.Glow(GlowLevel.Super);
         Refresh();
     }
 
@@ -129,19 +134,6 @@ public class EmberStoreBuilding : Building, IEnergyAccumulator
     }
 
 
-    void UpdateEmberColours(int era)
-    {
-        r.material = GS.MatByEra(GS.era, false, false, true);
-        foreach(EmberParticle p in particles)
-        {
-            p.sr.material = GS.MatByEra(GS.era, true, false, true);
-        }
-        foreach(EmberParticle p in statics)
-        {
-            p.sr.material = GS.MatByEra(GS.era, true, false, true);
-        }
-    }
-
     public void Refresh()
     {
         while (Mathf.Max(0,connect.ember) < particles.Count)
@@ -174,10 +166,7 @@ public class EmberStoreBuilding : Building, IEnergyAccumulator
 
     public void Fracture(Vector3 p)
     {
-        if (GS.era != 0)
-        {
-            psr.material = GS.MatByEra(GS.era, true, false, true);
-        }
+        if (GS.era != 0) psr.material = GS.Glow(GlowLevel.Super);   // era-0 keeps its authored material (as before)
         particles[0].enabled = false;
         sr.enabled = false;
         foreach (EmberParticle z in statics)
@@ -189,7 +178,7 @@ public class EmberStoreBuilding : Building, IEnergyAccumulator
         for (int i = 0; i < 4; i++)
         {
             var g = fractureFX[i];
-            g.material = GS.MatByEra(GS.era, true, false, true);
+            g.material = GS.Glow(GlowLevel.Super);
             g.gameObject.SetActive(true);
             g.gameObject.LeanMove(transform.position + GS.ATV3(45f + i * 90f * Random.Range(-10f,10f)), 1f).setEaseOutSine();
             g.gameObject.LeanScale(Vector3.zero, 1f).setEaseInSine();

@@ -14,11 +14,13 @@ using UnityEngine;
 /// can't act as a megabus — parallel pylons are the way to scale supply. A tier-1
 /// pylon at full saturation (4 cables × 4 e/sec) tops out at 16 e/sec.
 ///
-/// Three tiers via AddUpgradeSlot (mirrors SpreadTower):
-///   tier 1 — Energy Pylon       1x1, 4 cables within 4 units
-///   tier 2 — Long-Pylon        1.5x1.5, 4 cables within 8 units
-///   tier 3 — Multi-Pylon        2x2, unlimited cables within 4 units
-/// Adjacency-supplied sources don't count toward the cable cap.
+/// ONE prefab, one build-menu tile. A built pylon's panel offers two free, instant, mutually
+/// exclusive upgrades (2026-09-14 — replaced the separate LongRangePylon/MultiPylon prefabs):
+///   Energy Pylon  — 4 cables within 4 units
+///   Long-Range    — 4 cables within 8 units
+///   Multi-Pylon   — unlimited cables within 4 units
+/// All share the 1x1 footprint; the upgrade swaps the body sprite. Adjacency-supplied sources
+/// don't count toward the cable cap.
 ///
 /// Pylon→pylon chains work: each pylon's Use forwards to its own upstreams. Cycles are
 /// guarded by a per-instance "resolving" bool so a Use/Energy query already in flight
@@ -31,14 +33,10 @@ using UnityEngine;
 public class EnergyPylon : Building, IEnergyAccumulator
 {
     [Header("Pylon — upgrade sprites")]
+    [Tooltip("Body sprite (and upgrade tile icon) of the Long-Range upgrade.")]
     [SerializeField] private Sprite longPylonSprite;
+    [Tooltip("Body sprite (and upgrade tile icon) of the Multi-Pylon upgrade.")]
     [SerializeField] private Sprite multiPylonSprite;
-    [Tooltip("Slot 0 = Long-Pylon upgrade icon, Slot 1 = Multi-Pylon upgrade icon.")]
-    [SerializeField] private Sprite[] tileSprites = new Sprite[2];
-
-    [Header("Pylon — upgrade costs")]
-    [SerializeField] private int[] tier2Cost = { 30, 0, 1, 0 };
-    [SerializeField] private int[] tier3Cost = { 60, 0, 3, 0 };
 
     [Header("Pylon — rate cap")]
     [Tooltip("Maximum energy/sec a single cable can transmit. Total throughput = perCableCap × downstream-cable count.")]
@@ -67,8 +65,10 @@ public class EnergyPylon : Building, IEnergyAccumulator
     private float radius = 4f;
     private int maxCableConnections = 4;
 
-    [SerializeField] private bool multi;
-    [SerializeField] private bool longRange;
+    // Chosen upgrade (at most one). Runtime state, not authored — every pylon is placed plain.
+    private bool multi;
+    private bool longRange;
+    bool Upgraded => multi || longRange;
 
     public event Action<float> OnUpdate;
     public event Action OnUse;
@@ -103,9 +103,8 @@ public class EnergyPylon : Building, IEnergyAccumulator
     // this Behaviour) reports zero energy/budget and refuses draws, so nothing flows through it —
     // and revival (drone repair -> SwitchMonos(true)) restores the network without rebuilding.
     private bool Dead => !enabled;
-    /// <summary>How far (world units) a dragged cable may reach — the pylon's light-blue power tiles.
-    /// A placement ghost hasn't run Start (UpgradeToLong), so it answers from its authored flag.</summary>
-    public float CableRadius => builtYet ? radius : (longRange ? 8f : 4f);
+    /// <summary>How far (world units) a dragged cable may reach — the pylon's light-blue power tiles.</summary>
+    public float CableRadius => radius;
     /// <summary>The hover ring shows how far a cable may reach (HoverRing, 2026-09-14).</summary>
     public override float HoverRingRadius => CableRadius;
 
@@ -446,8 +445,9 @@ public class EnergyPylon : Building, IEnergyAccumulator
         base.Start();
         connectable = GetComponent<Connectable>();
         WireConnectable();
-        if(longRange) UpgradeToLong();
-        if(multi) UpgradeToMulti();
+        // Free, instant, pick-one: both tiles vanish once either upgrade is taken.
+        AddSlot(new int[4], "Long-Range Pylon", longPylonSprite, true, UpgradeToLong, false, null, null, () => !Upgraded);
+        AddSlot(new int[4], "Multi-Pylon", multiPylonSprite, true, UpgradeToMulti, false, null, null, () => !Upgraded);
         if (transform.parent != null && transform.parent.TryGetComponent<SpriteRenderer>(out var psr))
         {
             psr.color = Color.white;
@@ -560,6 +560,10 @@ public class EnergyPylon : Building, IEnergyAccumulator
     bool ValidateTarget(Building target)
     {
         if (target == null || target == this) return false;
+        // The base centre (the Throne and the store on it, inside the 2×2 block at the origin)
+        // takes a cable from the SMALL pylon only (user rule 2026-09-14): long-range and multi
+        // pylons can't tap it.
+        if ((longRange || multi) && AtBaseCentre(target)) return false;
         // Pads/hubs ARE cable endpoints: a cabled pad/hub becomes an upstream source and
         // functions exactly like an adjacent one (OnConnected's source branch — same path
         // generators and CapacitorNode tethers take). Consumers (towers, factories) and
@@ -580,6 +584,13 @@ public class EnergyPylon : Building, IEnergyAccumulator
         if (ConnectionCount >= maxCableConnections) return false;
         if (target is EnergyPylon tpCap && tpCap.ConnectionCount >= tpCap.maxCableConnections) return false;
         return true;
+    }
+
+    /// <summary>Inside the Throne's 2×2 block at the world origin.</summary>
+    static bool AtBaseCentre(Building b)
+    {
+        Vector2 p = b.transform.position;
+        return Mathf.Abs(p.x) <= 1f && Mathf.Abs(p.y) <= 1f;
     }
 
     void OnConnected(Building target, LineRenderer lr)
@@ -846,13 +857,28 @@ public class EnergyPylon : Building, IEnergyAccumulator
 
     void UpgradeToLong()
     {
+        if (Upgraded) return;
+        longRange = true;
         radius = 8f;
         maxCableConnections = 4;
+        AfterUpgrade(longPylonSprite);
     }
 
     void UpgradeToMulti()
     {
+        if (Upgraded) return;
+        multi = true;
         radius = 4f;
         maxCableConnections = int.MaxValue;
+        AfterUpgrade(multiPylonSprite);
+    }
+
+    void AfterUpgrade(Sprite body)
+    {
+        if (body != null && sr != null) sr.sprite = body;
+        // The reach changed: repaint the build grid's pylon cells (the hover ring redraws itself).
+        GridManager.i?.RefreshEnergyCells();
+        // Close the panel so the sibling tile (now hidden by its showParam) doesn't linger.
+        if (UIParent != null && UIParent.activeInHierarchy) OnClose?.Invoke();
     }
 }

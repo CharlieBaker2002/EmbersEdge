@@ -9,15 +9,17 @@ using UnityEngine.InputSystem;
 /// gun (Tab cycles to it, right click uses it) but its trigger is a syphon:
 ///   • HOLD Shoot: loose ore chips inside the cone in front of the nozzle are pulled in and
 ///     swallowed, up to <see cref="capacity"/>. Each swallow is one ore, whatever the chip's size.
-///     Aimed at a TUBE, the shelved chips lying in the cone step off the shelf one by one
-///     (<see cref="tubeDrawInterval"/>) and are pulled in the same way (user call 2026-09-14).
+///     Started ON a Tube or Belt (the cursor over a box/tile at the moment of the press), the
+///     chips of THAT tube shape / belt line lying in the cone step off one by one
+///     (<see cref="tubeDrawInterval"/>) and are pulled in the same way — no other tube or belt
+///     is touched, and a press started anywhere else never draws from one (user call 2026-09-14).
 ///   • PRESS Shoot while FULL (anywhere), or while holding ANY ore AT BASE: the load sprays back
 ///     out of the nozzle as chip props — into a ghost building's intake ring, a refiner's ring,
 ///     or just the ground for the drones to sort out.
 /// Held ore is DATA (size + element per chip), so it rides the teleport home untouched while the
 /// dungeon's litter is despawned. The ammo HUD shows the tank (held / capacity).
 ///
-/// Look: ally-scheme pixel art whose emission map glows the era colour (GS.MatByEra, lit). While
+/// Look: ally-scheme pixel art whose emission map glows the era colour (GS.Glow, Lit level). While
 /// syphoning the prefab's Syphon particle system (authored by HooverKitBuilder) streams inward
 /// along the cone; each chip under pull trails a thin era-glow thread into the nozzle; a swallow
 /// pulses a ring at the mouth and pops the part's scale. Single element throughout (the era).
@@ -76,7 +78,9 @@ public class Hoover : WeaponScript
     Action<InputAction.CallbackContext> onDown, onUp;
     int rumbleId = -1;
     float pop, tubeDrawT;
-    Action<int> eraAction;
+    // what this press started on — the only tube shape / belt line it may draw from
+    Tube sourceTube;
+    Belt sourceBelt;
 
     // pull bookkeeping (chips currently under the cone this tick → tethers)
     readonly List<OreChip> pulled = new List<OreChip>();
@@ -95,20 +99,14 @@ public class Hoover : WeaponScript
     public override void StartPart(MechaSuit mecha)
     {
         base.StartPart(mecha);
-        ApplyEra(GS.era);
-        if (eraAction == null)
-        {
-            eraAction = ApplyEra;
-            GS.OnNewEra += eraAction;
-        }
+        ApplyGlow();
         RefreshHud();
     }
 
-    void ApplyEra(int era)
+    void ApplyGlow()
     {
-        if (SpawnManager.instance == null) return;
-        if (sr != null) sr.material = GS.MatByEra(era, lit: true);   // body lit, emission map = era glow
-        // FX materials are era glow (superBright) — rebuilt when the era turns
+        if (sr != null) sr.material = GS.Glow(GlowLevel.Lit);   // body lit, emission map = era glow
+        // FX materials are era glow (Super); the era hue is a global, so once is enough
         if (tetherMat != null) Destroy(tetherMat);
         if (syphonMat != null) Destroy(syphonMat);
         tetherMat = SpawnBoltFX.NewGlowMat(SpawnBoltFX.ThreadTex(), out tetherBase, tetherGlow);
@@ -177,7 +175,6 @@ public class Hoover : WeaponScript
 
     void OnDestroy()
     {
-        if (eraAction != null) GS.OnNewEra -= eraAction;
         foreach (var lr in tethers) if (lr != null) Destroy(lr.gameObject);
         tethers.Clear();
         if (tetherMat != null) Destroy(tetherMat);
@@ -216,6 +213,7 @@ public class Hoover : WeaponScript
             return;
         }
         if (Full) return;
+        PickSource();
         syphoning = true;
         SetSyphonFX(true);
         rumbleId = IM.i.Rumble(30f, 0, true, true, 0.06f, 0.14f);
@@ -225,6 +223,8 @@ public class Hoover : WeaponScript
     {
         if (!syphoning) return;
         syphoning = false;
+        sourceTube = null;
+        sourceBelt = null;
         SetSyphonFX(false);
         if (rumbleId != -1) { IM.i.BlockVB(rumbleId); rumbleId = -1; }
         pulled.Clear();
@@ -298,44 +298,86 @@ public class Hoover : WeaponScript
                 if (cc != null) Physics2D.IgnoreCollision(cc, playerCol, true);   // let it through the body
             }
         }
-        if (!Full) PullFromTubes(mouth, aim, cosHalf, mf, dt);
+        if (!Full) PullFromSource(mouth, aim, cosHalf, mf, dt);
         RestoreDroppedCollisions();
     }
 
-    /// <summary>Aimed at a tube: the shelved chip nearest the nozzle that lies inside the cone
-    /// (in range, in sight) steps off the shelf — loose, at rest, stamped as the player's — and
-    /// the next tick's pull takes it like any chip; one per <see cref="tubeDrawInterval"/> so the
-    /// shelf streams out rather than bursting. A chip a drone has claimed stays put.</summary>
-    void PullFromTubes(Vector2 mouth, Vector2 aim, float cosHalf, MineField mf, float dt)
+    /// <summary>At the press: the tube box or belt tile under the cursor (a controller aims
+    /// instead — the first box/tile along the aim within range) is the ONLY store this syphon
+    /// may draw from. Anywhere else = loose chips only.</summary>
+    void PickSource()
+    {
+        sourceTube = null;
+        sourceBelt = null;
+        if (!IM.controller)
+        {
+            Vector2 p = IM.i.MouseWorld();
+            sourceTube = Tube.At(BaseCell.Of(p));
+            if (sourceTube == null) sourceBelt = Belt.At(BaseCell.Of(p));
+            return;
+        }
+        Vector2 mouth = Mouth;
+        Vector2 aim = transform.up;
+        float step = BaseCell.Cs * 0.5f;
+        for (float t = 0f; t <= range; t += step)
+        {
+            var c = BaseCell.Of(mouth + aim * t);
+            sourceTube = Tube.At(c);
+            if (sourceTube != null) return;
+            sourceBelt = Belt.At(c);
+            if (sourceBelt != null) return;
+        }
+    }
+
+    /// <summary>Started on a tube / belt: the chip of THAT shape / line nearest the nozzle that
+    /// lies inside the cone (in range, in sight) steps off — loose, at rest, stamped as the
+    /// player's — and the next tick's pull takes it like any chip; one per
+    /// <see cref="tubeDrawInterval"/> so it streams out rather than bursting. Re-resolved through
+    /// the box/tile every tick, so a re-link (a box or tile placed nearby) keeps the source; a
+    /// tube chip a drone has claimed stays put.</summary>
+    void PullFromSource(Vector2 mouth, Vector2 aim, float cosHalf, MineField mf, float dt)
     {
         tubeDrawT -= dt;
         if (tubeDrawT > 0f) return;
-        var clusters = Tube.Clusters;
-        TubeCluster bestCl = null;
-        TubeCluster.Entry best = null;
         float bd = float.MaxValue;
-        for (int c = 0; c < clusters.Count; c++)
+        if (sourceTube != null && sourceTube.cluster != null)
         {
-            var cl = clusters[c];
-            var list = cl.chips;
-            for (int i = 0; i < list.Count; i++)
+            var cl = sourceTube.cluster;
+            TubeCluster.Entry best = null;
+            for (int i = 0; i < cl.chips.Count; i++)
             {
-                var e = list[i];
+                var e = cl.chips[i];
                 var chip = e.chip;
                 if (chip == null || chip.Absorbing || chip.Fading || chip.claimedBy != null) continue;
-                Vector2 to = e.pos - mouth;
-                float d = to.magnitude;
-                if (d > range || d >= bd) continue;
-                if (d > nearRadius && Vector2.Dot(to / Mathf.Max(d, 1e-4f), aim) < cosHalf) continue;   // outside the cone
-                if (mf != null && !LineOfSight(mf, mouth, e.pos)) continue;
-                bd = d;
-                best = e;
-                bestCl = cl;
+                if (InCone(e.pos, mouth, aim, cosHalf, mf, ref bd)) best = e;
             }
+            if (best != null && cl.ReleaseTo(best) != null) tubeDrawT = Mathf.Max(0.01f, tubeDrawInterval);
         }
-        if (best == null) return;
-        if (bestCl.ReleaseTo(best) == null) return;
-        tubeDrawT = Mathf.Max(0.01f, tubeDrawInterval);
+        else if (sourceBelt != null && sourceBelt.line != null)
+        {
+            var line = sourceBelt.line;
+            BeltLine.Entry best = null;
+            for (int i = 0; i < line.chips.Count; i++)
+            {
+                var e = line.chips[i];
+                var chip = e.chip;
+                if (chip == null || chip.Absorbing || chip.Fading) continue;
+                if (InCone(chip.transform.position, mouth, aim, cosHalf, mf, ref bd)) best = e;
+            }
+            if (best != null && line.ReleaseTo(best) != null) tubeDrawT = Mathf.Max(0.01f, tubeDrawInterval);
+        }
+    }
+
+    /// <summary>In the cone (in range, in sight) and nearer than the best so far — which it becomes.</summary>
+    bool InCone(Vector2 p, Vector2 mouth, Vector2 aim, float cosHalf, MineField mf, ref float bd)
+    {
+        Vector2 to = p - mouth;
+        float d = to.magnitude;
+        if (d > range || d >= bd) return false;
+        if (d > nearRadius && Vector2.Dot(to / Mathf.Max(d, 1e-4f), aim) < cosHalf) return false;   // outside the cone
+        if (mf != null && !LineOfSight(mf, mouth, p)) return false;
+        bd = d;
+        return true;
     }
 
     /// <summary>Chips no longer under pull get their body collision back (swallowed ones are
